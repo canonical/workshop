@@ -1,0 +1,11 @@
+sphinx
+sphinx-autobuild
+sphinx-design
+furo
+sphinx-tabs
+sphinx-reredirects
+pyspelling
+sphinxext-opengraph
+lxd-sphinx-extensions
+sphinx-copybutton
+myst-parser
