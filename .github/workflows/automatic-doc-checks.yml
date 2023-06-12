@@ -22,11 +22,11 @@ jobs:
 
       - name: Install the doc framework
         run: |
-          make install
+          make -C docs install
 
       - name: Build docs and run spelling checker
         run: |
-          make spelling
+          make -C spelling
 
   woke:
     name: Inclusive language check
@@ -51,8 +51,8 @@ jobs:
 
       - name: Install the doc framework
         run: |
-          make install
+          make -C docs install
 
       - name: Run linkchecker
         run: |
-          make linkcheck
+          make -C docs linkcheck
