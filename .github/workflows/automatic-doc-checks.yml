@@ -26,7 +26,7 @@ jobs:
 
       - name: Build docs and run spelling checker
         run: |
-          make -C spelling
+          make -C docs spelling
 
   woke:
     name: Inclusive language check
