@@ -20,6 +20,7 @@ SDK
 IoT
 dev
 onboarding
+gocheck
 
 accumsan
 adipiscing
