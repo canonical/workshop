@@ -11,6 +11,15 @@ MyST
 favicon
 installable
 Makefile
+LXD
+Jupyter
+YAML
+IDEs
+SDKs
+SDK
+IoT
+dev
+onboarding
 
 accumsan
 adipiscing
