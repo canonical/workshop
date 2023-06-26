@@ -5,19 +5,15 @@
 Workspace
 ============
 
-**Workspace orchestrates reproducible development environments**.
+**Workspace automates the configuring and management of reproducible development environments**.
 
-**Workspace runs environments defined in a simple YAML**. It creates an LXD container, installs the
-required SDKs and packages and runs life cycle hooks. VS Code, Jupyter Lab and other popular IDEs
-can discover and use the resulting workspace as a work environment.
+**Use a straightforward YAML to define your development environment**. Workspace will create a system container, install
+specified SDKs and packages, and control its behaviour with life cycle hooks. VS Code, Jupyter Lab and other IDEs can discover and use your workspace as a work environment. Dispose the environment when done and keep the host system clean.
 
-**Workspace eases the burden of maintaining a development setup** and allows
-for centralised control and shared knowledge of it. It reduces
-the onboarding time for new developers to a single command that launches the required workspace.
+**Make the knowledge of your project's dev environments explicit and shared**. New contributors can start with a single command that launches the required workspace. It is easier to debug issues in any of the project's supported
+environments, perform code reviews or experiment in a separate light-weight container.
 
-**Any software project can benefit from keeping their dev setup organised with workspace**. These can be from
-AI/ML, Robotics, IoT, and other domains that depend on SDKs, packages and libraries from multiple publishers and
-imply a non-trivial setup.
+**Most software projects can benefit from organising their setups with workspace**. These can be from AI/ML, Robotics, IoT, EdTech and other domains that depend on SDKs, packages and libraries from multiple publishers and imply a non-trivial setup.
 
 .. ---------
 
