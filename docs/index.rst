@@ -5,22 +5,15 @@
 Workspace
 ============
 
-**Workspace automates the configuring and management of development
-environments**: re-usable containers of programming tools, SDKs and other
-software, in reliable combinations.
+**Workspace automates the configuring and management of reproducible development environments**.
 
-**Use a straightforward YAML file to define a development environment**.
-Workspace creates an LXD container, installs your specified SDKs and packages,
-and runs lifecycle hooks. Your shareable development environment can be
-discovered and used by VS Code, Jupyter Lab and other popular IDEs.
+**Use a straightforward YAML to define your development environment**. Workspace will create a system container, install
+specified SDKs and packages, and control its behaviour with life cycle hooks. VS Code, Jupyter Lab and other IDEs can discover and use your workspace as a work environment. Dispose the environment when done and keep the host system clean.
 
-**Workspace drastically reduces time-to-productivity**: a single command can
-launch any desired development environment. It eases the burden of maintaining
-development setups, using centralised control and shared knowledge.
+**Make the knowledge of your project's dev environments explicit and shared**. New contributors can start with a single command that launches the required workspace. It is easier to debug issues in any of the project's supported
+environments, perform code reviews or experiment in a separate light-weight container.
 
-**Any software project can benefit from organising its development setup with
-Workspace**. It's used already in AI/ML, robotics, IoT and other domains, to
-avoid complex setup of SDKs, packages and libraries from multiple publishers.
+**Most software projects can benefit from organising their setups with workspace**. These can be from AI/ML, Robotics, IoT, EdTech and other domains that depend on SDKs, packages and libraries from multiple publishers and imply a non-trivial setup.
 
 .. ---------
 
