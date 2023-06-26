@@ -21,6 +21,7 @@ IoT
 dev
 onboarding
 gocheck
+EdTech
 
 accumsan
 adipiscing
