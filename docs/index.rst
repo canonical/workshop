@@ -3,7 +3,7 @@
 .. _home:
 
 Workspace
-============
+=========
 
 **Workspace automates the configuring and management of reproducible development
 environments**.
@@ -27,35 +27,23 @@ Examples include AI/ML, Robotics, IoT, EdTech and similar domains.
 
 ---------
 
+
 In this documentation
 ---------------------
 
-..  grid:: 1 1 2 2
+.. grid:: 1 1 2 2
 
-   ..  grid-item:: :doc:`Tutorial <tutorial/index>`
+   .. grid-item:: :doc:`Tutorial <tutorial/index>`
 
-       **Start here**: a hands-on introduction to Workspace for new users
+      **Start here**: a hands-on introduction to Workspace for new users
 
-   .. ..  grid-item:: :doc:`How-to guides <how-to/index>`
-
-   ..    **Step-by-step guides** covering key operations and common tasks
 
    .. grid-item:: :doc:`Explanation <explanation/index>`
 
       **Discussion and clarification** of key topics
 
-.. grid:: 1 1 2 2
-   :reverse:
-
-   .. .. grid-item:: :doc:`Reference <reference/index>`
-
-   ..    **Technical information** - specifications, APIs, architecture
-
-   .. .. grid-item:: :doc:`Explanation <explanation/index>`
-
-   ..    **Discussion and clarification** of key topics
-
 ---------
+
 
 .. toctree::
    :hidden:
@@ -64,6 +52,3 @@ In this documentation
    tutorial/index
    explanation/index
    ReadMe <README>
-
-..    how-to/index
-..    reference/index
