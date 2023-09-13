@@ -20,6 +20,7 @@ require (
 )
 
 require (
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
