@@ -114,7 +114,7 @@ from the |project_markup| source code on
    $ git clone git@github.com:canonical/workshop.git  # or git clone https://github.com/canonical/workshop.git
    $ cd workshop
    $ sudo snap install snapcraft --classic
-   $ snapcraft
+   $ snapcraft clean && snapcraft
 
 .. tip::
 
