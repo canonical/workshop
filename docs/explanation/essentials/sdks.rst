@@ -34,7 +34,7 @@ After a successful change,
 the states are respectively restored.
 
 
-.. _exp_sdk_def:
+.. _exp_sdk_definition:
 
 Definition
 ----------
@@ -107,7 +107,7 @@ think of the slot as the provider of the resource.
 
 On top of that, individual SDKs define *plugs*
 to connect to a slot that belongs to a certain interface.
-In our :ref:`previous example <exp_sdk_def>`,
+In our :ref:`previous example <exp_sdk_definition>`,
 it's the aforementioned *content interface*.
 
 You can think of the plug as the recipient of the resources exposed by the slot;

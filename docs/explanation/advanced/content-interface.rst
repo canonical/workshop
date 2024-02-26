@@ -107,7 +107,7 @@ See also
 
 Explanation:
 
-- :ref:`SDK definition (concept) <exp_sdk_def>`
+- :ref:`SDK definition (concept) <exp_sdk_definition>`
 - :ref:`SDK interface (concept) <exp_interfaces_plugs_slots>`
 - :ref:`workshop base (concept) <exp_workshop_base>`
 - :ref:`workshop definition (concept) <exp_workshop_def>`
