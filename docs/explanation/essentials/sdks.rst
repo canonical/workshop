@@ -29,7 +29,7 @@ to let |project_markup| handle such data consistently as the *SDK state*.
 Before applying any changes to the SDK,
 usually during a :command:`workshop refresh`,
 |project_markup| saves the workshop's SDK states
-by invoking their :ref:`life cycle hooks <exp_sdk_hooks>`.
+by invoking their :ref:`hooks <exp_sdk_hooks>`.
 After a successful change,
 the states are respectively restored.
 

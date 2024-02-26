@@ -1,9 +1,9 @@
 .. _ref_sdk_hooks:
 
-SDK life cycle hooks
-====================
+SDK hooks
+=========
 
-|project_markup| supports the following SDK life cycle hooks:
+|project_markup| supports the following life cycle hooks:
 
 .. list-table::
    :header-rows: 1

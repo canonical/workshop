@@ -15,7 +15,7 @@ that run in a predefined order.
 
 A *task* is a small, independent piece of logic;
 it can be mounting a project directory,
-running a :ref:`life cycle hook <exp_sdk_hooks>`
+running a :ref:`hook <exp_sdk_hooks>`
 or starting a workshop container.
 Most tasks are reversible.
 
