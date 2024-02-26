@@ -39,10 +39,10 @@ the states are respectively restored.
 Definition
 ----------
 
-An SDK is defined in a file named :file:`sdk.yaml` that may look like this:
+An SDK is defined in a file named :file:`sdkcraft.yaml` that may look like this:
 
 .. code-block:: yaml
-   :caption: sdk.yaml
+   :caption: sdkcraft.yaml
 
    name: go
    title: Go SDK
