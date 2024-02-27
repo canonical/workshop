@@ -48,6 +48,10 @@ jobs:
         with:
           name: snap
           path: ${{ github.workspace }}/tests/workshop.snap
+      - name: List content
+        run: |
+          ls -R tests
+          ls ${{ github.workspace }}
       - name: Install spread
         run: go install github.com/snapcore/spread/cmd/spread@latest
       - name: Run spread
