@@ -7,9 +7,17 @@ on:
   schedule:
     - cron: "0 0 */2 * *"
   workflow_dispatch:
-  
+
 jobs:
+  build-snap:
+    runs-on: [self-hosted, Linux, X64, xlarge]
+    steps:
+      - uses: snapcore/action-build@v1
+        id: snapcraft
+    outputs:
+      snap: ${{steps.snapcraft.outputs.snap}}
   snap-tests:
+    needs: build-snap
     strategy:
       matrix:
         os: [ubuntu-22.04-64]
@@ -31,11 +39,9 @@ jobs:
         with:
           fetch-depth: 0
           submodules: true
-      - uses: snapcore/action-build@v1
-        id: snapcraft
       - name: Copy snap to tests
         run: |
-          mv "${{ steps.snapcraft.outputs.snap }}" "${{ github.workspace }}"/tests/
+          mv "${{ needs.build-snap.outputs.snap }}" "${{ github.workspace }}"/tests/
       - name: Install spread
         run: go install github.com/snapcore/spread/cmd/spread@latest
       - name: Run spread
