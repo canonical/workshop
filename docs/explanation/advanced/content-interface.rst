@@ -59,10 +59,12 @@ that does the following:
 - Sets its :samp:`interface` type to :samp:`content`,
   which makes it a content interface plug
 
-- Points the :samp:`target` directory *inside the workshop*
-  to :file:`/home/workshop/go/pkg/mod/`;
-  it will be mounted to a file directory on the host system
+- Points the :samp:`target` directory
+  to :file:`/home/workshop/go/pkg/mod/`
+  *inside the workshop*;
+  a directory on the host system
   that |project_markup| designates at run-time
+  will be mounted to it
 
 Overall, the intent of this declaration is
 to use a directory
@@ -76,8 +78,9 @@ when the workshop stops.
 Content interface slot
 ----------------------
 
-To let SDKs access the host file system,
-|project_markup| creates a slot per each content interface plug.
+To let SDKs in a workshop access the host file system,
+|project_markup| creates a content interface slot,
+which multiple content interface plugs can then access.
 
 .. note::
 
@@ -85,17 +88,22 @@ To let SDKs access the host file system,
    but can't be shared between two workshops directly.
 
 
-At run-time, the plug is connected to the slot;
-after that, it's time for some
-validation and policy checks
-that |project_markup| does internally.
-This involves making sure that the plug declaration is correct;
-the plug is allowed to be installed and auto-connected;
-and the destination directory actually exists.
+When the SDK is installed
+during :command:`workshop launch` and :command:`workshop refresh`
+at run-time,
+for each plug that targets the slot, |project_markup| checks the following:
 
-If the content interface plug passes the checks,
-the :samp:`target` directory, as defined by the plug,
-is mounted on the host file system.
+- The plug can be installed.
+
+- The plug can be auto-connected
+  (for :samp:`content`, it's a yes).
+
+- The :samp:`target` directory already exists in the workshop.
+
+If the plug passes the checks,
+it is connected
+and a |project_markup|-created directory from the host file system
+is mounted to the :samp:`target` directory inside the workshop.
 That's where the module cache from our example will end up;
 the best part is that it will be preserved between workshop operations such as
 :command:`refresh`, :command:`start` and :command:`stop`,
