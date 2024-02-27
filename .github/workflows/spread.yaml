@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-snap:
-    runs-on: [self-hosted, Linux, X64, xlarge]
+    runs-on: ubuntu-latest
     steps:
       - uses: snapcore/action-build@v1
         id: snapcraft
