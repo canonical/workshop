@@ -18,8 +18,10 @@ jobs:
           fetch-depth: 0
       - uses: snapcore/action-build@v1
         id: snapcraft
-    outputs:
-      snap: ${{steps.snapcraft.outputs.snap}}
+      - uses: actions/upload-artifact@master
+        with:
+          name: snap
+          path: ${{ steps.snapcraft.outputs.snap }}
   snap-tests:
     needs: build-snap
     strategy:
@@ -42,9 +44,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Copy snap to tests
-        run: |
-          mv "${{ needs.build-snap.outputs.snap }}" "${{ github.workspace }}"/tests/
+      - uses: actions/download-artifact@master
+        with:
+          name: snap
+          path: ${{ github.workspace }}/tests/workshop.snap
       - name: Install spread
         run: go install github.com/snapcore/spread/cmd/spread@latest
       - name: Run spread
