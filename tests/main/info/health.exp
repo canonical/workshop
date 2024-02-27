@@ -1,12 +1,22 @@
 #!/usr/bin/expect -f
 
-set timeout 120
-spawn watch -n 0.5 workshop info ws
+set timeout 360
+spawn -noecho watch -n 0.5 workshop info ws
+set success 0 
 
 expect {
-    -re "message:\[ \]*Cannot finish health check" {        
-        exit 0
-    }    
+    -re "message:\[ \]*SDK is not ready yet..." {
+        puts "Seen the expected SDK health messages"
+        set success 1
+        exp_continue
+    }
+    -re "ready" {
+        if { $success == 1 } {
+            exit 0
+        }
+        puts "Could not find the expected SDK health message"
+        exit 1
+    }
     timeout { 
         puts "Timed out while waiting for the SDK health message"
         exit 1

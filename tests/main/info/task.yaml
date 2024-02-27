@@ -11,10 +11,6 @@ restore: |
 
 execute: |
   . "$TESTSLIB"/utils.sh
-  PROJECT=$(pwd)
-  
-  change_id=$(workshop_exec --project "$PROJECT" launch ws --no-wait | tr -d '\n')
+  PROJECT=$(pwd)  
+  workshop_exec --project "$PROJECT" launch ws --no-wait
   expect -f ./health.exp
-  while workshop_exec changes | grep -q "$change_id  Doing.*Launch \"ws\" workshop$"; do
-    sleep 0.1
-  done
