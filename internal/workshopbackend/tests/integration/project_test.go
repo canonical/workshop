@@ -179,9 +179,9 @@ func (f *wsProject) TestLxdBackendLoadProjectDirectoryCopied(c *check.C) {
 	os.WriteFile(filepath.Join(newDir, ".workshop.lock"), []byte("b8639dea"), 0644)
 
 	prj, created, err := be.CreateOrLoadProject(f.ctx, newDir)
+	c.Assert(err, check.IsNil)
 	c.Assert(prj, check.NotNil)
 	c.Assert(prj.Path, check.Equals, newDir)
-	c.Assert(err, check.IsNil)
 	c.Assert(created, check.Equals, true)
 	c.Assert(filepath.Join(newDir, ".workshop.lock"), testutil.FileEquals, "abcdefgi")
 	lxdProject, _, _ := f.client.GetProject(workshopbackend.LxdProjectName(f.username))
@@ -274,5 +274,29 @@ func (f *wsProject) TestLxdBackendLoadProjectsAllUsers(c *check.C) {
 	c.Assert(projects, testutil.DeepUnsortedMatches, map[string][]*workshopbackend.Project{
 		f.username: {{ProjectId: "b8639dea", Path: projectDir}},
 	})
+}
 
+func (f *wsProject) TestLxdBackendLoadProjectAsDifferentUser(c *check.C) {
+	// Setup
+	be := workshopbackend.LxdBackend{}
+	restore := testutil.FakeFunc(func() (string, error) { return "b8639dea", nil }, &workshopbackend.NewProjectId)
+	projectDir := c.MkDir()
+
+	os.WriteFile(filepath.Join(projectDir, ".workshop.test.yaml"), []byte(workshopMock), 0644)
+	prj, _, err := be.CreateOrLoadProject(f.ctx, projectDir)
+	c.Assert(prj, check.NotNil)
+	c.Assert(prj.Path, check.Equals, projectDir)
+	c.Assert(err, check.IsNil)
+	// restore the new project id generator, we won't need it anymore
+	// as we will be loading the project
+	restore()
+
+	// Execute (this time the project must be loaded)
+	ctx := context.WithValue(f.ctx, workshopbackend.ContextUser, "anotheruser")
+	prj, created, err := be.CreateOrLoadProject(ctx, projectDir)
+
+	// Validate
+	c.Assert(err, check.ErrorMatches, "project already exists")
+	c.Assert(prj, check.IsNil)
+	c.Assert(created, check.Equals, false)
 }

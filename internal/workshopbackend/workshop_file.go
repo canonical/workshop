@@ -53,7 +53,7 @@ func (p *SdkList) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
-func ReadWorkshop(pathname string) (*WorkshopFile, error) {
+func readWorkshop(pathname string) (*WorkshopFile, error) {
 	var err error
 
 	var file = &WorkshopFile{}

@@ -13,4 +13,4 @@ execute: |
   . "$TESTSLIB"/utils.sh
   PROJECT=$(pwd)  
   workshop_exec --project "$PROJECT" launch ws --no-wait
-  expect -f ./health.exp
+  sudo -u ubuntu 2>&1 -- expect -f ./health.exp

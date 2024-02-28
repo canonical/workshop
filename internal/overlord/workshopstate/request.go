@@ -54,15 +54,15 @@ func (w *WorkshopManager) LaunchMany(ctx context.Context, names []string, projec
 	}
 
 	taskset := make([]*state.TaskSet, 0, len(names))
-	for _, i := range names {
-		file, err := workshopbackend.ReadWorkshop(workshopbackend.WorkshopFilePath(project.Path, i))
+	for _, name := range names {
+		file, err := project.WorkshopFile(name)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read %q file: %w", i, err)
+			return nil, fmt.Errorf("cannot read %q file: %w", name, err)
 		}
 
-		workshop, err := w.Workshop(ctx, i, projectId)
+		workshop, err := w.Workshop(ctx, name, projectId)
 		if workshop != nil {
-			return nil, fmt.Errorf("cannot launch: %q already exists", i)
+			return nil, fmt.Errorf("cannot launch: %q already exists", name)
 		}
 		if !errors.Is(err, workshopbackend.ErrWorkshopNotFound) {
 			return nil, err

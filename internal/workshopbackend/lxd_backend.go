@@ -111,7 +111,7 @@ func (s *LxdBackend) loadProject(client lxd.InstanceServer, ctx context.Context,
 		return nil, fmt.Errorf("context key %s not found", ContextUser)
 	}
 
-	pId, err := projectId(LockPath(path))
+	pId, err := projectId(path)
 	lockNotFound := false
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
@@ -124,7 +124,7 @@ func (s *LxdBackend) loadProject(client lxd.InstanceServer, ctx context.Context,
 		return nil, err
 	}
 
-	projects, err := ReadProjects([]byte(lxdPrj.Config["user.workshop.projects"]))
+	projects, err := readProjects([]byte(lxdPrj.Config["user.workshop.projects"]))
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,9 @@ func (s *LxdBackend) loadProject(client lxd.InstanceServer, ctx context.Context,
 		for _, i := range projects {
 			if i.Path == path {
 				// save the lock file in the project's location
-				i.UpdateLockFile()
+				if err = i.createProjectLock(); err != nil {
+					return nil, err
+				}
 				return i, nil
 			}
 		}
@@ -160,7 +162,7 @@ func (s *LxdBackend) untrackProject(client lxd.InstanceServer, ctx context.Conte
 		return err
 	}
 
-	projects, err := ReadProjects([]byte(lxdPrj.Config["user.workshop.projects"]))
+	projects, err := readProjects([]byte(lxdPrj.Config["user.workshop.projects"]))
 	if err != nil {
 		return err
 	}
@@ -171,7 +173,7 @@ func (s *LxdBackend) untrackProject(client lxd.InstanceServer, ctx context.Conte
 	}
 
 	projects = slices.Delete(projects, idx, idx+1)
-	projectsJson, err := SaveProjects(projects)
+	projectsJson, err := saveProjects(projects)
 	if err != nil {
 		return err
 	}
@@ -191,7 +193,7 @@ func (s *LxdBackend) trackProject(client lxd.InstanceServer, ctx context.Context
 		return err
 	}
 
-	projects, err := ReadProjects([]byte(lxdPrj.Config["user.workshop.projects"]))
+	projects, err := readProjects([]byte(lxdPrj.Config["user.workshop.projects"]))
 	if err != nil {
 		return err
 	}
@@ -203,7 +205,7 @@ func (s *LxdBackend) trackProject(client lxd.InstanceServer, ctx context.Context
 		projects[idx] = prj
 	}
 
-	projectsJson, err := SaveProjects(projects)
+	projectsJson, err := saveProjects(projects)
 	if err != nil {
 		return err
 	}
@@ -345,7 +347,7 @@ func ProjectPath(cwd string) (string, error) {
 		var err error
 		var ok, isDir bool
 		if ok, isDir, err = osutil.ExistsIsDir(path); err == nil && ok && isDir {
-			if ok = osutil.FileExists(LockPath(path)); ok {
+			if _, err := projectId(path); err == nil {
 				return filepath.Clean(path), nil
 			}
 		}
@@ -420,10 +422,13 @@ func (s *LxdBackend) CreateOrLoadProject(ctx context.Context, path string) (*Pro
 				}
 				var newPrj = Project{Path: projectDir, ProjectId: id}
 
-				if err = newPrj.UpdateLockFile(); err != nil {
+				// rewrite the existing lock file with the new project id.
+				if err = newPrj.updateProjectLock(); err != nil {
 					return nil, false, err
 				}
-				s.trackProject(client, ctx, &newPrj)
+				if err := s.trackProject(client, ctx, &newPrj); err != nil {
+					return nil, false, err
+				}
 				return &newPrj, true, nil
 			}
 		}
@@ -455,7 +460,11 @@ func (s *LxdBackend) CreateOrLoadProject(ctx context.Context, path string) (*Pro
 	} else {
 		// if we allocated a new project ID successfully,
 		// we store it in the lock file immediately
-		if err = project.UpdateLockFile(); err != nil {
+		if err = project.createProjectLock(); err != nil {
+			// a possible reason to fail here is to try to create
+			// a project in a directory where a different user has
+			// a project already. That project will not be visible to
+			// anyone but the owner.
 			return nil, false, err
 		}
 	}
@@ -480,7 +489,7 @@ func (s *LxdBackend) Projects(ctx context.Context) (map[string][]*Project, error
 			return nil, err
 		}
 
-		projects, err := ReadProjects([]byte(lxdPrj.Config["user.workshop.projects"]))
+		projects, err := readProjects([]byte(lxdPrj.Config["user.workshop.projects"]))
 		if err != nil {
 			return nil, err
 		}
@@ -511,7 +520,7 @@ func (s *LxdBackend) Projects(ctx context.Context) (map[string][]*Project, error
 			// if the project is created by workshop, the key must be present
 			if _, ok := prj.Config["user.workshop.projects"]; ok && err == nil {
 				prjctx := context.WithValue(ctx, ContextUser, username)
-				projects, err := ReadProjects([]byte(prj.Config["user.workshop.projects"]))
+				projects, err := readProjects([]byte(prj.Config["user.workshop.projects"]))
 				if err != nil {
 					return nil, err
 				}

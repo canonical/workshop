@@ -41,6 +41,10 @@ type CmdExec struct {
 	NonInteractive bool          `short:"I"`
 }
 
+type CmdShellAlias struct {
+	execCommand *CmdExec
+}
+
 var shortExecHelp = "Run a command and wait for it to complete."
 var longExecHelp = `
 The 'exec' subcommand runs an arbitrary command in the specified workshop,
@@ -69,6 +73,8 @@ Notes:
   for running the command in the workshop; reasonable defaults are provided
 `
 
+var shortShellHelp = "Start an interactive terminal session for the workshop."
+
 func (c *CmdExec) Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "exec <WORKSHOP>",
@@ -88,6 +94,24 @@ func (c *CmdExec) Command() *cobra.Command {
 	cmd.Flags().BoolVarP(&c.NonInteractive, "non-interactive", "I", false, "Force non-interactive mode")
 
 	return cmd
+}
+
+func (c *CmdShellAlias) Command() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:   "shell <WORKSHOP>",
+		Args:  cobra.ExactArgs(1),
+		Short: shortShellHelp,
+		RunE:  c.Run,
+	}
+
+	c.execCommand = &CmdExec{}
+	c.execCommand.UserId = 0
+	c.execCommand.GroupId = 0
+	return cmd
+}
+
+func (cmd *CmdShellAlias) Run(c *cobra.Command, av []string) error {
+	return cmd.execCommand.Run(c, []string{av[0], "su", "-l", "workshop"})
 }
 
 func (cmd *CmdExec) Run(c *cobra.Command, av []string) error {
