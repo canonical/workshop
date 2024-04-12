@@ -145,6 +145,7 @@ func (m *InterfaceManager) StartUp() error {
 				// socket will render /deleted)
 				if err := m.recreateInternalMounts(pctx, workshop.Name); err != nil {
 					logger.Noticef("Cannot create internal mounts for %q workshop: %v", workshop.Name, err)
+					continue
 				}
 
 				agent, err := workshop.SdkInfo(pctx, sdk.Agent.String())

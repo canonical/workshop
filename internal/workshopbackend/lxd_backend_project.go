@@ -121,6 +121,11 @@ func (s *LxdBackend) loadProjectFromPath(client lxd.InstanceServer, ctx context.
 		idx := slices.IndexFunc(projects, func(p *Project) bool { return p.ProjectId == pId })
 		if idx != -1 {
 			return projects[idx], nil
+		} else {
+			// The lock is found, but the project is not tracked. This could happen
+			// if LXD was removed and reinstalled. Track the project again.
+			var prj = &Project{Path: path, ProjectId: pId}
+			return prj, s.trackProject(client, ctx, prj)
 		}
 	}
 	return nil, ErrProjectNotFound
