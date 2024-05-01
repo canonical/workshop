@@ -54,7 +54,7 @@ html_context = {
     # Change to the discourse instance you want to be able to link to
     # using the :discourse: metadata at the top of a file
     # (use an empty value if you don't want to link)
-    "discourse": "https://discourse.canonical.com/",
+    "discourse": "https://discourse.ubuntu.com/",
     "category": "engineering/workshops",
     # Change to the GitHub info for your project
     # Change to the Mattermost channel you want to link to
@@ -137,8 +137,7 @@ custom_extensions = [
     "canonical.youtube-links",
     "canonical.related-links",
     "canonical.custom-rst-roles",
-    "canonical.terminal-output",
-    "discoursetopic"
+    "canonical.terminal-output"
 ]
 
 # Add custom required Python modules that must be added to the

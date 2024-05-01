@@ -75,9 +75,45 @@
     {# mod: replaced RTD icons with our links #}
 
     {% if meta and meta.slug %}
-    <div class="ask-discourse">
-      <a class="muted-link" href="{{ discourse_topic(meta.slug) }}">Ask a question on Discourse</a>
-    </div>
+      <div class="ask-discourse">
+        <a id="topic-link" class="muted-link" href="{{ discourse }}" target="_blank">Ask a question on Discourse</a>
+      </div>
+      <script>
+        async function checkTopicExistence(discourseURL, topicSlug) {
+          const apiUrl = `${discourseURL}/t/${topicSlug}.json`;
+          const requestOptions = {
+            mode: 'no-cors',
+            method: 'HEAD'
+          };
+
+          try {
+            const response = await fetch(apiUrl, requestOptions);
+            if (response.status == 200 || (response.status >= 300 && response.status < 400)) {
+              return `${discourseURL}t/${topicSlug}`;
+            } else {
+              return null;
+            }
+          } catch (error) {
+            console.error('Exception checking topic existence:', error);
+            return null;
+          }
+        }
+
+        const discourseURL = "{{ discourse }}";
+        const topicSlug = "{{ meta.slug }}";
+
+        const topicLinkElement = document.getElementById('topic-link');
+        checkTopicExistence(discourseURL, topicSlug)
+          .then(topicLink => {
+            if (topicLink) {
+              topicLinkElement.href = topicLink;
+              topicLinkElement.textContent = 'Ask a question on Discourse';
+            } else {
+              topicLinkElement.href = `${discourseURL}new-topic?title=${encodeURIComponent(topicSlug)}`;
+              topicLinkElement.textContent = 'Start a discussion on Discourse';
+            }
+          });
+      </script>
     {% endif %}
 
     {% if mattermost %}
