@@ -26,7 +26,7 @@ func main() {
 
 	rootCmd := (&cli.CmdRoot{}).Command(cwd)
 
-	docDir := "./docs-auto"
+	docDir := "docs-auto"
 	err = os.MkdirAll(docDir, os.ModePerm)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create docs directory: %v\n", err)
