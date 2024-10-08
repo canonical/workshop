@@ -13,7 +13,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	l, err := logger.New(os.Stderr, 0)
+	l, err := logger.New(cli.Stderr, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -23,7 +23,7 @@ func main() {
 	rootCmd := (&cli.CmdRoot{}).Command(cwd)
 
 	if err = rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(cli.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
