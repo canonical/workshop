@@ -15,3 +15,4 @@ that arise when you use |project_markup|.
    Move projects around <moving-projects>
    Troubleshoot the installation <troubleshoot>
    Use workshops with Git <git-workshop>
+   Run a local SDK store <run-local-store>

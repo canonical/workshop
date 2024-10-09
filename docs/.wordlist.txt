@@ -51,3 +51,9 @@ UI
 UUID
 VM
 YAML
+http
+localhost
+sudo
+url
+ie
+gcs
