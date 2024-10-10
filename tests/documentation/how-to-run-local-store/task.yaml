@@ -1,0 +1,5 @@
+summary: Test 'How to run a local SDK store' - stub
+execute: |
+  . "$TESTSLIB"/utils.sh
+  
+  echo "No-op; the run local store how-to is interactive..."

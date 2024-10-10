@@ -13,6 +13,6 @@ that arise when you use |project_markup|.
    Create a ROS 2 workshop <create-ros2-workshop>
    Debug issues in workshops <debug-workshop-issues>
    Move projects around <moving-projects>
+   Run a local SDK store <run-local-store>
    Troubleshoot the installation <troubleshoot>
    Use workshops with Git <git-workshop>
-   Run a local SDK store <run-local-store>
