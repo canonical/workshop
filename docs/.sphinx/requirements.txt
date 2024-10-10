@@ -8,7 +8,7 @@ GitPython
 canonical-sphinx-extensions
 furo
 pyspelling
-sphinx
+sphinx==8.0.2
 sphinx-autobuild
 sphinx-copybutton
 sphinx-design
