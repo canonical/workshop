@@ -73,8 +73,11 @@ exit 0`)
 	defer fake.Restore()
 
 	c.Assert(deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot), check.IsNil)
-	expectedProxy := &workshop.SshAgent{Name: "consumer-" + plug.Name, Connect: "/tmp/dir/ssh", Listen: "/var/lib/workshop/run/consumer-ssh-agent.ssh"}
-	c.Assert(deviceSpec.Profile.Agent, check.DeepEquals, expectedProxy)
+	expectedProxy := &workshop.Proxy{Name: "consumer-" + plug.Name, Connect: "/tmp/dir/ssh", Listen: "/var/lib/workshop/run/consumer-ssh-agent.ssh"}
+	// We cannot compare the environment characteristics, these are not part of the lxd profile however are used by the install hook
+	proxySpec := deviceSpec.Profile.Proxies["consumer-ssh-agent"]
+	proxySpec.Env = nil
+	c.Assert(proxySpec, check.DeepEquals, *expectedProxy)
 }
 
 func (s *sshAgentSuite) TestSshAgentInterfaceSystemctlFails(c *check.C) {

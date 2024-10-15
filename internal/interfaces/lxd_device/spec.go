@@ -92,14 +92,14 @@ func (s *Specification) AddMountEntry(dev workshop.Mount) error {
 	return nil
 }
 
-func (s *Specification) SetSshAgent(agent workshop.SshAgent) error {
+func (s *Specification) AddProxyEntry(proxy workshop.Proxy) error {
 	// A network protocol proxy device, opens a port on the host or in a workhop.
 	// from, to are the source and destination addresses (paths in the case of unix sockets),
 	// see https://documentation.ubuntu.com/lxd/en/latest/reference/devices_proxy/#device-proxy-device-conf:bind
 	// bind denotes where the port is open (can be: instance, host)
-	s.Profile.Agent = &agent
+	s.Profile.Proxies[proxy.Name] = proxy
 
-	s.devices[agent.Name] = map[string]string{"type": "proxy", "connect": "unix:" + agent.Connect, "listen": "unix:" + agent.Listen, "uid": "1000", "gid": "1000", "bind": "instance"}
+	s.devices[proxy.Name] = map[string]string{"type": "proxy", "connect": "unix:" + proxy.Connect, "listen": "unix:" + proxy.Listen, "uid": "1000", "gid": "1000", "bind": "instance"}
 
 	return nil
 }

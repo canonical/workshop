@@ -18,7 +18,7 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 		{Sdk: "sdk", Camera: &workshop.Camera{Name: "camera"}, Mounts: map[string]workshop.Mount{}},
 		{Sdk: "sdk", Mounts: map[string]workshop.Mount{}, Gpu: &workshop.Gpu{Name: "gpu"}},
 		{Sdk: "sdk", Mounts: map[string]workshop.Mount{"userdisk": {Name: "userdisk", What: "/home", Where: "/opt", Type: workshop.HostWorkshop}}},
-		{Sdk: "sdk", Mounts: map[string]workshop.Mount{}, Agent: &workshop.SshAgent{Name: "ssh-agent", Connect: "unix:.host.socket", Listen: "unix:.workshop.socket"}},
+		{Sdk: "sdk", Mounts: map[string]workshop.Mount{}, Proxies: map[string]workshop.Proxy{"ssh-agent": {Name: "ssh-agent", Connect: "unix:.host.socket", Listen: "unix:.workshop.socket"}}},
 		{Sdk: "sdk", Mounts: map[string]workshop.Mount{"plug": {Name: "plug", What: "/var", Where: "/etc", Type: workshop.WorkshopWorkshop}}},
 	}
 
@@ -35,9 +35,9 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 	} {
 		res, err := lxdbackend.LxdToSdkProfile(t.name, t.devs, t.cfg)
 		c.Assert(err, check.IsNil)
-		c.Assert(res.Agent, check.DeepEquals, expected[i].Agent)
 		c.Assert(res.Camera, check.DeepEquals, expected[i].Camera)
 		c.Assert(res.Gpu, check.DeepEquals, expected[i].Gpu)
+		c.Assert(res.Proxies["ssh-agent"], check.DeepEquals, expected[i].Proxies["ssh-agent"])
 		c.Assert(res.Mounts, testutil.DeepUnsortedMatches, expected[i].Mounts)
 	}
 }

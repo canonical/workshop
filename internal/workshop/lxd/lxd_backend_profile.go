@@ -47,7 +47,7 @@ func lxdToSdkProfile(profile string, devs map[string]map[string]string, config m
 		case "gpu":
 			pr.Gpu = &workshop.Gpu{Name: name}
 		case "proxy":
-			pr.Agent = &workshop.SshAgent{Name: name, Connect: dev["connect"], Listen: dev["listen"]}
+			pr.Proxies[name] = workshop.Proxy{Name: name, Connect: dev["connect"], Listen: dev["listen"]}
 		case "unix-char":
 			devtype := config[DeviceTypeConfigKey(profile, name)]
 			if devtype == "camera" {

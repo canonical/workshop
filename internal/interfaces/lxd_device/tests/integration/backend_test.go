@@ -304,10 +304,13 @@ exit 0
 
 	prof, err := lxdbackend.Profile(f.client, f.pid, "test", "consumer")
 	c.Assert(err, check.IsNil)
-	c.Assert(prof.Agent, check.NotNil)
-	c.Check(prof.Agent.Name, check.Equals, "consumer-ssh-agent")
-	c.Check(prof.Agent.Connect, check.Equals, "unix:/run/.workshop.socket")
-	c.Check(prof.Agent.Listen, check.Equals, "unix:/run/consumer-ssh-agent.ssh")
+	agent, exists := prof.Proxies["consumer-ssh-agent"]
+	if !exists {
+		c.Fail()
+	}
+	c.Check(agent.Name, check.Equals, "consumer-ssh-agent")
+	c.Check(agent.Connect, check.Equals, "unix:/run/.workshop.socket")
+	c.Check(agent.Listen, check.Equals, "unix:/run/consumer-ssh-agent.ssh")
 
 	buf := f.readWorkshopFile(c, "/etc/profile.d/consumer-ssh-agent.sh")
 	c.Check(buf, check.Equals, "export SSH_AUTH_SOCK=/run/consumer-ssh-agent.ssh\n")

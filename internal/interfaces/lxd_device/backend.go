@@ -9,7 +9,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
@@ -207,23 +206,24 @@ func removeMount(conn lxd.InstanceServer, fs workshop.WorkshopFs, pid, w string,
 	return nil
 }
 
-func installSshAgent(fs workshop.WorkshopFs, dev workshop.SshAgent, workshop string) error {
-	env, err := fs.Create(filepath.Join("/etc/profile.d", dev.Name+".sh"))
+func installProxy(fs workshop.WorkshopFs, proxy workshop.Proxy, workshop string) error {
+	env, err := fs.Create(filepath.Join("/etc/profile.d", proxy.Name+".sh"))
 	if err != nil {
-		return fmt.Errorf("cannot set SSH_AUTH_SOCK for %q: %w", workshop, err)
+		return fmt.Errorf("cannot add proxy device: %q: %w", workshop, err)
 	}
 	defer env.Close()
 
-	varline := fmt.Sprintln("export SSH_AUTH_SOCK=" + strings.TrimPrefix(dev.Listen, "unix:"))
-	_, err = env.Write([]byte(varline))
-	if err != nil {
-		return fmt.Errorf("cannot set SSH_AUTH_SOCK for %q: %w", workshop, err)
+	for _, envVar := range proxy.Env {
+		_, err = env.WriteString("export " + envVar + "\n")
+		if err != nil {
+			return fmt.Errorf("cannot add proxy device %q: %w", workshop, err)
+		}
 	}
 	return nil
 }
 
-func removeSshAgent(fs workshop.WorkshopFs, dev workshop.SshAgent) error {
-	return fs.Remove(filepath.Join("/etc/profile.d", dev.Name+".sh"))
+func removeProxy(fs workshop.WorkshopFs, proxy workshop.Proxy) error {
+	return fs.Remove(filepath.Join("/etc/profile.d", proxy.Name+".sh"))
 }
 
 func sftpFs(conn lxd.InstanceServer, pid, w string) (workshop.WorkshopFs, error) {
@@ -283,11 +283,8 @@ func (b *Backend) Setup(ctx context.Context, sdkInfo sdk.Ref, repo *interfaces.R
 		}
 	}
 
-	if spec.Profile.Agent != nil {
-		err = installSshAgent(fs, *spec.Profile.Agent, sdkInfo.Workshop)
-		if err != nil {
-			return err
-		}
+	for _, proxy := range spec.Profile.Proxies {
+		err = installProxy(fs, proxy, sdkInfo.Workshop)
 	}
 
 	// Either create or update an existing LXD profile for the SDK so that later
@@ -303,9 +300,9 @@ func (b *Backend) Setup(ctx context.Context, sdkInfo sdk.Ref, repo *interfaces.R
 				}
 			}
 		}
-		if prevp.Agent != nil {
-			if spec.Profile.Agent == nil || *prevp.Agent != *spec.Profile.Agent {
-				if err = removeSshAgent(fs, *prevp.Agent); err != nil {
+		for key, proxy := range prevp.Proxies {
+			if _, exist := spec.Profile.Proxies[key]; !exist {
+				if err = removeProxy(fs, proxy); err != nil {
 					return err
 				}
 			}
@@ -374,8 +371,8 @@ func (b *Backend) Remove(ctx context.Context, w, profile string) error {
 		}
 	}
 
-	if prof.Agent != nil {
-		if err = removeSshAgent(fs, *prof.Agent); err != nil {
+	for _, proxy := range prof.Proxies {
+		if err = removeProxy(fs, proxy); err != nil {
 			return err
 		}
 	}
