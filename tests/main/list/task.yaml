@@ -22,7 +22,12 @@ execute: |
   echo "workshop list from a nested directory must work similarly as if ran from a project directory"
   pushd ./; mkdir "$PROJECT"/nested; cd "$PROJECT"/nested
   workshop_exec list | MATCH "^.+[[:space:]]+ws-list[[:space:]]+Ready[[:space:]]+-$"
-  rm -rf "$PROJECT"/nested; popd
+  popd; rmdir "$PROJECT"/nested
+
+  echo "workshop --project should accept a relative directory"
+  mkdir relative
+  workshop_exec list --project relative | MATCH "^.+[[:space:]]+ws-list[[:space:]]+Ready[[:space:]]+-$"
+  rmdir relative
 
   echo "Listing outside of a project directory should trigger an error"
   workshop_exec --project /home/ubuntu list | MATCH "^error: not a project \(no workshop files found\)$"
