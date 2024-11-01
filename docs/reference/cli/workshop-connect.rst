@@ -6,7 +6,7 @@ workshop connect
 Connect a plug to a slot
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command connects a plug to a target slot
@@ -43,7 +43,7 @@ that is specified as the second argument or deduced from the context.
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 

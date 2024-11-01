@@ -6,7 +6,7 @@ workshop list
 List project workshops
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command enumerates all workshops in the project, printing a compact list:
@@ -35,7 +35,7 @@ Notes:
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 

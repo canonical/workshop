@@ -6,7 +6,7 @@ workshop remove
 Remove one or many workshops
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command removes the workshops listed as arguments. For each workshop, it:

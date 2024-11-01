@@ -6,7 +6,7 @@ workshop refresh
 Update workshops according to their definitions
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command updates the workshops listed as arguments by going over their
@@ -52,7 +52,7 @@ Notes:
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 

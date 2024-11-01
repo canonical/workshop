@@ -6,7 +6,7 @@ workshop warnings
 List warnings
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command lists the warnings that were reported to the system.
@@ -26,7 +26,7 @@ Also, warnings expire automatically; expired warnings are not listed.
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 

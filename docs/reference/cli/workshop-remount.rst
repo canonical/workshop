@@ -6,7 +6,7 @@ workshop remount
 Mount a new source location to the content interface plug's target
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command mounts a new source location on the host to the target directory
@@ -39,7 +39,7 @@ Notes:
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 
