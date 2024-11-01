@@ -44,6 +44,7 @@ func (c *CmdRoot) Command(cwd string) *cobra.Command {
 	cmd.AddCommand((&CmdDisconnect{root: c}).Command())
 	cmd.AddCommand((&CmdWarnings{root: c}).Command())
 	cmd.AddCommand((&CmdOkay{root: c}).Command())
+	cmd.AddCommand((&CmdHack{root: c}).Command())
 
 	cmd.PersistentFlags().StringVarP(&c.project, "project", "p", cwd, "Specify the project's directory path.")
 	cmd.PersistentFlags().BoolP("help", "h", false, "Print the help message for the command.")
