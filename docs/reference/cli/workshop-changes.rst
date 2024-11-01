@@ -6,7 +6,7 @@ workshop changes
 List recent changes to the workshops in a project
 
 Synopsis
---------
+~~~~~~~~
 
 
 Any substantial operation on a workshop is a *change* that consists of *tasks*;

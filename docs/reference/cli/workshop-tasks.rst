@@ -6,7 +6,7 @@ workshop tasks
 List tasks for a specific change
 
 Synopsis
---------
+~~~~~~~~
 
 
 Any substantial operation on a workshop is a *change* that consists of *tasks*;

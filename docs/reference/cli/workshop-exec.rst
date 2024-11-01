@@ -6,7 +6,7 @@ workshop exec
 Run a command and wait for it to complete
 
 Synopsis
---------
+~~~~~~~~
 
 
 The 'exec' subcommand runs an arbitrary command in the specified workshop,
@@ -48,7 +48,7 @@ Notes:
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 

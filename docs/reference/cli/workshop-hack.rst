@@ -6,7 +6,7 @@ workshop hack
 Edit hack SDK
 
 Synopsis
---------
+~~~~~~~~
 
 Edit hack SDK
 
@@ -16,7 +16,7 @@ Edit hack SDK
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 
