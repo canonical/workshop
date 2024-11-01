@@ -1,35 +1,23 @@
 .. _ref_workshop_launch:
 
 workshop launch
-===============
+---------------
 
-Constructs one or many workshops using their definitions.
-
-.. code-block:: console
-
-   $ workshop launch <WORKSHOP>... [OPTIONS]
-
-
-Examples
---------
-
-Launch the :samp:`nimble` and :samp:`jazzy` workshops
-in the current project directory:
-
-.. code-block:: console
-
-   $ workshop launch nimble jazzy
-
+Construct one or many workshops using their definitions
 
 Synopsis
 --------
 
+
 This command constructs the workshops listed as arguments by going over their
-definitions and installing their components.  For each workshop, it:
+definitions and installing their components. For each workshop, it:
 
 - Checks the workshop definition and identifies necessary actions
+
 - Retrieves the required components, such as base and SDKs
+
 - Runs SDK setup hooks to initialise the working state
+
 - On success, ties the workshop to the project and starts it
 
 
@@ -37,49 +25,24 @@ If multiple workshops are listed and an error occurs,
 the operation is aborted and no workshops are constructed.
 
 
-Notes
------
+Notes:
 
-- Names listed as arguments must match
-  respective :code:`name:` values in definitions
+- Names listed as arguments must match respective 'name:' values in definitions
 
-- To update an existing workshop, use :ref:`ref_workshop_refresh` instead
+- To update an existing workshop, use 'workshop refresh' instead
 
 - SDKs are installed in alphabetical order
+
+
+.. code-block:: console
+
+   workshop launch <WORKSHOP>... [flags]
 
 
 Options
 -------
 
---no-wait
+.. code-block:: console
 
-  Return the change ID, don't wait for the operation to finish.
+      --no-wait   Return the change ID, don't wait for the operation to finish
 
-
-Global options
---------------
-
--h, --help
-
-  Print the help message for the command.
-
--p, --project <DIRECTORY>
-
-  Specify the project's directory path.
-
-
-See also
---------
-
-Explanation:
-
-- :ref:`exp_base`
-- :ref:`exp_sdk`
-- :ref:`exp_projects`
-- :ref:`exp_workshop_def`
-
-
-Reference:
-
-- :ref:`ref_workshop_refresh`
-- :ref:`ref_workshop_remove`

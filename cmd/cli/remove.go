@@ -28,6 +28,7 @@ This command removes the workshops listed as arguments. For each workshop, it:
 - Deletes the workshop but preserves its definition
 
 Notes:
+
 - If any listed workshop is *Off* or *Pending*, none are removed
 - To rebuild a removed workshop from scratch, use 'workshop launch'
 - For content interface plugs, non-default sources set by 'workshop remount'

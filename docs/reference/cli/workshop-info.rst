@@ -1,69 +1,32 @@
 .. _ref_workshop_info:
 
 workshop info
-=============
+-------------
 
-Prints the current status and details of a workshop as YAML.
-
-.. code-block:: console
-
-   $ workshop info <WORKSHOP> [OPTIONS]
-
-
-Examples
---------
-
-List details for the :samp:`nimble` workshop in the current project directory:
-
-.. code-block:: console
-
-   $ workshop info nimble
-
+Print the current status and details of a workshop as YAML
 
 Synopsis
 --------
 
+
 This command outputs the basic settings, current status and individual SDK
-details for a workshop, formatting them as YAML.  Specifically, it prints:
+details for a workshop, formatting them as YAML. Specifically, it prints:
 
 - Essential workshop attributes, such as name, base and project directory
+
 - Current status (e.g. *Ready*, *Pending*, *Off*) and notes for the workshop
+
 - Individual SDK details, such as name, channel, installation date and revision
-- Currently mounted mount interface plugs
+
+- Currently mounted content interface plugs
 
 
-Notes
------
+Notes:
 
-- Avoid assumptions based on SDK channels: :samp:`latest/stable` may be neither
-
-
-Global options
---------------
-
--h, --help
-
-  Print the help message for the command.
-
--p, --project <DIRECTORY>
-
-  Specify the project's directory path.
+- Avoid assumptions based on SDK channels: 'latest/stable' may be neither
 
 
-See also
---------
+.. code-block:: console
 
-Explanation:
+   workshop info <WORKSHOP> [flags]
 
-- :ref:`exp_base`
-- :ref:`exp_sdk`
-- :ref:`exp_workshop_def`
-
-
-Reference:
-
-- :ref:`ref_workshop_changes`
-- :ref:`ref_workshop_connect`
-- :ref:`ref_workshop_list`
-- :ref:`ref_workshop_remount`
-- :ref:`ref_workshop_tasks`

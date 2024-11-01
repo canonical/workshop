@@ -1,56 +1,26 @@
 .. _ref_workshop_connect:
 
 workshop connect
-================
+----------------
 
-Connects a plug to a slot.
-
-.. code-block:: console
-
-   $ workshop connect <WORKSHOP>/<SDK>:<PLUG> [<WORKSHOP>/<SDK>][:<SLOT>] [OPTIONS]
-
-
-Examples
---------
-
-Connect the :samp:`mod-cache` mount interface plug
-of the :samp:`go` SDK under the :samp:`nimble` workshop
-in the current project directory:
-
-.. code-block:: console
-
-   $ workshop connect nimble/go:mod-cache :mount
-
-
-The command needs to name the slot (:samp:`mount`) explicitly
-because the plug has a non-default name;
-otherwise, it could be omitted.
-
-
-A full version of the command that also lists the target SDK (:samp:`system`):
-
-.. code-block:: console
-
-   $ workshop connect nimble/go:mod-cache nimble/system:mount
-
+Connect a plug to a slot
 
 Synopsis
 --------
+
 
 This command connects a plug to a target slot
 that is specified as the second argument or deduced from the context.
 
 - If the second argument is omitted entirely, the target is assumed to be
-  :samp:`<WORKSHOP>/system:<PLUG>`;
-  :samp:`<WORKSHOP>` and :samp:`<PLUG>` come from the first argument
+  <WORKSHOP>/system:<PLUG>; <WORKSHOP> and <PLUG> come from the first argument
 
 - If the second argument only names the slot itself, the target is
-  :samp:`<WORKSHOP>/system:<SLOT>`;
-  :samp:`<WORKSHOP>` comes from the first argument
+  <WORKSHOP>/system:<SLOT>; <WORKSHOP> comes from the first argument
 
 - If the second argument only names the workshop and SDK, the target is
-  :samp:`<WORKSHOP>/<SDK>:<INTERFACE>`;
-  :samp:`<INTERFACE>` is the interface in the plug's definition.
+  <WORKSHOP>/<SDK>:<INTERFACE>;
+  <INTERFACE> is the interface in the plug's definition.
   However, if there are several candidate slots that match the interface,
   the command fails
 
@@ -58,49 +28,24 @@ that is specified as the second argument or deduced from the context.
   to connect them and returns the result
 
 
-Notes
------
+  Notes:
 
 - To be compatible, the plug and the slot must use the same interface
 
 - Multiple plugs can be connected to the same slot, but not vice versa
 
-- The :ref:`ref_workshop_connections` output
-  will list the connection as :samp:`manual`
+- The 'workshop connections' output will list the connection as 'manual'
+
+
+.. code-block:: console
+
+   workshop connect <WORKSHOP>/<SDK>:<PLUG> [<WORKSHOP>/<SDK>][:<SLOT>] [flags]
 
 
 Options
 -------
 
---no-wait
+.. code-block:: console
 
-  Return the change ID, don't wait for the operation to finish.
+      --no-wait   Return the change ID, don't wait for the operation to finish
 
-
-Global options
---------------
-
--h, --help
-
-  Print the help message for the command.
-
--p, --project <DIRECTORY>
-
-  Specify the project's directory path.
-
-
-See also
---------
-
-Explanation:
-
-- :ref:`exp_interfaces`
-- :ref:`exp_plugs_slots`
-- :ref:`exp_sdk`
-
-
-Reference:
-
-- :ref:`ref_workshop_connections`
-- :ref:`ref_workshop_disconnect`
-- :ref:`ref_workshop_info`
