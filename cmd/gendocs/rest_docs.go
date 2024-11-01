@@ -86,7 +86,7 @@ Examples
 
 .. code-block:: console
 
-		`)
+`)
 		buf.WriteString(fmt.Sprintf("%s\n\n", indentString(cmd.Example, "  ")))
 	}
 
