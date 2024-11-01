@@ -46,6 +46,8 @@ SDK's
 snapcraft
 snapd
 stateDiagram
+stdin
+stdout
 subcommand
 sudo
 transactional
