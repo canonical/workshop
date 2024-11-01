@@ -13,6 +13,8 @@ workshopctl
 cover.out
 
 # docs
+gendocs
+docs-gendocs
 docs/.sphinx/venv/
 docs/.sphinx/warnings.txt
 docs/.sphinx/.wordlist.dic

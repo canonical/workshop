@@ -1,0 +1,27 @@
+.. _ref_workshop_cli:
+
+CLI commands
+============
+
+The :program:`workshop` utility exposes the following commands,
+each with its own set of options,
+and also has a number of global options
+such as :option:`!--help` or :option:`!-h`.
+
+Shell completion
+----------------
+
+To configure shell completion,
+follow the instructions offered by :command:`workshop completion`:
+
+.. code-block:: console
+
+   $ workshop completion -h
+
+For example, in your :file:`~/.bashrc` file:
+
+.. code-block:: console
+
+   $ source <(workshop completion bash)
+
+
