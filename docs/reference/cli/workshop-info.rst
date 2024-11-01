@@ -6,7 +6,7 @@ workshop info
 Print the current status and details of a workshop as YAML
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command outputs the basic settings, current status and individual SDK

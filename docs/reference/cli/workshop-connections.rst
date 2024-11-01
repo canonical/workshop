@@ -6,7 +6,7 @@ workshop connections
 List interface connections
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command lists the connections between interface plugs and slots
@@ -29,7 +29,7 @@ Notes:
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 

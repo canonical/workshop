@@ -6,7 +6,7 @@ workshop disconnect
 Disconnect a plug or a slot
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command disconnects a plug from its slot, or a slot from all its plugs.
@@ -35,7 +35,7 @@ This command disconnects a plug from its slot, or a slot from all its plugs.
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 

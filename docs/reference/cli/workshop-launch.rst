@@ -6,7 +6,7 @@ workshop launch
 Construct one or many workshops using their definitions
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command constructs the workshops listed as arguments by going over their
@@ -40,7 +40,7 @@ Notes:
 
 
 Options
--------
+~~~~~~~
 
 .. code-block:: console
 

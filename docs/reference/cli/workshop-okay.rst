@@ -6,7 +6,7 @@ workshop okay
 Acknowledge listed warnings
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command acknowledges all warnings

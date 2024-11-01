@@ -6,7 +6,7 @@ workshop stop
 Stop one or many workshops
 
 Synopsis
---------
+~~~~~~~~
 
 
 This command deactivates the workshops listed as arguments. For each one, it:
