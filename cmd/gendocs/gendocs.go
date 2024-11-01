@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-
-	"github.com/spf13/cobra/doc"
 
 	"github.com/canonical/workshop/cmd/cli"
 )
@@ -19,21 +18,25 @@ func linkHandler(name, ref string) string {
 }
 
 func main() {
+	docDir := "docs-gendocs"
+	if len(os.Args) > 1 {
+		docDir = os.Args[1]
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not get current directory: %v\n", err)
+		log.Fatalf("could not get current directory: %v", err)
 	}
 
 	rootCmd := (&cli.CmdRoot{}).Command(cwd)
 
-	docDir := "docs-gendocs"
 	err = os.MkdirAll(docDir, os.ModePerm)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create docs directory: %v\n", err)
+		log.Fatalf("failed to create docs directory: %v", err)
 	}
 
-	err = doc.GenReSTTreeCustom(rootCmd, filepath.Join(docDir), filePrepender, linkHandler)
+	err = GenReSTTreeCustom(rootCmd, filepath.Join(docDir), filePrepender, linkHandler)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to generate documentation: %v\n", err)
+		log.Fatalf("failed to generate documentation: %v", err)
 	}
 }

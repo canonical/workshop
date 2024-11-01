@@ -1,90 +1,43 @@
 .. _ref_workshop_list:
 
 workshop list
-=============
+-------------
 
-Lists project workshops.
-
-.. code-block:: console
-
-   $ workshop list [--global] [OPTIONS]
-
-
-Examples
---------
-
-List the workshops in the current project directory:
-
-.. code-block:: console
-
-   $ workshop list
-
-
-List the globally registered workshops:
-
-.. code-block:: console
-
-   $ workshop list --global
-
+List project workshops
 
 Synopsis
 --------
 
+
 This command enumerates all workshops in the project, printing a compact list:
 
-+-----------+-------------------------------------------------------------+
-| Project   | Absolute pathname of the project where this workshop belongs|
-+-----------+-------------------------------------------------------------+
-| Workshop  | Workshop name, as set by its definition                     |
-+-----------+-------------------------------------------------------------+
-| Status    | Workshop status, such as *Off*, *Ready*, *Pending* and so on|
-+-----------+-------------------------------------------------------------+
-| Notes     | Internal remarks on the overall state of the workshop       |
-+-----------+-------------------------------------------------------------+
+- Project:  absolute pathname of the project where this workshop belongs
+
+- Workshop: workshop name, as set by its definition
+
+- Status:   workshop status, such as *Off*, *Ready*, *Pending* and so on
+
+- Notes:    internal remarks on the overall state of the workshop
 
 
-The :option:`!--global` option
-lists all workshops from *all* projects in the system;
+The '--global' option lists all workshops from *all* projects in the system;
 however, it doesn't include any that are *Off*.
 
 
-Notes
------
+Notes:
 
-- For details of a single workshop, use :ref:`ref_workshop_info` instead
+- For details of a single workshop, use 'workshop info' instead
+
+
+.. code-block:: console
+
+   workshop list [flags]
 
 
 Options
 -------
 
---global
+.. code-block:: console
 
-  List workshops from all projects in the system.
+      --global   List workshops from all projects in the system
 
-
-Global options
---------------
-
--h, --help
-
-  Print the help message for the command.
-
--p, --project <DIRECTORY>
-
-  Specify the project's directory path.
-
-
-See also
---------
-
-Explanation:
-
-- :ref:`exp_projects`
-- :ref:`exp_workshop_def`
-
-
-Reference:
-
-- :ref:`ref_workshop_info`
-- :ref:`ref_workshop_changes`
-- :ref:`ref_workshop_tasks`

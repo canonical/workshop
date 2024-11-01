@@ -201,7 +201,7 @@ extensions = [
 
 # Excludes files or directories from processing
 
-exclude_patterns = ["readme.rst"]
+exclude_patterns = ["readme.rst", "reference/cli/workshop-*.rst"]
 
 # Adds custom CSS files, located under 'html_static_path'
 
