@@ -48,7 +48,7 @@ and includes a number of mandatory and optional keys:
        It can be :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`
        or :samp:`ubuntu@24.04`.
 
-   * - :samp:`sdks` (required)
+   * - :samp:`sdks`
      - object
      - List of individual SDKs
        from the SDK Store to include in the workshop.
@@ -65,7 +65,7 @@ and includes a number of mandatory and optional keys:
        :samp:`slot` from the SDKs listed under :samp:`sdks` (the system SDK is
        always implicitly included). Both must be strings that reference a plug
        and a slot with the same interface in different SDKs, using the
-       :samp:`<SDK>/<PLUG>` format.
+       :samp:`<SDK>:<PLUG>` format.
 
 
 Any entry in :samp:`sdks` must be named after an existing SDK
@@ -101,7 +101,7 @@ Each SDK is described with the following keys:
        - A plug binding must name an existing plug in the SDK
          and set a single :samp:`bind` attribute
          that references a plug of the same interface in a different SDK
-         using the :samp:`<SDK>/<PLUG>` format.
+         using the :samp:`<SDK>:<PLUG>` format.
 
        - A plug definition must specify the :samp:`interface`
          and the relevant attributes.
