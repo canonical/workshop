@@ -176,15 +176,6 @@ connections:
     slot: system:training
 `
 
-	workshopconns_refreshed = `name: workshopconns
-base: ubuntu@22.04
-sdks:
-  test-sdk:
-    channel: latest/stable
-  test-sdk-2:
-    channel: latest/stable
-`
-
 	workshopbrokenconn = `name: workshopbrokenconn
 base: ubuntu@22.04
 sdks:
