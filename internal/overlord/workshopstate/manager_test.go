@@ -145,7 +145,7 @@ func (s *managerSuite) TestWorkshopHealthMissingProject(c *check.C) {
 
 	warnings := s.state.AllWarnings()
 	c.Check(warnings, check.HasLen, 1)
-	warning := fmt.Sprintf("%q project directory %q does not exist", workshop.Name, s.project.Path)
+	warning := fmt.Sprintf(projectNotFound, s.project.Path)
 	c.Check(warnings[0].String(), check.Equals, warning)
 }
 
@@ -164,7 +164,7 @@ func (s *managerSuite) TestWorkshopHealthMissingFile(c *check.C) {
 
 	warnings := s.state.AllWarnings()
 	c.Check(warnings, check.HasLen, 1)
-	warning := fmt.Sprintf("%q workshop definition %q does not exist", testWorkshop.Name, testWorkshop.Filepath())
+	warning := fmt.Sprintf(fileNotFound, testWorkshop.Filepath())
 	c.Check(warnings[0].String(), check.Equals, warning)
 }
 
@@ -253,14 +253,14 @@ func (s *managerSuite) TestRefreshRequireStatusReady(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	_, err = s.manager.RefreshMany(s.ctx, []string{"test-1", "test-2"}, s.project.ProjectId)
-	c.Assert(err, check.ErrorMatches, `cannot refresh: "test-2" status is "Stopped", must be one of: "Ready"`)
+	c.Assert(err, check.ErrorMatches, refreshNotReady)
 }
 
-func (s *managerSuite) TestRefreshRequireWorkshopExistance(c *check.C) {
+func (s *managerSuite) TestRefreshRequireWorkshopExistence(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 	s.launchWorkshopWithSDKs(c, "test-1", []workshop.SdkRecord{{Name: "test", Channel: "latest/stable"}})
 
 	_, err := s.manager.RefreshMany(s.ctx, []string{"test-1", "test-2"}, s.project.ProjectId)
-	c.Assert(err, check.ErrorMatches, `cannot refresh: status check for "test-2" failed \(workshop not found\)`)
+	c.Assert(err, check.ErrorMatches, refreshNotFound)
 }

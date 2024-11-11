@@ -787,5 +787,5 @@ func (s *requestSuite) TestRemountWorkshopNotReady(c *check.C) {
 	change.Set("project-id", s.project.ProjectId)
 
 	_, err := s.mgr.Remount(s.ctx, s.state, plug, c.MkDir(), s.project.ProjectId)
-	c.Assert(err, check.ErrorMatches, `cannot remount: "ws-1" status is "Pending", must be one of: "Ready", "Stopped"`)
+	c.Assert(err, check.ErrorMatches, remountNotReady)
 }

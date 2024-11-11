@@ -62,6 +62,10 @@ func v1PostWorkshopMount(c *Command, r *http.Request, _ *userState) Response {
 	reqData.Plug.Workshop = w
 	reqData.Plug.ProjectId = projectId
 
+	if err := checkWorkshopExists(r.Context(), o.WorkshopManager(), projectId, w); err != nil {
+		return statusNotFound("cannot access workshop %q: %v", w, err)
+	}
+
 	change := newMountChange(st, user, &reqData)
 	defer func() {
 		if len(change.Tasks()) == 0 {

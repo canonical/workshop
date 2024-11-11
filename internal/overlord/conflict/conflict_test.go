@@ -119,7 +119,7 @@ func (s *conflictSuite) TestResumeRefreshNothingInProgress(c *check.C) {
 	defer s.state.Unlock()
 
 	_, err := conflict.ResumeRefresh(s.state, "ws", s.project.ProjectId, conflict.RefreshContinue)
-	c.Check(err, check.ErrorMatches, ".* no refresh in progress")
+	c.Check(err, check.ErrorMatches, noRefresh)
 }
 
 func (s *conflictSuite) TestResumeRefreshIncorrectMode(c *check.C) {
@@ -137,7 +137,7 @@ func (s *conflictSuite) TestResumeRefreshWrongChangeKindInProgress(c *check.C) {
 	_ = s.newChange("launch")
 
 	_, err := conflict.ResumeRefresh(s.state, "ws", s.project.ProjectId, conflict.RefreshContinue)
-	c.Check(err, check.ErrorMatches, `.* no refresh in progress \("launch" is in progress\)`)
+	c.Check(err, check.ErrorMatches, resumeDuringLaunch)
 }
 
 func (s *conflictSuite) TestResumeRefreshNoWaitingOnError(c *check.C) {
@@ -147,7 +147,7 @@ func (s *conflictSuite) TestResumeRefreshNoWaitingOnError(c *check.C) {
 	_ = s.newChange("refresh")
 
 	_, err := conflict.ResumeRefresh(s.state, "ws", s.project.ProjectId, conflict.RefreshContinue)
-	c.Check(err, check.ErrorMatches, ".* no refresh is waiting on error")
+	c.Check(err, check.ErrorMatches, resumeDuringRefresh)
 }
 
 func (s *conflictSuite) TestResumeRefreshContinue(c *check.C) {

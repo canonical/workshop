@@ -236,7 +236,7 @@ func (s *apiSuite) TestConnectionsNotFound(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": `cannot access workshop: workshop not found`,
+			"message": connectionsNoWorkshop,
 		},
 		"status":      "Not Found",
 		"status-code": 404.0,
@@ -1237,7 +1237,7 @@ slots:
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": "cannot connect consumer-ws/consumer:plug (\"test\" interface) to producer-ws/producer:slot (\"different\" interface)",
+			"message": connectIncompatible,
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
@@ -1276,7 +1276,7 @@ func (s *apiSuite) TestConnectPlugFailureNoSuchPlug(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": "SDK \"consumer-ws/consumer\" has no plug named \"missingplug\"",
+			"message": consumerNoPlug,
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
@@ -1315,7 +1315,7 @@ func (s *apiSuite) TestConnectPlugFailureNoSuchSlot(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": "SDK producer-ws/producer has no slot named \"missingslot\"",
+			"message": producerNoSlot,
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
@@ -1635,7 +1635,7 @@ func (s *apiSuite) TestDisconnectPlugFailureNoSuchPlug(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": `sdk "consumer" has no plug named "missingplug"`,
+			"message": disconnectNoPlug,
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
@@ -1682,7 +1682,7 @@ func (s *apiSuite) testDisconnectFailureNoWorkshop(c *check.C, installedWorkshop
 	if producer {
 		c.Check(body, check.DeepEquals, map[string]interface{}{
 			"result": map[string]interface{}{
-				"message": `cannot access workshop "consumer-ws": workshop not found`,
+				"message": disconnectNoConsumer,
 			},
 			"status":      "Not Found",
 			"status-code": 404.0,
@@ -1691,7 +1691,7 @@ func (s *apiSuite) testDisconnectFailureNoWorkshop(c *check.C, installedWorkshop
 	} else {
 		c.Check(body, check.DeepEquals, map[string]interface{}{
 			"result": map[string]interface{}{
-				"message": `cannot access workshop "producer-ws": workshop not found`,
+				"message": disconnectNoProducer,
 			},
 			"status":      "Not Found",
 			"status-code": 404.0,
@@ -1736,7 +1736,7 @@ func (s *apiSuite) TestDisconnectPlugNothingToDo(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": "nothing to do",
+			"message": disconnectNothing,
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
@@ -1772,7 +1772,7 @@ func (s *apiSuite) TestDisconnectPlugFailureNotConnected(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": "cannot disconnect consumer-ws/consumer:plug from producer-ws/producer:slot, it is not connected",
+			"message": disconnectAgain,
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
@@ -1809,7 +1809,7 @@ func (s *apiSuite) TestDisconnectForgetPlugFailureNotConnected(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": "cannot forget connection consumer-ws/consumer:plug from producer-ws/producer:slot, it was not connected",
+			"message": disconnectForget,
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,

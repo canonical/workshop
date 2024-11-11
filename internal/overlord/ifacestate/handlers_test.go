@@ -641,7 +641,7 @@ func (s *interfaceHandlersSuite) TestRemountRenameNewSourceNotEmptyFails(c *chec
 	// Validate
 	s.state.Lock()
 	defer s.state.Unlock()
-	c.Check(change.Err(), check.ErrorMatches, "(?s).*\\(new source is not empty; workshop must be stopped to remount safely\\)")
+	c.Check(change.Err(), check.ErrorMatches, remountSourceNotEmpty)
 	c.Assert(change.Status(), check.Equals, state.ErrorStatus)
 
 	repo := s.mgr.Repository()
@@ -751,6 +751,10 @@ func (s *interfaceHandlersSuite) TestRemountWorksIfOldSourceNotExist(c *check.C)
 	s.state.Lock()
 	defer s.state.Unlock()
 	c.Assert(change.Status(), check.Equals, state.DoneStatus)
+
+	warnings := s.state.AllWarnings()
+	c.Check(warnings, check.HasLen, 1)
+	c.Check(warnings[0].String(), check.Equals, remountNoOldSource)
 
 	repo := s.mgr.Repository()
 	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")

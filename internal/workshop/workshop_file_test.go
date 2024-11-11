@@ -110,7 +110,27 @@ base: ubuntu@20.04
 	f.createWFile(c, "xbert", yaml)
 	file, err := f.project.Workshop("xbert")
 	c.Assert(file, check.IsNil)
-	c.Assert(err, check.ErrorMatches, `"xbert-gpu" workshop file must be named as "workshop.xbert-gpu.yaml" \(now: workshop.xbert.yaml\)`)
+	c.Assert(err, check.ErrorMatches, namesDifferent)
+}
+
+func (f *workshopFile) TestWorkshopInvalidName(c *check.C) {
+	yaml := `name: 99-xbert
+base: ubuntu@20.04
+`
+	f.createWFile(c, "99-xbert", yaml)
+	file, err := f.project.Workshop("99-xbert")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, invalidName)
+}
+
+func (f *workshopFile) TestWorkshopUnsupportedBase(c *check.C) {
+	yaml := `name: xbert-gpu
+base: foo@20.04
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, unsupportedBase)
 }
 
 func (f *workshopFile) TestWorkshopFileDuplicateSdks(c *check.C) {
@@ -139,6 +159,19 @@ sdks:
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(err, check.ErrorMatches, `"agent" is a reserved SDK name`)
 	c.Assert(file, check.IsNil)
+}
+
+func (f *workshopFile) TestWorkshopUnsupportedChannel(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@20.04
+sdks:
+  cuda:
+    channel: latest/foo
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, unsupportedChannel)
 }
 
 func (f *workshopFile) TestBindPlug(c *check.C) {
@@ -224,7 +257,44 @@ sdks:
 `
 	f.createWFile(c, "xbert-gpu", yaml)
 	_, err := f.project.Workshop("xbert-gpu")
-	c.Assert(err, check.ErrorMatches, `"no-sdk:cache" tries to bind to a plug from a non-existing SDK`)
+	c.Assert(err, check.ErrorMatches, bindPlugNoSdk)
+}
+
+func (f *workshopFile) TestBindPlugToItself(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@20.04
+sdks:
+  data-sdk:
+    channel: latest/stable
+    plugs:
+      cache:
+        bind: data-sdk:cache
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	_, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.ErrorMatches, bindPlugToItself)
+}
+
+func (f *workshopFile) TestBindPlugToBoundPlug(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@20.04
+sdks:
+  one:
+    channel: latest/stable
+  two:
+    channel: latest/stable
+    plugs:
+      data:
+        bind: one:data
+  three:
+    channel: latest/stable
+    plugs:
+      data:
+        bind: two:data
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	_, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.ErrorMatches, bindPlugToBoundPlug)
 }
 
 func (f *workshopFile) TestBindPlugInvalidPlugRef(c *check.C) {
@@ -370,7 +440,7 @@ connections:
 `
 	f.createWFile(c, "xbert-gpu", yaml)
 	_, err := f.project.Workshop("xbert-gpu")
-	c.Assert(err, check.ErrorMatches, `cannot connect plug "data-sdk:data" to slot "lost-sdk:mount": "lost-sdk" SDK is not found in "xbert-gpu" workshop`)
+	c.Assert(err, check.ErrorMatches, slotSdkNotInTheList)
 }
 
 func (f *workshopFile) TestWorkshopConnectionsPlugSdkNotInTheList(c *check.C) {
@@ -387,7 +457,7 @@ connections:
 `
 	f.createWFile(c, "xbert-gpu", yaml)
 	_, err := f.project.Workshop("xbert-gpu")
-	c.Assert(err, check.ErrorMatches, `cannot connect plug "lost-sdk:data" to slot "data-sdk:mount": "lost-sdk" SDK is not found in "xbert-gpu" workshop`)
+	c.Assert(err, check.ErrorMatches, plugSdkNotInTheList)
 }
 
 func (f *workshopFile) TestWorkshopConnectionsImplicitHostSdkPlugSlot(c *check.C) {
@@ -426,5 +496,5 @@ connections:
 `
 	f.createWFile(c, "xbert-gpu", yaml)
 	_, err := f.project.Workshop("xbert-gpu")
-	c.Assert(err, check.ErrorMatches, `cannot connect plug "data-sdk:data" to slot "system:mount": plug is bound`)
+	c.Assert(err, check.ErrorMatches, connectingBoundPlug)
 }

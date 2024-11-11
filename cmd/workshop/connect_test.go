@@ -21,6 +21,27 @@ func (m *connectSuite) SetUpTest(c *check.C) {
 	m.BaseWorkshopSuite.SetUpTest(c)
 }
 
+func (m *connectSuite) TestConnectAcrossWorkshops(c *check.C) {
+	cmd := &CmdConnect{root: &CmdRoot{}}
+
+	n := 0
+	m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		switch n {
+		case 1:
+			c.Check(r.Method, check.Equals, "POST")
+			c.Assert(r.URL.Path, check.Equals, "/v1/projects")
+			r := fmt.Sprintf(`{"type": "sync", "result": {"id":"%s","path":"%s"}}`, m.prjId, m.prjDir)
+			fmt.Fprintln(w, r)
+		default:
+			c.Errorf("expected 1 call, now on %d", n)
+		}
+	})
+
+	err := cmd.Run(cmd.Command(), []string{"ws/sdk:plug", "ws2/sdk:slot"})
+	c.Assert(err, check.ErrorMatches, connectAcrossWorkshops)
+}
+
 func (m *connectSuite) TestDisconnectPlugAndSlotProvided(c *check.C) {
 	cmd := &CmdConnect{root: &CmdRoot{}}
 	body := map[string]interface{}{

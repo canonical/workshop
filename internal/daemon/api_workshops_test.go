@@ -27,6 +27,10 @@ var (
 base: ubuntu@22.04
 `
 
+	basic_invalid = `name: [basic]
+base: ubuntu@22.04
+`
+
 	basic_refreshed = `name: basic
 base: ubuntu@22.04
 sdks:
@@ -660,11 +664,14 @@ func (s *apiSuite) TestLaunchWorkshopBasic(c *check.C) {
 
 	// Setup
 	s.createWFile(c, "basic", basic)
+	s.createWFile(c, "basic-invalid", basic_invalid)
 
 	requests := []*bytes.Buffer{
 		bytes.NewBufferString(`{"names":["basic", "basic", "basic"],"action":"launch"}`),
 		bytes.NewBufferString(`{"names":[],"action":"launch"}`),
 		bytes.NewBufferString(`{"names":["basic"],"action":"launch"}`),
+		bytes.NewBufferString(`{"names":["missing"],"action":"launch"}`),
+		bytes.NewBufferString(`{"names":["basic-invalid"],"action":"launch"}`),
 	}
 
 	expected := []*expectedResp{
@@ -681,8 +688,18 @@ func (s *apiSuite) TestLaunchWorkshopBasic(c *check.C) {
 		},
 		{
 			Type:    ResponseTypeError,
-			Message: `cannot launch: "basic" already exists`,
 			Status:  http.StatusBadRequest,
+			Message: launchAlreadyExists,
+		},
+		{
+			Type:    ResponseTypeError,
+			Status:  http.StatusBadRequest,
+			Message: fmt.Sprintf(launchMissingFile, s.project.Path),
+		},
+		{
+			Type:    ResponseTypeError,
+			Status:  http.StatusBadRequest,
+			Message: launchInvalidYaml,
 		},
 	}
 
@@ -821,7 +838,7 @@ func (s *apiSuite) TestLaunchWorkshopBindPlugNoMasterPlug(c *check.C) {
 			Status:    http.StatusAccepted,
 			Kind:      "launch",
 			Summary:   `Launch "masterunknown" workshop`,
-			ChangeErr: `(?s).*SDK masterunknown/test-sdk has no "unknown-data" plug.*`,
+			ChangeErr: launchNoMasterPlug,
 		},
 	}
 
@@ -846,7 +863,7 @@ func (s *apiSuite) TestLaunchWorkshopBindPlugNoSlavePlug(c *check.C) {
 			Status:    http.StatusAccepted,
 			Kind:      "launch",
 			Summary:   `Launch "slaveunknown" workshop`,
-			ChangeErr: `(?s).*SDK slaveunknown/test-sdk has no "unknown" plug.*`,
+			ChangeErr: launchNoSlavePlug,
 		},
 	}
 
@@ -871,7 +888,7 @@ func (s *apiSuite) TestLaunchWorkshopBindPlugIncompatibleIface(c *check.C) {
 			Status:    http.StatusAccepted,
 			Kind:      "launch",
 			Summary:   `Launch "bindincompatible" workshop`,
-			ChangeErr: `(?s).*cannot bind bindincompatible/test-sdk:data \("mount" interface\) to bindincompatible/test-sdk-2:gpu \("gpu" interface\).*`,
+			ChangeErr: bindIncompatible,
 		},
 	}
 
@@ -1016,7 +1033,7 @@ func (s *apiSuite) TestWorkshopConnectionsUnknownPlug(c *check.C) {
 			Status:    http.StatusAccepted,
 			Kind:      "launch",
 			Summary:   `Launch "workshopbrokenconn" workshop`,
-			ChangeErr: `(?s).*SDK "workshopbrokenconn/test-sdk" has no plug named "data-unknown-plug".*`,
+			ChangeErr: connectionsNoPlug,
 		},
 	}
 
@@ -1160,7 +1177,7 @@ func (s *apiSuite) TestRefreshWorkshopReturnsPreviousWorkshopIfFailed(c *check.C
 		Status:    http.StatusAccepted,
 		Kind:      "refresh",
 		Summary:   `Refresh "manysdks" workshop`,
-		ChangeErr: `(?s).*SDK "manysdks/test-sdk" has no plug named "data-non-existent".*`,
+		ChangeErr: refreshNoPlug,
 	}}
 	s.runActionTest(c, requests, expected)
 
@@ -1222,7 +1239,7 @@ func (s *apiSuite) TestRefreshWorkshopIncorrectInput(c *check.C) {
 		{
 			Type:    ResponseTypeError,
 			Status:  http.StatusBadRequest,
-			Message: "cannot continue, no refresh in progress",
+			Message: refreshCannotContinue,
 		}, {
 			Type:    ResponseTypeError,
 			Status:  http.StatusBadRequest,
@@ -1326,12 +1343,12 @@ func (s *apiSuite) TestRefreshWorkshopNoRefreshInProgress(c *check.C) {
 		{
 			Type:    ResponseTypeError,
 			Status:  http.StatusBadRequest,
-			Message: "cannot continue, no refresh in progress",
+			Message: refreshCannotContinue,
 		},
 		{
 			Type:    ResponseTypeError,
 			Status:  http.StatusBadRequest,
-			Message: "cannot abort, no refresh in progress",
+			Message: refreshCannotAbort,
 		},
 	}
 
@@ -1504,7 +1521,7 @@ base: ubuntu@22.04
 		{
 			Type:    ResponseTypeError,
 			Status:  http.StatusBadRequest,
-			Message: `cannot refresh: "manysdks" status is "Pending", must be one of: "Ready"`,
+			Message: refreshNotReady,
 			Summary: `Refresh "manysdks" workshop`,
 		},
 	}
@@ -1551,7 +1568,7 @@ func (s *apiSuite) TestStartWorkshop(c *check.C) {
 		{
 			Type:    ResponseTypeError,
 			Status:  http.StatusBadRequest,
-			Message: `cannot start: "basic" status is "Ready", must be one of: "Stopped"`,
+			Message: startNotStopped,
 		},
 	}
 
