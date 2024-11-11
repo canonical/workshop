@@ -1058,6 +1058,7 @@ func (m *InterfaceManager) remount(ctx context.Context, task *state.Task, plug *
 					if errno == syscall.EXDEV {
 						return fmt.Errorf("current and new sources are not on the same mounted filesystem; workshop must be stopped to remount safely")
 					}
+					return err
 				} else {
 					// if the workshop is stopped, we can perform a remount safely
 					// (other fs or non-empty dir), otherwise, return the error
