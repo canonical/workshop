@@ -73,7 +73,7 @@ func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
 			}
 
 			if !info.IsDir() {
-				return fmt.Errorf("cannot run hook \"restore-sate\" for %q SDK: state storage path is not a directory", hook.Sdk)
+				return fmt.Errorf("cannot run hook \"restore-state\" for %q SDK: state storage path is not a directory", hook.Sdk)
 			}
 		}
 		return h.executeHook(ctx, task, w, prj.ProjectId, &hook)

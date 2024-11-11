@@ -278,16 +278,18 @@ func (r *Repository) Connection(connRef *ConnRef) (*Connection, error) {
 	// Ensure that such plug exists
 	plug := r.plugs[plugkey][connRef.PlugRef.Name]
 	if plug == nil {
+		sdkRef := fmt.Sprintf("%s/%s", connRef.PlugRef.Workshop, connRef.PlugRef.Sdk)
 		return nil, &NoPlugOrSlotError{
-			message: fmt.Sprintf("sdk %q has no plug named %q",
-				connRef.PlugRef.Sdk, connRef.PlugRef.Name)}
+			message: fmt.Sprintf("SDK %q has no plug named %q",
+				sdkRef, connRef.PlugRef.Name)}
 	}
 	// Ensure that such slot exists
 	slot := r.slots[slotkey][connRef.SlotRef.Name]
 	if slot == nil {
+		sdkRef := fmt.Sprintf("%s/%s", connRef.SlotRef.Workshop, connRef.SlotRef.Sdk)
 		return nil, &NoPlugOrSlotError{
-			message: fmt.Sprintf("sdk %q has no slot named %q",
-				connRef.SlotRef.Sdk, connRef.SlotRef.Name)}
+			message: fmt.Sprintf("SDK %q has no slot named %q",
+				sdkRef, connRef.SlotRef.Name)}
 	}
 	// Ensure that slot and plug are connected
 	conn, ok := r.slotPlugs[slot][plug]
@@ -592,17 +594,19 @@ func (r *Repository) Disconnect(plugProjectId, plugWorkshop, plugSdkName, plugNa
 	// Ensure that such plug exists
 	plug := r.plugs[plugKey][plugName]
 	if plug == nil {
+		sdkRef := fmt.Sprintf("%s/%s", plugWorkshop, plugSdkName)
 		return &NoPlugOrSlotError{
-			message: fmt.Sprintf("sdk %q has no plug named %q",
-				plugSdkName, plugName),
+			message: fmt.Sprintf("SDK %q has no plug named %q",
+				sdkRef, plugName),
 		}
 	}
 	// Ensure that such slot exists
 	slot := r.slots[slotKey][slotName]
 	if slot == nil {
+		sdkRef := fmt.Sprintf("%s/%s", slotWorkshop, slotSdkName)
 		return &NoPlugOrSlotError{
-			message: fmt.Sprintf("sdk %q has no slot named %q",
-				slotSdkName, slotName),
+			message: fmt.Sprintf("SDK %q has no slot named %q",
+				sdkRef, slotName),
 		}
 	}
 	// Ensure that slot and plug are connected
@@ -671,9 +675,10 @@ func (r *Repository) connected(projectId, workshop, sdk, plugOrSlotName string) 
 	}
 	// Check if plugOrSlotName actually maps to anything
 	if r.plugs[key][plugOrSlotName] == nil && r.slots[key][plugOrSlotName] == nil {
+		sdkRef := fmt.Sprintf("%s/%s", workshop, sdk)
 		return nil, &NoPlugOrSlotError{
-			message: fmt.Sprintf("sdk %q has no plug or slot named %q",
-				sdk, plugOrSlotName)}
+			message: fmt.Sprintf("SDK %q has no plug or slot named %q",
+				sdkRef, plugOrSlotName)}
 	}
 	// Collect all the relevant connections
 
@@ -1064,9 +1069,10 @@ func (r *Repository) ResolveConnect(plugProjectId, plugWorkshop, plugSdkName, pl
 	// Ensure that such plug exists
 	plug := r.plugs[plugKey][plugName]
 	if plug == nil {
+		sdkRef := fmt.Sprintf("%s/%s", plugWorkshop, plugSdkName)
 		return nil, &NoPlugOrSlotError{
-			message: fmt.Sprintf(`SDK "%s/%s" has no plug named %q`,
-				plugWorkshop, plugSdkName, plugName),
+			message: fmt.Sprintf(`SDK %q has no plug named %q`,
+				sdkRef, plugName),
 		}
 	}
 
@@ -1090,20 +1096,23 @@ func (r *Repository) ResolveConnect(plugProjectId, plugWorkshop, plugSdkName, pl
 		}
 		switch len(candidates) {
 		case 0:
-			return nil, fmt.Errorf(`SDK %s/%s has no %q interface slots`, slotWorkshop, slotSdkName, plug.Interface)
+			sdkRef := fmt.Sprintf("%s/%s", slotWorkshop, slotSdkName)
+			return nil, fmt.Errorf(`SDK %q has no %q interface slots`, sdkRef, plug.Interface)
 		case 1:
 			slotName = candidates[0]
 		default:
 			sort.Strings(candidates)
-			return nil, fmt.Errorf("SDK %s/%s has multiple %q interface slots: %s", slotWorkshop, slotSdkName, plug.Interface, strings.Join(candidates, ", "))
+			sdkRef := fmt.Sprintf("%s/%s", slotWorkshop, slotSdkName)
+			return nil, fmt.Errorf("SDK %q has multiple %q interface slots: %s", sdkRef, plug.Interface, strings.Join(candidates, ", "))
 		}
 	}
 
 	// Ensure that such slot exists
 	slot := r.slots[slotKey][slotName]
 	if slot == nil {
+		sdkRef := fmt.Sprintf("%s/%s", slotWorkshop, slotSdkName)
 		return nil, &NoPlugOrSlotError{
-			message: fmt.Sprintf("SDK %s/%s has no slot named %q", slotWorkshop, slotSdkName, slotName),
+			message: fmt.Sprintf("SDK %q has no slot named %q", sdkRef, slotName),
 		}
 	}
 	// Ensure that plug and slot are compatible

@@ -89,7 +89,7 @@ func v1PostWorkshopMount(c *Command, r *http.Request, _ *userState) Response {
 	}
 
 	if conn.Plug.Interface() != "mount" {
-		return statusBadRequest("remount requires a content interface plug (provided plug is of %q interface)", conn.Plug.Interface())
+		return statusBadRequest("remount requires a mount interface plug (provided plug is of %q interface)", conn.Plug.Interface())
 	}
 
 	taskset, err := o.WorkshopManager().Remount(r.Context(), st, reqData.Plug, reqData.HostSource, projectId)

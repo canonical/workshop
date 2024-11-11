@@ -406,7 +406,8 @@ func (m *InterfaceManager) resolveWorkshopBindings(w *workshop.Workshop) error {
 			if plug.Bind != nil {
 				master := m.repo.Plug(w.Project.ProjectId, w.Name, plug.Bind.Sdk, plug.Bind.Name)
 				if master == nil {
-					return fmt.Errorf("SDK %q has no %q plug", plug.Bind.Sdk, plug.Bind.Name)
+					sdkRef := fmt.Sprintf("%s/%s", w.Name, plug.Bind.Sdk)
+					return fmt.Errorf("SDK %q has no plug named %q", sdkRef, plug.Bind.Name)
 				}
 			}
 		}

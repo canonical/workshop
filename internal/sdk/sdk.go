@@ -84,7 +84,8 @@ func (i *Info) SetupPlugBinds(binds map[string]*PlugBind) error {
 			// all plugs from all SDKs are in the repository already.
 			i.PlugBinds[name] = plug
 		} else {
-			return fmt.Errorf("plug binding failed: SDK %s/%s has no %q plug", i.Workshop, i.Name, name)
+			sdkRef := fmt.Sprintf("%s/%s", i.Workshop, i.Name)
+			return fmt.Errorf("plug binding failed: SDK %q has no plug named %q", sdkRef, name)
 		}
 	}
 	return nil

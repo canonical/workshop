@@ -303,7 +303,7 @@ func (s *interfaceHandlersSuite) TestAutoconnectBindMasterPlugNotFound(c *check.
 
 	s.state.Lock()
 	defer s.state.Unlock()
-	c.Check(chg.Err(), check.ErrorMatches, `(?s).*SDK "consumer" has no "no-such-plug2" plug.*`)
+	c.Check(chg.Err(), check.ErrorMatches, `(?s).*SDK "ws/consumer" has no plug named "no-such-plug2".*`)
 
 	// Validate
 	pconns, err := repo.Connections(s.prj.ProjectId, "ws", "consumer")

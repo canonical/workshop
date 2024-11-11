@@ -26,7 +26,7 @@ execute: |
   workshop_exec warnings |
     tr -d '\n' | # remove newlines
     sed -e 's,\s\+, ,g' | # rename any extra spaces
-    MATCH '"ws" workshop definition ".*/project/.workshop/workshop.ws.yaml" does not exist'
+    MATCH '"ws" workshop definition ".*/project/.workshop/workshop.ws.yaml" not found'
   workshop_exec --project "$PROJECT" list | NOMATCH 'new warning'
 
   echo "Check report a workshop state as Error if there is no workshop file"

@@ -1,8 +1,8 @@
 package daemon
 
 var (
-	launchAlreadyExists = `cannot launch: "basic" already exists`
-	launchMissingFile   = `cannot launch "missing": open %s/.workshop/workshop.missing.yaml: no such file or directory`
+	launchAlreadyExists = `cannot launch "basic": workshop already exists`
+	launchMissingFile   = `cannot launch "missing": workshop definition "%s/.workshop/workshop.missing.yaml" not found`
 	launchInvalidYaml   = `cannot launch "basic-invalid": yaml: unmarshal errors:
   line 1: cannot unmarshal !!seq into string`
 
@@ -17,13 +17,12 @@ var (
 	disconnectNoProducer  = `cannot access workshop "producer-ws": workshop not found`
 	remountNoWorkshop     = `cannot access workshop "missing": workshop not found`
 
-	launchNoMasterPlug = `(?s).*SDK masterunknown/test-sdk has no "unknown-data" plug.*`
-	launchNoSlavePlug  = `(?s).*SDK slaveunknown/test-sdk has no "unknown" plug.*`
+	launchNoMasterPlug = `(?s).*SDK "masterunknown/test-sdk" has no plug named "unknown-data".*`
+	launchNoSlavePlug  = `(?s).*SDK "slaveunknown/test-sdk" has no plug named "unknown".*`
 	connectionsNoPlug  = `(?s).*SDK "workshopbrokenconn/test-sdk" has no plug named "data-unknown-plug".*`
 	refreshNoPlug      = `(?s).*SDK "manysdks/test-sdk" has no plug named "data-non-existent".*`
 	consumerNoPlug     = `SDK "consumer-ws/consumer" has no plug named "missingplug"`
-	producerNoSlot     = `SDK producer-ws/producer has no slot named "missingslot"`
-	disconnectNoPlug   = `sdk "consumer" has no plug named "missingplug"`
+	producerNoSlot     = `SDK "producer-ws/producer" has no slot named "missingslot"`
 
 	bindIncompatible    = `(?s).*cannot bind bindincompatible/test-sdk:data \("mount" interface\) to bindincompatible/test-sdk-2:gpu \("gpu" interface\).*`
 	connectIncompatible = `cannot connect consumer-ws/consumer:plug ("test" interface) to producer-ws/producer:slot ("different" interface)`
@@ -33,5 +32,5 @@ var (
 	disconnectForget  = "cannot forget connection consumer-ws/consumer:plug from producer-ws/producer:slot, it was not connected"
 
 	remountDisconnected   = `"manysdks/test-sdk:data" must be connected for remount`
-	remountOtherInterface = `remount requires a content interface plug (provided plug is of "gpu" interface)`
+	remountOtherInterface = `remount requires a mount interface plug (provided plug is of "gpu" interface)`
 )

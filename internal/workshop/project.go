@@ -49,6 +49,9 @@ func (w *Project) Workshop(workshop string) (*File, error) {
 
 	buf, err := os.ReadFile(path)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("workshop definition %q not found", path)
+		}
 		return nil, err
 	}
 

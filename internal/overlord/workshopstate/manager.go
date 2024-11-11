@@ -124,7 +124,7 @@ func (w *WorkshopManager) WorkshopHealth(ws *workshop.Workshop) healthstate.Heal
 
 	// Check the project directory exists.
 	if !ws.Project.Exists() {
-		w.state.Warnf("%q project directory %q does not exist", ws.Name, ws.Project.Path)
+		w.state.Warnf("%q project directory %q not found", ws.Name, ws.Project.Path)
 
 		healthState.Status = healthstate.ErrorStatus
 		healthState.Code = "missing-project"
@@ -136,7 +136,7 @@ func (w *WorkshopManager) WorkshopHealth(ws *workshop.Workshop) healthstate.Heal
 	// with the workshop instance or has any errors) is not checked.
 	path := ws.Filepath()
 	if !osutil.FileExists(path) {
-		w.state.Warnf("%q workshop definition %q does not exist", ws.Name, path)
+		w.state.Warnf("%q workshop definition %q not found", ws.Name, path)
 
 		healthState.Status = healthstate.ErrorStatus
 		healthState.Code = "missing-file"
