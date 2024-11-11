@@ -16,7 +16,7 @@ import (
 
 var (
 	SupportedBases = []string{"ubuntu@20.04", "ubuntu@22.04", "ubuntu@24.04"}
-	sdkBlacklist   = []string{"agent"}
+	sdkBlocklist   = []string{"agent"}
 
 	workshopName = regexp.MustCompile(`^[a-z_][a-z0-9_-]*$`)
 	channel      = regexp.MustCompile(`^(?P<track>[a-zA-Z0-9\.-]+)/(?P<risk>(stable|candidate|beta|edge))$`)
@@ -176,7 +176,7 @@ func readWorkshop(buf []byte) (*File, error) {
 
 func validateSdks(sdks SdkList) error {
 	for _, s := range sdks {
-		if slices.Contains(sdkBlacklist, s.Name) {
+		if slices.Contains(sdkBlocklist, s.Name) {
 			return fmt.Errorf("%q is a reserved SDK name", s.Name)
 		}
 
