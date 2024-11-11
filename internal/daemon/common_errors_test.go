@@ -3,8 +3,8 @@ package daemon
 var (
 	launchAlreadyExists = `cannot launch "basic": workshop already exists`
 	launchMissingFile   = `cannot launch "missing": workshop definition "%s/.workshop/workshop.missing.yaml" not found`
-	launchInvalidYaml   = `cannot launch "basic-invalid": yaml: unmarshal errors:
-  line 1: cannot unmarshal !!seq into string`
+	launchInvalidYaml   = `cannot launch "basic-invalid": workshop definition YAML:
+line 1: cannot unmarshal !!seq into string`
 
 	refreshCannotContinue = "cannot continue, no refresh in progress"
 	refreshCannotAbort    = "cannot abort, no refresh in progress"

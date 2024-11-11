@@ -144,6 +144,11 @@ func readWorkshop(buf []byte) (*File, error) {
 	var file File
 
 	if err = yaml.Unmarshal(buf, &file); err != nil {
+		te, ok := err.(*yaml.TypeError)
+		if ok {
+			errs := strings.Join(te.Errors, "\n")
+			return nil, fmt.Errorf("workshop definition YAML:\n%s", errs)
+		}
 		return nil, err
 	}
 
