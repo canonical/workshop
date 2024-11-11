@@ -160,7 +160,7 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 	hookLog, _ := afero.ReadFile(memFs, out.Name())
 	if len(hookLog) > 0 {
 		st.Lock()
-		task.Logf(string(hookLog))
+		task.Logf("%s", string(hookLog))
 		st.Unlock()
 	}
 
