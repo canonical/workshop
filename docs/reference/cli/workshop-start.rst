@@ -32,4 +32,3 @@ Notes:
 .. code-block:: console
 
    workshop start <WORKSHOP>... [flags]
-

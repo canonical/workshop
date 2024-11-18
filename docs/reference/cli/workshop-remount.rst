@@ -37,11 +37,10 @@ Notes:
 
    workshop remount <WORKSHOP>/<SDK>:<PLUG> <SOURCE> [flags]
 
-
 Options
 ~~~~~~~
+--no-wait
 
-.. code-block:: console
+   Return the change ID, don't wait for the operation to finish
 
-      --no-wait   Return the change ID, don't wait for the operation to finish
 

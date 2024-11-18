@@ -26,4 +26,3 @@ Notes:
 .. code-block:: console
 
    workshop remove <WORKSHOP>... [flags]
-

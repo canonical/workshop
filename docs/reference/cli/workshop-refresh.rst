@@ -45,18 +45,29 @@ Notes:
 - For content interface plugs, mounts the last source
   set by 'workshop remount', if any
 
+- If the optional <SDK> is supplied,
+  the operation is limited to this SDK;
+  currently, it can only be 'hack'
+
 
 .. code-block:: console
 
-   workshop refresh [--abort|--continue|--wait-on-error] <WORKSHOP>... [flags]
-
+   workshop refresh [--abort|--continue|--wait-on-error] <WORKSHOP>[/<SDK>]... [flags]
 
 Options
 ~~~~~~~
+--abort
 
-.. code-block:: console
+   Abort the previously paused operation, reverting any changes.
 
-      --abort           Abort the previously paused operation, reverting any changes.
-      --continue        Continue the previously paused operation.
-      --wait-on-error   Pause the operation on error; to resume, use '--continue' or '--abort'.
+
+--continue
+
+   Continue the previously paused operation.
+
+
+--wait-on-error
+
+   Pause the operation on error; to resume, use '--continue' or '--abort'.
+
 

@@ -16,4 +16,3 @@ listed previously by the 'workshop warnings' command.
 .. code-block:: console
 
    workshop okay [flags]
-
