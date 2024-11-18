@@ -41,11 +41,10 @@ that is specified as the second argument or deduced from the context.
 
    workshop connect <WORKSHOP>/<SDK>:<PLUG> [<WORKSHOP>/<SDK>][:<SLOT>] [flags]
 
-
 Options
 ~~~~~~~
+--no-wait
 
-.. code-block:: console
+   Return the change ID, don't wait for the operation to finish
 
-      --no-wait   Return the change ID, don't wait for the operation to finish
 

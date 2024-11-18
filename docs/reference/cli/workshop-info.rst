@@ -29,4 +29,3 @@ Notes:
 .. code-block:: console
 
    workshop info <WORKSHOP> [flags]
-

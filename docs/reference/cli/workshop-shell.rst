@@ -27,4 +27,3 @@ Notes:
 .. code-block:: console
 
    workshop shell <WORKSHOP> [flags]
-

@@ -24,16 +24,27 @@ Also, warnings expire automatically; expired warnings are not listed.
 
    workshop warnings [OPTIONS] [flags]
 
-
 Options
 ~~~~~~~
+--abs-time
 
-.. code-block:: console
+   Use absolute times in RFC 3339 format.
+   By default, relative times are used up to 60 days, then YYYY-MM-DD.
 
-      --abs-time         Use absolute times in RFC 3339 format.
-                         By default, relative times are used up to 60 days, then YYYY-MM-DD.
-      --all              Show all warnings, including the acknowledged ones.
-      --unicode string   Use Unicode characters to improve legibility (auto|never|always).
-                         By default, Unicode is used only if the output supports it. (default "auto")
-      --verbose          Show more information per each warning.
+
+--all
+
+   Show all warnings, including the acknowledged ones.
+
+
+--unicode
+
+   Use Unicode characters to improve legibility (auto|never|always).
+   By default, Unicode is used only if the output supports it.
+
+
+--verbose
+
+   Show more information per each warning.
+
 

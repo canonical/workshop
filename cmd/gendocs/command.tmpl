@@ -1,0 +1,38 @@
+.. _{{ .Ref }}:
+
+{{ .CommandName }}
+{{ .Heading }}
+
+{{ .Short }}
+
+Synopsis
+~~~~~~~~
+
+{{ .Long }}
+
+.. code-block:: console
+
+   {{ .Synopsis }}
+
+{{- if .Examples }}
+
+Examples
+~~~~~~~~
+
+.. code-block:: console
+
+{{ .Examples | indent 3 }}
+{{- end }}
+
+{{- if .Flags }}
+
+Options
+~~~~~~~
+
+{{- range .Flags }}
+--{{ .Name }}
+
+{{ .Usage | indent 3 }}
+
+{{ end }}
+{{- end }}

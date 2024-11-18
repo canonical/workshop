@@ -16,32 +16,26 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"embed"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-// printOptionsReST updates the formatting of command options.
-func printOptionsReST(buf *bytes.Buffer, cmd *cobra.Command, name string) error {
-	flags := cmd.NonInheritedFlags()
-	flags.SetOutput(buf)
-	if flags.HasAvailableFlags() {
-		buf.WriteString(`
-Options
-~~~~~~~
+//go:embed cli.tmpl command.tmpl
+var templates embed.FS
 
-.. code-block:: console
-
-`)
-		flags.PrintDefaults()
-		buf.WriteString("\n")
-	}
-	return nil
+// FlagDetail holds details about a flag
+type FlagDetail struct {
+	Name         string
+	Usage        string
+	DefaultValue string
 }
 
 // GenReSTCustom creates custom reStructured Text output with the specified formatting.
@@ -49,7 +43,7 @@ func GenReSTCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string, str
 	cmd.InitDefaultHelpCmd()
 	cmd.InitDefaultHelpFlag()
 
-	buf := new(bytes.Buffer)
+	// Prepare data for the template
 	name := cmd.CommandPath()
 
 	short := cmd.Short
@@ -59,54 +53,75 @@ func GenReSTCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string, str
 	}
 	ref := "ref_" + strings.ReplaceAll(name, " ", "_")
 
-	buf.WriteString(fmt.Sprintf(`.. _%s:
+	// Compute the heading separator
+	heading := strings.Repeat("-", len(name))
 
-%s
-%s
+	// Collect flag details
+	flags := cmd.NonInheritedFlags()
+	var flagDetails []FlagDetail
+	flags.VisitAll(func(flag *pflag.Flag) {
+		flagDetails = append(flagDetails, FlagDetail{
+			Name:         flag.Name,
+			Usage:        flag.Usage,
+			DefaultValue: flag.DefValue,
+		})
+	})
 
-%s
-
-Synopsis
-~~~~~~~~
-
-%s
-
-`,
-		ref, name, strings.Repeat("-", len(name)), short, long))
-
-	if cmd.Runnable() {
-		buf.WriteString(".. code-block:: console\n\n")
-		buf.WriteString(fmt.Sprintf("   %s\n\n", cmd.UseLine()))
+	// Prepare the template data
+	data := struct {
+		Ref         string
+		CommandName string
+		Short       string
+		Long        string
+		Synopsis    string
+		Examples    string
+		Flags       []FlagDetail
+		Heading     string
+	}{
+		Ref:         ref,
+		CommandName: name,
+		Short:       short,
+		Long:        long,
+		Synopsis:    cmd.UseLine(),
+		Examples:    cmd.Example,
+		Flags:       flagDetails,
+		Heading:     heading,
 	}
 
-	if len(cmd.Example) > 0 {
-		buf.WriteString(`
-Examples
-~~~~~~~~
-
-.. code-block:: console
-
-`)
-		buf.WriteString(fmt.Sprintf("%s\n\n", indentString(cmd.Example, "  ")))
+	// Define the indent helper function
+	funcMap := template.FuncMap{
+		"indent": func(spaces int, ss ...string) string {
+			padding := strings.Repeat(" ", spaces)
+			var indentedStrings []string
+			for _, s := range ss {
+				indentedStrings = append(indentedStrings, padding+strings.ReplaceAll(s, "\n", "\n"+padding))
+			}
+			return strings.Join(indentedStrings, "\n")
+		},
 	}
 
-	if err := printOptionsReST(buf, cmd, name); err != nil {
+	// Read and parse the template
+	tmplContent, err := templates.ReadFile("command.tmpl")
+	if err != nil {
 		return err
 	}
 
-	_, err := buf.WriteTo(w)
+	tmpl, err := template.New("command").Funcs(funcMap).Parse(string(tmplContent))
+	if err != nil {
+		return err
+	}
+
+	// Render the template
+	buf := new(bytes.Buffer)
+	if err = tmpl.Execute(buf, data); err != nil {
+		return err
+	}
+
+	_, err = buf.WriteTo(w)
 	return err
 }
 
-func loadFileContent(filename string) (string, error) {
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		return "", fmt.Errorf("failed to read %s: %w", filename, err)
-	}
-	return string(content), nil
-}
-
-// GenReSTTreeCustom generates RST documentation and creates an index.rst file.
+// GenReSTTreeCustom generates RST documentation and creates an index.rst file using a template.
 func GenReSTTreeCustom(cmd *cobra.Command, dir string, filePrepender func(string) string, linkHandler func(string, string) string) error {
 	var files []string
 
@@ -155,7 +170,25 @@ func GenReSTTreeCustom(cmd *cobra.Command, dir string, filePrepender func(string
 	// Sort the RST files in alphabetical order
 	sort.Strings(files)
 
-	// Create index.rst with template content and includes for each command file
+	// Prepare data for the index template
+	data := struct {
+		Files []string
+	}{
+		Files: files,
+	}
+
+	// Read and parse the template
+	templateContent, err := templates.ReadFile("cli.tmpl")
+	if err != nil {
+		return err
+	}
+
+	tmpl, err := template.New("index").Parse(string(templateContent))
+	if err != nil {
+		return err
+	}
+
+	// Create and write the index.rst file
 	indexPath := filepath.Join(dir, "index.rst")
 	indexFile, err := os.Create(indexPath)
 	if err != nil {
@@ -163,51 +196,9 @@ func GenReSTTreeCustom(cmd *cobra.Command, dir string, filePrepender func(string
 	}
 	defer indexFile.Close()
 
-	// Read and write header for the index.rst file
-	headerContent, err := loadFileContent("header.rst")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading header: %v\n", err)
-		return err
-	}
-
-	if _, err := indexFile.WriteString(headerContent); err != nil {
-		return err
-	}
-
-	// Include each command's RST file
-	for _, file := range files {
-		includeDirective := fmt.Sprintf(".. include:: %s\n\n", file)
-		if _, err := indexFile.WriteString(includeDirective); err != nil {
-			return err
-		}
-	}
-
-	// Read and write footer for the index.rst file
-	footerContent, err := loadFileContent("footer.rst")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading footer: %v\n", err)
-		return err
-	}
-
-	if _, err := indexFile.WriteString(footerContent); err != nil {
+	if err := tmpl.Execute(indexFile, data); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-// indentString adapted from: https://github.com/kr/text/blob/main/indent.go
-func indentString(s, p string) string {
-	var res []byte
-	b := []byte(s)
-	prefix := []byte(p)
-	bol := true
-	for _, c := range b {
-		if bol && c != '\n' {
-			res = append(res, prefix...)
-		}
-		res = append(res, c)
-		bol = c == '\n'
-	}
-	return string(res)
 }

@@ -34,4 +34,3 @@ Notes:
 .. code-block:: console
 
    workshop changes [flags]
-
