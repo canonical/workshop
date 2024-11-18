@@ -27,11 +27,10 @@ Notes:
 
    workshop connections [<WORKSHOP>] [flags]
 
-
 Options
 ~~~~~~~
+--all
 
-.. code-block:: console
+   Include disconnected plugs in the output.
 
-      --all   Include disconnected plugs in the output.
 

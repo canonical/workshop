@@ -33,11 +33,10 @@ Notes:
 
    workshop list [flags]
 
-
 Options
 ~~~~~~~
+--global
 
-.. code-block:: console
+   List workshops from all projects in the system
 
-      --global   List workshops from all projects in the system
 

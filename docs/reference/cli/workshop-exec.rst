@@ -46,17 +46,40 @@ Notes:
 
    workshop exec <WORKSHOP> [flags]
 
-
 Options
 ~~~~~~~
+--cwd
 
-.. code-block:: console
+   Set the working directory in the workshop
 
-  -w, --cwd string         Set the working directory in the workshop (default "/project")
-      --env stringArray    Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.
-      --uid int            Run as a specific workshop user (default 1000)
-      --gid int            Run as a member of a specific workshop group (default 1000)
-      --timeout duration   Set a timeout; valid units are 'ns', 'us'/'µs', 'ms', 's', 'm', 'h'
-  -i, --interactive        Force interactive mode
-  -I, --non-interactive    Force non-interactive mode
+
+--env
+
+   Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.
+
+
+--uid
+
+   Run as a specific workshop user
+
+
+--gid
+
+   Run as a member of a specific workshop group
+
+
+--timeout
+
+   Set a timeout; valid units are 'ns', 'us'/'µs', 'ms', 's', 'm', 'h'
+
+
+--interactive
+
+   Force interactive mode
+
+
+--non-interactive
+
+   Force non-interactive mode
+
 

@@ -30,4 +30,3 @@ Notes:
 .. code-block:: console
 
    workshop tasks <CHANGE ID> [flags]
-

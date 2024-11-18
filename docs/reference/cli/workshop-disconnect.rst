@@ -33,12 +33,15 @@ This command disconnects a plug from its slot, or a slot from all its plugs.
 
    workshop disconnect <WORKSHOP>/<SDK>:<PLUG OR SLOT> [<WORKSHOP>/<SDK>]:[<SLOT>] [flags]
 
-
 Options
 ~~~~~~~
+--forget
 
-.. code-block:: console
+   Reconnect the plugs at 'workshop refresh' if auto-connected initially
 
-      --forget    Reconnect the plugs at 'workshop refresh' if auto-connected initially
-      --no-wait   Return the change ID, don't wait for the operation to finish
+
+--no-wait
+
+   Return the change ID, don't wait for the operation to finish
+
 
