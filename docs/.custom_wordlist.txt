@@ -28,6 +28,7 @@ lxc
 lxd
 LXD
 Multipass
+ns
 onboarding
 pathname
 readme
