@@ -1,0 +1,5 @@
+name: vhs
+base: ubuntu@22.04
+sdks:
+  qt6:
+    channel: latest/edge

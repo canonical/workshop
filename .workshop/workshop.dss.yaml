@@ -1,0 +1,5 @@
+name: dss
+base: ubuntu@24.04
+sdks:
+  java:
+    channel: latest/beta

@@ -1,0 +1,8 @@
+name: io
+base: ubuntu@22.04
+sdks:
+  test-sdk-mount:
+    channel: latest/stable
+    plugs:
+      gpu:
+        interface: gpu

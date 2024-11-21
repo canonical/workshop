@@ -1,0 +1,8 @@
+backends:
+  lxd:
+    systems:
+    - ubuntu-24.04:
+        password: 1aa275d4652fd876
+        address: 10.129.192.125
+        data:
+          name: spread-277-ubuntu-24-04
