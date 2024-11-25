@@ -1,11 +1,11 @@
 summary: Check mount interface scenarios
 restore: |
-  workshop_exec remove ws-mount || true
+  sudo -u ubuntu -- workshop remove ws-mount || true
 execute: |
   . "$TESTSLIB"/utils.sh
-    
+
   function validate_host_mounts() {
-    test -d "$source_one" && test -d "$source_two"    
+    test -d "$source_one" && test -d "$source_two"
     workshop_exec exec ws-mount -- bash -c "mountpoint -q /mnt/one && mountpoint -q /opt/two"
   }
 
@@ -25,6 +25,9 @@ execute: |
   sed -i 's/test-sdk-mount/test-sdk-setup-fail/g' .workshop/workshop.ws-mount.yaml
   workshop_exec refresh ws-mount || true
   sed -i 's/test-sdk-setup-fail/test-sdk-mount/g' .workshop/workshop.ws-mount.yaml
+  # This is a hack for now, there appears to be an incredibly slight delay after
+  # running refresh before the hostname is valid (possibly systemd-resolvd?).
+  sleep 5
   validate_host_mounts
 
   echo "Check manual connect/disconnect works"

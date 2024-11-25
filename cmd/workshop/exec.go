@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,9 +93,8 @@ Notes:
 
 - To start a workshop before running a terminal session, use 'workshop start'
 
-- The subcommand is a shorthand for 'workshop exec';
-  it launches the login shell for 'workshop',
-  the default non-privileged user in a workshop
+- You can set the working directory, environment variables, user and group ID
+  for the spawned shell; reasonable defaults are provided
 `
 
 func (c *CmdExec) Command() *cobra.Command {
@@ -127,11 +127,17 @@ func (c *CmdShellAlias) Command() *cobra.Command {
 		RunE:  c.Run,
 	}
 
+	cmd.Flags().SortFlags = false
+	cmd.Flags().StringVarP(&c.execCommand.WorkingDir, "cwd", "w", "/project", "Set the working directory in the workshop")
+	cmd.Flags().StringArrayVar(&c.execCommand.Env, "env", []string{}, "Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.")
+	cmd.Flags().IntVar(&c.execCommand.UserId, "uid", 1000, "Run as a specific workshop user")
+	cmd.Flags().IntVar(&c.execCommand.GroupId, "gid", 1000, "Run as a member of a specific workshop group")
+	c.execCommand.Interactive = true
 	return cmd
 }
 
 func (c *CmdShellAlias) Run(cmd *cobra.Command, av []string) error {
-	return c.execCommand.Run(cmd, []string{av[0], "su", "-l", "workshop"})
+	return c.execCommand.Run(cmd, []string{av[0], "/bin/bash", "-l"})
 }
 
 func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
@@ -149,33 +155,6 @@ func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
 		return err
 	}
 
-	command := av[1:]
-	logger.Debugf("Running %q", command)
-
-	// Set up environment variables.
-	env := make(map[string]string)
-	term, ok := os.LookupEnv("TERM")
-	if ok {
-		env["TERM"] = term
-	}
-
-	for _, kv := range c.Env {
-		parts := strings.SplitN(kv, "=", 2)
-		key := parts[0]
-
-		var value string
-		if len(parts) == 2 {
-			value = parts[1]
-		} else {
-			value, ok = os.LookupEnv(key)
-			if !ok {
-				continue
-			}
-		}
-
-		env[key] = value
-	}
-
 	stdoutIsTerminal := ptyutil.IsTerminal(unix.Stdout)
 
 	// Specify Interactive=true if -i is given, or if stdin and stdout are TTYs.
@@ -187,9 +166,15 @@ func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
 		interactive = false
 	} else {
 		interactive = stdinIsTerminal && stdoutIsTerminal
+		// If both --pty and --pipe are specified, systemd-run will infer from
+		// the stdin and stdout whether to run in interactive mode
 	}
 
-	// Record terminal state (and restore it before we exit).
+	term, ok := os.LookupEnv("TERM")
+	if ok {
+		c.Env = append(c.Env, "TERM="+term)
+	}
+
 	if interactive && stdinIsTerminal {
 		oldState, err := ptyutil.MakeRaw(unix.Stdin)
 		if err != nil {
@@ -208,6 +193,44 @@ func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
 		}
 	}
 
+	// Construct the command string slice
+	command := []string{
+		"sudo",
+		"systemd-run",
+		"--quiet",
+		"--system",
+		"--same-dir",
+		"--wait",
+		"--collect",
+		"--uid=" + strconv.Itoa(c.UserId),
+		"--gid=" + strconv.Itoa(c.GroupId),
+	}
+
+	for _, kv := range c.Env {
+		parts := strings.SplitN(kv, "=", 2)
+		key := parts[0]
+
+		var value string
+		if len(parts) == 2 {
+			value = parts[1]
+		} else {
+			value, ok = os.LookupEnv(key)
+			if !ok {
+				continue
+			}
+		}
+		command = append(command, fmt.Sprintf("--setenv=%s=%s", key, value))
+	}
+
+	if c.Interactive {
+		command = append(command, "--pty")
+	} else {
+		command = append(command, "--pipe")
+	}
+
+	command = append(command, "--service-type=exec")
+	command = append(command, av[1:]...)
+
 	// TODO: the lack of separate output in LXD exec when executing a command in
 	// an interactive mode begets quirky things. Consider this: workshop exec
 	// empty -- ls -R / 2>/dev/null Given that the command will be executed in
@@ -216,10 +239,8 @@ func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
 	// combines stderr and stdout in the interactive mode.
 	opts := &client.ExecOptions{
 		Command:     command,
-		Environment: env,
+		Environment: map[string]string{"XDG_RUNTIME_DIR": "/run/user/1000"},
 		WorkingDir:  c.WorkingDir,
-		UserId:      &c.UserId,
-		GroupId:     &c.GroupId,
 		Interactive: interactive,
 		Timeout:     c.Timeout,
 		Width:       width,
@@ -253,6 +274,10 @@ func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
 		case nil:
 			return nil
 		case *client.ExitError:
+			// Wrap the exit-code for a shell session, we don't want to pass this back
+			if cmd.Name() == "shell" {
+				return nil
+			}
 			logger.Debugf("Process exited with code %d", e.ExitCode())
 			return err
 		default:
