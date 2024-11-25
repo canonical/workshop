@@ -34,7 +34,9 @@ Notes:
 - For content interface plugs, non-default sources set by 'workshop remount'
   aren't removed
 `,
-
+		Example: `
+# Remove the 'nimble' and 'jazzy' workshops in the current project directory
+workshop remove nimble jazzy`,
 		RunE: c.Run,
 	}
 

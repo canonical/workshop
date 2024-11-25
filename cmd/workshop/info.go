@@ -40,7 +40,9 @@ Notes:
 
 - Avoid assumptions based on SDK channels: 'latest/stable' may be neither
 `,
-
+		Example: `
+# List details for the 'nimble' workshop in the current project directory
+workshop info nimble`,
 		RunE: c.Run,
 	}
 
