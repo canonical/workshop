@@ -5,8 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/canonical/workshop/cmd/workshop/gendocs"
 	"github.com/spf13/cobra"
+
+	"github.com/canonical/workshop/cmd/workshop/gendocs"
 )
 
 type CmdDocs struct {
