@@ -109,7 +109,7 @@ func (c *CmdExec) Command() *cobra.Command {
 workshop exec nimble go build main.go
 
 # A similar command that sets an environment variable and the working directory
-workshop exec nimble --env GO111MODULE=off -w /project/ -- go build -x
+workshop exec nimble --env GO111MODULE=off -w /project -- go build -x
 
 # Run a custom interactive shell
 workshop exec nimble -I sh
