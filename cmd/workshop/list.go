@@ -45,6 +45,12 @@ Notes:
 
 - For details of a single workshop, use 'workshop info' instead
 `,
+		Example: `
+# List the workshops in the current project directory
+workshop list
+
+# List the globally registered workshops
+workshop list --global`,
 		RunE: c.Run,
 	}
 

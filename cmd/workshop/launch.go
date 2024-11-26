@@ -42,7 +42,9 @@ Notes:
 
 - SDKs are installed in alphabetical order
 `,
-
+		Example: `
+# Launch the 'nimble' and 'jazzy' workshops in the current project directory
+workshop launch nimble jazzy`,
 		RunE: c.Run,
 	}
 

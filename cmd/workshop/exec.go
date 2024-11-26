@@ -103,7 +103,20 @@ func (c *CmdExec) Command() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		Short: shortExecHelp,
 		Long:  longExecHelp,
-		RunE:  c.Run,
+		Example: `
+# Run the 'go build main.go' command under the 'nimble' workshop
+# in the current project directory
+workshop exec nimble go build main.go
+
+# A similar command that sets an environment variable and the working directory
+workshop exec nimble --env GO111MODULE=off -w /project -- go build -x
+
+# Run a custom interactive shell
+workshop exec nimble -I sh
+
+# Run a command as root (the default is 'workshop')
+workshop exec nimble --uid 0 id`,
+		RunE: c.Run,
 	}
 
 	cmd.Flags().SortFlags = false
@@ -124,7 +137,11 @@ func (c *CmdShellAlias) Command() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Short: shortShellHelp,
 		Long:  longShellHelp,
-		RunE:  c.Run,
+		Example: `
+# Open the default login shell of the 'workshop' user into the 'nimble' workshop
+# in the current project directory
+workshop shell nimble`,
+		RunE: c.Run,
 	}
 
 	return cmd

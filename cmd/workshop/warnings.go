@@ -68,6 +68,9 @@ or the '--all' option is used.
 
 Also, warnings expire automatically; expired warnings are not listed.
 `,
+		Example: `
+# List the globally registered warnings across all workshops
+workshop warnings`,
 		RunE: c.Run,
 	}
 
@@ -101,6 +104,10 @@ func (c *CmdOkay) Command() *cobra.Command {
 This command acknowledges all warnings
 listed previously by the 'workshop warnings' command.
 `,
+		Example: `
+# Acknowledge the globally registered warnings across all workshops
+# (must run after 'workshop warnings')
+workshop okay`,
 		RunE: c.Run,
 	}
 
