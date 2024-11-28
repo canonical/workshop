@@ -3,36 +3,34 @@
 {{ .CommandName }}
 {{ .Heading }}
 
-{{ .Short }}
+{{ .Short }}.
 
-Synopsis
-~~~~~~~~
-
-{{ .Long }}
+.. rubric:: Synopsis
 
 .. code-block:: console
 
    {{ .Synopsis }}
 
-{{- if .Examples }}
+.. rubric:: Description
 
-Examples
-~~~~~~~~
-
-.. code-block:: console
-
-{{ .Examples | indent 3 }}
-{{- end }}
+{{ .Long }}
 
 {{- if .Flags }}
 
-Options
-~~~~~~~
+.. rubric:: Options
 
-{{- range .Flags }}
+{{ range .Flags }}
 --{{ .Name }}
 
 {{ .Usage | indent 3 }}
 
 {{ end }}
+{{- end }}
+
+{{- if .Examples }}
+
+.. rubric:: Examples
+
+.. code-block:: console
+{{ .Examples | indent 3 }}
 {{- end }}

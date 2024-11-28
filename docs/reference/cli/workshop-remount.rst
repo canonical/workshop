@@ -3,10 +3,15 @@
 workshop remount
 ----------------
 
-Mount a new source location to the content interface plug's target
+Mount a new source location to the content interface plug's target.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop remount <WORKSHOP>/<SDK>:<PLUG> <SOURCE> [flags]
+
+.. rubric:: Description
 
 
 This command mounts a new source location on the host to the target directory
@@ -23,24 +28,30 @@ Specifically, it does the following:
 
 Notes:
 
-- To stop the workshop, use 'workshop stop'
+- To stop the workshop, use **workshop stop**
 
-- 'workshop info' lists any mounted content interface plugs for the workshop
+- **workshop info** lists any mounted content interface plugs for the workshop
 
-- 'workshop refresh' mounts the last source set by 'workshop remount', if any
+- **workshop refresh** mounts the last source set by **workshop remount**, if any
 
-- During 'workshop remove', non-default sources set by 'workshop remount'
+- During **workshop remove**, non-default sources set by **workshop remount**
   aren't removed
 
 
-.. code-block:: console
+.. rubric:: Options
 
-   workshop remount <WORKSHOP>/<SDK>:<PLUG> <SOURCE> [flags]
 
-Options
-~~~~~~~
 --no-wait
 
    Return the change ID, don't wait for the operation to finish
 
 
+
+.. rubric:: Examples
+
+.. code-block:: console
+   
+   # Remount the 'mod-cache' mount interface plug of the 'go' SDK
+   # under the 'nimble' workshop in the current project directory
+   # to '~/new-cache-mount/' on the host:
+   workshop remount nimble/go:mod-cache ~/new-cache-mount

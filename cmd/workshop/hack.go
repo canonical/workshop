@@ -26,7 +26,7 @@ func (c *CmdHack) Command() *cobra.Command {
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Edit the hack SDK and graft it onto the workshop",
 		Long: `
-This command opens the default text editor to configure the 'hack' SDK
+This command opens the default text editor to configure the **hack** SDK
 and immediately installs it in the specified workshop,
 enabling rapid experiments and tweaks at the SDK level.
 
@@ -40,22 +40,22 @@ Setting the <HOOK> value opens the respective hook file:
 
 
 Saving and exiting causes a refresh,
-which installs the updated 'hack' SDK in the workshop.
+which installs the updated **hack** SDK in the workshop.
 
-The '--drop' and '--restore' options stash the 'hack' SDK,
+The **--drop** and **--restore** options stash the **hack** SDK,
 reversing the changes, and quickly restore it to the workshop.
 
 
 Notes:
 
-- The 'hack' SDK doesn't appear in the workshop definition
+- The **hack** SDK doesn't appear in the workshop definition
   and cannot include build-time data such as parts
 
-- In addition to hooks, the 'hack' SDK can use interfaces,
+- In addition to hooks, the **hack** SDK can use interfaces,
   define plugs, slots, connections and bindings
 
-- You can partially refresh the workshop, targeting the 'hack' SDK
-  with the 'workshop refresh <WORKSHOP>/hack' command
+- You can partially refresh the workshop, targeting the **hack** SDK
+  with the **workshop refresh <WORKSHOP>/hack** command
 `,
 		Example: `
 # Edit the hack SDK definition for the 'nimble' workshop

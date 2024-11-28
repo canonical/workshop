@@ -60,11 +60,11 @@ func (c *CmdWarnings) Command() *cobra.Command {
 		Long: `
 This command lists the warnings that were reported to the system.
 
-All warnings listed by 'workshop warnings'
-can be acknowledged with the 'workshop okay' command.
-Acknowledged warnings aren't listed by 'workshop warnings'
+All warnings listed by **workshop warnings**
+can be acknowledged with the **workshop okay** command.
+Acknowledged warnings aren't listed by **workshop warnings**
 unless they occur again after their cooldown period has elapsed
-or the '--all' option is used.
+or the **--all** option is used.
 
 Also, warnings expire automatically; expired warnings are not listed.
 `,
@@ -102,11 +102,11 @@ func (c *CmdOkay) Command() *cobra.Command {
 		Short: "Acknowledge listed warnings",
 		Long: `
 This command acknowledges all warnings
-listed previously by the 'workshop warnings' command.
+listed previously by the **workshop warnings** command.
 `,
 		Example: `
 # Acknowledge the globally registered warnings across all workshops
-# (must run after 'workshop warnings')
+# (must run after **workshop warnings**)
 workshop okay`,
 		RunE: c.Run,
 	}
@@ -283,7 +283,7 @@ func lastWarningTimestamp() (time.Time, error) {
 	f, err := os.Open(warnFilename())
 	if err != nil {
 		if os.IsNotExist(err) {
-			return time.Time{}, fmt.Errorf("you must have looked at the warnings before acknowledging them. Try 'workshop warnings'.")
+			return time.Time{}, fmt.Errorf("you must have looked at the warnings before acknowledging them. Try **workshop warnings**.")
 		}
 		return time.Time{}, fmt.Errorf("cannot open timestamp file: %v", err)
 
@@ -309,8 +309,8 @@ func maybePresentWarnings(count int, timestamp time.Time) {
 	}
 
 	fmt.Fprintf(Stderr,
-		i18n.NG("WARNING: There is %d new warning. See 'workshop warnings'.\n",
-			"WARNING: There are %d new warnings. See 'workshop warnings'.\n",
+		i18n.NG("WARNING: There is %d new warning. See **workshop warnings**.\n",
+			"WARNING: There are %d new warnings. See **workshop warnings**.\n",
 			count),
 		count)
 }

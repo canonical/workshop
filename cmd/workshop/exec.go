@@ -47,10 +47,10 @@ type CmdShellAlias struct {
 
 var shortExecHelp = "Run a command and wait for it to complete"
 var longExecHelp = `
-The 'exec' subcommand runs an arbitrary command in the specified workshop,
+The **exec** subcommand runs an arbitrary command in the specified workshop,
 waiting for it to complete. If a timeout elapses before that, it's terminated.
 
-To accept an 'exec' command, the workshop must be *Ready* or *Pending*.
+To accept an **exec** command, the workshop must be *Ready* or *Pending*.
 A command can run in two modes that determine how it handles standard streams:
 
 - Interactively (for shell sessions)
@@ -58,23 +58,23 @@ A command can run in two modes that determine how it handles standard streams:
 - Non-interactively (for scripts)
 
 
-To set the mode explicitly, use '-i' or '-I'. If neither is supplied,
-'exec' deduces the mode based on the nature of its own streams:
+To set the mode explicitly, use **-i** or **-I**. If neither is supplied,
+**exec** deduces the mode based on the nature of its own streams:
 
 - If stdin and stdout are terminals, the mode is interactive
 
 - Otherwise, it's non-interactive
 
 
-To separate the 'exec' subcommand from the command itself,
-use shell syntax such as '--':
+To separate the **exec** subcommand from the command itself,
+use shell syntax such as *--*:
 
   $ workshop exec nimble -- echo -n foo bar
 
 
 Notes:
 
-- To start a workshop before running commands in it, use 'workshop start'
+- To start a workshop before running commands in it, use **workshop start**
 
 - You can set the working directory, environment variables, user and group ID
   for running the command in the workshop; reasonable defaults are provided
@@ -82,18 +82,18 @@ Notes:
 
 var shortShellHelp = "Start an interactive terminal session for the workshop"
 var longShellHelp = `
-The 'shell' subcommand runs an interactive terminal session
+The **shell** subcommand runs an interactive terminal session
 in the specified workshop.
 
-To accept a 'shell' command, the workshop must be *Ready* or *Pending*.
+To accept a **shell** command, the workshop must be *Ready* or *Pending*.
 
 
 Notes:
 
-- To start a workshop before running a terminal session, use 'workshop start'
+- To start a workshop before running a terminal session, use **workshop start**
 
-- The subcommand is a shorthand for 'workshop exec';
-  it launches the login shell for 'workshop',
+- The subcommand is a shorthand for **workshop exec**;
+  it launches the login shell for *workshop*,
   the default non-privileged user in a workshop
 `
 
@@ -124,7 +124,7 @@ workshop exec nimble --uid 0 id`,
 	cmd.Flags().StringArrayVar(&c.Env, "env", []string{}, "Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.")
 	cmd.Flags().IntVar(&c.UserId, "uid", 1000, "Run as a specific workshop user")
 	cmd.Flags().IntVar(&c.GroupId, "gid", 1000, "Run as a member of a specific workshop group")
-	cmd.Flags().DurationVar(&c.Timeout, "timeout", 0, "Set a timeout; valid units are 'ns', 'us'/'µs', 'ms', 's', 'm', 'h'")
+	cmd.Flags().DurationVar(&c.Timeout, "timeout", 0, "Set a timeout; valid units are ns, us or µs, ms, s, m, h")
 	cmd.Flags().BoolVarP(&c.Interactive, "interactive", "i", false, "Force interactive mode")
 	cmd.Flags().BoolVarP(&c.NonInteractive, "non-interactive", "I", false, "Force non-interactive mode")
 

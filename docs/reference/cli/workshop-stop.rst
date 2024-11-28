@@ -3,10 +3,15 @@
 workshop stop
 -------------
 
-Stop one or many workshops
+Stop one or many workshops.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop stop <WORKSHOP>... [flags]
+
+.. rubric:: Description
 
 
 This command deactivates the workshops listed as arguments. For each one, it:
@@ -26,9 +31,12 @@ Notes:
 
 - When interrupted, the command attempts to gracefully revert its actions
 
-- To start a stopped workshop, use 'workshop start'
+- To start a stopped workshop, use **workshop start**
 
+
+.. rubric:: Examples
 
 .. code-block:: console
-
-   workshop stop <WORKSHOP>... [flags]
+   
+   # Stop the nimble and jazzy workshops in the current project directory
+   workshop stop nimble jazzy

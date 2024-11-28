@@ -3,10 +3,15 @@
 workshop changes
 ----------------
 
-List recent changes to the workshops in a project
+List recent changes to the workshops in a project.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop changes [flags]
+
+.. rubric:: Description
 
 
 Any substantial operation on a workshop is a *change* that consists of *tasks*;
@@ -28,9 +33,12 @@ Notes:
 
 - Only successful changes display values in the *Ready* column
 
-- To investigate the details of a specific change, use 'workshop tasks' instead
+- To investigate the details of a specific change, use **workshop tasks** instead
 
+
+.. rubric:: Examples
 
 .. code-block:: console
-
-   workshop changes [flags]
+   
+   # List changes for all workshops in the current project directory
+   workshop changes

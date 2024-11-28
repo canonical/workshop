@@ -186,7 +186,7 @@ func (s *warningSuite) TestOkay(c *check.C) {
 
 func (s *warningSuite) TestOkayBeforeWarnings(c *check.C) {
 	err := s.cmdO.Run(s.cmdO.Command(), nil)
-	c.Assert(err, check.ErrorMatches, "you must have looked at the warnings before acknowledging them. Try 'workshop warnings'.")
+	c.Assert(err, check.ErrorMatches, "you must have looked at the warnings before acknowledging them. Try **workshop warnings**.")
 	c.Check(s.Stderr(), check.Equals, "")
 	c.Check(s.Stdout(), check.Equals, "")
 }
@@ -244,6 +244,6 @@ func (s *warningSuite) TestListWithWarnings(c *check.C) {
 Project        Workshop  Status  Notes
 /home/project                    -
 `[1:])
-	c.Check(s.Stderr(), check.Equals, "WARNING: There are 2 new warnings. See 'workshop warnings'.\n")
+	c.Check(s.Stderr(), check.Equals, "WARNING: There are 2 new warnings. See **workshop warnings**.\n")
 
 }

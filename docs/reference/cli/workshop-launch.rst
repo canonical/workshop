@@ -3,10 +3,15 @@
 workshop launch
 ---------------
 
-Construct one or many workshops using their definitions
+Construct one or many workshops using their definitions.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop launch <WORKSHOP>... [flags]
+
+.. rubric:: Description
 
 
 This command constructs the workshops listed as arguments by going over their
@@ -29,19 +34,23 @@ Notes:
 
 - Names listed as arguments must match respective 'name:' values in definitions
 
-- To update an existing workshop, use 'workshop refresh' instead
+- To update an existing workshop, use **workshop refresh** instead
 
 - SDKs are installed in alphabetical order
 
 
-.. code-block:: console
+.. rubric:: Options
 
-   workshop launch <WORKSHOP>... [flags]
 
-Options
-~~~~~~~
 --no-wait
 
    Return the change ID, don't wait for the operation to finish
 
 
+
+.. rubric:: Examples
+
+.. code-block:: console
+   
+   # Launch the 'nimble' and 'jazzy' workshops in the current project directory
+   workshop launch nimble jazzy

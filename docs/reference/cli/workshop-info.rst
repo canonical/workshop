@@ -3,10 +3,15 @@
 workshop info
 -------------
 
-Print the current status and details of a workshop as YAML
+Print the current status and details of a workshop as YAML.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop info <WORKSHOP> [flags]
+
+.. rubric:: Description
 
 
 This command outputs the basic settings, current status and individual SDK
@@ -26,6 +31,9 @@ Notes:
 - Avoid assumptions based on SDK channels: 'latest/stable' may be neither
 
 
-.. code-block:: console
+.. rubric:: Examples
 
-   workshop info <WORKSHOP> [flags]
+.. code-block:: console
+   
+   # List details for the 'nimble' workshop in the current project directory
+   workshop info nimble
