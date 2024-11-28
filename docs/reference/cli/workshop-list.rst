@@ -3,10 +3,15 @@
 workshop list
 -------------
 
-List project workshops
+List project workshops.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop list [flags]
+
+.. rubric:: Description
 
 
 This command enumerates all workshops in the project, printing a compact list:
@@ -20,23 +25,30 @@ This command enumerates all workshops in the project, printing a compact list:
 - Notes:    internal remarks on the overall state of the workshop
 
 
-The '--global' option lists all workshops from *all* projects in the system;
+The **--global** option lists all workshops from *all* projects in the system;
 however, it doesn't include any that are *Off*.
 
 
 Notes:
 
-- For details of a single workshop, use 'workshop info' instead
+- For details of a single workshop, use **workshop info** instead
 
 
-.. code-block:: console
+.. rubric:: Options
 
-   workshop list [flags]
 
-Options
-~~~~~~~
 --global
 
    List workshops from all projects in the system
 
 
+
+.. rubric:: Examples
+
+.. code-block:: console
+   
+   # List the workshops in the current project directory
+   workshop list
+   
+   # List the globally registered workshops
+   workshop list --global

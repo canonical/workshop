@@ -3,10 +3,15 @@
 workshop connect
 ----------------
 
-Connect a plug to a slot
+Connect a plug to a slot.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop connect <WORKSHOP>/<SDK>:<PLUG> [<WORKSHOP>/<SDK>][:<SLOT>] [flags]
+
+.. rubric:: Description
 
 
 This command connects a plug to a target slot
@@ -34,17 +39,25 @@ that is specified as the second argument or deduced from the context.
 
 - Multiple plugs can be connected to the same slot, but not vice versa
 
-- The 'workshop connections' output will list the connection as 'manual'
+- The **workshop connections** output will list the connection as *manual*
 
 
-.. code-block:: console
+.. rubric:: Options
 
-   workshop connect <WORKSHOP>/<SDK>:<PLUG> [<WORKSHOP>/<SDK>][:<SLOT>] [flags]
 
-Options
-~~~~~~~
 --no-wait
 
    Return the change ID, don't wait for the operation to finish
 
 
+
+.. rubric:: Examples
+
+.. code-block:: console
+   
+   # Connect the 'mod-cache' mount interface plug of the 'go' SDK
+   # under the 'nimble' workshop in the current project directory
+   workshop connect nimble/go:mod-cache :mount
+   
+   # A full version of the command that also lists the target SDK ('system')
+   workshop connect nimble/go:mod-cache nimble/system:mount

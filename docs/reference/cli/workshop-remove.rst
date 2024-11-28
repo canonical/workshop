@@ -3,10 +3,15 @@
 workshop remove
 ---------------
 
-Remove one or many workshops
+Remove one or many workshops.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop remove <WORKSHOP>... [flags]
+
+.. rubric:: Description
 
 
 This command removes the workshops listed as arguments. For each workshop, it:
@@ -18,11 +23,14 @@ This command removes the workshops listed as arguments. For each workshop, it:
 Notes:
 
 - If any listed workshop is *Off* or *Pending*, none are removed
-- To rebuild a removed workshop from scratch, use 'workshop launch'
-- For content interface plugs, non-default sources set by 'workshop remount'
+- To rebuild a removed workshop from scratch, use **workshop launch**
+- For content interface plugs, non-default sources set by **workshop remount**
   aren't removed
 
 
-.. code-block:: console
+.. rubric:: Examples
 
-   workshop remove <WORKSHOP>... [flags]
+.. code-block:: console
+   
+   # Remove the 'nimble' and 'jazzy' workshops in the current project directory
+   workshop remove nimble jazzy

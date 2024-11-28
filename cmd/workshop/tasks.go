@@ -37,7 +37,7 @@ Notes:
 
 - The command may print additional log details for tasks that store them
 
-- To investigate recent changes in a project, use 'workshop changes' instead
+- To investigate recent changes in a project, use **workshop changes** instead
 `,
 		Example: `
 # List the tasks under change ID 42

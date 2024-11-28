@@ -47,7 +47,7 @@ Notes:
 
 - The workshop must be *Ready* to be refreshed
 
-- To construct a newly defined workshop, use 'workshop launch' instead
+- To construct a newly defined workshop, use **workshop launch** instead
 
 - Throughout the refresh, all affected workshops remain *Pending*
 
@@ -56,11 +56,11 @@ Notes:
 - Updated and newly added SDKs are installed in alphabetical order
 
 - For content interface plugs, mounts the last source
-  set by 'workshop remount', if any
+  set by **workshop remount**, if any
 
 - If the optional <SDK> is supplied,
   the operation is limited to this SDK;
-  currently, it can only be 'hack'
+  currently, it can only be **hack**
 `,
 		Example: `
 # Refresh the 'nimble' and 'jazzy' workshops in the current project directory
@@ -83,7 +83,7 @@ workshop refresh nimble/hack`,
 
 	cmd.PersistentFlags().BoolVar(&c.WaitOnError, "wait-on-error",
 		false,
-		"Pause the operation on error; to resume, use '--continue' or '--abort'.")
+		"Pause the operation on error; to resume, use **--continue** or **--abort**.")
 	cmd.PersistentFlags().BoolVar(&c.Continue, "continue",
 		false,
 		"Continue the previously paused operation.")

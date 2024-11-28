@@ -3,29 +3,31 @@
 workshop warnings
 -----------------
 
-List warnings
+List warnings.
 
-Synopsis
-~~~~~~~~
-
-
-This command lists the warnings that were reported to the system.
-
-All warnings listed by 'workshop warnings'
-can be acknowledged with the 'workshop okay' command.
-Acknowledged warnings aren't listed by 'workshop warnings'
-unless they occur again after their cooldown period has elapsed
-or the '--all' option is used.
-
-Also, warnings expire automatically; expired warnings are not listed.
-
+.. rubric:: Synopsis
 
 .. code-block:: console
 
    workshop warnings [OPTIONS] [flags]
 
-Options
-~~~~~~~
+.. rubric:: Description
+
+
+This command lists the warnings that were reported to the system.
+
+All warnings listed by **workshop warnings**
+can be acknowledged with the **workshop okay** command.
+Acknowledged warnings aren't listed by **workshop warnings**
+unless they occur again after their cooldown period has elapsed
+or the **--all** option is used.
+
+Also, warnings expire automatically; expired warnings are not listed.
+
+
+.. rubric:: Options
+
+
 --abs-time
 
    Use absolute times in RFC 3339 format.
@@ -48,3 +50,10 @@ Options
    Show more information per each warning.
 
 
+
+.. rubric:: Examples
+
+.. code-block:: console
+   
+   # List the globally registered warnings across all workshops
+   workshop warnings

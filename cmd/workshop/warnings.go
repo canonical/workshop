@@ -60,11 +60,11 @@ func (c *CmdWarnings) Command() *cobra.Command {
 		Long: `
 This command lists the warnings that were reported to the system.
 
-All warnings listed by 'workshop warnings'
-can be acknowledged with the 'workshop okay' command.
-Acknowledged warnings aren't listed by 'workshop warnings'
+All warnings listed by **workshop warnings**
+can be acknowledged with the **workshop okay** command.
+Acknowledged warnings aren't listed by **workshop warnings**
 unless they occur again after their cooldown period has elapsed
-or the '--all' option is used.
+or the **--all** option is used.
 
 Also, warnings expire automatically; expired warnings are not listed.
 `,
@@ -102,11 +102,11 @@ func (c *CmdOkay) Command() *cobra.Command {
 		Short: "Acknowledge listed warnings",
 		Long: `
 This command acknowledges all warnings
-listed previously by the 'workshop warnings' command.
+listed previously by the **workshop warnings** command.
 `,
 		Example: `
 # Acknowledge the globally registered warnings across all workshops
-# (must run after 'workshop warnings')
+# (must run after **workshop warnings**)
 workshop okay`,
 		RunE: c.Run,
 	}

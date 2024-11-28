@@ -36,8 +36,8 @@ This command disconnects a plug from its slot, or a slot from all its plugs.
   Notes:
 
 - After an auto-connected plug is thus disconnected,
-  it is reconnected during 'workshop refresh'
-  only if the '--forget' option was used with 'workshop disconnect'
+  it is reconnected during **workshop refresh**
+  only if the **--forget** option was used with **workshop disconnect**
 `,
 		Example: `
 # Disconnect the 'mod-cache' mount interface plug of the 'go' SDK
@@ -56,7 +56,7 @@ workshop disconnect nimble/system:mount`,
 
 	cmd.PersistentFlags().BoolVar(&c.forget, "forget",
 		false,
-		"Reconnect the plugs at 'workshop refresh' if auto-connected initially")
+		"Reconnect the plugs at **workshop refresh** if auto-connected initially")
 
 	cmd.PersistentFlags().BoolVar(&c.NoWait, "no-wait",
 		false,

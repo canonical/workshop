@@ -45,7 +45,7 @@ that is specified as the second argument or deduced from the context.
 
 - Multiple plugs can be connected to the same slot, but not vice versa
 
-- The 'workshop connections' output will list the connection as 'manual'
+- The **workshop connections** output will list the connection as *manual*
 `,
 		Example: `
 # Connect the 'mod-cache' mount interface plug of the 'go' SDK

@@ -3,10 +3,15 @@
 workshop tasks
 --------------
 
-List tasks for a specific change
+List tasks for a specific change.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop tasks <CHANGE ID> [flags]
+
+.. rubric:: Description
 
 
 Any substantial operation on a workshop is a *change* that consists of *tasks*;
@@ -24,9 +29,12 @@ Notes:
 
 - The command may print additional log details for tasks that store them
 
-- To investigate recent changes in a project, use 'workshop changes' instead
+- To investigate recent changes in a project, use **workshop changes** instead
 
+
+.. rubric:: Examples
 
 .. code-block:: console
-
-   workshop tasks <CHANGE ID> [flags]
+   
+   # List the tasks under change ID 42
+   workshop tasks 42

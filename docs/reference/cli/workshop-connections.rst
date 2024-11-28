@@ -3,10 +3,15 @@
 workshop connections
 --------------------
 
-List interface connections
+List interface connections.
 
-Synopsis
-~~~~~~~~
+.. rubric:: Synopsis
+
+.. code-block:: console
+
+   workshop connections [<WORKSHOP>] [flags]
+
+.. rubric:: Description
 
 
 This command lists the connections between interface plugs and slots
@@ -17,20 +22,27 @@ additional notes, including specific plug bindings, are provided as needed.
 
 Notes:
 
-- The output lists connections created with 'workshop connect' as 'manual'
+- The output lists connections created with **workshop connect** as *manual*
 
-- The '--all' option needn't be used with an argument;
+- The **--all** option needn't be used with an argument;
   if a workshop is supplied, disconnected plugs are also listed
 
 
-.. code-block:: console
+.. rubric:: Options
 
-   workshop connections [<WORKSHOP>] [flags]
 
-Options
-~~~~~~~
 --all
 
    Include disconnected plugs in the output.
 
 
+
+.. rubric:: Examples
+
+.. code-block:: console
+   
+   # List connections for the workshop 'nimble' in the current project directory
+   workshop connections nimble
+   
+   # List connections for all workshops in the current project directory:
+   workshop connections
