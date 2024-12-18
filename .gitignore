@@ -27,6 +27,7 @@ docs/.sphinx/styles/
 docs/__pycache__/
 package*.json
 docs/_build
+coverage.html
 
 # sentitive files
 *.crt

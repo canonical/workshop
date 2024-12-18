@@ -121,7 +121,11 @@ for example:
 
 The command installs two main components:
 
+.. @artefact workshopd
+
 - The :program:`workshopd` daemon, which exposes a REST API
+
+.. @artefact workshop (CLI)
 
 - The :program:`workshop`
   :ref:`CLI tool <exp_workshop_cli>`,
