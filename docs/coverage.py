@@ -113,8 +113,8 @@ def main():
     parser.add_argument(
         "directory",
         nargs="?",
-        default="./docs/",
-        help="Directory to search (default: ./docs/)",
+        default=".",
+        help="Directory to search (default: .)",
     )
     parser.add_argument(
         "--coverage",
