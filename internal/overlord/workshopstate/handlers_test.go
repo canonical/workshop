@@ -328,9 +328,28 @@ func (s *workshopHandlers) TestAptCache(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	// Create volume for apt cache
+	s.createWFile(c, "ws", wsJammy)
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@22.04"}
+
 	chg := s.state.NewChange("sample", "...")
-	t1 := s.state.NewTask("create-apt-cache", "...")
+	t1 := s.state.NewTask("create-workshop", "...")
+	t1.Set("workshop-file", wf)
+	setWorkshopProject("ws", s.project, t1)
+	chg.Set("user", "testuser")
+	chg.AddTask(t1)
+
+	s.state.Unlock()
+	for i := 0; i < 6; i = i + 1 {
+		s.se.Ensure()
+		s.se.Wait()
+	}
+	s.state.Lock()
+
+	c.Assert(t1.Status(), check.Equals, state.DoneStatus)
+
+	// Create volume for apt cache
+	chg = s.state.NewChange("sample", "...")
+	t1 = s.state.NewTask("create-apt-cache", "...")
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
 	chg.AddTask(t1)

@@ -58,7 +58,7 @@ func (s *apiSuite) TestWorkshopRemountSuccess(c *check.C) {
 
 	repo := s.d.overlord.InterfaceManager().Repository()
 
-	s.launchWorkshop(c, "manysdks", manysdks, testsdks)
+	s.launchWorkshop(c, "manysdks", manysdks, apiSuiteSdks)
 	ref, err := repo.Connected(s.project.ProjectId, "manysdks", "test-sdk", "data")
 	c.Assert(err, check.IsNil)
 	conn, err := repo.Connection(ref[0])
@@ -91,7 +91,7 @@ func (s *apiSuite) TestWorkshopRemountBoundPlugSuccess(c *check.C) {
 
 	repo := s.d.overlord.InterfaceManager().Repository()
 
-	s.launchWorkshop(c, "manysdks", manysdks, testsdks)
+	s.launchWorkshop(c, "manysdks", manysdks, apiSuiteSdks)
 	ref, err := repo.Connected(s.project.ProjectId, "manysdks", "test-sdk", "data")
 	c.Assert(err, check.IsNil)
 	conn, err := repo.Connection(ref[0])
@@ -148,7 +148,7 @@ func (s *apiSuite) TestWorkshopRemountPlugDisconnected(c *check.C) {
 	s.d.Overlord().Loop()
 	defer s.d.Overlord().Stop()
 
-	s.launchWorkshop(c, "manysdks", manysdks, testsdks)
+	s.launchWorkshop(c, "manysdks", manysdks, apiSuiteSdks)
 
 	_, err := s.d.overlord.InterfaceManager().Repository().DisconnectSdk(s.project.ProjectId, "manysdks", "test-sdk")
 	c.Check(err, check.IsNil)
@@ -173,7 +173,7 @@ func (s *apiSuite) TestWorkshopRemountInvalidSetup(c *check.C) {
 	s.d.Overlord().Loop()
 	defer s.d.Overlord().Stop()
 
-	s.launchWorkshop(c, "manysdks", manysdks, testsdks)
+	s.launchWorkshop(c, "manysdks", manysdks, apiSuiteSdks)
 
 	// Setup
 	requests := []*bytes.Buffer{
@@ -202,7 +202,7 @@ func (s *apiSuite) TestWorkshopRemountInvalidInterface(c *check.C) {
 	s.d.Overlord().Loop()
 	defer s.d.Overlord().Stop()
 
-	s.launchWorkshop(c, "manysdks", manysdks, testsdks)
+	s.launchWorkshop(c, "manysdks", manysdks, apiSuiteSdks)
 
 	// Setup
 	requests := []*bytes.Buffer{
@@ -226,7 +226,7 @@ func (s *apiSuite) TestWorkshopRemountStaticSlotSourceFails(c *check.C) {
 	s.d.Overlord().Loop()
 	defer s.d.Overlord().Stop()
 
-	s.launchWorkshop(c, "workshopconns", workshopconns, testsdks)
+	s.launchWorkshop(c, "workshopconns", workshopconns, apiSuiteSdks)
 
 	requests := []*bytes.Buffer{
 		bytes.NewBufferString(fmt.Sprintf(`{"action":"remount","plug":{"sdk":"test-sdk","plug":"data"},"host-source":%q}`, c.MkDir())),

@@ -142,7 +142,7 @@ func (c *GcsStore) DownloadSdk(ctx context.Context, setup sdk.Setup, report *pro
 	}
 	defer r.Close()
 
-	target := setup.Filename()
+	target := setup.Filepath()
 	if !osutil.FileExists(target) {
 		file, err := os.Create(target)
 		if err != nil {

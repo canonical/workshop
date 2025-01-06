@@ -3,6 +3,8 @@ package hookstate_test
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 	"time"
@@ -119,20 +121,25 @@ func (s *hookSuite) TestExecSaveState(c *check.C) {
 
 	s.launchWorkshop(c, "one")
 
+	volume := workshop.WorkshopStateVolumeName("ws", s.project.ProjectId)
+	err := s.backend.CreateVolume(s.ctx, volume)
+	c.Assert(err, check.IsNil)
+	defer s.backend.DeleteVolume(s.ctx, volume)
+
 	s.state.Unlock()
 	s.se.Ensure()
 	s.se.Wait()
 	s.state.Lock()
+	c.Assert(chg.Err(), check.IsNil)
 	c.Assert(s.backend.ExecCalls, check.HasLen, 1)
 	c.Assert(s.backend.ExecCalls[0].Args.Command, testutil.DeepUnsortedMatches,
 		[]string{"bash", "-ue", "-o", "pipefail", "/var/lib/workshop/sdk/one/current/sdk/hooks/save-state"})
 
-	// ensure that the save-state handler has created the required state
+	// Ensure that the save-state handler has created the required state
 	// directory (reattach the volume to the workshop to check).
 	ws, err := s.backend.WorkshopFs(s.ctx, "ws")
 	c.Check(err, check.IsNil)
 	defer ws.Close()
-	volume := workshop.WorkshopStateVolumeName("ws", s.project.ProjectId)
 	err = s.backend.AttachVolume(s.ctx, "ws", volume, dirs.WorkshopStateDir)
 	c.Check(err, check.IsNil)
 	info, err := ws.Stat("/var/lib/workshop/state/sdk/one")
@@ -161,12 +168,16 @@ func (s *hookSuite) TestExecRestoreState(c *check.C) {
 
 	s.launchWorkshop(c, "one")
 
-	// setup state storage (must be already set by the save-state in a real use
+	volume := workshop.WorkshopStateVolumeName("ws", s.project.ProjectId)
+	err := s.backend.CreateVolume(s.ctx, volume)
+	c.Assert(err, check.IsNil)
+	defer s.backend.DeleteVolume(s.ctx, volume)
+
+	// Setup state storage (must be already set by the save-state in a real use
 	// case).
-	ws, err := s.backend.WorkshopFs(s.ctx, "ws")
+	vfs := s.backend.WorkshopVolumeContents[volume]
 	c.Check(err, check.IsNil)
-	defer ws.Close()
-	err = ws.MkdirAll("/var/lib/workshop/state/sdk/one", 0755)
+	err = os.MkdirAll(filepath.Join(vfs, "sdk", "one"), 0755)
 	c.Check(err, check.IsNil)
 
 	s.state.Unlock()
@@ -195,6 +206,12 @@ func (s *hookSuite) TestExecHandlesFailedHook(c *check.C) {
 	chg.AddTask(t1)
 
 	s.launchWorkshop(c, "one")
+
+	volume := workshop.WorkshopStateVolumeName("ws", s.project.ProjectId)
+	err := s.backend.CreateVolume(s.ctx, volume)
+	c.Assert(err, check.IsNil)
+	defer s.backend.DeleteVolume(s.ctx, volume)
+
 	s.backend.ExecCallback = func(ctx context.Context, name string, args *workshop.Execution) (workshop.ExecContext, error) {
 		return workshop.ExecContext{
 			WaitExecution: func(ctx context.Context) error {

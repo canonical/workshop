@@ -787,12 +787,10 @@ func remove(st *state.State, w *workshop.Workshop, project workshop.Project) (*s
 	removeAptCache := st.NewTask("remove-apt-cache", fmt.Sprintf("Remove apt cache for %q", w.Name))
 	removeAptCache.WaitFor(remove)
 
-	// The apt cache cannot be removed until the workshop has stopped,
-	// which currently happens as part of remove-workshop.
-	// Since there is no way to undo remove-workshop,
-	// we run remove-apt-cache in a separate lane.
-	// If an error occurs when removing the cache,
-	// it will not affect the other tasks.
+	// The apt cache cannot be removed until the workshop has stopped, which
+	// currently happens as part of remove-workshop. Since there is no way to
+	// undo remove-workshop, we run remove-apt-cache in a separate lane. If an
+	// error occurs when removing the cache, it will not affect the other tasks.
 	cleanupLane := st.NewLane()
 	removeAptCache.JoinLane(cleanupLane)
 

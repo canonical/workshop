@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -188,22 +187,20 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	chg.AddTask(t1)
 	chg.AddTask(t)
 
+	err := s.backend.CreateVolume(s.ctx, newSdk.VolumeName())
+	c.Assert(err, check.IsNil)
+	defer s.backend.DeleteVolume(s.ctx, newSdk.VolumeName())
+
 	s.state.Unlock()
 	s.se.Ensure()
 	s.se.Wait()
 	s.state.Lock()
 
-	c.Assert(s.backend.ExecCalls, check.HasLen, 1)
-	c.Assert(s.backend.ExecCalls[0].Args.Command, check.DeepEquals, []string{
-		"tar",
-		"--extract",
-		"--file",
-		"/root/test-2_2.sdk",
-		"--one-top-level=/var/lib/workshop/sdk/test-2/2",
-		"--no-same-owner",
-	})
 	c.Check(chg.Err(), check.IsNil)
-	c.Check(t1.Status(), check.Equals, state.DoneStatus)
+	c.Check(chg.Status(), check.Equals, state.DoneStatus)
+
+	c.Assert(s.backend.WorkshopVolumeMountPoints, check.HasLen, 1)
+	c.Assert(s.backend.WorkshopVolumeMountPoints["test-2-2"], check.Equals, "/var/lib/workshop/sdk/test-2/2")
 }
 
 func (s *sdkStateSuite) TestDoInstallSdkSuccessWhenLocked(c *check.C) {
@@ -221,6 +218,10 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccessWhenLocked(c *check.C) {
 	chg.AddTask(t1)
 	chg.AddTask(t)
 
+	err := s.backend.CreateVolume(s.ctx, newSdk.VolumeName())
+	c.Assert(err, check.IsNil)
+	defer s.backend.DeleteVolume(s.ctx, newSdk.VolumeName())
+
 	// Lock the sdk pretending there is another concurrent doInstall that has
 	// already captured the lock.
 	l, err := sdk.OpenLock(newSdk.Name)
@@ -233,46 +234,11 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccessWhenLocked(c *check.C) {
 	s.se.Wait()
 	s.state.Lock()
 
-	c.Assert(s.backend.ExecCalls, check.HasLen, 1)
-	c.Assert(s.backend.ExecCalls[0].Args.Command, check.DeepEquals, []string{
-		"tar",
-		"--extract",
-		"--file",
-		"/root/test-2_2.sdk",
-		"--one-top-level=/var/lib/workshop/sdk/test-2/2",
-		"--no-same-owner",
-	})
+	c.Check(chg.Err(), check.IsNil)
+	c.Check(chg.Status(), check.Equals, state.DoneStatus)
 
-	c.Check(t1.Status(), check.Equals, state.DoneStatus)
-}
-
-func (s *sdkStateSuite) TestDoInstallSdkExecFail(c *check.C) {
-	s.state.Lock()
-	defer s.state.Unlock()
-
-	newSdk := sdk.Info{Name: "test"}
-	t := s.state.NewTask("fake-task", "retrieve")
-	t.Set("sdk-setup", newSdk)
-	t1 := s.state.NewTask("install-sdk", "test")
-	t1.Set("sdk-retrieve-task", t.ID())
-
-	chg := s.state.NewChange("sample", "...")
-	setWorkshopProject("ws", s.project, t, t1)
-	chg.Set("user", "testuser")
-	chg.AddTask(t1)
-	chg.AddTask(t)
-
-	s.backend.ExecCallback = func(ctx context.Context, name string, args *workshop.Execution) (workshop.ExecContext, error) {
-		args.Stderr.Write([]byte(os.ErrDeadlineExceeded.Error()))
-		return workshop.ExecContext{}, os.ErrDeadlineExceeded
-	}
-
-	s.state.Unlock()
-	s.se.Ensure()
-	s.se.Wait()
-	s.state.Lock()
-
-	c.Check(strings.HasSuffix(t1.Log()[0], os.ErrDeadlineExceeded.Error()), check.Equals, true)
+	c.Assert(s.backend.WorkshopVolumeMountPoints, check.HasLen, 1)
+	c.Assert(s.backend.WorkshopVolumeMountPoints["test-2-2"], check.Equals, "/var/lib/workshop/sdk/test-2/2")
 }
 
 func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
@@ -280,39 +246,41 @@ func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
 	defer s.state.Unlock()
 
 	newSdk := sdk.Setup{Name: "test-2", Channel: "latest/stable", Revision: sdk.Revision{N: 2}, InstallTime: &s.installTime}
+
 	t := s.state.NewTask("fake-task", "retrieve")
 	t.Set("sdk-setup", newSdk)
+
 	t1 := s.state.NewTask("install-sdk", "test")
 	t1.Set("sdk-retrieve-task", t.ID())
+	t1.WaitFor(t)
 
 	terr := s.state.NewTask("error-trigger", "provoking total undo")
 	terr.WaitFor(t1)
+
+	err := s.backend.CreateVolume(s.ctx, newSdk.VolumeName())
+	c.Assert(err, check.IsNil)
+	defer s.backend.DeleteVolume(s.ctx, newSdk.VolumeName())
 
 	chg := s.state.NewChange("sample", "...")
 	chg.Set("workshop", "ws")
 	chg.Set("project-id", s.project.ProjectId)
 	chg.Set("user", "testuser")
-	chg.AddTask(t1)
 	chg.AddTask(t)
+	chg.AddTask(t1)
 	chg.AddTask(terr)
 
-	// emulate install behaviour that unpacks an SDK to a certain directory
-	s.backend.ExecCallback = func(ctx context.Context, name string, args *workshop.Execution) (workshop.ExecContext, error) {
-		fs, _ := s.backend.WorkshopFs(ctx, name)
-		fs.MkdirAll(filepath.Join(dirs.WorkshopSdksDir, "new"), 0755)
-		return workshop.ExecContext{}, nil
-	}
+	setWorkshopProject("ws", s.project, t, t1, terr)
 
 	s.state.Unlock()
-	s.se.Ensure()
-	s.se.Wait()
+	for i := 0; i < 6; i = i + 1 {
+		s.se.Ensure()
+		s.se.Wait()
+	}
 	s.state.Lock()
 
-	// make sure SDK dir was removed
-	fs, err := s.backend.WorkshopFs(s.ctx, "ws")
-	c.Check(err, check.IsNil)
-	exist, _ := afero.Exists(fs, filepath.Join(dirs.WorkshopSdksDir, "new"))
-	c.Check(exist, check.Equals, false)
+	c.Check(t1.Status(), check.Equals, state.UndoneStatus)
+
+	c.Assert(s.backend.WorkshopVolumeMountPoints, check.HasLen, 0)
 }
 
 func (s *sdkStateSuite) TestDoInstallSystemSdkSuccess(c *check.C) {

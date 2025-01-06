@@ -23,8 +23,16 @@ type Setup struct {
 	InstallTime      *time.Time `json:"install-time"`
 }
 
+func (s *Setup) Filepath() string {
+	return filepath.Join(dirs.SdkDownloads, s.Filename())
+}
+
 func (s *Setup) Filename() string {
-	return filepath.Join(dirs.SdkDir, fmt.Sprintf("%s_%s.sdk", s.Name, s.Revision.String()))
+	return fmt.Sprintf("%s_%s.sdk", s.Name, s.Revision.String())
+}
+
+func (s *Setup) VolumeName() string {
+	return fmt.Sprintf("%s-%s", s.Name, s.Revision.String())
 }
 
 type sdkYaml struct {

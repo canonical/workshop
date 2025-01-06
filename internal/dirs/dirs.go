@@ -41,8 +41,10 @@ var (
 	BaseDir string
 	// Work directory
 	ExecDir string
-	// The directory to store downloaded SDKs
+	// The directory to store unpacked SDKs
 	SdkDir string
+	// The directory to store downloaded SDKs
+	SdkDownloads string
 	// Path to the daemon's unix socket
 	SocketPath string
 	// State lock file
@@ -89,6 +91,8 @@ func SetRootDir(rootdir string) {
 	}
 	BaseDir = rootdir
 	SdkDir = filepath.Join(BaseDir, "sdk")
+	SdkDownloads = filepath.Join(BaseDir, "cache")
+
 	WorkshopStateLockFile = filepath.Join(BaseDir, "state.lock")
 	WorkshopTlsDir = filepath.Join(BaseDir, "tls")
 	WorkshopdRunDir = filepath.Join(BaseDir, "/run/workshopd")
@@ -100,6 +104,9 @@ func CreateDirs() error {
 		return err
 	}
 	if err := os.MkdirAll(SdkDir, 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(SdkDownloads, 0755); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(WorkshopdRunDir, 0755); err != nil {

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/canonical/lxd/shared/api"
 	"github.com/canonical/x-go/randutil"
@@ -44,14 +44,20 @@ type DownloadCall struct {
 	Base string
 }
 
+type AttachVolumeCall struct {
+	Workshop string
+	Name     string
+}
+
 type FakeWorkshopBackend struct {
 	// the key is a project-id - workshop name
 	Workshops map[string]map[string]*FakeWorkshop
 	// workshops put to stash (e.g. during refresh)
 	StashedWorkshops map[string]map[string]*FakeWorkshop
 	// storage volumes, the key is a volume name
+	volumeLock                sync.Mutex
 	WorkshopVolumes           map[string]bool
-	WorkshopVolumeContents    map[string]map[string]bool
+	WorkshopVolumeContents    map[string]string
 	WorkshopVolumeMountPoints map[string]string
 	// the key is a username
 	projects map[string][]workshop.Project
@@ -65,6 +71,8 @@ type FakeWorkshopBackend struct {
 	DownloadBaseCallback func(ctx context.Context, base string, report *progress.Reporter) error
 	DownloadBaseCalls    []*DownloadCall
 
+	AttachVolumeCalls []AttachVolumeCall
+
 	BaseDir string
 }
 
@@ -73,7 +81,7 @@ func New(baseDir string) (*FakeWorkshopBackend, error) {
 	be.Workshops = make(map[string]map[string]*FakeWorkshop)
 	be.StashedWorkshops = make(map[string]map[string]*FakeWorkshop)
 	be.WorkshopVolumes = make(map[string]bool)
-	be.WorkshopVolumeContents = make(map[string]map[string]bool)
+	be.WorkshopVolumeContents = make(map[string]string)
 	be.WorkshopVolumeMountPoints = make(map[string]string)
 	be.projects = make(map[string][]workshop.Project)
 
@@ -356,28 +364,62 @@ func (s *FakeWorkshopBackend) StashWorkshop(ctx context.Context, name string) er
 	return nil
 }
 
-func (s *FakeWorkshopBackend) AttachVolume(ctx context.Context, wp, name, what string) error {
-	s.WorkshopVolumeMountPoints[name] = what
+func (s *FakeWorkshopBackend) CreateVolume(ctx context.Context, name string) error {
+	s.volumeLock.Lock()
+	defer s.volumeLock.Unlock()
 
-	paths := s.WorkshopVolumeContents[name]
-	if paths == nil {
-		s.WorkshopVolumeContents[name] = map[string]bool{}
-		return nil
+	if s.WorkshopVolumes[name] {
+		return workshop.ErrVolumeAlreadyExists
 	}
+
+	vfs := filepath.Join(s.BaseDir, "volumes", name)
+	if err := os.MkdirAll(vfs, 0755); err != nil {
+		return err
+	}
+
+	s.WorkshopVolumeContents[name] = vfs
+	s.WorkshopVolumes[name] = true
+	return nil
+}
+
+func (s *FakeWorkshopBackend) AttachVolume(ctx context.Context, wp, name, what string) error {
+	s.volumeLock.Lock()
+	defer s.volumeLock.Unlock()
+
+	s.AttachVolumeCalls = append(s.AttachVolumeCalls, AttachVolumeCall{Workshop: wp, Name: name})
+
 	wfs, err := s.WorkshopFs(ctx, wp)
 	if err != nil {
 		return err
 	}
 	defer wfs.Close()
-	for path := range paths {
-		if err = wfs.MkdirAll(path, 0755); err != nil {
-			return err
-		}
+
+	mnt, err := wfs.(*FakeInstanceFs).Fs.(*afero.BasePathFs).RealPath(what)
+	if err != nil {
+		return err
 	}
+
+	volumeFs := s.WorkshopVolumeContents[name]
+	if volumeFs == "" {
+		return fmt.Errorf("volume %q not found", name)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(mnt), 0755); err != nil {
+		return err
+	}
+
+	if err := os.Symlink(volumeFs, mnt); err != nil {
+		return err
+	}
+
+	s.WorkshopVolumeMountPoints[name] = what
 	return nil
 }
 
 func (s *FakeWorkshopBackend) DetachVolume(ctx context.Context, wp, name string) error {
+	s.volumeLock.Lock()
+	defer s.volumeLock.Unlock()
+
 	target := s.WorkshopVolumeMountPoints[name]
 
 	wfs, err := s.WorkshopFs(ctx, wp)
@@ -386,23 +428,32 @@ func (s *FakeWorkshopBackend) DetachVolume(ctx context.Context, wp, name string)
 	}
 	defer wfs.Close()
 
-	afero.Walk(wfs, target, func(path string, info fs.FileInfo, err error) error {
-		s.WorkshopVolumeContents[name][path] = true
-		return nil
-	})
-
 	err = wfs.RemoveAll(target)
 	delete(s.WorkshopVolumeMountPoints, name)
 	return err
 }
 
-func (s *FakeWorkshopBackend) CreateVolume(ctx context.Context, name string) error {
+// ImportVolume imports a tarball into the volume. The tarball must be a valid
+// directory (unpacked so that the tests could provide a temp directory instead
+// of a packed tarball).
+func (s *FakeWorkshopBackend) ImportVolume(ctx context.Context, name string, tarball string) error {
+	s.volumeLock.Lock()
+	defer s.volumeLock.Unlock()
+
+	if s.WorkshopVolumes[name] {
+		return workshop.ErrVolumeAlreadyExists
+	}
+	s.WorkshopVolumeContents[name] = tarball
 	s.WorkshopVolumes[name] = true
 	return nil
 }
 
 func (s *FakeWorkshopBackend) DeleteVolume(ctx context.Context, name string) error {
+	s.volumeLock.Lock()
+	defer s.volumeLock.Unlock()
+
 	delete(s.WorkshopVolumes, name)
+	delete(s.WorkshopVolumeContents, name)
 	return nil
 }
 

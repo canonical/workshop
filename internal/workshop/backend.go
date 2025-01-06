@@ -26,7 +26,7 @@ const (
 
 var (
 	ErrWorkshopNotLaunched = errors.New("workshop not launched")
-	ErrVolumeAlreadyExists = errors.New("storage volume already exists")
+	ErrVolumeAlreadyExists = errors.New("volume already exists")
 	ErrSdkProfileNotFound  = errors.New("sdk profile not found")
 
 	LookupUsername = user.Lookup
@@ -74,6 +74,9 @@ type VolumeManager interface {
 	// mount the device to the workshop, it must be mounted to the required
 	// workshop as a separate operation.
 	CreateVolume(ctx context.Context, name string) error
+
+	// Import a tarball into the volume. The tarball must be a valid tarball filepath.
+	ImportVolume(ctx context.Context, name string, tarball string) error
 
 	AttachVolume(ctx context.Context, wp, name, what string) error
 
