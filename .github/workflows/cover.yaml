@@ -74,9 +74,9 @@ jobs:
             COLOR=red
           fi
 
-          curl -s 'https://img.shields.io/badge/Coverage-"$COVERPERCENT"%25-"$COLOR"' > .github/wiki/coverage/coverage.svg
+          curl -s https://img.shields.io/badge/coverage-"$COVERPERCENT"%25-"$COLOR" > .github/wiki/coverage/coverage.svg
 
-          echo svg_url=https://img.shields.io/badge/Coverage-"$COVERPERCENT"%25-"$COLOR" >> $GITHUB_OUTPUT
+          echo svg_url=https://img.shields.io/badge/coverage-"$COVERPERCENT"%25-"$COLOR" >> $GITHUB_OUTPUT
 
       - name: Find Comment
         if: github.ref != 'refs/heads/main'
