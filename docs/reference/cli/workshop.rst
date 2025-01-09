@@ -46,7 +46,7 @@ such as :option:`!--help` or :option:`!-h`.
 
 
 .. include:: workshop-shell.rst
-    
+
 
 .. include:: workshop-sketch-sdk.rst
 
