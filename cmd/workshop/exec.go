@@ -158,7 +158,7 @@ func maybeNameAndCommand(cmd *cobra.Command, av []string) error {
 func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
 	// Infer workshop name if first positional argument is --
 	if cmd.ArgsLenAtDash() == 0 {
-		return c.runExec("", true, av)
+		return c.runExec("", true, false, av)
 	}
 
 	// Remove first -- if cobra didn't see it
@@ -168,7 +168,7 @@ func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
 		}
 	}
 
-	return c.runExec(av[0], false, av[1:])
+	return c.runExec(av[0], false, false, av[1:])
 }
 
 func (c *CmdShellAlias) Command() *cobra.Command {
@@ -196,10 +196,10 @@ func (c *CmdShellAlias) Run(cmd *cobra.Command, av []string) error {
 		workshop = av[0]
 	}
 	command := []string{"sudo", "-i", "-u", "workshop", "bash", "-c", "cd /project; exec bash"}
-	return c.execCommand.runExec(workshop, len(av) == 0, command)
+	return c.execCommand.runExec(workshop, len(av) == 0, true, command)
 }
 
-func (c *CmdExec) runExec(workshop string, inferName bool, command []string) error {
+func (c *CmdExec) runExec(workshop string, inferName bool, shell bool, command []string) error {
 	if c.Interactive && c.NonInteractive {
 		return errors.New("'-i' incompatible with '-I'")
 	}
@@ -324,9 +324,16 @@ func (c *CmdExec) runExec(workshop string, inferName bool, command []string) err
 		case nil:
 			return nil
 		case *client.ExitError:
+			// Wrap the exit-code for a shell session
+			if shell {
+				return nil
+			}
 			logger.Debugf("Process exited with code %d", e.ExitCode())
 			return err
 		default:
+			if shell {
+				return nil
+			}
 			return err
 		}
 	case <-sighup:
