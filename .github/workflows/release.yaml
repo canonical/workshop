@@ -19,6 +19,8 @@ jobs:
       - ${{ matrix.runner.arch }}
       - ${{ matrix.runner.size }}
     steps:
+      - uses: actions/checkout@v4
+
       - uses: canonical/action-build@v1
         id: snapcraft
 
