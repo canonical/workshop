@@ -1,0 +1,67 @@
+name: Release
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        runner:
+          - arch: ARM64
+            size: medium
+          - arch: X64
+            size: large
+    runs-on:
+      - self-hosted
+      - Linux
+      - noble
+      - ${{ matrix.runner.arch }}
+      - ${{ matrix.runner.size }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: canonical/action-build@v1
+        id: snapcraft
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ steps.snapcraft.outputs.snap }}
+  generate-docs:
+    runs-on:
+      - self-hosted
+      - Linux
+      - noble
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Generate CLI reference docs
+        run: go run ./cmd/workshop generate-docs ./docs/reference/cli
+
+      - name: Check for changes, commit, and create PR if any
+        run: |
+          if git diff --exit-code; then
+            echo "No changes detected, skipping commit and PR creation."
+          else
+            pr_branch="docs/reference-cli-$(date +'%Y%m%d%H%M%S')"
+            git checkout -b $pr_branch
+            
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            
+            git add .
+            git commit -m "Update CLI reference docs"
+            git push --set-upstream origin $pr_branch
+
+            pr_branch="docs/reference-cli-$(date +'%Y%m%d%H%M%S')"
+            gh pr create --title "Update CLI reference docs" --body "This PR updates the generated CLI reference documentation." --base main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
