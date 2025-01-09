@@ -46,7 +46,7 @@ such as :option:`!--help` or :option:`!-h`.
 
 
 .. include:: workshop-shell.rst
-    
+
 
 .. include:: workshop-sketch-sdk.rst
 
@@ -87,4 +87,4 @@ See also
 
 Explanation:
 
-- :ref:`exp_workshop_cli`
+- :ref:`exp_cli`
