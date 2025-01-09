@@ -9,7 +9,7 @@ Construct one or many workshops using their definitions.
 
 .. code-block:: console
 
-   $ workshop launch [--abort|--continue|--wait-on-error] <WORKSHOP>... [flags]
+   $ workshop launch <WORKSHOP>... [flags]
 
 .. rubric:: Description
 
@@ -25,11 +25,13 @@ definitions and installing their components. For each workshop, it:
 
 - On success, ties the workshop to the project and starts it
 
+
 The '--wait-on-error' option pauses the launch if an error occurs.
 Thus, you can fix the error and resume the operation or abort and revert it.
 This option can only be used with a single workshop.
 If multiple workshops are listed and an error occurs,
-the operation is aborted and reverted for all of them.
+the operation is aborted and no workshops are constructed.
+
 
 Notes:
 
@@ -53,14 +55,14 @@ Notes:
    Continue the previously paused operation.
 
 
---wait-on-error
-
-   Pause the operation on error; to resume, use '--continue' or '--abort'.
-
-
 --no-wait
 
    Return the change ID, don't wait for the operation to finish
+
+
+--wait-on-error
+
+   Pause the operation on error; to resume, use '--continue' or '--abort'.
 
 
 
@@ -81,23 +83,3 @@ The name is optional if the project has only one workshop:
    $ workshop launch
 
 
-Launch 'nimble', but stop on any errors (won’t accept multiple workshops):
-
-.. code-block:: console
-
-   $ workshop launch nimble --wait-on-error
-
-
-After 'nimble' launch stopped on error, abort the operation:
-
-.. code-block:: console
-
-   $ workshop launch nimble --abort
-
-
-After 'nimble' launch stopped on error and the workshop was fixed,
-continue the operation:
-
-.. code-block:: console
-
-   $ workshop launch nimble --continue
