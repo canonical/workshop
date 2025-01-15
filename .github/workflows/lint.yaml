@@ -24,6 +24,14 @@ jobs:
           args: "--out-format=colored-line-number"
           skip-cache: true
 
+      - name: errcheck
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: "--out-format=colored-line-number --enable-only errcheck"
+          only-new-issues: true
+          skip-cache: true
+
       - name: shellcheck
         run: |
           git ls-files | file --mime-type -Nnf- | grep shellscript | cut -f1 -d: | xargs shellcheck
