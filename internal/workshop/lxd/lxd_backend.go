@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	LxdSock     = "/var/snap/lxd/common/lxd/unix.socket"
-	storagePool = "default"
+	LxdSock           = "/var/snap/lxd/common/lxd/unix.socket"
+	storagePool       = "workshop"
+	storagePoolDriver = "zfs"
 )
 
 var (
@@ -68,6 +69,41 @@ func New() (*Backend, error) {
 
 	if srv := os.Getenv("WORKSHOP_IMAGE_SERVER"); srv != "" {
 		imageServer = srv
+	}
+
+	// Create LXD storage pool if it doesn't exist
+	conn, err := lxd.ConnectLXDUnixWithContext(context.Background(), LxdSock, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Disconnect()
+
+	pools, err := conn.GetStoragePools()
+	if err != nil {
+		return nil, err
+	}
+
+	poolExists := false
+	for _, pool := range pools {
+		if pool.Name == storagePool {
+			if pool.Driver != storagePoolDriver {
+				return nil, fmt.Errorf("storage pool %q already exists with different driver %q", storagePool, pool.Driver)
+			}
+
+			poolExists = true
+			break
+		}
+	}
+
+	if !poolExists {
+		req := api.StoragePoolsPost{
+			Name:   storagePool,
+			Driver: storagePoolDriver,
+		}
+		err := conn.CreateStoragePool(req)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &server, nil
@@ -290,7 +326,7 @@ func (s *Backend) AddWorkshopMount(ctx context.Context, name string, device work
 	}
 	if device.Type == workshop.Volume {
 		inst.Devices[device.Name] = map[string]string{"type": "disk",
-			"pool":   "default",
+			"pool":   storagePool,
 			"path":   device.What,
 			"source": device.Where}
 	} else {
