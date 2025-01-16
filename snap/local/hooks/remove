@@ -30,12 +30,22 @@ for p in $(echo "$projects" | xargs -L1 echo); do
     lxc image delete $images --project "$p"
   fi
 
-  lxc storage volume list --project "$p"
-  volumes=$(lxc storage volume list default type=custom -c n -f compact --project "$p" | awk 'NR>1 {printf "%s ", $1}')
-  echo "Removing storage volumes: $volumes"
-  for volume in $(echo "$volumes" | xargs -L1 echo); do
-    lxc storage volume delete default "$volume" --project "$p"
-  done
 
-  lxc project delete "$p" 
 done 
+
+# Storage pool volumes are shared among projects and removed last.
+for p in $(echo "$projects" | xargs -L1 echo); do
+  lxc storage volume list --project "$p"
+  # Using awk to filter by type as LXD won't accept the type filter without a
+  # storage name.
+  volumes=$(lxc storage volume list -c pnt -f compact --project "$p" | awk '$3 == "custom" {printf "%s %s ", $1, $2}')
+  echo "$volumes" | xargs -n2 -r | while read -r pool volume; do
+    lxc storage volume delete "$pool" "$volume" --project "$p"
+  done
+done
+
+lxc storage delete workshop
+
+for p in $(echo "$projects" | xargs -L1 echo); do
+  lxc project delete "$p" 
+done

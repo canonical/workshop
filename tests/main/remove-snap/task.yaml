@@ -15,10 +15,18 @@ execute: |
   echo "Modify apt cache for later"
   workshop_exec exec --project $(pwd)/project-1 ws-snap-remove-1 sudo touch /var/cache/apt/archives/sentinel
 
+  echo "Run workshop as another user to have multiple LXD projects"
+  sudo useradd -m -s /bin/bash abc
+  sudo -u abc 2>&1 -- workshop list --project $(pwd)/project-1 
+
   echo "Check that workshops will be removed on snap removal"       
   snap remove workshop
-  snap install --dangerous --classic /workshop/tests/*.snap
+  sudo deluser --remove-home abc
 
+  echo "Check that workshop storage pool has been removed"
+  $(lxc storage list -f compact | awk 'NR>1 {print $1}' | grep -q workshop) && (echo "workshop storage pool must be removed" && exit 1) 
+
+  snap install --dangerous --classic /workshop/tests/*.snap
   [[ $(workshop_exec list --global | wc -c) -eq 0 ]] || (echo "no workshops must remain after snap removal" && exit 1)
 
   echo "Check that cache storage has been removed"
