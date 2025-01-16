@@ -30,7 +30,7 @@ for p in $(echo "$projects" | xargs -L1 echo); do
     lxc image delete $images --project "$p"
   fi
 
-  lxc storage volume list default --project "$p"
+  lxc storage volume list --project "$p"
   volumes=$(lxc storage volume list default type=custom -c n -f compact --project "$p" | awk 'NR>1 {printf "%s ", $1}')
   echo "Removing storage volumes: $volumes"
   for volume in $(echo "$volumes" | xargs -L1 echo); do

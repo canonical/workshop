@@ -8,7 +8,6 @@ import (
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
 
-	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/workshop"
@@ -47,17 +46,6 @@ func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
 		}
 	})
 
-	volume := workshop.AptCacheVolumeName(name, projectId)
-	if err = s.DetachVolume(ctx, name, volume); err != nil {
-		return err
-	}
-
-	rev.Add(func() {
-		if err := s.AttachVolume(ctx, name, volume, dirs.AptCachePath); err != nil {
-			logger.Debugf("Cannot attach apt cache for %q after failed stash: %s", name, err.Error())
-		}
-	})
-
 	if err = s.moveInstanceAndProfiles(conn, instance, stashedInsance, LxdProjectName(user), LxdSystemProjectName(user)); err != nil {
 		return err
 	}
@@ -87,11 +75,6 @@ func (s *Backend) UnstashWorkshop(ctx context.Context, name string) error {
 
 	if err := s.moveInstanceAndProfiles(conn, stashedInsance, instance, LxdSystemProjectName(user), LxdProjectName(user)); err != nil {
 		return err
-	}
-
-	volume := workshop.AptCacheVolumeName(name, projectId)
-	if err = s.AttachVolume(ctx, name, volume, dirs.AptCachePath); err != nil {
-		logger.Debugf("Cannot reattach apt cache for %q after stash: %s", name, err.Error())
 	}
 
 	if err := s.updateInstanceState(conn, ctx, name, "start", false); err != nil {

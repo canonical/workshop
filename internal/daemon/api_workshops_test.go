@@ -276,8 +276,8 @@ type testSdk struct {
 }
 
 var apiSuiteSdks = map[string]testSdk{
-	"test-sdk":   testSdk{s: sdk.Setup{Name: "test-sdk", Revision: sdk.R(1)}, meta: testsdk},
-	"test-sdk-2": testSdk{s: sdk.Setup{Name: "test-sdk-2", Revision: sdk.R(1)}, meta: testsdk2},
+	"test-sdk":   {s: sdk.Setup{Name: "test-sdk", Revision: sdk.R(1)}, meta: testsdk},
+	"test-sdk-2": {s: sdk.Setup{Name: "test-sdk-2", Revision: sdk.R(1)}, meta: testsdk2},
 }
 
 func (s *apiSuite) launchWorkshop(c *check.C, name, yaml string, sdks map[string]testSdk) {

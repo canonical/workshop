@@ -19,7 +19,7 @@ import (
 var lxdProjectConfig = map[string]string{
 	"features.images":          "false",
 	"features.profiles":        "true",
-	"features.storage.volumes": "true",
+	"features.storage.volumes": "false",
 }
 
 func LxdProjectName(user string) string {
