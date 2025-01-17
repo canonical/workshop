@@ -5,7 +5,7 @@ workshop info
 
 Print the current status and details of a workshop as YAML.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -23,12 +23,12 @@ details for a workshop, formatting them as YAML. Specifically, it prints:
 
 - Individual SDK details, such as name, channel, installation date and revision
 
-- Currently mounted content interface plugs
+- Currently connected mount interface plugs
 
 
 Notes:
 
-- Avoid assumptions based on SDK channels: 'latest/stable' may be neither
+- Avoid assumptions based on SDK channels: 'latest/stable' may be neither.
 
 
 .. rubric:: Examples

@@ -5,7 +5,7 @@ workshop connections
 
 List interface connections.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -22,19 +22,10 @@ additional notes, including specific plug bindings, are provided as needed.
 
 Notes:
 
-- The output lists connections created with 'workshop connect' as 'manual'
+- The output lists connections created with 'workshop connect' as 'manual'.
 
 - The '--all' option needn't be used with an argument;
-  if a workshop is supplied, disconnected plugs are also listed
-
-
-.. rubric:: Options
-
-
---all
-
-   Include disconnected plugs in the output.
-
+  if a workshop is supplied, disconnected plugs are also listed.
 
 
 .. rubric:: Examples
@@ -52,5 +43,14 @@ List connections for all workshops in the current project directory:
 .. code-block:: console
 
    $ workshop connections
+
+
+
+.. rubric:: Flags
+
+
+--all
+
+   Include disconnected plugs in the output.
 
 

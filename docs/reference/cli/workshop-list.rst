@@ -5,7 +5,7 @@ workshop list
 
 List project workshops.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -16,13 +16,13 @@ List project workshops.
 
 This command enumerates all workshops in the project, printing a compact list:
 
-- Project:  absolute pathname of the project where this workshop belongs
+- Project:  Absolute pathname of the project where this workshop belongs
 
-- Workshop: workshop name, as set by its definition
+- Workshop: Workshop name, as set by its definition
 
-- Status:   workshop status, such as 'Off', 'Ready', 'Pending' and so on
+- Status:   Workshop status, such as 'Off', 'Ready', 'Pending' and so on
 
-- Notes:    internal remarks on the overall state of the workshop
+- Notes:    Internal remarks on the overall state of the workshop
 
 
 The '--global' option lists all workshops from all projects in the system;
@@ -31,16 +31,7 @@ however, it doesn't include any that are 'Off'.
 
 Notes:
 
-- For details of a single workshop, use 'workshop info' instead
-
-
-.. rubric:: Options
-
-
---global
-
-   List workshops from all projects in the system
-
+- For details of a single workshop, use 'workshop info' instead.
 
 
 .. rubric:: Examples
@@ -58,5 +49,14 @@ List the globally registered workshops:
 .. code-block:: console
 
    $ workshop list --global
+
+
+
+.. rubric:: Flags
+
+
+--global
+
+   List workshops from all projects in the system.
 
 

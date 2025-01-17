@@ -5,7 +5,7 @@ workshop changes
 
 List recent changes to the workshops in a project.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -18,15 +18,15 @@ Any substantial operation on a workshop is a change that consists of tasks;
 the command lists details of recent changes for all workshops within a project.
 For each change, it prints the following details:
 
-- ID:      uniquely identifies the change within the project
+- ID:      Uniquely identifies the change within the project
 
-- Status:  reflects the change's progress and affects the workshop's status
+- Status:  Reflects the change's progress and affects the workshop's status
 
-- Spawn:   tells when the change was started
+- Spawn:   Tells when the change was started
 
-- Ready:   tells when the change was successfully finished, if at all
+- Ready:   Tells when the change was successfully finished, if at all
 
-- Summary: lists actions, affected workshops, other information
+- Summary: Lists actions, affected workshops, other information
 
 
 Notes:

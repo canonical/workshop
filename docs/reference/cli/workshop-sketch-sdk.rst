@@ -5,7 +5,7 @@ workshop sketch-sdk
 
 Edit the sketch SDK and graft it onto the workshop.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -27,32 +27,13 @@ The '--remove' option removes the SDK permanently.
 Notes:
 
 - The 'sketch' SDK doesn't appear in the workshop definition
-  and cannot include build-time data such as parts
+  and cannot include build-time data such as parts.
 
 - In addition to hooks, the 'sketch' SDK can use interfaces,
-  define plugs, slots, connections and bindings
+  define plugs, slots, connections and bindings.
 
 - You can partially refresh the workshop, targeting the 'sketch' SDK
-  with the 'workshop refresh <WORKSHOP>/sketch' command
-
-
-.. rubric:: Options
-
-
---remove
-
-   Remove the sketch SDK from the workshop.
-
-
---restore
-
-   Return the previously stashed SDK to the workshop.
-
-
---stash
-
-   Stash the sketch SDK and remove it from the workshop.
-
+  with the 'workshop refresh <WORKSHOP>/sketch' command.
 
 
 .. rubric:: Examples
@@ -78,5 +59,24 @@ Stash the sketch SDK, temporarily reverting the changes in the workshop:
 .. code-block:: console
 
    $ workshop sketch-sdk nimble --stash
+
+
+
+.. rubric:: Flags
+
+
+--remove
+
+   Remove the sketch SDK from the workshop.
+
+
+--restore
+
+   Return the previously stashed SDK to the workshop.
+
+
+--stash
+
+   Stash the sketch SDK and remove it from the workshop.
 
 

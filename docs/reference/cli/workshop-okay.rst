@@ -5,7 +5,7 @@ workshop okay
 
 Acknowledge listed warnings.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 

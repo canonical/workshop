@@ -5,7 +5,7 @@ workshop sketches
 
 List sketches.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 

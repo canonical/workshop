@@ -5,7 +5,7 @@ workshop start
 
 Start one or many workshops.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -27,11 +27,11 @@ the operation is aborted and no workshops are started.
 
 Notes:
 
-- If a workshop is already started or wasn't yet launched, an error occurs
+- If a workshop is already started or wasn't yet launched, an error occurs.
 
-- When interrupted, the command attempts to gracefully revert its actions
+- When interrupted, the command attempts to gracefully revert its actions.
 
-- To stop a started workshop, use 'workshop stop'
+- To stop a started workshop, use 'workshop stop'.
 
 
 .. rubric:: Examples

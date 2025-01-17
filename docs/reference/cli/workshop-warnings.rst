@@ -5,7 +5,7 @@ workshop warnings
 
 List warnings.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -25,7 +25,18 @@ or the '--all' option is used.
 Also, warnings expire automatically; expired warnings are not listed.
 
 
-.. rubric:: Options
+.. rubric:: Examples
+
+
+List the globally registered warnings across all workshops:
+
+.. code-block:: console
+
+   $ workshop warnings
+
+
+
+.. rubric:: Flags
 
 
 --abs-time
@@ -48,16 +59,5 @@ Also, warnings expire automatically; expired warnings are not listed.
 --verbose
 
    Show more information per each warning.
-
-
-
-.. rubric:: Examples
-
-
-List the globally registered warnings across all workshops:
-
-.. code-block:: console
-
-   $ workshop warnings
 
 

@@ -5,7 +5,7 @@ workshop refresh
 
 Update workshops according to their definitions.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -37,41 +37,23 @@ the operation is aborted and reverted for all of them.
 
 Notes:
 
-- The workshop must be 'Ready' to be refreshed
+- The workshop must be 'Ready' to be refreshed.
 
-- To construct a newly defined workshop, use 'workshop launch' instead
+- To construct a newly defined workshop, use 'workshop launch' instead.
 
-- Throughout the refresh, all affected workshops remain 'Pending'
+- Throughout the refresh, all affected workshops remain 'Pending'.
 
-- If the refresh removes an SDK from the workshop, the SDK state isn't saved
+- If the refresh removes an SDK from the workshop, the SDK state isn't saved.
 
-- Updated and newly added SDKs are installed in alphabetical order
+- Updated and newly added SDKs are installed in the order
+  they are listed in the workshop definition.
 
-- For content interface plugs, mounts the last source
-  set by 'workshop remount', if any
+- For mount interface plugs, mounts the last source
+  set by 'workshop remount', if any.
 
 - If the optional <SDK> is supplied,
   the operation is limited to this SDK;
-  currently, it can only be 'sketch'
-
-
-.. rubric:: Options
-
-
---abort
-
-   Abort the previously paused operation, reverting any changes.
-
-
---continue
-
-   Continue the previously paused operation.
-
-
---wait-on-error
-
-   Pause the operation on error; to resume, use '--continue' or '--abort'.
-
+  currently, it can only be 'sketch'.
 
 
 .. rubric:: Examples
@@ -118,5 +100,24 @@ Refresh the sketch SDK in the 'nimble' workshop:
 .. code-block:: console
 
    $ workshop refresh nimble/sketch
+
+
+
+.. rubric:: Flags
+
+
+--abort
+
+   Abort the previously paused operation, reverting any changes.
+
+
+--continue
+
+   Continue the previously paused operation.
+
+
+--wait-on-error
+
+   Pause the operation on error; to resume, use '--continue' or '--abort'.
 
 

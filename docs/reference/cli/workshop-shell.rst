@@ -5,7 +5,7 @@ workshop shell
 
 Start an interactive terminal session for the workshop.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -22,11 +22,11 @@ To accept a 'shell' command, the workshop must be 'Ready' or 'Pending'.
 
 Notes:
 
-- To start a workshop before running a terminal session, use 'workshop start'
+- To start a workshop before running a terminal session, use 'workshop start'.
 
 - The subcommand is a shorthand for 'workshop exec';
   it launches the login shell for 'workshop',
-  the default non-privileged user in a workshop
+  the default non-privileged user in a workshop.
 
 
 .. rubric:: Examples

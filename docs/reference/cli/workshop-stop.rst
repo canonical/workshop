@@ -5,7 +5,7 @@ workshop stop
 
 Stop one or many workshops.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -27,11 +27,11 @@ the operation is aborted and no workshops are stopped.
 
 Notes:
 
-- If a workshop wasn't yet started or even launched, an error occurs
+- If a workshop wasn't yet started or even launched, an error occurs.
 
-- When interrupted, the command attempts to gracefully revert its actions
+- When interrupted, the command attempts to gracefully revert its actions.
 
-- To start a stopped workshop, use 'workshop start'
+- To start a stopped workshop, use 'workshop start'.
 
 
 .. rubric:: Examples

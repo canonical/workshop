@@ -5,7 +5,7 @@ workshop launch
 
 Construct one or many workshops using their definitions.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -35,35 +35,11 @@ the operation is aborted and no workshops are constructed.
 
 Notes:
 
-- Names listed as arguments must match respective 'name:' values in definitions
+- Names listed as arguments must match respective 'name:' values in definitions.
 
-- To update an existing workshop, use 'workshop refresh' instead
+- To update an existing workshop, use 'workshop refresh' instead.
 
-- SDKs are installed in alphabetical order
-
-
-.. rubric:: Options
-
-
---abort
-
-   Abort the previously paused operation, reverting any changes.
-
-
---continue
-
-   Continue the previously paused operation.
-
-
---no-wait
-
-   Return the change ID, don't wait for the operation to finish
-
-
---wait-on-error
-
-   Pause the operation on error; to resume, use '--continue' or '--abort'.
-
+- SDKs are installed in the order they are listed in the definition.
 
 
 .. rubric:: Examples
@@ -81,5 +57,29 @@ The name is optional if the project has only one workshop:
 .. code-block:: console
 
    $ workshop launch
+
+
+
+.. rubric:: Flags
+
+
+--abort
+
+   Abort the previously paused operation, reverting any changes.
+
+
+--continue
+
+   Continue the previously paused operation.
+
+
+--no-wait
+
+   Return the change ID, don't wait for the operation to finish.
+
+
+--wait-on-error
+
+   Pause the operation on error; to resume, use '--continue' or '--abort'.
 
 

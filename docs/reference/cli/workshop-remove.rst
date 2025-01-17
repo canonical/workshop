@@ -5,7 +5,7 @@ workshop remove
 
 Remove one or many workshops.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -22,10 +22,12 @@ This command removes the workshops listed as arguments. For each workshop, it:
 
 Notes:
 
-- If any listed workshop is 'Off' or 'Pending', none are removed
-- To rebuild a removed workshop from scratch, use 'workshop launch'
-- For content interface plugs, non-default sources set by 'workshop remount'
-  aren't removed
+- If any listed workshop is 'Off' or 'Pending', none are removed.
+
+- To rebuild a removed workshop from scratch, use 'workshop launch'.
+
+- For mount interface plugs,
+  non-default sources set by 'workshop remount' aren't removed.
 
 
 .. rubric:: Examples

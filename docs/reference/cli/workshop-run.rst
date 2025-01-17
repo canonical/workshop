@@ -5,7 +5,7 @@ workshop run
 
 Run a workshop script and wait for it to complete.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -43,49 +43,10 @@ and the script takes one or more arguments.
 
 Notes:
 
-- To start a workshop before running scripts in it, use 'workshop start'
+- To start a workshop before running scripts in it, use 'workshop start'.
 
 - You can set the working directory, environment variables, user and group ID
-  for running the script in the workshop; reasonable defaults are provided
-
-
-.. rubric:: Options
-
-
---cwd
-
-   Set the working directory in the workshop
-
-
---env
-
-   Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.
-
-
---uid
-
-   Run as a specific workshop user
-
-
---gid
-
-   Run as a member of a specific workshop group
-
-
---timeout
-
-   Set a timeout; valid units are ns, us or µs, ms, s, m, h
-
-
---interactive
-
-   Force interactive mode
-
-
---non-interactive
-
-   Force non-interactive mode
-
+  for running the script in the workshop; reasonable defaults are provided.
 
 
 .. rubric:: Examples
@@ -106,11 +67,57 @@ A similar command that sets an environment variable and the working directory:
    $ workshop run --env GO111MODULE=off -w /project nimble build
 
 
-The workshop name is optional if the project only has one workshop
-and a separator is provided:
+The workshop name is optional if the project only has one workshop:
 
 .. code-block:: console
 
-   $ workshop exec -- build
+   $ workshop run build
+
+
+Scripts can accept arguments,
+if a separator or a workshop name is provided:
+
+.. code-block:: console
+
+   $ workshop run -- build --debug
+
+
+
+.. rubric:: Flags
+
+
+--cwd
+
+   Set the working directory in the workshop.
+
+
+--env
+
+   Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.
+
+
+--uid
+
+   Run as a specific workshop user.
+
+
+--gid
+
+   Run as a member of a specific workshop group.
+
+
+--timeout
+
+   Set a timeout; valid units are ns, us or µs, ms, s, m, h.
+
+
+--interactive
+
+   Force interactive mode.
+
+
+--non-interactive
+
+   Force non-interactive mode.
 
 

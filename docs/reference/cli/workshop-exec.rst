@@ -5,7 +5,7 @@ workshop exec
 
 Run a command and wait for it to complete.
 
-.. rubric:: Synopsis
+.. rubric:: Usage
 
 .. code-block:: console
 
@@ -42,49 +42,10 @@ This syntax is required if the workshop name is omitted.
 
 Notes:
 
-- To start a workshop before running commands in it, use 'workshop start'
+- To start a workshop before running commands in it, use 'workshop start'.
 
 - You can set the working directory, environment variables, user and group ID
-  for running the command in the workshop; reasonable defaults are provided
-
-
-.. rubric:: Options
-
-
---cwd
-
-   Set the working directory in the workshop
-
-
---env
-
-   Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.
-
-
---uid
-
-   Run as a specific workshop user
-
-
---gid
-
-   Run as a member of a specific workshop group
-
-
---timeout
-
-   Set a timeout; valid units are ns, us or µs, ms, s, m, h
-
-
---interactive
-
-   Force interactive mode
-
-
---non-interactive
-
-   Force non-interactive mode
-
+  for running the command in the workshop; reasonable defaults are provided.
 
 
 .. rubric:: Examples
@@ -125,5 +86,44 @@ Run a command as root (the default is 'workshop'):
 .. code-block:: console
 
    $ workshop exec --uid 0 nimble id
+
+
+
+.. rubric:: Flags
+
+
+--cwd
+
+   Set the working directory in the workshop.
+
+
+--env
+
+   Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.
+
+
+--uid
+
+   Run as a specific workshop user.
+
+
+--gid
+
+   Run as a member of a specific workshop group.
+
+
+--timeout
+
+   Set a timeout; valid units are ns, us or µs, ms, s, m, h.
+
+
+--interactive
+
+   Force interactive mode.
+
+
+--non-interactive
+
+   Force non-interactive mode.
 
 
