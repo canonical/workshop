@@ -100,15 +100,18 @@ type File struct {
 	Scripts     map[string]Script `yaml:"scripts,omitempty"`
 }
 
-func (p Script) MarshalYAML() (interface{}, error) {
+func (p Script) String() string {
 	// Trim newlines, then append a newline for multi-line scripts.
 	script := strings.Trim(string(p), "\n")
 	if strings.ContainsRune(script, '\n') {
 		script += "\n"
 	}
+	return script
+}
 
+func (p Script) MarshalYAML() (interface{}, error) {
 	node := &yaml.Node{}
-	err := node.Encode(script)
+	err := node.Encode(p.String())
 	return node, err
 }
 

@@ -49,6 +49,11 @@ var api = []*Command{{
 	UserOK:  true,
 	POST:    v1PostWorkshopMount,
 }, {
+	Path:    "/v1/projects/{id}/workshops/{name}/scripts",
+	GuestOK: false,
+	UserOK:  true,
+	GET:     v1GetProjectWorkshopScripts,
+}, {
 	Path:    "/v1/connections",
 	GuestOK: false,
 	UserOK:  true,

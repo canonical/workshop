@@ -40,6 +40,7 @@ func (c *CmdRoot) Command(cwd string) *cobra.Command {
 	cmd.AddCommand((&CmdExec{root: c}).Command())
 	cmd.AddCommand((&CmdShell{root: c}).Command())
 	cmd.AddCommand((&CmdRun{root: c}).Command())
+	cmd.AddCommand((&CmdScripts{root: c}).Command())
 	cmd.AddCommand((&CmdRemove{root: c}).Command())
 	cmd.AddCommand((&CmdRemount{root: c}).Command())
 	cmd.AddCommand((&CmdConnections{root: c}).Command())

@@ -44,6 +44,15 @@ sdks:
     channel: latest/stable
 `
 
+	scripts = `name: scripts
+base: ubuntu@22.04
+scripts:
+  oneline: echo one line
+  multiline: |
+    echo two
+    echo lines
+`
+
 	manysdks = `name: manysdks
 base: ubuntu@22.04
 sdks:
@@ -566,6 +575,35 @@ func (s *apiSuite) TestGetWorkshopInfoSomePlugsBound(c *check.C) {
 			},
 		},
 		Path: workshop.Filepath(s.project.Path, "somebound")})
+}
+
+func (s *apiSuite) TestGetWorkshopScripts(c *check.C) {
+	// Setup (create a running workshop with a mount)
+	s.daemon(c)
+	s.d.Overlord().Loop()
+	defer s.d.Overlord().Stop()
+
+	s.launchWorkshop(c, "scripts", scripts, map[string]string{})
+
+	// Get Workshop scripts
+	projectsCmd := apiCmd("/v1/projects/{id}/workshops/{name}/scripts")
+	s.vars = map[string]string{"id": s.project.ProjectId, "name": "scripts"}
+	req, err := s.createProjectsRequest("GET", "/v1/projects/"+s.project.ProjectId+"/workshops/scripts/scripts", nil)
+	c.Assert(err, check.IsNil)
+
+	rsp := v1GetProjectWorkshopScripts(projectsCmd, req, nil).(*resp)
+
+	// Verify
+	c.Assert(rsp.Type, check.Equals, ResponseTypeSync)
+	c.Assert(rsp.Status, check.Equals, http.StatusOK)
+
+	_, err = rsp.MarshalJSON()
+	c.Assert(err, check.IsNil)
+
+	c.Check(rsp.Result, check.DeepEquals, map[string]Script{
+		"oneline":   {Script: "echo one line"},
+		"multiline": {Script: "echo two\necho lines\n"},
+	})
 }
 
 type expectedResp struct {

@@ -61,6 +61,10 @@ type Workshop struct {
 	Path string `json:"path"`
 }
 
+type Script struct {
+	Script string `json:"script"`
+}
+
 type ListOptions struct {
 	ProjectId string
 }
@@ -155,6 +159,15 @@ func (client *Client) singleWorkshopOrFile(project *Project) (*WorkshopInfo, *Wo
 		file = info.Files[0]
 	}
 	return workshop, file, nil
+}
+
+func (client *Client) ListScripts(projectId, name string) (map[string]Script, error) {
+	var scripts map[string]Script
+	_, err := client.doSync("GET", "/v1/projects/"+projectId+"/workshops/"+name+"/scripts", nil, nil, nil, &scripts)
+	if err != nil {
+		return nil, err
+	}
+	return scripts, nil
 }
 
 func (client *Client) Remount(plug *PlugRef, source string) (changeId string, err error) {

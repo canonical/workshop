@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/sys/unix"
+	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/client"
 	"github.com/canonical/workshop/internal/logger"
@@ -151,6 +152,11 @@ Notes:
 
 - You can set the working directory, environment variables, user and group ID
   for running the script in the workshop; reasonable defaults are provided.
+`
+
+var shortScriptsHelp = "List workshop scripts"
+var longScriptsHelp = `
+This command enumerates all scripts in the workshop, printing a YAML map.
 `
 
 func (c *CmdExec) Command() *cobra.Command {
@@ -540,4 +546,55 @@ func execControlHandler(process *client.ExecProcess, terminal bool, stop <-chan 
 			}
 		}
 	}
+}
+
+type CmdScripts struct {
+	root *CmdRoot
+}
+
+func (c *CmdScripts) Command() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:   "scripts",
+		Args:  cobra.MaximumNArgs(1),
+		Short: shortScriptsHelp,
+		Long:  longScriptsHelp,
+		Example: `
+List scripts for the 'nimble' workshop in the current project directory:
+$ workshop scripts nimble
+
+The name is optional if the project has only one workshop:
+$ workshop scripts`,
+		RunE: c.Run,
+	}
+
+	return cmd
+}
+
+func (c *CmdScripts) Run(cmd *cobra.Command, av []string) error {
+	cli, err := c.root.client()
+	if err != nil {
+		return err
+	}
+
+	p, err := cli.Project(c.root.project)
+	if err != nil {
+		return err
+	}
+
+	if len(av) == 0 {
+		name, err := cli.SingleWorkshopName(p)
+		if err != nil {
+			return err
+		}
+		av = []string{name}
+	}
+
+	scripts, err := cli.ListScripts(p.Id, av[0])
+	if err != nil || len(scripts) == 0 {
+		return err
+	}
+
+	encoder := yaml.NewEncoder(Stdout)
+	encoder.SetIndent(2)
+	return encoder.Encode(scripts)
 }

@@ -82,6 +82,10 @@ type Workshop struct {
 	Path string `json:"path"`
 }
 
+type Script struct {
+	Script string `json:"script"`
+}
+
 var ensureStateSoon = stateEnsureBefore
 
 func workshopFileToInfo(pid string, name string, path string) *WorkshopFileInfo {
@@ -455,4 +459,35 @@ func v1GetProjectWorkshop(c *Command, r *http.Request, _ *userState) Response {
 	}
 
 	return SyncResponse(rsp, http.StatusOK)
+}
+
+func v1GetProjectWorkshopScripts(c *Command, r *http.Request, _ *userState) Response {
+	projectId := muxVars(r)["id"]
+	name := muxVars(r)["name"]
+
+	if projectId == "" {
+		return statusBadRequest("project-id must be provided")
+	}
+
+	if name == "" {
+		return statusBadRequest("workshop name must be provided")
+	}
+
+	state := c.d.overlord.State()
+	state.Lock()
+	defer state.Unlock()
+
+	wrkmgr := c.d.overlord.WorkshopManager()
+	file, err := wrkmgr.WorkshopFile(r.Context(), name, projectId)
+	if err != nil {
+		return statusNotFound("%w", err)
+	}
+
+	// Convert strings to objects to allow extra fields in future.
+	compat := make(map[string]Script, len(file.Scripts))
+	for name, script := range file.Scripts {
+		compat[name] = Script{Script: script.String()}
+	}
+
+	return SyncResponse(compat, http.StatusOK)
 }
