@@ -72,7 +72,7 @@ func (s *apiSuite) TestStateChangesProjectAndWorkshopMustBeProvidedTogether(c *c
 	c.Check(rsp.Type, check.Equals, ResponseTypeError)
 	c.Check(rsp.Status, check.Equals, 400)
 	c.Check(rsp.Result.(*errorResult).Message, check.Equals,
-		"project-id must be provided if workshops are specified")
+		"project-id required if workshops are specified")
 }
 
 func (s *apiSuite) TestStateChangesDefaultToAll(c *check.C) {

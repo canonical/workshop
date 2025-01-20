@@ -787,7 +787,7 @@ func (s *apiSuite) TestLaunchWorkshopBasic(c *check.C) {
 		{
 			Type:    ResponseTypeError,
 			Status:  http.StatusBadRequest,
-			Message: "cannot launch: at least one workshop name must be provided",
+			Message: "cannot launch: no workshop names provided",
 		},
 		{
 			Type:    ResponseTypeError,

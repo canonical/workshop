@@ -128,7 +128,7 @@ func v1GetChanges(c *Command, r *http.Request, _ *userState) Response {
 	query := r.URL.Query()
 
 	if query.Has("workshops") && !query.Has("project-id") {
-		return statusBadRequest("project-id must be provided if workshops are specified")
+		return statusBadRequest("project-id required if workshops are specified")
 	}
 
 	qselect := query.Get("select")

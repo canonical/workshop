@@ -33,11 +33,11 @@ func v1PostWorkshopMount(c *Command, r *http.Request, _ *userState) Response {
 	w := muxVars(r)["name"]
 
 	if projectId == "" {
-		return statusBadRequest("project-id must be provided")
+		return statusBadRequest("project-id required")
 	}
 
 	if w == "" {
-		return statusBadRequest("workshop name must be provided")
+		return statusBadRequest("workshop name required")
 	}
 
 	user, ok := r.Context().Value(workshop.ContextUser).(string)

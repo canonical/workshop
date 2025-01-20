@@ -343,7 +343,7 @@ func v1PostProjectWorkshop(c *Command, r *http.Request, _ *userState) Response {
 	}
 
 	if len(reqData.Names) == 0 {
-		return statusBadRequest("cannot %s: at least one workshop name must be provided", reqData.Action)
+		return statusBadRequest("cannot %s: no workshop names provided", reqData.Action)
 	}
 
 	reqData.Names = strutil.Deduplicate(reqData.Names)
@@ -419,11 +419,11 @@ func v1GetProjectWorkshop(c *Command, r *http.Request, _ *userState) Response {
 	name := muxVars(r)["name"]
 
 	if projectId == "" {
-		return statusBadRequest("project-id must be provided")
+		return statusBadRequest("project-id required")
 	}
 
 	if name == "" {
-		return statusBadRequest("workshop name must be provided")
+		return statusBadRequest("workshop name required")
 	}
 
 	state := c.d.overlord.State()
@@ -466,11 +466,11 @@ func v1GetProjectWorkshopScripts(c *Command, r *http.Request, _ *userState) Resp
 	name := muxVars(r)["name"]
 
 	if projectId == "" {
-		return statusBadRequest("project-id must be provided")
+		return statusBadRequest("project-id required")
 	}
 
 	if name == "" {
-		return statusBadRequest("workshop name must be provided")
+		return statusBadRequest("workshop name required")
 	}
 
 	state := c.d.overlord.State()
