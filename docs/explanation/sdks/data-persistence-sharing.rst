@@ -72,6 +72,7 @@ per each directory you want to retain during the workshop's life cycle.
      training-data:
        interface: mount
        workshop-target: /opt/training
+       read-only: true
 
 
 This SDK defines two mount plugs;
@@ -80,6 +81,10 @@ for each,
 Both :samp:`workshop-target` directories inside the workshop
 can be used by the SDK-specific logic
 implemented via :ref:`hooks <exp_sdk_hooks>` and other features.
+
+Additionally, you can mark a directory as `read-only`.
+|ws_markup| will then enforce the immutability of resources in this directory
+when they are accessed from inside the workshop.
 
 Here's a corresponding workshop definition:
 

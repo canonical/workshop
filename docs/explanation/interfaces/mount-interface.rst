@@ -36,7 +36,8 @@ which is declared in the SDK definition.
 
 A basic structure would include the name of the plug itself,
 the interface (:samp:`mount`)
-and the intended target path inside the workshop (:samp:`workshop-target`).
+the intended target path inside the workshop (:samp:`workshop-target`)
+and, optionally, whether the mount should be read-only (:samp:`read-only`).
 
 Defining the plug in an SDK designates the target directory inside the workshop;
 a directory on the host system that |ws_markup| will create at run-time

@@ -130,8 +130,7 @@ via the GPU pass-through mechanism.
 Mount interface
 ~~~~~~~~~~~~~~~
 
-A mount plug in the definition must specify the plug name, the interface
-and the target directory:
+A mount plug in the definition must specify the plug name, the interface, the target directory and optionally whether to be read-only:
 
 .. code-block:: yaml
    :caption: sdkcraft.yaml
@@ -141,6 +140,7 @@ and the target directory:
       <NAME>:
         interface: mount
         workshop-target: <WORKSHOP DIRECTORY>
+        read-only: <true | false> # optional
 
 
 This mounts a directory automatically created by |ws_markup| on the host
@@ -214,7 +214,7 @@ which can be defined when the SDK's is built using |sdk_markup|:
    * - :samp:`check-health`
      - At :ref:`ref_workshop_launch`:
        after running :samp:`setup-base` hooks for *all* SDKs.
-     
+
        At :ref:`ref_workshop_refresh`:
        after running :samp:`restore-state` hooks for *all* SDKs.
 

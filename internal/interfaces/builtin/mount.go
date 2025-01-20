@@ -120,7 +120,7 @@ func (iface *mountInterface) BeforePreparePlug(plug *sdk.PlugInfo) error {
 	case string:
 		roBool, err := strconv.ParseBool(ro)
 		if err != nil {
-			return fmt.Errorf(`unknown value %q in key "read-only" for mount interface plug. Accepted values are 'true' or 'false'. String representations (ie. '"true"') are also permitted.`, ro)
+			return fmt.Errorf(`unknown value %q in key "read-only" for mount interface plug. Accepted values are 'true' or 'false'. String representations (e.g., '"true"') are also permitted.`, ro)
 		}
 		plug.Attrs["read-only"] = roBool
 	default:
