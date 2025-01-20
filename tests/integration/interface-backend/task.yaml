@@ -1,4 +1,4 @@
-summary: Run LXD integration tests for SDK profiles
+summary: Test interface system LXD backend
 
 execute: |
   rm -rf cover
