@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/user"
+	"strconv"
 
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/sdk"
@@ -77,7 +78,7 @@ func (s *Specification) AddMountEntry(dev workshop.Mount) error {
 
 	if dev.Type == workshop.HostWorkshop {
 		s.devices[dev.Name] = map[string]string{"type": "disk", "source": dev.What,
-			"path": dev.Where}
+			"path": dev.Where, "readonly": strconv.FormatBool(dev.ReadOnly)}
 	}
 
 	return nil

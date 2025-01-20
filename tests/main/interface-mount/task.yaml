@@ -3,9 +3,9 @@ restore: |
   workshop_exec remove || true
 execute: |
   . "$TESTSLIB"/utils.sh
-    
+
   function validate_host_mounts() {
-    test -d "$source_one" && test -d "$source_two"    
+    test -d "$source_one" && test -d "$source_two"
     workshop_exec exec -- bash -c "mountpoint -q /mnt/one && mountpoint -q /opt/two"
   }
 
@@ -41,6 +41,15 @@ execute: |
   workshop_exec disconnect ws-mount/test-sdk-mount:jobs
   workshop_exec connections ws-mount | MATCH "^mount.+ws-mount/test-sdk-mount:jobs.+-.+-$"
   workshop_exec exec -- bash -c "! mountpoint -q /etc/cron.weekly && ! test -f /etc/cron.weekly/job.sh"
+
+  echo "Check mounts specified with 'read-only: true' are read only"
+  workshop_exec exec -- bash -c "sudo touch /test/tmp" && exit 1 || true
+  workshop_exec exec -- bash -c "mountpoint -q /test"
+  echo "Do the same for workshop to workshop bind mounts"
+  workshop_exec exec -- bash -c "sudo touch /mnt/ro-plug" && exit 1 || true
+  workshop_exec exec -- bash -c "sudo touch /opt/ro-slot/tmp"
+  workshop_exec exec -- bash -c "test -f /mnt/ro-plug/tmp"
+
 
   echo "Check remove will also clean up the default mount interface default locations"
   workshop_exec remove

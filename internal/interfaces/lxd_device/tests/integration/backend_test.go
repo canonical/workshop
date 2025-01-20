@@ -62,10 +62,10 @@ func (f *backendDeviceSuite) setupRepo(c *check.C) {
 func (f *backendDeviceSuite) readWorkshopFile(c *check.C, fname string) string {
 	fs, err := f.be.WorkshopFs(f.ctx, "test")
 	c.Assert(err, check.IsNil)
-	fstab, err := fs.OpenFile(fname, os.O_CREATE|os.O_RDWR, 0744)
+	file, err := fs.OpenFile(fname, os.O_CREATE|os.O_RDWR, 0744)
 	c.Assert(err, check.IsNil)
-	defer fstab.Close()
-	buf, err := io.ReadAll(fstab)
+	defer file.Close()
+	buf, err := io.ReadAll(file)
 	c.Assert(err, check.IsNil)
 	return string(buf)
 }
@@ -198,6 +198,16 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 		"/usr/local /opt none bind,x-systemd.requires=/project 0 0",
 		"/home /mnt none bind,x-systemd.requires=/project 0 0",
 	})
+
+	// Check the systemd mount files are generated (ie. reload was called)
+	// Note this will still exist after the connection is removed (it's a tmpfs),
+	// however the unit will be deactivated.
+	fs, err := f.be.WorkshopFs(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	_, err = fs.Stat("/run/systemd/generator/mnt.mount")
+	c.Assert(err, check.IsNil)
+	_, err = fs.Stat("/run/systemd/generator/opt.mount")
+	c.Assert(err, check.IsNil)
 
 	// Check the LXD profile is removed
 	err = b.Remove(f.ctx, "test", "consumer")

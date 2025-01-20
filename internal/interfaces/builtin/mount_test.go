@@ -183,3 +183,36 @@ slots:
 	expectedMnt := workshop.Mount{Name: plug.Name, What: sourceDir, Where: "/project/training", Type: workshop.HostWorkshop}
 	c.Assert(deviceSpec.Profile.Mounts, check.DeepEquals, map[string]workshop.Mount{plug.Name: expectedMnt})
 }
+
+func (s *mountSuite) TestMountInterfaceReadOnlyBool(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+ mount:
+  workshop-target: /project/training
+  read-only: true
+`, s.projectId, "ws", "consumer", "mount")
+	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
+}
+
+func (s *mountSuite) TestMountInterfaceReadOnlyString(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+ mount:
+  workshop-target: /project/training
+  read-only: "true"
+`, s.projectId, "ws", "consumer", "mount")
+	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
+}
+
+func (s *mountSuite) TestMountInterfaceReadOnlyInvalid(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+ mount:
+  workshop-target: /project/training
+  read-only: "invalid"
+`, s.projectId, "ws", "consumer", "mount")
+	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.ErrorMatches, "unknown value \"invalid\" in key \"read-only\" for mount interface plug.*")
+}

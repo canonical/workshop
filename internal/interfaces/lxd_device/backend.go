@@ -72,12 +72,19 @@ func installMount(user *user.User, fs workshop.WorkshopFs, dev workshop.Mount) (
 			return false, err
 		}
 
-		check := func(me osutil.MountEntry) bool { return me.Name == dev.What && me.Dir == dev.Where }
+		check := func(me osutil.MountEntry) bool {
+			return me.Name == dev.What && me.Dir == dev.Where && dev.ReadOnly == slices.Contains(me.Options, "ro")
+		}
 		if slices.ContainsFunc(mounts.Entries, check) {
 			return false, nil
 		}
 
-		entry := osutil.MountEntry{Name: dev.What, Dir: dev.Where, Type: "none", Options: []string{"bind", "x-systemd.requires=/project"}}
+		options := []string{"bind", "x-systemd.requires=/project"}
+		if dev.ReadOnly {
+			options = append(options, "ro")
+		}
+
+		entry := osutil.MountEntry{Name: dev.What, Dir: dev.Where, Type: "none", Options: options}
 		mounts.Entries = append(mounts.Entries, entry)
 		if err = writeMountProfile(fs, mounts); err != nil {
 			return false, err
@@ -169,10 +176,16 @@ func runMountCommand(conn lxd.InstanceServer, pid, w string, cmd []string) error
 	return err
 }
 
+// 'systemd-fstab-generator' is responsible for creating mount entries from
+// fstab. Because of this, we need to first ensure it runs (generating the
+// on-demand unit files) by calling daemon-reload, and then activate the
+// newly-creaed units by restarting a downstream target (ie. local-fs) see:
+// https://www.freedesktop.org/software/systemd/man/latest/systemd.special.html
 func reloadMounts(conn lxd.InstanceServer, pid, w string) error {
 	return runMountCommand(conn, pid, w, []string{
-		"mount",
-		"-a",
+		"/bin/bash",
+		"-c",
+		"systemctl daemon-reload && systemctl restart local-fs.target",
 	})
 }
 
@@ -352,10 +365,16 @@ func (b *Backend) Setup(ctx context.Context, sdkInfo sdk.Ref, repo *interfaces.R
 
 	reload := false
 	for _, mnt := range spec.Profile.Mounts {
-		if reload, err = installMount(user, fs, mnt); err != nil {
+		rld, err := installMount(user, fs, mnt)
+		if err != nil {
 			return err
 		}
+
+		if rld {
+			reload = true
+		}
 	}
+
 	if reload {
 		err = reloadMounts(conn, sdkInfo.ProjectId, sdkInfo.Workshop)
 		if err != nil {

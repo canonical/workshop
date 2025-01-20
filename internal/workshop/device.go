@@ -19,10 +19,11 @@ type Camera struct {
 }
 
 type Mount struct {
-	Name  string    `json:"name"`
-	What  string    `json:"what"`
-	Where string    `json:"where"`
-	Type  MountType `json:"type"`
+	Name     string    `json:"name"`
+	What     string    `json:"what"`
+	Where    string    `json:"where"`
+	Type     MountType `json:"type"`
+	ReadOnly bool      `json:"readonly"`
 }
 
 type SshAgent struct {

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/canonical/workshop/internal/interfaces"
@@ -62,7 +63,7 @@ const mountBaseDeclarationPlugs = `
           auto-explicit: true
 `
 
-var knownPlugAttributes = []string{"workshop-target"}
+var knownPlugAttributes = []string{"workshop-target", "read-only"}
 var knownSlotAttributes = []string{"workshop-source", "host-source"}
 
 // mountInterface allows sharing content between sdks
@@ -98,12 +99,32 @@ func (iface *mountInterface) BeforePreparePlug(plug *sdk.PlugInfo) error {
 			return fmt.Errorf(`unknown attribute for mount interface plug: %q`, name)
 		}
 	}
+
 	target, ok := plug.Attrs["workshop-target"].(string)
 	if !ok || len(target) == 0 {
 		return fmt.Errorf("mount plug must contain target path")
 	}
+
 	if err := validatePath(target); err != nil {
 		return err
+	}
+
+	ro, ok := plug.Attrs["read-only"]
+	if !ok {
+		ro = false
+	}
+
+	switch ro := ro.(type) {
+	case bool:
+		plug.Attrs["read-only"] = ro
+	case string:
+		roBool, err := strconv.ParseBool(ro)
+		if err != nil {
+			return fmt.Errorf(`unknown value %q in key "read-only" for mount interface plug. Accepted values are 'true' or 'false'. String representations (ie. '"true"') are also permitted.`, ro)
+		}
+		plug.Attrs["read-only"] = roBool
+	default:
+		return fmt.Errorf(`unknown value type %T in key "read-only" for mount interface plug. Accepted types are 'bool' or 'string'.`, ro)
 	}
 	return nil
 }
@@ -141,6 +162,12 @@ func (iface *mountInterface) target(attrs interfaces.Attrer) string {
 		return target
 	}
 	return ""
+}
+
+func (iface *mountInterface) readOnly(attrs interfaces.Attrer) bool {
+	var ro bool
+	attrs.Attr("read-only", &ro)
+	return ro
 }
 
 func (iface *mountInterface) workshopSource(slot *interfaces.ConnectedSlot) (string, error) {
@@ -186,12 +213,12 @@ func (iface *mountInterface) MountConnectedPlug(spec *lxd_device.Specification, 
 		return err
 	}
 	if err == nil {
-		return spec.AddMountEntry(workshop.Mount{Name: plug.Name(), What: source, Where: iface.target(plug), Type: workshop.WorkshopWorkshop})
+		return spec.AddMountEntry(workshop.Mount{Name: plug.Name(), What: source, Where: iface.target(plug), Type: workshop.WorkshopWorkshop, ReadOnly: iface.readOnly(plug)})
 	}
 
 	source, err = iface.hostSource(spec.User.HomeDir, plug, slot)
 	if err == nil {
-		return spec.AddMountEntry(workshop.Mount{Name: plug.Name(), What: source, Where: iface.target(plug), Type: workshop.HostWorkshop})
+		return spec.AddMountEntry(workshop.Mount{Name: plug.Name(), What: source, Where: iface.target(plug), Type: workshop.HostWorkshop, ReadOnly: iface.readOnly(plug)})
 	}
 
 	return err

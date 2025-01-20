@@ -2,3 +2,5 @@
 mkdir -p /mnt/one
 mkdir -p /opt/two
 mkdir -p /mnt/wp-plug
+mkdir -p /opt/ro-slot
+mkdir -p /mnt/ro-plug

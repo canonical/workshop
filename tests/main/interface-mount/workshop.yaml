@@ -7,6 +7,20 @@ sdks:
       jobs:
         interface: mount
         workshop-target: /etc/cron.weekly
+      ro-workshop:
+        interface: mount
+        workshop-target: /mnt/ro-plug
+        read-only: true
+      ro-host:
+        interface: mount
+        workshop-target: /test
+        read-only: true
+    slots:
+      ro-source:
+        interface: mount
+        workshop-source: /opt/ro-slot
 connections:
   - plug: test-sdk-mount:jobs
     slot: test-sdk-mount:jobs
+  - plug: test-sdk-mount:ro-workshop
+    slot: test-sdk-mount:ro-source
