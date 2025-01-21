@@ -719,11 +719,22 @@ func (s *Backend) ImportVolume(ctx context.Context, name string, tarball string)
 		return err
 	}
 
+	// Generate index.yaml for the volume.
 	if err = os.WriteFile(filepath.Join(dir, "index.yaml"), []byte(volumeIndexContent(name)), 0644); err != nil {
 		return err
 	}
 
 	newtar := filepath.Join(dir, filepath.Base(tarball))
+
+	// Read the metadata to store it as a volume's property. This is not ideal
+	// when the backend knows the name of the file with metadata as the volume
+	// manager should be able to import any tarball as a volume. But given that
+	// it is only applicable to SDKs in the nearest future, it should be acceptable
+	// as the alternative would be to change the interface to accept the metadata.
+	meta, err := os.ReadFile(filepath.Join(dir, "volume", "meta", "sdk.yaml"))
+	if err != nil {
+		return err
+	}
 
 	repack := exec.CommandContext(ctx, "tar",
 		"--remove-files",
@@ -759,7 +770,14 @@ func (s *Backend) ImportVolume(ctx context.Context, name string, tarball string)
 		return err
 	}
 
-	return op.WaitContext(ctx)
+	if err = op.WaitContext(ctx); err != nil {
+		return err
+	}
+
+	return conn.UpdateStoragePoolVolume(storagePool, "custom", name, api.StorageVolumePut{
+		Config: map[string]string{
+			workshop.ConfigVolumeMeta: string(meta),
+		}}, "")
 }
 
 func (s *Backend) AttachVolume(ctx context.Context, wp, name, what string) error {
@@ -778,6 +796,28 @@ func (s *Backend) DeleteVolume(ctx context.Context, name string) error {
 	defer conn.Disconnect()
 
 	return conn.DeleteStoragePoolVolume(storagePool, "custom", name)
+}
+
+func (s *Backend) Volume(ctx context.Context, name string) (workshop.VolumeInfo, error) {
+	var info workshop.VolumeInfo
+	conn, err := s.LxdClient(ctx)
+	if err != nil {
+		return info, err
+	}
+	defer conn.Disconnect()
+
+	vol, _, err := conn.GetStoragePoolVolume(storagePool, "custom", name)
+	if api.StatusErrorCheck(err, http.StatusNotFound) {
+		return info, workshop.ErrVolumeNotFound
+	}
+
+	if err != nil {
+		return info, err
+	}
+
+	info.Name = vol.Name
+	info.Config = vol.Config
+	return info, nil
 }
 
 func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {

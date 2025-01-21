@@ -170,7 +170,7 @@ func (m *SdkManager) doInstallSdk(task *state.Task, tomb *tomb.Tomb) error {
 	// Mount the SDK content at the workshop location.
 	sdkPath := filepath.Join(dirs.WorkshopSdksDir, sdkSetup.Name, sdkSetup.Revision.String())
 
-	return m.backend.AttachVolume(ctx, w, sdkSetup.VolumeName(), sdkPath)
+	return m.backend.AttachVolume(ctx, w, sdk.VolumeName(sdkSetup.Name, sdkSetup.Revision.String()), sdkPath)
 }
 
 func (m *SdkManager) undoInstallSdk(task *state.Task, tomb *tomb.Tomb) error {
@@ -187,7 +187,7 @@ func (m *SdkManager) undoInstallSdk(task *state.Task, tomb *tomb.Tomb) error {
 		return err
 	}
 
-	return m.backend.DetachVolume(ctx, w, sdkSetup.VolumeName())
+	return m.backend.DetachVolume(ctx, w, sdk.VolumeName(sdkSetup.Name, sdkSetup.Revision.String()))
 }
 
 func (m *SdkManager) doLinkSdk(task *state.Task, tomb *tomb.Tomb) error {

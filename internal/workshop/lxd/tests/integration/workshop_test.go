@@ -131,6 +131,12 @@ func (f *wsOps) TestLxdBackendStorageVolumeAddRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (f *wsOps) TestLxdBackendStorageVolumeImport(c *check.C) {
+	// Execute
+	err := f.bd.ImportVolume(f.ctx, "test", f.project.Path)
+	c.Assert(err, check.IsNil)
+}
+
 func (f *wsOps) TestLxdBackendDeleteWorkshop(c *check.C) {
 	// Execute
 	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)

@@ -31,8 +31,8 @@ func (s *Setup) Filename() string {
 	return fmt.Sprintf("%s_%s.sdk", s.Name, s.Revision.String())
 }
 
-func (s *Setup) VolumeName() string {
-	return fmt.Sprintf("%s-%s", s.Name, s.Revision.String())
+func VolumeName(name, revision string) string {
+	return fmt.Sprintf("%s-%s", name, revision)
 }
 
 type sdkYaml struct {

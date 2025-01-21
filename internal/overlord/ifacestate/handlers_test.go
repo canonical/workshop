@@ -365,8 +365,8 @@ func (s *interfaceHandlersSuite) TestAutoconnectBackendSetupFail(c *check.C) {
 func (s *interfaceHandlersSuite) TestAutoconnectFailsOnConflictingMountTargets(c *check.C) {
 	// Setup
 	s.launchWorkshop(c, "ws", []testSdkSetup{
-		{sdk.Setup{Name: "conflict-1", Channel: "latest/stable"}, conflictingTarget1},
-		{sdk.Setup{Name: "conflict-2", Channel: "latest/stable"}, conflictingTarget2},
+		{sdk.Setup{Name: "conflict-1", Channel: "latest/stable", Revision: sdk.R(1)}, conflictingTarget1},
+		{sdk.Setup{Name: "conflict-2", Channel: "latest/stable", Revision: sdk.R(1)}, conflictingTarget2},
 	})
 	repo := s.mgr.Repository()
 	c.Assert(repo.AddSdk(sdk.MockInfo(c, conflictingTarget1, s.prj.ProjectId, "ws")), check.IsNil)

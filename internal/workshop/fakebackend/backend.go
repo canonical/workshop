@@ -457,6 +457,22 @@ func (s *FakeWorkshopBackend) DeleteVolume(ctx context.Context, name string) err
 	return nil
 }
 
+func (s *FakeWorkshopBackend) Volume(ctx context.Context, name string) (workshop.VolumeInfo, error) {
+	s.volumeLock.Lock()
+	defer s.volumeLock.Unlock()
+
+	if !s.WorkshopVolumes[name] {
+		return workshop.VolumeInfo{}, workshop.ErrVolumeNotFound
+	}
+
+	meta, err := os.ReadFile(filepath.Join(s.WorkshopVolumeContents[name], "meta", "sdk.yaml"))
+	if err != nil {
+		return workshop.VolumeInfo{}, err
+	}
+
+	return workshop.VolumeInfo{Name: name, Config: map[string]string{workshop.ConfigVolumeMeta: string(meta)}}, nil
+}
+
 func (s *FakeWorkshopBackend) userProject(ctx context.Context) (string, string, error) {
 	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
 	if !ok {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -148,17 +149,17 @@ func (s *sdkStateSuite) SetUpTest(c *check.C) {
 	}}
 	err = s.backend.LaunchWorkshop(s.ctx, wf)
 	c.Assert(err, check.IsNil)
-
-	s.mockTestSdk(c, "test", sdkYaml, 1)
 }
 
-func (s *sdkStateSuite) mockTestSdk(c *check.C, name, sdkYaml string, rev int64) {
-	sdkPath := filepath.Join(dirs.WorkshopSdksDir, name, strconv.FormatInt(rev, 10), "meta", "sdk.yaml")
-	fs, err := s.backend.WorkshopFs(s.ctx, "ws")
+func (s *sdkStateSuite) mockSdk(c *check.C, name, sdkYaml string, rev int64) {
+	vfs := c.MkDir()
+
+	meta := filepath.Join(vfs, "meta")
+	err := os.MkdirAll(meta, 0755)
 	c.Assert(err, check.IsNil)
-	err = fs.MkdirAll(filepath.Dir(sdkPath), 0755)
+	err = os.WriteFile(filepath.Join(meta, "sdk.yaml"), []byte(sdkYaml), 0644)
 	c.Assert(err, check.IsNil)
-	err = afero.WriteFile(fs, sdkPath, []byte(sdkYaml), 0644)
+	err = s.backend.ImportVolume(s.ctx, sdk.VolumeName(name, strconv.FormatInt(rev, 10)), vfs)
 	c.Assert(err, check.IsNil)
 }
 
@@ -176,6 +177,8 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 	newSdk := sdk.Setup{Name: "test-2", Channel: "latest/stable", Revision: sdk.Revision{N: 2}, InstallTime: &s.installTime}
+	s.mockSdk(c, "test-2", sdkYaml, 2)
+
 	t := s.state.NewTask("fake-task", "retrieve")
 	t.Set("sdk-setup", newSdk)
 	t1 := s.state.NewTask("install-sdk", "test")
@@ -186,10 +189,6 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	chg.Set("user", "testuser")
 	chg.AddTask(t1)
 	chg.AddTask(t)
-
-	err := s.backend.CreateVolume(s.ctx, newSdk.VolumeName())
-	c.Assert(err, check.IsNil)
-	defer s.backend.DeleteVolume(s.ctx, newSdk.VolumeName())
 
 	s.state.Unlock()
 	s.se.Ensure()
@@ -218,9 +217,9 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccessWhenLocked(c *check.C) {
 	chg.AddTask(t1)
 	chg.AddTask(t)
 
-	err := s.backend.CreateVolume(s.ctx, newSdk.VolumeName())
+	err := s.backend.CreateVolume(s.ctx, sdk.VolumeName(newSdk.Name, newSdk.Revision.String()))
 	c.Assert(err, check.IsNil)
-	defer s.backend.DeleteVolume(s.ctx, newSdk.VolumeName())
+	defer s.backend.DeleteVolume(s.ctx, sdk.VolumeName(newSdk.Name, newSdk.Revision.String()))
 
 	// Lock the sdk pretending there is another concurrent doInstall that has
 	// already captured the lock.
@@ -246,6 +245,7 @@ func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
 	defer s.state.Unlock()
 
 	newSdk := sdk.Setup{Name: "test-2", Channel: "latest/stable", Revision: sdk.Revision{N: 2}, InstallTime: &s.installTime}
+	s.mockSdk(c, "test-2", sdkYaml, 2)
 
 	t := s.state.NewTask("fake-task", "retrieve")
 	t.Set("sdk-setup", newSdk)
@@ -256,10 +256,6 @@ func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
 
 	terr := s.state.NewTask("error-trigger", "provoking total undo")
 	terr.WaitFor(t1)
-
-	err := s.backend.CreateVolume(s.ctx, newSdk.VolumeName())
-	c.Assert(err, check.IsNil)
-	defer s.backend.DeleteVolume(s.ctx, newSdk.VolumeName())
 
 	chg := s.state.NewChange("sample", "...")
 	chg.Set("workshop", "ws")
@@ -351,21 +347,28 @@ func (s *sdkStateSuite) TestDoLinkSdkSuccess(c *check.C) {
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
 	testSdk := sdk.Setup{Name: "test", Channel: "latest/stable", Revision: sdk.Revision{N: 1}, InstallTime: &s.installTime}
+	s.mockSdk(c, "test", sdkYaml, 1)
 
 	t := s.state.NewTask("fake-task", "retrieve")
 	t.Set("sdk-setup", testSdk)
-	t1 := s.state.NewTask("link-sdk", "test")
+	t1 := s.state.NewTask("install-sdk", "test")
 	t1.Set("sdk-retrieve-task", t.ID())
+	t2 := s.state.NewTask("link-sdk", "test")
+	t2.Set("sdk-retrieve-task", t.ID())
+	t2.WaitFor(t1)
 
 	chg := s.state.NewChange("sample", "...")
-	setWorkshopProject("ws", s.project, t, t1)
+	setWorkshopProject("ws", s.project, t, t1, t2)
 	chg.Set("user", "testuser")
+	chg.AddTask(t2)
 	chg.AddTask(t1)
 	chg.AddTask(t)
 
 	s.state.Unlock()
-	s.se.Ensure()
-	s.se.Wait()
+	for i := 0; i < 6; i = i + 1 {
+		s.se.Ensure()
+		s.se.Wait()
+	}
 	s.state.Lock()
 
 	c.Check(chg.Err(), check.Equals, nil)
@@ -389,18 +392,22 @@ func (s *sdkStateSuite) TestDoLinkSdkFailedPolicyCheck(c *check.C) {
 	defer s.state.Unlock()
 
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
-	s.mockTestSdk(c, "test-broken", sdkYamlViolatesPolicy, 2)
+	s.mockSdk(c, "test-broken", sdkYamlViolatesPolicy, 2)
 
 	testSdk := sdk.Setup{Name: "test-broken", Channel: "latest/stable", Revision: sdk.Revision{N: 2}, InstallTime: &s.installTime}
 
 	t := s.state.NewTask("fake-task", "retrieve")
 	t.Set("sdk-setup", testSdk)
-	t1 := s.state.NewTask("link-sdk", "test-broken")
+	t1 := s.state.NewTask("install-sdk", "...")
 	t1.Set("sdk-retrieve-task", t.ID())
+	t2 := s.state.NewTask("link-sdk", "test-broken")
+	t2.Set("sdk-retrieve-task", t.ID())
+	t2.WaitFor(t1)
 
 	chg := s.state.NewChange("sample", "...")
-	setWorkshopProject("ws", s.project, t, t1)
+	setWorkshopProject("ws", s.project, t, t1, t2)
 	chg.Set("user", "testuser")
+	chg.AddTask(t2)
 	chg.AddTask(t1)
 	chg.AddTask(t)
 
@@ -434,23 +441,28 @@ func (s *sdkStateSuite) TestUndoLinkSdk(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	s.mockSdk(c, "test", sdkYaml, 1)
 
 	newSdk := sdk.Info{Workshop: "ws", Name: "test", Revision: sdk.Revision{N: 1}}
 	t := s.state.NewTask("fake-task", "retrieve")
 	t.Set("sdk-setup", newSdk)
+	t1 := s.state.NewTask("install-sdk", "...")
+	t1.Set("sdk-retrieve-task", t.ID())
 	link := s.state.NewTask("link-sdk", "test")
 	link.Set("sdk-retrieve-task", t.ID())
+	link.WaitFor(t1)
 
 	terr := s.state.NewTask("error-trigger", "provoking total undo")
 	terr.WaitFor(link)
 
 	chg := s.state.NewChange("sample", "...")
-	setWorkshopProject("ws", s.project, link, t)
+	setWorkshopProject("ws", s.project, link, t, t1)
 
 	chg.Set("user", "testuser")
 	chg.AddTask(link)
 	chg.AddTask(t)
 	chg.AddTask(terr)
+	chg.AddTask(t1)
 
 	s.state.Unlock()
 	for i := 0; i < 6; i = i + 1 {
@@ -475,13 +487,15 @@ func (s *sdkStateSuite) TestUndoLinkSdkRestorePreviousRev(c *check.C) {
 	defer s.state.Unlock()
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
-	// Install a second revision.
-	s.mockTestSdk(c, "test", sdkYamlRev2, 2)
+	s.mockSdk(c, "test", sdkYaml, 1)
+	s.mockSdk(c, "test", sdkYamlRev2, 2)
 	wp, err := s.backend.Workshop(s.ctx, "ws")
 	c.Assert(err, check.IsNil)
 
 	// Link the first revision to emulate that an SDK has already been linked to
 	// the previous rev, so that undo can update records properly.
+	err = wp.Backend.AttachVolume(s.ctx, wp.Name, sdk.VolumeName("test", "1"), "/var/lib/workshop/sdk/test/1")
+	c.Assert(err, check.IsNil)
 	err = wp.LinkSdk(s.ctx, sdk.Setup{Name: "test", Revision: sdk.Revision{N: 1}})
 	c.Assert(err, check.IsNil)
 
@@ -531,23 +545,28 @@ func (s *sdkStateSuite) TestUndoLinkSdkRestorePreviousRev(c *check.C) {
 func (s *sdkStateSuite) TestLinkSdkBadInterfacesFound(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
+	s.mockSdk(c, "test", sdkYaml, 1)
 
 	newSdk := sdk.Info{Workshop: "ws", Name: "test", Revision: sdk.Revision{N: 1}}
 	t := s.state.NewTask("fake-task", "retrieve")
 	t.Set("sdk-setup", newSdk)
+	t1 := s.state.NewTask("install-sdk", "...")
+	t1.Set("sdk-retrieve-task", t.ID())
 	link := s.state.NewTask("link-sdk", "test")
 	link.Set("sdk-retrieve-task", t.ID())
+	link.WaitFor(t1)
 
 	terr := s.state.NewTask("error-trigger", "provoking total undo")
 	terr.WaitFor(link)
 
 	chg := s.state.NewChange("sample", "...")
-	setWorkshopProject("ws", s.project, link, t)
+	setWorkshopProject("ws", s.project, link, t, t1)
 
 	chg.Set("user", "testuser")
 	chg.AddTask(link)
 	chg.AddTask(t)
 	chg.AddTask(terr)
+	chg.AddTask(t1)
 
 	s.state.Unlock()
 	for i := 0; i < 6; i = i + 1 {

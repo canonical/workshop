@@ -47,9 +47,9 @@ func (w *SdkManager) maybeCreateVolume(ctx context.Context, s sdk.Setup) error {
 	}
 	defer fl.Close()
 
-	err = w.backend.ImportVolume(ctx, s.VolumeName(), s.Filepath())
+	err = w.backend.ImportVolume(ctx, sdk.VolumeName(s.Name, s.Revision.String()), s.Filepath())
 	if errors.Is(err, workshop.ErrVolumeAlreadyExists) {
-		logger.Debugf("SDK Manager on maybeCreateVolume: reuse existing SDK volume %q", s.VolumeName())
+		logger.Debugf("SDK Manager on maybeCreateVolume: reuse existing SDK volume %q", sdk.VolumeName(s.Name, s.Revision.String()))
 		return nil
 	}
 	return err

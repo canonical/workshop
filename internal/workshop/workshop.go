@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/afero"
 	"golang.org/x/exp/slices"
 
 	"github.com/canonical/workshop/internal/osutil"
@@ -23,6 +24,7 @@ var (
 	ConfigProjectId         = "user.workshop.project-id"
 	ConfigWorkshopFile      = "user.workshop.file"
 	ConfigWorkshopSdks      = "user.workshop.sdks"
+	ConfigVolumeMeta        = "user.sdk.meta"
 	ConfigProjectPathDevice = "workshop.project"
 )
 
@@ -186,31 +188,62 @@ func AptCacheVolumeName(ws, pid string) string {
 	return fmt.Sprintf("%s-%s-cache-apt", ws, pid)
 }
 
+func (w *Workshop) metaFromVolume(ctx context.Context, setup sdk.Setup) (string, error) {
+	vinfo, err := w.Backend.Volume(ctx, sdk.VolumeName(setup.Name, setup.Revision.String()))
+	if err != nil {
+		return "", err
+	}
+
+	meta, ok := vinfo.Config[ConfigVolumeMeta]
+	if !ok {
+		return "", fmt.Errorf("cannot find %q SDK metadata", setup.Name)
+	}
+	return meta, nil
+}
+
+func (w *Workshop) metaFromFs(ctx context.Context, setup sdk.Setup) (string, error) {
+	fs, err := w.Backend.WorkshopFs(ctx, w.Name)
+	if err != nil {
+		return "", err
+	}
+	defer fs.Close()
+
+	metapath := sdk.SdkMetaPath(setup.Name)
+	meta, err := afero.ReadFile(fs, metapath)
+	return string(meta), err
+}
+
 // Reads information about the installed SDK from its meta file.
 func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, error) {
+	// TODO: isLocal should rely on the SDK source and not the name of the SDK.
+	// Currently, a sketch or system SDK are both considered local and these are
+	// the only SDKs of that source. This requires rework, once an arbitrary SDK
+	// can be installed from a local source, e.g. to support workshop try.
+	isLocal := func(n string) bool {
+		return n == sdk.Sketch || n == sdk.System.String()
+	}
+
 	setup, ok := w.Sdks[sdkName]
 	if sdkName != sdk.System.String() && !ok {
 		return nil, fmt.Errorf("SDK %q is not installed in %q workshop", sdkName, w.Name)
 	}
+	if sdkName == sdk.System.String() {
+		setup = sdk.Setup{Name: sdk.System.String(), Revision: sdk.Revision{N: 1}}
+	}
 
-	wsfs, err := w.Backend.WorkshopFs(ctx, w.Name)
+	var err error
+	var meta string
+	if isLocal(sdkName) {
+		meta, err = w.metaFromFs(ctx, setup)
+	} else {
+		meta, err = w.metaFromVolume(ctx, setup)
+	}
+
 	if err != nil {
 		return nil, err
 	}
-	defer wsfs.Close()
 
-	yamlf, err := wsfs.Open(sdk.SdkMetaPath(sdkName))
-	if err != nil {
-		return nil, fmt.Errorf("cannot read %q SDK metadata (%v)", sdkName, err)
-	}
-	defer yamlf.Close()
-
-	data, err := io.ReadAll(yamlf)
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := sdk.ReadSdkInfo(data, w.Project.ProjectId, w.Name)
+	info, err := sdk.ReadSdkInfo([]byte(meta), w.Project.ProjectId, w.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -226,9 +259,9 @@ func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, erro
 	// binds, slots).
 	idx := slices.IndexFunc(w.File.Sdks, func(sr SdkRecord) bool { return sr.Name == info.Name })
 
-	// system SDK is an optional entry in a workshop file, so it's not an error
+	// system and sketch SDK is an optional entry in a workshop file, so it's not an error
 	// scenario.
-	if idx == -1 && (sdkName == sdk.System.String() || sdkName == sdk.Sketch) {
+	if idx == -1 && isLocal(sdkName) {
 		return info, nil
 	}
 

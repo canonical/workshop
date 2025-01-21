@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/spf13/afero"
 	"gopkg.in/check.v1"
@@ -82,6 +84,31 @@ type testSdkSetup struct {
 	yaml string
 }
 
+var systemYaml = `name: system
+base: ubuntu@22.04
+type: system
+slots:
+  slot:
+    interface: mount
+    attr: slot-value
+`
+
+func (s *interfaceManagerSuite) mockSdk(c *check.C, name, sdkYaml string, rev int64) {
+	vfs := c.MkDir()
+
+	meta := filepath.Join(vfs, "meta")
+	err := os.MkdirAll(meta, 0755)
+	c.Assert(err, check.IsNil)
+	err = os.WriteFile(filepath.Join(meta, "sdk.yaml"), []byte(sdkYaml), 0644)
+	c.Assert(err, check.IsNil)
+
+	s.state.Lock()
+	be := s.o.WorkshopBackend()
+	s.state.Unlock()
+	err = be.ImportVolume(s.ctx, sdk.VolumeName(name, strconv.FormatInt(rev, 10)), vfs)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *interfaceManagerSuite) launchWorkshop(c *check.C, ws string, sdks []testSdkSetup) (*workshop.Workshop, error) {
 	ctx := context.WithValue(s.ctx, workshop.ContextProjectId, s.prj.ProjectId)
 
@@ -102,18 +129,11 @@ func (s *interfaceManagerSuite) launchWorkshop(c *check.C, ws string, sdks []tes
 	c.Assert(err, check.IsNil)
 	defer wsfs.Close()
 
-	var systemYaml = `name: system
-base: ubuntu@22.04
-type: system
-slots:
-  slot:
-    interface: mount
-    attr: slot-value
-`
 	c.Assert(wsfs.MkdirAll(filepath.Join(dirs.WorkshopSdksDir, sdk.System.String(), "x1", "meta"), 0755), check.IsNil)
 	s.writeSDKMetaFile(c, wsfs, sdk.Setup{Name: sdk.System.String(), Revision: sdk.Revision{N: -1}}, systemYaml)
+
 	for _, setup := range sdks {
-		s.writeSDKMetaFile(c, wsfs, setup.Setup, setup.yaml)
+		s.mockSdk(c, setup.Setup.Name, setup.yaml, int64(setup.Revision.N))
 	}
 
 	w, err := s.wsbackend.Workshop(ctx, ws)
@@ -122,10 +142,15 @@ slots:
 	err = w.LinkSdk(ctx, sdk.Setup{Name: sdk.System.String(), Revision: sdk.Revision{N: -1}})
 	c.Assert(err, check.IsNil)
 
-	for _, s := range sdks {
-		if err = w.LinkSdk(ctx, s.Setup); err != nil {
-			c.Assert(err, check.IsNil)
-		}
+	s.state.Lock()
+	be := s.o.WorkshopBackend()
+	s.state.Unlock()
+
+	for _, sk := range sdks {
+		err = be.AttachVolume(ctx, ws, sdk.VolumeName(sk.Name, sk.Revision.String()), filepath.Join(dirs.WorkshopSdksDir, sk.Name, sk.Revision.String()))
+		c.Assert(err, check.IsNil)
+		err = w.LinkSdk(ctx, sk.Setup)
+		c.Assert(err, check.IsNil)
 	}
 
 	return w, nil
@@ -210,8 +235,8 @@ slots:
   attr2: value2
 `
 	s.launchWorkshop(c, "ws", []testSdkSetup{
-		{sdk.Setup{Name: "consumer", Channel: "latest/stable"}, consumerYaml},
-		{sdk.Setup{Name: "producer", Channel: "latest/stable"}, producerYaml},
+		{sdk.Setup{Name: "consumer", Channel: "latest/stable", Revision: sdk.R(1)}, consumerYaml},
+		{sdk.Setup{Name: "producer", Channel: "latest/stable", Revision: sdk.R(1)}, producerYaml},
 	})
 
 	s.state.Lock()
@@ -253,8 +278,8 @@ slots:
   attr2: value2
 `
 	s.launchWorkshop(c, "ws", []testSdkSetup{
-		{sdk.Setup{Name: "consumer", Channel: "latest/stable"}, consumerYaml},
-		{sdk.Setup{Name: "producer", Channel: "latest/stable"}, producerYaml},
+		{sdk.Setup{Name: "consumer", Channel: "latest/stable", Revision: sdk.R(1)}, consumerYaml},
+		{sdk.Setup{Name: "producer", Channel: "latest/stable", Revision: sdk.R(1)}, producerYaml},
 	})
 
 	s.state.Lock()
