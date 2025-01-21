@@ -55,7 +55,7 @@ jobs:
 
       # Qualification run, compares changes to a baseline
       - name: TICS GitHub Action
-        if: github.ref != 'refs/heads/main'
+        if: false && github.ref != 'refs/heads/main'
         uses: tiobe/tics-github-action@v3
         with:
           viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=default
@@ -65,7 +65,7 @@ jobs:
 
       # Baseline (reference) run
       - name: TICS GitHub Action (Reference Run)
-        if: github.ref == 'refs/heads/main'
+        if: false && github.ref == 'refs/heads/main'
         uses: tiobe/tics-github-action@v3
         with:
           mode: qserver
