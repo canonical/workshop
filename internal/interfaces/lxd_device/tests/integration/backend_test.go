@@ -20,7 +20,6 @@ import (
 	backend "github.com/canonical/workshop/internal/interfaces/backends"
 	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/lxd_device"
-	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
@@ -333,17 +332,9 @@ exit 0
 	c.Check(prof.Agent.Connect, check.Equals, "unix:/run/.workshop.socket")
 	c.Check(prof.Agent.Listen, check.Equals, "unix:/run/consumer-ssh-agent.ssh")
 
-	buf := f.readWorkshopFile(c, "/etc/profile.d/consumer-ssh-agent.sh")
-	c.Check(buf, check.Equals, "export SSH_AUTH_SOCK=/run/consumer-ssh-agent.ssh\n")
-
 	f.repo.DisconnectAll([]*interfaces.ConnRef{connref})
 
 	// Update profile (ssh-agent must be removed as it was disconnected).
 	err = b.Setup(f.ctx, cref, f.repo)
 	c.Assert(err, check.IsNil)
-
-	fs, err := f.be.WorkshopFs(f.ctx, "test")
-	c.Assert(err, check.IsNil)
-	_, err = fs.Stat("/etc/profile.d/consumer-ssh-agent.sh")
-	c.Assert(osutil.IsDirNotExist(err), check.Equals, true)
 }

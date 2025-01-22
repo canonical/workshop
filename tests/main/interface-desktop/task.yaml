@@ -24,30 +24,28 @@ execute: |
   workshop_exec connect ws-desktop/test-sdk-desktop:desktop :desktop
 
   echo "Check that the expected environment is configured inside the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  sudo WAYLAND_DISPLAY=wayland-1 XDG_SESSION_TYPE=wayland -u ubuntu workshop exec ws-desktop /bin/bash -s <<"EOF"
       set -e
       [ -n "$WAYLAND_DISPLAY" ]
-      [ -n "$QT_QPA_PLATFORM" ]
+      [ -z "$QT_QPA_PLATFORM" ]
       [ -n "$XDG_SESSION_TYPE" ]
-      [ -n "$ELECTRON_OZONE_PLATFORM_HINT" ]
+      [ -z "$ELECTRON_OZONE_PLATFORM_HINT" ]
   EOF
 
   echo "Check that the required mounts are configured inside the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  workshop_exec exec ws-desktop /bin/bash -s <<"EOF"
       set -e
-      [ -S "/run/user/1000/${WAYLAND_DISPLAY}" ]
+      [ -S "/run/user/1000/wayland-1" ]
   EOF
 
   echo "Disconnect the desktop interface"
   workshop_exec disconnect ws-desktop/test-sdk-desktop:desktop
 
   echo "Check that the environment is removed from the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  sudo WAYLAND_DISPLAY=wayland-1 XDG_SESSION_TYPE=wayland -u ubuntu workshop exec ws-desktop /bin/bash -s <<"EOF"
       set -e
       [ -z "$WAYLAND_DISPLAY" ]
-      [ -z "$QT_QPA_PLATFORM" ]
-      [ "$XDG_SESSION_TYPE" == "unspecified" ]
-      [ -z "$ELECTRON_OZONE_PLATFORM_HINT" ]
+      [ -z "$XDG_SESSION_TYPE" ]
   EOF
 
   echo "Connect the desktop interface for an x11 session"
@@ -56,43 +54,44 @@ execute: |
   workshop_exec connect ws-desktop/test-sdk-desktop:desktop :desktop
 
   echo "Check that the expected environment is configured inside the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  sudo DISPLAY=:0 XDG_SESSION_TYPE=x11 -u ubuntu workshop exec ws-desktop /bin/bash -s <<"EOF"
       set -e
       [ -n "$DISPLAY" ]
+      [ -n "$XDG_SESSION_TYPE" ]
       [ -n "$XAUTHORITY" ]
   EOF
 
   echo "Check that the required mounts are configured inside the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  workshop_exec exec ws-desktop /bin/bash -s <<"EOF"
       set -e
-      [ -S "/tmp/.X11-unix/X${DISPLAY:1}" ]
-      [ -f "${XAUTHORITY}" ]
+      [ -S "/tmp/.X11-unix/X0" ]
+      [ -f "/tmp/.Xauthority" ]
   EOF
 
   echo "Check that the required mounts are present after restart"
   workshop_exec stop ws-desktop
   workshop_exec start ws-desktop
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  workshop_exec exec ws-desktop /bin/bash -s <<"EOF"
       set -e
-      [ -S "/tmp/.X11-unix/X${DISPLAY:1}" ]
-      [ -f "${XAUTHORITY}" ]
+      [ -S "/tmp/.X11-unix/X0" ]
+      [ -f "/tmp/.Xauthority" ]
   EOF
 
   echo "Disconnect the desktop interface"
   workshop_exec disconnect ws-desktop/test-sdk-desktop:desktop
 
   echo "Check that the expected environment is removed from the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  sudo DISPLAY=:0 XDG_SESSION_TYPE=x11 -u ubuntu workshop exec ws-desktop /bin/bash -s <<"EOF"
       set -e
       [ -z "$DISPLAY" ]
+      [ -z "$XDG_SESSION_TYPE" ]
       [ -z "$XAUTHORITY" ]
   EOF
 
   echo "Check that the required mounts are removed from the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  workshop_exec exec ws-desktop /bin/bash -s <<"EOF"
       set -e
-      [ ! -S "/tmp/.X11-unix/X${DISPLAY:1}" ]
-      [ ! -f "${XAUTHORITY}" ]
+      [ ! -f "/tmp/.Xauthority" ]
   EOF
 
   echo "Reconnect the desktop interface with a different socket name"
@@ -100,17 +99,17 @@ execute: |
   workshop_exec connect ws-desktop/test-sdk-desktop:desktop :desktop
 
   echo "Check that the expected environment is configured inside the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  sudo DISPLAY=:1 XDG_SESSION_TYPE=x11 -u ubuntu workshop exec ws-desktop /bin/bash -s <<"EOF"
       set -e
       [ "$DISPLAY" == ":1" ]
       [ -n "$XAUTHORITY" ]
   EOF
 
   echo "Check that the required mounts are configured inside the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  workshop_exec exec ws-desktop /bin/bash -s <<"EOF"
       set -e
-      [ -S "/tmp/.X11-unix/X${DISPLAY:1}" ]
-      [ -f "${XAUTHORITY}" ]
+      [ -S "/tmp/.X11-unix/X1" ]
+      [ -f "/tmp/.Xauthority" ]
   EOF
 
   echo "Check refreshing to an empty workshop definition"
@@ -123,15 +122,14 @@ execute: |
   [ -z "$(workshop_exec connections --all)" ]
 
   echo "Check that the expected environment is removed from the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  sudo DISPLAY=:1 XDG_SESSION_TYPE=x11 -u ubuntu workshop exec ws-desktop /bin/bash -s <<"EOF"
       set -e
       [ -z "$DISPLAY" ]
       [ -z "$XAUTHORITY" ]
   EOF
 
   echo "Check that the required mounts are removed from the workshop"
-  workshop_exec exec ws-desktop sudo -Hiu workshop /bin/bash -s <<"EOF"
+  workshop_exec exec ws-desktop /bin/bash -s <<"EOF"
       set -e
-      [ ! -S "/tmp/.X11-unix/X${DISPLAY:1}" ]
-      [ ! -f "${XAUTHORITY}" ]
+      [ ! -f "/tmp/.Xauthority" ]
   EOF
