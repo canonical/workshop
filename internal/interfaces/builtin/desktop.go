@@ -27,9 +27,11 @@ import (
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/interfaces/lxd_device"
+	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/systemd"
 	"github.com/canonical/workshop/internal/workshop"
+	"github.com/canonical/workshop/internal/x11"
 )
 
 const desktopSummary = `allows SDKs to use the host's wayland compositor`
@@ -87,6 +89,15 @@ func (iface *desktopInterface) MountConnectedPlug(spec *lxd_device.Specification
 	}
 
 	desktop := workshop.Desktop{}
+	var wsEnv []string
+
+	// These variables will be inherited from the host
+	wsEnv = append(wsEnv, "XDG_BACKEND")
+	wsEnv = append(wsEnv, "XDG_SESSION_TYPE")
+	wsEnv = append(wsEnv, "QT_QPA_PLATFORM")
+	wsEnv = append(wsEnv, "ELECTRON_OZONE_PLATFORM_HINT")
+	wsEnv = append(wsEnv, "WAYLAND_DISPLAY")
+	wsEnv = append(wsEnv, "DISPLAY")
 
 	wayland := env["WAYLAND_DISPLAY"]
 	display := env["DISPLAY"]
@@ -96,6 +107,7 @@ func (iface *desktopInterface) MountConnectedPlug(spec *lxd_device.Specification
 	}
 
 	if wayland != "" {
+		// Setup profile entries
 		desktop.Wayland = &workshop.ProxyEntry{}
 		desktop.Wayland.Name = plug.Sdk().Name + "-" + "wayland"
 		desktop.Wayland.Connect = filepath.Join(xdg, wayland)
@@ -106,14 +118,15 @@ func (iface *desktopInterface) MountConnectedPlug(spec *lxd_device.Specification
 	// on the host. This then gives users the option to modify their xhost
 	// settings to allow connections from the container and container user.
 	if display != "" {
+		// Setup profile entries
 		desktop.X11 = &workshop.ProxyEntry{}
 		desktop.X11.Name = plug.Sdk().Name + "-" + "x11"
 		desktop.X11.Connect = filepath.Join("/tmp/.X11-unix", "X"+strings.TrimPrefix(display, ":"))
 		desktop.X11.Listen = desktop.X11.Connect
 	}
 
-	// We mount the Xauthority inside a parent folder to ensure that the mounted
-	// cookie is updated when the host cookie changes (ie. reboot).
+	// We mount the Xauthority cookie inside a parent folder to ensure that it's
+	// updated when the host cookie changes (ie. reboot).
 	// https://discuss.linuxcontainers.org/t/mount-single-file/17975
 	workshopdXauth := filepath.Join(dirs.WorkshopdRunDir, spec.User.Uid, "Xauthority")
 	xauth := env["XAUTHORITY"]
@@ -126,7 +139,24 @@ func (iface *desktopInterface) MountConnectedPlug(spec *lxd_device.Specification
 		spec.AddMountEntry(m)
 	}
 
-	return spec.SetDesktop(desktop)
+	// The .Xauthority cookie contains a 128bit key used to authenticate
+	// consumers of the X11 socket. It is generated on each boot with a random
+	// suffix, because of this we need to ensure there exists a
+	// consistently-named copy of the cookie for the LXC profile. There are two
+	// cases where we need to copy the cookie, one is on workshopd startup as we
+	// iterate through the list of projects, the other is on connect because
+	// this could be the first workshop launched, in which case the user would
+	// not have had a project. We handle it here for the connect, presence of
+	// the copied cookie after reboot is the responsibility of the interface
+	// manager.
+	if xauth != "" {
+		wsEnv = append(wsEnv, "XAUTHORITY=/tmp/.Xauthority")
+		if err := x11.MigrateXauthority(spec.User, xauth); err != nil {
+			logger.Noticef("cannot migrate Xauthority file for user %s, X11 applications may not work: %v", spec.User.Username, err)
+		}
+	}
+
+	return spec.SetDesktop(desktop, wsEnv)
 }
 
 func init() {

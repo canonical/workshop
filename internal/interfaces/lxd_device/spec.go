@@ -89,14 +89,16 @@ func (s *Specification) AddMountEntry(dev workshop.Mount) error {
 // see https://documentation.ubuntu.com/lxd/en/latest/reference/devices_proxy/#device-proxy-device-conf:bind
 // bind denotes where the port is open (can be: instance, host)
 
-func (s *Specification) SetSshAgent(agent workshop.SshAgent) error {
+func (s *Specification) SetSshAgent(agent workshop.SshAgent, env []string) error {
 	s.Profile.Agent = &agent
+	s.AmendEnvironment(env)
 	s.addProxyEntry(&agent.ProxyEntry, "ssh-agent")
 	return nil
 }
 
-func (s *Specification) SetDesktop(desktop workshop.Desktop) error {
+func (s *Specification) SetDesktop(desktop workshop.Desktop, env []string) error {
 	s.Profile.Desktop = &desktop
+	s.AmendEnvironment(env)
 
 	if desktop.Wayland != nil {
 		s.addProxyEntry(desktop.Wayland, "desktop-wayland")
@@ -165,6 +167,12 @@ func (s *Specification) SetCamera(camera workshop.Camera) error {
 	}
 
 	return nil
+}
+
+func (s *Specification) AmendEnvironment(env []string) {
+	s.Profile.Environment = append(s.Profile.Environment, env...)
+
+	s.config[lxdbackend.EnvironmentConfigKey(s.Profile.Sdk)] = lxdbackend.EnvironmentConfigValue(s.Profile.Environment)
 }
 
 func (s *Specification) addProxyEntry(entry *workshop.ProxyEntry, configKey string) {

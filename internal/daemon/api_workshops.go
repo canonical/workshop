@@ -69,6 +69,7 @@ type WorkshopInfo struct {
 	Status    string     `json:"status"`
 	Sdks      []*SdkInfo `json:"sdks,omitempty"`
 	Notes     []string   `json:"notes,omitempty"`
+	Env       []string   `json:"env,omitempty"`
 }
 
 type WorkshopFileInfo struct {
@@ -135,6 +136,7 @@ func workshopToInfo(w *workshop.Workshop, sdks map[string]*sdk.Info, health heal
 		info.Notes = append(info.Notes, health.Code)
 	}
 	info.Status = health.Status.String()
+	info.Env = workshopEnv(w)
 
 	return &info
 }
@@ -490,4 +492,11 @@ func v1GetProjectWorkshopScripts(c *Command, r *http.Request, _ *userState) Resp
 	}
 
 	return SyncResponse(compat, http.StatusOK)
+}
+
+func workshopEnv(w *workshop.Workshop) (env []string) {
+	for _, p := range w.Profiles {
+		env = append(env, p.Environment...)
+	}
+	return
 }

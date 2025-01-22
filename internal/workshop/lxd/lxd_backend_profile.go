@@ -25,6 +25,25 @@ func DeviceTypeConfigKey(sdk, dev string) string {
 	return fmt.Sprintf("user.workshop.%s.%s.type", sdk, dev)
 }
 
+func EnvironmentConfigKey(sdk string) string {
+	return fmt.Sprintf("user.workshop.%s.environment", sdk)
+}
+
+func EnvironmentConfigValue(env []string) string {
+	sb := strings.Builder{}
+	for _, s := range env {
+		sb.WriteString(s + ",")
+	}
+	return sb.String()
+}
+
+func EnvironmentConfigToSlice(env string) []string {
+	var e []string
+	splits := strings.Split(env, ",")
+	e = append(e, splits...)
+	return e
+}
+
 func Profile(conn lxd.InstanceServer, pid, wp, profile string) (workshop.SdkProfile, error) {
 	name := ProfileName(pid, wp, profile)
 	lxdp, _, err := conn.GetProfile(name)
@@ -40,6 +59,7 @@ func Profile(conn lxd.InstanceServer, pid, wp, profile string) (workshop.SdkProf
 
 func lxdToSdkProfile(profile string, devs map[string]map[string]string, config map[string]string) (workshop.SdkProfile, error) {
 	var pr = workshop.NewSdkProfile(profile)
+	pr.Environment = EnvironmentConfigToSlice(config[EnvironmentConfigKey(profile)])
 	for name, dev := range devs {
 		switch dev["type"] {
 		case "disk":

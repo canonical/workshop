@@ -39,7 +39,8 @@ type Gpu struct {
 }
 
 type SdkProfile struct {
-	Sdk string
+	Sdk         string
+	Environment []string
 
 	Camera  *Camera
 	Mounts  map[string]Mount

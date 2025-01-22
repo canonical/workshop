@@ -48,13 +48,14 @@ type CmdRun struct {
 }
 
 type ExecFlags struct {
-	WorkingDir     string
-	Env            []string
-	UserId         int
-	GroupId        int
-	Timeout        time.Duration
-	Interactive    bool
-	NonInteractive bool
+	WorkingDir       string
+	Env              []string
+	UserId           int
+	GroupId          int
+	Timeout          time.Duration
+	Interactive      bool
+	NonInteractive   bool
+	CleanEnvironment bool
 }
 
 type ExecArgs struct {
@@ -62,6 +63,7 @@ type ExecArgs struct {
 	implicit bool
 	command  []string
 	script   bool
+	shell    bool
 }
 
 var shortExecHelp = "Run a command and wait for it to complete"
@@ -251,7 +253,7 @@ $ workshop shell`,
 }
 
 func (c *CmdShell) Run(cmd *cobra.Command, av []string) error {
-	args := &ExecArgs{command: []string{"sudo", "-i", "-u", "workshop", "bash", "-c", "cd /project; exec bash"}}
+	args := &ExecArgs{shell: true}
 
 	if len(av) > 0 {
 		args.workshop = av[0]
@@ -346,6 +348,7 @@ func commonVars(f *pflag.FlagSet, flags *ExecFlags) {
 	f.DurationVar(&flags.Timeout, "timeout", 0, "Set a timeout; valid units are ns, us or µs, ms, s, m, h.")
 	f.BoolVarP(&flags.Interactive, "interactive", "i", false, "Force interactive mode.")
 	f.BoolVarP(&flags.NonInteractive, "non-interactive", "I", false, "Force non-interactive mode.")
+	f.BoolVar(&flags.CleanEnvironment, "clean-environment", false, "Use a clean environment, variables passed in via flags will remain present")
 }
 
 func exec(root *CmdRoot, flags *ExecFlags, args *ExecArgs) error {
@@ -363,28 +366,32 @@ func exec(root *CmdRoot, flags *ExecFlags, args *ExecArgs) error {
 		return err
 	}
 
-	workshop := args.workshop
-	if args.implicit {
-		workshop, err = cli.SingleWorkshopName(project)
+	var workshop *client.Workshop
+	if !args.implicit {
+		workshop, err = cli.Workshop(project.Id, args.workshop)
+		if err != nil {
+			return err
+		}
+	} else {
+		workshop, err = cli.SingleWorkshop(project)
 		if err != nil {
 			return err
 		}
 	}
 
-	if args.script {
-		logger.Debugf("Running script %q", args.command)
-	} else {
-		logger.Debugf("Running %q", args.command)
-	}
-
-	// Set up environment variables.
 	env := make(map[string]string)
 	term, ok := os.LookupEnv("TERM")
 	if ok {
 		env["TERM"] = term
 	}
 
-	for _, kv := range flags.Env {
+	if flags.CleanEnvironment {
+		workshop.Env = flags.Env
+	} else {
+		workshop.Env = append(workshop.Env, flags.Env...)
+	}
+
+	for i, kv := range workshop.Env {
 		parts := strings.SplitN(kv, "=", 2)
 		key := parts[0]
 
@@ -396,9 +403,30 @@ func exec(root *CmdRoot, flags *ExecFlags, args *ExecArgs) error {
 			if !ok {
 				continue
 			}
+			if args.shell {
+				workshop.Env[i] = workshop.Env[i] + "=" + value
+			}
 		}
 
 		env[key] = value
+	}
+
+	switch {
+	case args.script:
+		logger.Debugf("Running script %q", args.command)
+	case args.shell:
+		args.command = []string{"sudo"}
+		for _, s := range workshop.Env {
+			// If there is no '=' in the string, the env var was not set in the host
+			// environment. This is not an error.
+			if strings.Contains(s, "=") {
+				args.command = append(args.command, s)
+			}
+		}
+		args.command = append(args.command, "-i", "-u", "workshop", "bash", "-c", "cd /project; exec bash")
+		logger.Debugf("Running shell %q", args.command)
+	default:
+		logger.Debugf("Running %q", args.command)
 	}
 
 	stdoutIsTerminal := ptyutil.IsTerminal(unix.Stdout)
@@ -456,7 +484,7 @@ func exec(root *CmdRoot, flags *ExecFlags, args *ExecArgs) error {
 	}
 
 	// Start the command.
-	process, err := cli.Exec(opts, workshop, project.Id)
+	process, err := cli.Exec(opts, workshop.Name, project.Id)
 	if err != nil {
 		return err
 	}

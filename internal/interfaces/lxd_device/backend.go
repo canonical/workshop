@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
-	"path/filepath"
 	"slices"
-	"strings"
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
@@ -19,10 +17,8 @@ import (
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
-	"github.com/canonical/workshop/internal/systemd"
 	"github.com/canonical/workshop/internal/workshop"
 	lxdbackend "github.com/canonical/workshop/internal/workshop/lxd"
-	"github.com/canonical/workshop/internal/x11"
 )
 
 const (
@@ -205,99 +201,7 @@ func removeMount(conn lxd.InstanceServer, fs workshop.WorkshopFs, pid, w string,
 	})
 }
 
-func installSshAgent(fs workshop.WorkshopFs, dev workshop.SshAgent, workshop string) error {
-	env, err := fs.Create(filepath.Join("/etc/profile.d", dev.Name+".sh"))
-	if err != nil {
-		return fmt.Errorf("cannot set SSH_AUTH_SOCK for %q: %w", workshop, err)
-	}
-	defer env.Close()
-
-	varline := fmt.Sprintln("export SSH_AUTH_SOCK=" + strings.TrimPrefix(dev.Listen, "unix:"))
-	_, err = env.Write([]byte(varline))
-	if err != nil {
-		return fmt.Errorf("cannot set SSH_AUTH_SOCK for %q: %w", workshop, err)
-	}
-	return nil
-}
-
-func removeSshAgent(fs workshop.WorkshopFs, dev workshop.SshAgent) error {
-	return fs.Remove(filepath.Join("/etc/profile.d", dev.Name+".sh"))
-}
-
-func installDesktop(fs workshop.WorkshopFs, dev workshop.Desktop, user *user.User, ws string) error {
-	env, err := systemd.UserEnvironment(user)
-	if err != nil {
-		return err
-	}
-
-	backend := env["XDG_BACKEND"]
-
-	var envVars map[string]string
-	envFile, err := fs.Create(filepath.Join("/etc/profile.d", "desktop"+".sh"))
-	if err != nil {
-		return fmt.Errorf("cannot configure required environment for %q: %w", ws, err)
-	}
-	defer envFile.Close()
-
-	// Use Wayland as the default backend in the case where it's unset
-	if (backend == "wayland" || backend == "") && dev.Wayland != nil {
-		envVars = map[string]string{
-			"QT_QPA_PLATFORM":  "wayland-egl",
-			"XDG_SESSION_TYPE": "wayland",
-			"XDG_BACKEND":      "wayland",
-		}
-	} else {
-		envVars = map[string]string{
-			"QT_QPA_PLATFORM":  "xcb",
-			"XDG_SESSION_TYPE": "x11",
-			"XDG_BACKEND":      "x11",
-		}
-	}
-
-	if dev.Wayland != nil {
-		envVars["WAYLAND_DISPLAY"] = strings.TrimPrefix(dev.Wayland.Listen, "/run/user/1000/")
-	}
-
-	if dev.X11 != nil {
-		envVars["DISPLAY"] = ":" + strings.TrimPrefix(filepath.Base(dev.X11.Listen), "X")
-	}
-
-	// The .Xauthority cookie contains a 128bit key used to authenticate consumers
-	// of the X11 socket. It is generated on each boot with a random suffix,
-	// because of this we need to ensure there exists a consistently-named copy
-	// of the cookie for the LXC profile. There are two cases where we need to
-	// copy the cookie, one is on workshopd startup as we iterate through the
-	// list of projects, the other is on connect because this could be the first
-	// workshop launched, in which case the user would not have had a project. We
-	// handle it here for the connect, presence of the copied cookie after reboot
-	// is the responsibility of the interface manager.
-	xauth := env["XAUTHORITY"]
-	if xauth != "" {
-		envVars["XAUTHORITY"] = "/tmp/.Xauthority"
-		if err := x11.MigrateXauthority(user, xauth); err != nil {
-			logger.Noticef("cannot migrate Xauthority file for user %s, X11 applications may not work: %v", user.Username, err)
-		}
-	}
-
-	envVars["ELECTRON_OZONE_PLATFORM_HINT"] = "auto"
-
-	for key, val := range envVars {
-		_, err = envFile.WriteString("export " + key + "=" + val + "\n")
-		if err != nil {
-			return fmt.Errorf("cannot set %s for %q: %w", key, ws, err)
-		}
-	}
-
-	return nil
-}
-
 func removeDesktop(fs workshop.WorkshopFs) error {
-	if err := fs.Remove("/etc/profile.d/desktop.sh"); err != nil {
-		if !errors.Is(err, afero.ErrFileNotFound) {
-			return err
-		}
-	}
-
 	if err := fs.Remove("/tmp/.Xauthority"); err != nil {
 		if !errors.Is(err, afero.ErrFileNotFound) {
 			return err
@@ -363,20 +267,6 @@ func (b *Backend) Setup(ctx context.Context, sdkInfo sdk.Ref, repo *interfaces.R
 		}
 	}
 
-	if spec.Profile.Agent != nil {
-		err = installSshAgent(fs, *spec.Profile.Agent, sdkInfo.Workshop)
-		if err != nil {
-			return err
-		}
-	}
-
-	if spec.Profile.Desktop != nil {
-		err = installDesktop(fs, *spec.Profile.Desktop, spec.User, sdkInfo.Workshop)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Either create or update an existing LXD profile for the SDK so that later
 	// it can be assigned to the required workshop.
 	prevp, err := lxdbackend.Profile(conn, sdkInfo.ProjectId, sdkInfo.Workshop, sdkInfo.Sdk)
@@ -386,13 +276,6 @@ func (b *Backend) Setup(ctx context.Context, sdkInfo sdk.Ref, repo *interfaces.R
 		for key, dev := range prevp.Mounts {
 			if _, exist := spec.Profile.Mounts[key]; !exist {
 				if err = removeMount(conn, fs, sdkInfo.ProjectId, sdkInfo.Workshop, dev); err != nil {
-					return err
-				}
-			}
-		}
-		if prevp.Agent != nil {
-			if spec.Profile.Agent == nil || *prevp.Agent != *spec.Profile.Agent {
-				if err = removeSshAgent(fs, *prevp.Agent); err != nil {
 					return err
 				}
 			}
@@ -464,12 +347,6 @@ func (b *Backend) Remove(ctx context.Context, w, profile string) error {
 
 	for _, dev := range prof.Mounts {
 		if err = removeMount(conn, fs, projectId, w, dev); err != nil {
-			return err
-		}
-	}
-
-	if prof.Agent != nil {
-		if err = removeSshAgent(fs, *prof.Agent); err != nil {
 			return err
 		}
 	}

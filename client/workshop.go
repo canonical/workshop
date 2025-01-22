@@ -48,6 +48,7 @@ type WorkshopInfo struct {
 	Status    string   `json:"status"`
 	Sdks      []*Sdk   `json:"sdks,omitempty"`
 	Notes     []string `json:"notes,omitempty"`
+	Env       []string `json:"env,omitempty"`
 }
 
 type WorkshopFile struct {
