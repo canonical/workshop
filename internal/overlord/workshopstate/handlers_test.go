@@ -179,7 +179,7 @@ func (s *workshopHandlers) TestUndoStash(c *check.C) {
 
 	s.state.Unlock()
 	for i := 0; i < 6; i = i + 1 {
-		s.se.Ensure()
+		_ = s.se.Ensure()
 		s.se.Wait()
 	}
 	s.state.Lock()

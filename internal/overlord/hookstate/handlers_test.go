@@ -124,7 +124,9 @@ func (s *hookSuite) TestExecSaveState(c *check.C) {
 	volume := workshop.WorkshopStateVolumeName("ws", s.project.ProjectId)
 	err := s.backend.CreateVolume(s.ctx, volume)
 	c.Assert(err, check.IsNil)
-	defer s.backend.DeleteVolume(s.ctx, volume)
+	defer func() {
+		_ = s.backend.DeleteVolume(s.ctx, volume)
+	}()
 
 	s.state.Unlock()
 	s.se.Ensure()
@@ -171,8 +173,9 @@ func (s *hookSuite) TestExecRestoreState(c *check.C) {
 	volume := workshop.WorkshopStateVolumeName("ws", s.project.ProjectId)
 	err := s.backend.CreateVolume(s.ctx, volume)
 	c.Assert(err, check.IsNil)
-	defer s.backend.DeleteVolume(s.ctx, volume)
-
+	defer func() {
+		_ = s.backend.DeleteVolume(s.ctx, volume)
+	}()
 	// Setup state storage (must be already set by the save-state in a real use
 	// case).
 	vfs := s.backend.WorkshopVolumeContents[volume]
@@ -210,7 +213,9 @@ func (s *hookSuite) TestExecHandlesFailedHook(c *check.C) {
 	volume := workshop.WorkshopStateVolumeName("ws", s.project.ProjectId)
 	err := s.backend.CreateVolume(s.ctx, volume)
 	c.Assert(err, check.IsNil)
-	defer s.backend.DeleteVolume(s.ctx, volume)
+	defer func() {
+		_ = s.backend.DeleteVolume(s.ctx, volume)
+	}()
 
 	s.backend.ExecCallback = func(ctx context.Context, name string, args *workshop.Execution) (workshop.ExecContext, error) {
 		return workshop.ExecContext{

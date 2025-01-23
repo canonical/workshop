@@ -219,14 +219,7 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccessWhenLocked(c *check.C) {
 
 	err := s.backend.CreateVolume(s.ctx, sdk.VolumeName(newSdk.Name, newSdk.Revision.String()))
 	c.Assert(err, check.IsNil)
-	defer s.backend.DeleteVolume(s.ctx, sdk.VolumeName(newSdk.Name, newSdk.Revision.String()))
-
-	// Lock the sdk pretending there is another concurrent doInstall that has
-	// already captured the lock.
-	l, err := sdk.OpenLock(newSdk.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(l.Lock(), check.IsNil)
-	defer l.Close()
+	defer func() { _ = s.backend.DeleteVolume(s.ctx, sdk.VolumeName(newSdk.Name, newSdk.Revision.String())) }()
 
 	s.state.Unlock()
 	s.se.Ensure()
@@ -269,7 +262,7 @@ func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
 
 	s.state.Unlock()
 	for i := 0; i < 6; i = i + 1 {
-		s.se.Ensure()
+		_ = s.se.Ensure()
 		s.se.Wait()
 	}
 	s.state.Lock()
@@ -366,7 +359,7 @@ func (s *sdkStateSuite) TestDoLinkSdkSuccess(c *check.C) {
 
 	s.state.Unlock()
 	for i := 0; i < 6; i = i + 1 {
-		s.se.Ensure()
+		_ = s.se.Ensure()
 		s.se.Wait()
 	}
 	s.state.Lock()

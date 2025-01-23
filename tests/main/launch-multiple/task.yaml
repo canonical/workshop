@@ -1,0 +1,11 @@
+summary: Ensure that launch for multiple workshops works correctly
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  echo "Check workshop can be launched with a basic SDK"
+  workshop_exec launch ws-one ws-two ws-three
+  workshop_exec list | MATCH "$(pwd)[[:space:]]*ws-one[[:space:]]*Ready[[:space:]]*-"
+  workshop_exec list | MATCH "$(pwd)[[:space:]]*ws-two[[:space:]]*Ready[[:space:]]*-"
+  workshop_exec list | MATCH "$(pwd)[[:space:]]*ws-three[[:space:]]*Ready[[:space:]]*-"
+
+  workshop_exec remove ws-one ws-two ws-three

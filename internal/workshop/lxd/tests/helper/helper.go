@@ -5,7 +5,9 @@ package helper
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	lxd "github.com/canonical/lxd/client"
@@ -147,4 +149,35 @@ func RemoveTestVolume(c *check.C, ctx context.Context, bd workshop.Backend) {
 	volume := workshop.AptCacheVolumeName("test", projectId)
 	err := bd.DeleteVolume(ctx, volume)
 	c.Assert(err, check.IsNil)
+}
+
+func MockSdkTarball(c *check.C, name, path, meta string) string {
+	sdkfs := filepath.Join(path, name)
+
+	metadir := filepath.Join(sdkfs, "meta")
+	err := os.MkdirAll(metadir, 0755)
+	c.Assert(err, check.IsNil)
+
+	err = os.WriteFile(filepath.Join(metadir, "sdk.yaml"), []byte(meta), 0644)
+	c.Assert(err, check.IsNil)
+
+	hooksdir := filepath.Join(sdkfs, "sdk", "hooks")
+	err = os.MkdirAll(hooksdir, 0755)
+	c.Assert(err, check.IsNil)
+
+	tarball := filepath.Join(path, fmt.Sprintf("%s_1.sdk", name))
+	pack := exec.CommandContext(context.Background(), "tar",
+		"--strip-components=1",
+		"--remove-files",
+		"--create",
+		"--file",
+		tarball,
+		"--directory="+sdkfs,
+		"--no-same-owner",
+		".",
+	)
+	output, err := pack.CombinedOutput()
+	c.Check(err, check.IsNil, check.Commentf("%s", string(output)))
+
+	return tarball
 }
