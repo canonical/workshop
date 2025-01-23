@@ -487,7 +487,7 @@ func (s *sdkStateSuite) TestUndoLinkSdkRestorePreviousRev(c *check.C) {
 
 	// Link the first revision to emulate that an SDK has already been linked to
 	// the previous rev, so that undo can update records properly.
-	err = wp.Backend.AttachVolume(s.ctx, wp.Name, sdk.VolumeName("test", "1"), "/var/lib/workshop/sdk/test/1")
+	err = wp.Backend.AttachVolume(s.ctx, wp.Name, sdk.VolumeName("test", "1"), "/var/lib/workshop/sdk/test/1", true)
 	c.Assert(err, check.IsNil)
 	err = wp.LinkSdk(s.ctx, sdk.Setup{Name: "test", Revision: sdk.Revision{N: 1}})
 	c.Assert(err, check.IsNil)

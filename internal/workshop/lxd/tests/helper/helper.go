@@ -128,7 +128,7 @@ printf '%s\n' "$@"
 	volume := workshop.AptCacheVolumeName(wf.Name, prj.ProjectId)
 	err = bd.CreateVolume(ctx, volume)
 	c.Assert(err, check.IsNil)
-	err = bd.AttachVolume(ctx, wf.Name, volume, dirs.AptCachePath)
+	err = bd.AttachVolume(ctx, wf.Name, volume, dirs.AptCachePath, false)
 	c.Assert(err, check.IsNil)
 
 	err = bd.StartWorkshop(ctx, "test")

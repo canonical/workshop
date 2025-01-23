@@ -147,7 +147,7 @@ func (s *interfaceManagerSuite) launchWorkshop(c *check.C, ws string, sdks []tes
 	s.state.Unlock()
 
 	for _, sk := range sdks {
-		err = be.AttachVolume(ctx, ws, sdk.VolumeName(sk.Name, sk.Revision.String()), filepath.Join(dirs.WorkshopSdksDir, sk.Name, sk.Revision.String()))
+		err = be.AttachVolume(ctx, ws, sdk.VolumeName(sk.Name, sk.Revision.String()), filepath.Join(dirs.WorkshopSdksDir, sk.Name, sk.Revision.String()), true)
 		c.Assert(err, check.IsNil)
 		err = w.LinkSdk(ctx, sk.Setup)
 		c.Assert(err, check.IsNil)

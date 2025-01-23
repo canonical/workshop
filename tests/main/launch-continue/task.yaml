@@ -10,8 +10,8 @@ execute: |
   echo "Check the workshop is in Pending state"
   workshop_exec list | MATCH "^.+[[:space:]]+ws-launch-cont[[:space:]]+Pending[[:space:]]+wait-on-error$"
 
-  echo "\"Fix\" the SDK error by replacing the setup-base hook"
-  workshop_exec exec --uid 0 --gid 0 -- sed -i "s/exit 1/exit 0/g" /var/lib/workshop/sdk/test-sdk-setup-fail/current/sdk/hooks/setup-base
+  echo "\"Fix\" the SDK error by creating an expected file"
+  workshop_exec exec -- touch /home/workshop/setup-base-pass
 
   echo "Check the 'workshop launch --continue' command reverts to the previous state"
   workshop_exec launch --continue | MATCH "\"ws-launch-cont\" launched"

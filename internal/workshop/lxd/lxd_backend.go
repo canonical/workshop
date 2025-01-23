@@ -332,12 +332,13 @@ func (s *Backend) AddWorkshopMount(ctx context.Context, name string, device work
 	}
 	if device.Type == workshop.Volume {
 		inst.Devices[device.Name] = map[string]string{"type": "disk",
-			"pool":   storagePool,
-			"path":   device.What,
-			"source": device.Where}
+			"pool":     storagePool,
+			"path":     device.What,
+			"source":   device.Where,
+			"readonly": fmt.Sprint(device.ReadOnly)}
 	} else {
 		inst.Devices[device.Name] = map[string]string{"type": "disk", "source": device.What,
-			"path": device.Where}
+			"path": device.Where, "readonly": fmt.Sprint(device.ReadOnly)}
 	}
 	op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
 	if err != nil {

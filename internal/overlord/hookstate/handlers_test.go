@@ -142,7 +142,7 @@ func (s *hookSuite) TestExecSaveState(c *check.C) {
 	ws, err := s.backend.WorkshopFs(s.ctx, "ws")
 	c.Check(err, check.IsNil)
 	defer ws.Close()
-	err = s.backend.AttachVolume(s.ctx, "ws", volume, dirs.WorkshopStateDir)
+	err = s.backend.AttachVolume(s.ctx, "ws", volume, dirs.WorkshopStateDir, false)
 	c.Check(err, check.IsNil)
 	info, err := ws.Stat("/var/lib/workshop/state/sdk/one")
 	c.Check(err, check.IsNil)

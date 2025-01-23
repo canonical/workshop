@@ -382,7 +382,7 @@ func (s *FakeWorkshopBackend) CreateVolume(ctx context.Context, name string) err
 	return nil
 }
 
-func (s *FakeWorkshopBackend) AttachVolume(ctx context.Context, wp, name, what string) error {
+func (s *FakeWorkshopBackend) AttachVolume(ctx context.Context, wp, name, what string, ro bool) error {
 	s.volumeLock.Lock()
 	defer s.volumeLock.Unlock()
 

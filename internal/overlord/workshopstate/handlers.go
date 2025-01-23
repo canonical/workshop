@@ -169,7 +169,7 @@ func (m *WorkshopManager) doMountAptCache(task *state.Task, tomb *tomb.Tomb) err
 	defer cancel()
 
 	volume := workshop.AptCacheVolumeName(w, prj.ProjectId)
-	return m.backend.AttachVolume(ctx, w, volume, dirs.AptCachePath)
+	return m.backend.AttachVolume(ctx, w, volume, dirs.AptCachePath, false)
 }
 
 func (m *WorkshopManager) undoMountAptCache(task *state.Task, tomb *tomb.Tomb) error {

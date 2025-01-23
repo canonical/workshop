@@ -1,2 +1,8 @@
 #!/usr/bin/bash
-echo "Set up base failed!"; exit 1
+
+if [ -f /home/workshop/setup-base-pass ]; then
+    exit 0
+else
+    echo "Set up base failed!"
+    exit 1
+fi

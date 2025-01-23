@@ -187,8 +187,8 @@ func (s *Backend) ImportVolume(ctx context.Context, name string, tarball string)
 		}}, "")
 }
 
-func (s *Backend) AttachVolume(ctx context.Context, wp, name, what string) error {
-	return s.AddWorkshopMount(ctx, wp, workshop.Mount{Name: name, What: what, Where: name, Type: workshop.Volume})
+func (s *Backend) AttachVolume(ctx context.Context, wp, name, what string, ro bool) error {
+	return s.AddWorkshopMount(ctx, wp, workshop.Mount{Name: name, What: what, Where: name, Type: workshop.Volume, ReadOnly: ro})
 }
 
 func (s *Backend) DetachVolume(ctx context.Context, wp, name string) error {

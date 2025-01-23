@@ -340,7 +340,7 @@ func (s *workshopHandlers) TestAptCache(c *check.C) {
 
 	s.state.Unlock()
 	for i := 0; i < 6; i = i + 1 {
-		s.se.Ensure()
+		c.Check(s.se.Ensure(), check.IsNil)
 		s.se.Wait()
 	}
 	s.state.Lock()

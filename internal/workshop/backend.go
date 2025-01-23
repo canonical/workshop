@@ -85,7 +85,7 @@ type VolumeManager interface {
 	ImportVolume(ctx context.Context, name string, tarball string) error
 
 	// Attach the volume to the workshop. The volume must be created before.
-	AttachVolume(ctx context.Context, wp, name, what string) error
+	AttachVolume(ctx context.Context, wp, name, what string, ro bool) error
 
 	// Detach the volume from the workshop.
 	DetachVolume(ctx context.Context, wp, name string) error

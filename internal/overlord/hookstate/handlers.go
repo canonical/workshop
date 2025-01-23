@@ -36,7 +36,7 @@ func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
 
 	if hook.HookType == SaveState || hook.HookType == RestoreState {
 		volume := workshop.WorkshopStateVolumeName(w, prj.ProjectId)
-		if err := h.backend.AttachVolume(ctx, w, volume, dirs.WorkshopStateDir); err != nil {
+		if err := h.backend.AttachVolume(ctx, w, volume, dirs.WorkshopStateDir, false); err != nil {
 			return fmt.Errorf("cannot run hook %q for SDK %q: %w", hook.Type(), hook.Sdk, err)
 		}
 
