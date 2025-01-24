@@ -1,6 +1,7 @@
 package sdkstate
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/interfaces/policy"
+	"github.com/canonical/workshop/internal/logger"
 	. "github.com/canonical/workshop/internal/overlord/handlersetup"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/progress"
@@ -79,11 +81,13 @@ func (m *SdkManager) doRetrieveSdk(task *state.Task, tomb *tomb.Tomb) error {
 		return err
 	}
 
-	if err = m.maybeCreateVolume(ctx, rec); err != nil {
-		return err
+	err = m.backend.ImportVolume(ctx, sdk.VolumeName(rec.Name, rec.Revision.String()), rec.Filepath())
+	if errors.Is(err, workshop.ErrVolumeAlreadyExists) {
+		logger.Debugf("SDK Manager on maybeCreateVolume: reuse existing SDK volume %q", sdk.VolumeName(rec.Name, rec.Revision.String()))
+		return nil
 	}
 
-	return nil
+	return err
 }
 
 func (m *SdkManager) doInstallLocalSdk(task *state.Task, tomb *tomb.Tomb) error {
