@@ -265,3 +265,23 @@ func (f *wsOps) TestLxdBackendDownloadMultipleBasesConcurrently(c *check.C) {
 		c.Assert(f.deleteimage(c, fp), check.IsNil)
 	}
 }
+
+func (f *wsOps) TestLxdBackendWorkshopStartFailed(c *check.C) {
+	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	err := f.bd.StopWorkshop(f.ctx, "test", true)
+	c.Check(err, check.IsNil)
+
+	// Leaves the workshop instance in a started state with a failed start
+	// command. The StartWorkshop API must clean up its previous progress, i.e.
+	// set the workshop to the Stopped state.
+	defer lxdbackend.FakeStartCommand("exit 1")()
+
+	err = f.bd.StartWorkshop(f.ctx, "test")
+	c.Check(err, check.NotNil)
+
+	w, err := f.bd.Workshop(f.ctx, "test")
+	c.Check(err, check.IsNil)
+	c.Check(w.Running, check.Equals, false)
+}

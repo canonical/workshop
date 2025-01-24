@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/logger"
+	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
 )
@@ -172,12 +174,31 @@ func (s *Backend) StartWorkshop(ctx context.Context, name string) error {
 	}
 	defer conn.Disconnect()
 
-	// Workshop started, enable autostart
-	if err = s.addWorkshopConfig(conn, ctx, name, &workshop.WorkshopConfigValue{Name: "boot.autostart", Value: "true"}); err != nil {
+	rev := revert.New()
+	defer rev.Fail()
+
+	cleanupCtx := context.WithoutCancel(ctx)
+	rev.Add(func() {
+		cleanupCtxTimeout, cancel := context.WithTimeout(cleanupCtx, 5*time.Second)
+		defer cancel()
+
+		if e := s.AddWorkshopConfig(cleanupCtxTimeout, name, &workshop.WorkshopConfigValue{Name: "boot.autostart", Value: "false"}); e != nil {
+			logger.Noticef("On StartWorkshop: cannot reset %q workshop autostart config on cleanup: %v", name, e)
+		}
+
+		// Stop workshop's timeout is handled by LXD API, so no need to have
+		// a context with a timeout.
+		if e := s.StopWorkshop(cleanupCtx, name, true); e != nil {
+			logger.Noticef("On StartWorkshop: cannot stop %q workshop on cleanup: %v", name, e)
+		}
+	})
+
+	if err = s.updateInstanceState(conn, ctx, name, "start", false); err != nil {
 		return err
 	}
 
-	if err = s.updateInstanceState(conn, ctx, name, "start", false); err != nil {
+	// Workshop started, enable autostart.
+	if err = s.addWorkshopConfig(conn, ctx, name, &workshop.WorkshopConfigValue{Name: "boot.autostart", Value: "true"}); err != nil {
 		return err
 	}
 
@@ -197,7 +218,12 @@ func (s *Backend) StartWorkshop(ctx context.Context, name string) error {
 		return err
 	}
 
-	return exectx.WaitExecution(ctx)
+	if err = exectx.WaitExecution(ctx); err != nil {
+		return err
+	}
+
+	rev.Success()
+	return nil
 }
 
 func (s *Backend) StopWorkshop(ctx context.Context, name string, force bool) error {
@@ -787,4 +813,12 @@ func FakeDefaultDevices(f func() map[string]map[string]string) func() {
 	oldDefault := defaultDevices
 	defaultDevices = f
 	return func() { defaultDevices = oldDefault }
+}
+
+func FakeStartCommand(script string) func() {
+	old := startCommand
+	startCommand = script
+	return func() {
+		startCommand = old
+	}
 }
