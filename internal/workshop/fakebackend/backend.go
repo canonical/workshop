@@ -44,6 +44,8 @@ type DownloadCall struct {
 	Base string
 }
 
+type WorkshopFsCallback func(ctx context.Context, name string) (workshop.WorkshopFs, error)
+
 type FakeWorkshopBackend struct {
 	// the key is a project-id - workshop name
 	Workshops map[string]map[string]*FakeWorkshop
@@ -59,7 +61,7 @@ type FakeWorkshopBackend struct {
 	ExecCallback ExecFunc
 	ExecCalls    []*ExecCall
 
-	WorkshopFsCallback func(ctx context.Context, name string) (workshop.WorkshopFs, error)
+	WorkshopFsCallback WorkshopFsCallback
 	WorkshopFsCalls    []*FsCall
 
 	DownloadBaseCallback func(ctx context.Context, base string, report *progress.Reporter) error
@@ -284,6 +286,14 @@ func (f *FakeWorkshopBackend) GetWorkshopsByConfig(ctx context.Context, filter w
 		}
 	}
 	return res, nil
+}
+
+func (s *FakeWorkshopBackend) SetWorkshopFsCallback(c WorkshopFsCallback) func() {
+	old := s.WorkshopFsCallback
+	s.WorkshopFsCallback = c
+	return func() {
+		s.WorkshopFsCallback = old
+	}
 }
 
 func (s *FakeWorkshopBackend) WorkshopFs(ctx context.Context, name string) (workshop.WorkshopFs, error) {

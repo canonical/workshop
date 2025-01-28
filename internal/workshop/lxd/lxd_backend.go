@@ -133,7 +133,8 @@ func (s *Backend) LaunchWorkshop(ctx context.Context, file *workshop.File) error
 		return err
 	}
 
-	return op.WaitContext(ctx)
+	// CreateInstance cannot be cancelled in LXD.
+	return op.Wait()
 }
 
 func (s *Backend) updateInstanceState(conn lxd.InstanceServer, ctx context.Context, name, action string, force bool) error {
@@ -596,18 +597,17 @@ func (s *Backend) RemoveWorkshop(ctx context.Context, name string) (err error) {
 	}
 
 	// ignore possible errors (e.g. container is already stopped)
-	ctxRemove := context.WithoutCancel(ctx)
-	_ = s.updateInstanceState(conn, ctxRemove, name, "stop", true)
+	if err = s.updateInstanceState(conn, ctx, name, "stop", true); err != nil {
+		logger.Noticef("On RemoveWorkshop: failed to stop %q workshop: %v", name, err)
+	}
 
 	op, err := conn.DeleteInstance(InstanceName(name, projectId))
 	if err != nil {
 		return err
 	}
 
-	if err = op.WaitContext(ctx); err != nil {
-		return err
-	}
-	return nil
+	// DeleteInstance cannot be cancelled in LXD.
+	return op.Wait()
 }
 
 func (s *Backend) WorkshopFs(ctx context.Context, name string) (workshop.WorkshopFs, error) {

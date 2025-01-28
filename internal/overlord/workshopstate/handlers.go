@@ -17,6 +17,7 @@ import (
 	. "github.com/canonical/workshop/internal/overlord/handlersetup"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/progress"
+	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
 )
@@ -87,9 +88,21 @@ func (m *WorkshopManager) doCreateWorkshop(task *state.Task, tomb *tomb.Tomb) er
 		return fmt.Errorf("internal error: %q workshop configuration not found (task ID: %s)", w, task.ID())
 	}
 
+	rev := revert.New()
+	defer rev.Fail()
+
 	if err = m.backend.LaunchWorkshop(ctx, &wf); err != nil {
 		return err
 	}
+
+	cleanupCtx := context.WithoutCancel(ctx)
+	rev.Add(func() {
+		cleanupCtx, cancel := context.WithTimeout(cleanupCtx, 30*time.Second)
+		defer cancel()
+		if err1 := m.backend.RemoveWorkshop(cleanupCtx, w); err1 != nil {
+			logger.Noticef("On doCreateWorkshop: cannot remove %q workshop on cleanup: %v", w, err1)
+		}
+	})
 
 	// Create workshop base and run directories
 	fs, err := m.backend.WorkshopFs(ctx, wf.Name)
@@ -98,7 +111,12 @@ func (m *WorkshopManager) doCreateWorkshop(task *state.Task, tomb *tomb.Tomb) er
 	}
 	defer fs.Close()
 
-	return fs.MkdirAll(dirs.WorkshopRunDir, 0755)
+	if err = fs.MkdirAll(dirs.WorkshopRunDir, 0755); err != nil {
+		return err
+	}
+
+	rev.Success()
+	return nil
 }
 
 func (m *WorkshopManager) doCreateAptCache(task *state.Task, tomb *tomb.Tomb) error {

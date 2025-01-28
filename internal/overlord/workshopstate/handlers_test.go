@@ -288,6 +288,36 @@ func (s *workshopHandlers) TestCreateWorkshopWithSystemSdk(c *check.C) {
 	c.Assert(t1.Status(), check.Equals, state.DoneStatus)
 }
 
+func (s *workshopHandlers) TestCreateWorkshopCleaunup(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+	s.createWFile(c, "ws", wsJammy)
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@22.04"}
+
+	reset := s.backend.SetWorkshopFsCallback(func(ctx context.Context, name string) (workshop.WorkshopFs, error) {
+		return nil, errors.New("fs is unavailable")
+	})
+	defer reset()
+
+	chg := s.state.NewChange("sample", "...")
+	t1 := s.state.NewTask("create-workshop", "...")
+	t1.Set("workshop-file", wf)
+	setWorkshopProject("ws", s.project, t1)
+	chg.Set("user", "testuser")
+	chg.AddTask(t1)
+
+	s.state.Unlock()
+	for i := 0; i < 6; i = i + 1 {
+		c.Check(s.se.Ensure(), check.IsNil)
+		s.se.Wait()
+	}
+	s.state.Lock()
+
+	c.Assert(t1.Status(), check.Equals, state.ErrorStatus)
+	_, err := s.backend.Workshop(s.ctx, "ws")
+	c.Assert(err, testutil.ErrorIs, workshop.ErrWorkshopNotLaunched)
+}
+
 func (s *workshopHandlers) TestDownloadBase(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
