@@ -8,6 +8,8 @@ This is a practical introduction
 that takes you on a tour
 of the essential |ws_markup| activities.
 
+.. @artefact workshop (container)
+
 A :ref:`workshop <exp_workshop>` is an environment
 that maps your project to its contained dependencies.
 Here, you will practise all the major steps
@@ -121,11 +123,13 @@ for example:
 
 The command installs two main components:
 
+.. @artefact installation
 .. @artefact workshopd
 
 - The :program:`workshopd` daemon, which exposes a REST API
 
 .. @artefact workshop (CLI)
+.. @artefact API
 
 - The :program:`workshop`
   :ref:`CLI tool <exp_workshop_cli>`,
@@ -144,6 +148,8 @@ Run
 ~~~
 
 Before proceeding, ensure the CLI tool works:
+
+.. @artefact workshop --help
 
 .. code-block:: console
 
@@ -176,6 +182,11 @@ A :ref:`definition <exp_workshop_definition>` lists the components of a workshop
 to be instantiated at launch
 and is stored in your project directory.
 
+.. @artefact sdkcraft (CLI)
+.. @artefact SDK
+.. @artefact SDK publisher
+.. @artefact SDK Store
+
 We'll be focusing on :ref:`SDKs <exp_sdk>`,
 which are the basic units of a workshop's functionality.
 They are :ref:`built with SDKcraft <how_use_sdkcraft>` by SDK publishers
@@ -187,6 +198,8 @@ while keeping the SDKs themselves isolated and manageable.
 Here, we'll use the sample :samp:`go` SDK,
 which was already defined, built and published in the SDK Store
 by the |ws_markup| team.
+
+.. @artefact project
 
 Create a
 :ref:`project directory <exp_projects>`
@@ -201,6 +214,8 @@ named :file:`hello-workshop`:
 Everything you plan to build using your workshop goes here:
 your source code, custom assets, and so on.
 In this tutorial, we'll be building some Go code.
+
+.. @artefact workshop definition
 
 In the project directory,
 create a workshop definition named :file:`workshop.yaml`:
@@ -224,6 +239,8 @@ To confirm that |ws_markup| sees the definition,
 :ref:`list <ref_workshop_list>` the workshops
 in the project directory:
 
+.. @artefact workshop list
+
 .. code-block:: console
 
    $ workshop list
@@ -243,6 +260,8 @@ Launch
 
 To get a workshop ready for use, you :ref:`launch <ref_workshop_launch>` it:
 
+.. @artefact workshop launch
+
 .. code-block:: console
 
    $ workshop launch
@@ -259,6 +278,8 @@ you can start using it to build, debug and run your code.
 
 After launching, check the run-time :ref:`info <ref_workshop_info>`
 to see what went into your workshop:
+
+.. @artefact workshop info
 
 .. code-block:: console
 
@@ -283,6 +304,8 @@ The output looks like the :ref:`definition <tut_define>`
 with extra details such as the :ref:`mounts <tut_interfaces>`;
 you can ignore these for now.
 
+.. @artefact workshop .lock
+
 After launch, |ws_markup| starts tracking the project directory.
 The workshop stays operational with no extra steps on your part
 by using a hidden :file:`.lock` file that must remain in the project directory
@@ -290,6 +313,8 @@ and not be copied or stored externally, e.g. in a repository.
 
 Check out the recent :ref:`changes <ref_workshop_changes>`
 to see how |ws_markup| keeps track of the project directory:
+
+.. @artefact workshop changes
 
 .. code-block:: console
 
@@ -301,6 +326,8 @@ to see how |ws_markup| keeps track of the project directory:
 
 To find out what launching a workshop implies,
 pass the ID of the change to the :ref:`tasks <ref_workshop_tasks>` command:
+
+.. @artefact workshop tasks
 
 .. code-block:: console
 
@@ -347,6 +374,8 @@ but you can also stop and restart it at will.
 Suppose you want to free up some resources,
 so you :ref:`stop <ref_workshop_stop>` the workshop:
 
+.. @artefact workshop stop
+
 .. code-block:: console
 
    $ workshop stop
@@ -354,6 +383,8 @@ so you :ref:`stop <ref_workshop_stop>` the workshop:
 This changes the status of the workshop to *Stopped*.
 
 To make it *Ready* again, :ref:`start <ref_workshop_start>` the workshop:
+
+.. @artefact workshop start
 
 .. code-block:: console
 
@@ -404,6 +435,7 @@ and refresh the workshop:
      - name: go
        channel: latest/stable
 
+.. @artefact workshop refresh
 
 .. code-block:: console
 
@@ -445,6 +477,8 @@ In the project directory, save this code as :file:`main.go`:
 
 
 Next, build it *inside the workshop* using :ref:`exec <ref_workshop_exec>`:
+
+.. @artefact workshop exec
 
 .. code-block:: console
 
@@ -494,6 +528,8 @@ if you need to perform multiple operations within a session.
 for the default non-privileged user,
 who's also named :samp:`workshop`:
 
+.. @artefact workshop shell
+
 .. code-block:: console
 
    $ workshop shell
@@ -530,6 +566,8 @@ let's dive into how interfaces operate.
 Work with interfaces
 --------------------
 
+.. @artefact interface
+
 For security and control,
 |ws_markup| exposes various host system capabilities to the workshop
 by connecting it to various :ref:`interfaces <exp_interfaces>`.
@@ -537,6 +575,8 @@ SDKs can also use interfaces to interact in an organised fashion.
 
 To list the connected interfaces,
 use :ref:`connections <ref_workshop_connections>`:
+
+.. @artefact workshop connections
 
 .. code-block:: console
 
@@ -560,6 +600,9 @@ this usually depends on their purpose.
 In any case, you can :ref:`connect <ref_workshop_connect>`
 and :ref:`disconnect <ref_workshop_disconnect>` interfaces at will:
 
+.. @artefact workshop connect
+.. @artefact workshop disconnect
+
 .. code-block:: console
 
    $ workshop disconnect golang/go:mod-cache
@@ -568,6 +611,8 @@ and :ref:`disconnect <ref_workshop_disconnect>` interfaces at will:
 
 You can :ref:`remount <ref_workshop_remount>` a mount interface plug
 to a new location on the host:
+
+.. @artefact workshop remount
 
 .. code-block:: console
    :emphasize-lines: 14
@@ -604,8 +649,12 @@ This process grafts a :ref:`special SDK <exp_sketch_sdk>` onto the workshop,
 so you can run a quick local experiment
 and circumvent the usual SDK Store publishing workflow.
 
+.. @artefact SDK definition
+
 The core form of the :command:`workshop sketch-sdk` command
 opens an :ref:`SDK definition <exp_sdk_definition>`:
+
+.. @artefact workshop sketch-sdk
 
 .. code-block:: console
 
@@ -661,6 +710,8 @@ includes lines similar to the following:
        installed:  2024-12-15  (x1)
 
 
+.. @artefact sketch SDK
+
 Note that the sketch SDK entry lists the time of last update
 and the revision (:samp:`x1`).
 Instead of a channel,
@@ -674,6 +725,7 @@ Run the command again:
 
    $ workshop sketch-sdk golang
 
+.. @artefact SDK base image
 
 Browse to the commented :samp:`setup-base`;
 this is the hook that |ws_markup| runs at launch or refresh
@@ -734,6 +786,8 @@ the only thing left is the cleanup.
 
 If you no longer need your workshop,
 :ref:`remove <ref_workshop_remove>` it:
+
+.. @artefact workshop remove
 
 .. code-block:: console
 

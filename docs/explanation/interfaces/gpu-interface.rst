@@ -3,6 +3,8 @@
 GPU interface
 =============
 
+.. @artefact GPU interface
+
 The GPU interface
 enables GPU pass-through
 (direct access to the host system's GPUs)
@@ -64,6 +66,8 @@ via the GPU pass-through mechanism.
 
 To check if the interface is connected:
 
+.. @artefact workshop connections
+
 .. code-block:: console
 
    $ workshop connections --all
@@ -74,6 +78,8 @@ To check if the interface is connected:
 
 
 This means the host's GPUs are directly available inside the workshop:
+
+.. @artefact workshop shell
 
 .. code-block:: console
 

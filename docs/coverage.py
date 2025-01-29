@@ -73,6 +73,7 @@ def build_artefact_table(base_dir, coverage_data):
         for file_path in path.rglob("*.rst"):
             artefact_names = extract_artefacts(file_path)
             rel_path = file_path.relative_to(base_dir)
+            file_link = f'<a href="{base_dir / rel_path}">{rel_path}</a>'
 
             for name in artefact_names:
                 if name not in artefact_map:
@@ -87,11 +88,8 @@ def build_artefact_table(base_dir, coverage_data):
                         **{key.replace("-", "_"): set() for key in subdirs},
                     }
 
-                artefact_map[name][subdir.replace("-", "_")].add(
-                    f'<a href="{base_dir / rel_path}">{rel_path}</a>'
-                )
+                artefact_map[name][subdir.replace("-", "_")].add(file_link)
 
-    # Final formatting
     for artefact in artefact_map.values():
         for key in ["tutorial", "how_to", "explanation", "reference"]:
             artefact[key] = "<br>".join(sorted(artefact[key]))
@@ -101,7 +99,13 @@ def build_artefact_table(base_dir, coverage_data):
 
 def generate_html(output_file, artefact_table):
     template = Template(HTML_TEMPLATE)
-    artefacts = [{"name": name, **details} for name, details in artefact_table.items()]
+    artefacts = [
+        {"name": name, **details}
+        for name, details in sorted(
+            artefact_table.items(),
+            key=lambda item: (item[1].get("category", "") + item[0]).lower(),
+        )
+    ]
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(template.render(artefacts=artefacts))
 

@@ -3,6 +3,9 @@
 How Dockerfiles compare to SDKs
 ===============================
 
+.. @artefact SDK
+.. @artefact workshop (container)
+
 |ws_markup| didn't occur in a vacuum;
 there have been many attempts to provide developers with robust environments.
 A common approach is to use Docker
@@ -83,6 +86,8 @@ Parts and layers
 Docker relies on a temporally layered approach,
 where each change is built on top of the previous one.
 
+.. @artefact SDK hook
+
 Our SDKs are structured using :ref:`parts <exp_sdk_parts>`;
 their expressiveness makes them more diverse and semantically rich,
 allowing the layout of an SDK to be formalised in a modular way.
@@ -105,6 +110,8 @@ but other hooks add extra functionality with run-time events and health checks.
 
 Feature mapping
 ---------------
+
+.. @artefact SDK publisher
 
 Any attempt at a straightforward comparison of these different,
 albeit vaguely similar, technologies is mostly futile.
@@ -141,8 +148,12 @@ Important Dockerfile instructions are mapped to |sdk_markup| as follows:
    * - :samp:`FROM`
      - :samp:`base` in the :ref:`SDK definition <exp_sdk_definition>`
 
+.. @artefact SDK definition
+
    * - :samp:`HEALTHCHECK`
      - :samp:`check-health` hook
+
+.. @artefact check-health
 
    * - :samp:`ONBUILD`
      - :samp:`setup-base` :ref:`hook <exp_sdk_hooks>`
@@ -248,6 +259,8 @@ Its counterpart in |ws_markup| is the *project directory*
 where the workshop was defined and launched;
 it is automatically mounted as :file:`/project/` when the workshop is started:
 
+.. @artefact workshop launch
+
 .. code-block:: console
 
    $ workshop launch ros2jazzy  # must be run in the project directory
@@ -304,6 +317,8 @@ have no direct counterpart to bind mounts;
 plugs are more similar to Docker volumes.
 Yet, the :command:`workshop remount` command
 enables remounting existing plugs to new host directories:
+
+.. @artefact workshop remount
 
 .. code-block:: console
 

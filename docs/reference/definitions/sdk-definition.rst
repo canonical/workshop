@@ -3,8 +3,13 @@
 SDK definition
 ==============
 
+.. @artefact SDK
+.. @artefact SDK definition
+
 Filename convention
 -------------------
+
+.. @artefact sdkcraft (CLI)
 
 The name of the SDK definition file must be :file:`sdkcraft.yaml`;
 the file is usually created using the :command:`sdkcraft init` command
@@ -43,6 +48,7 @@ The :samp:`plugs` field is optional.
        It can be :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`
        or :samp:`ubuntu@24.04`.
 
+.. @artefact SDK base image
 
    * - :samp:`version`
      - string
@@ -132,6 +138,8 @@ JSON Schema
 The following
 `JSON Schema`
 formalises the description above:
+
+.. @artefact SDK schema
 
 .. dropdown:: SDK definition schema
 

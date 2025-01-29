@@ -3,6 +3,8 @@
 Workshops
 =========
 
+.. @artefact workshop (container)
+
 These articles explain the core idea behind |ws_markup|,
 specifically the eponymous *workshop*:
 

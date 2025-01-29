@@ -3,6 +3,10 @@
 How to use SDKcraft
 ===================
 
+.. @artefact sdkcraft (CLI)
+.. @artefact SDK
+.. @artefact interface
+
 This is a practical how-to guide
 that takes you on a tour
 of the essential |sdk_markup| activities.
@@ -120,6 +124,8 @@ First, create a directory named :file:`go/`:
    $ mkdir go/
 
 
+.. @artefact SDK definition
+
 It will contain your :ref:`SDK definition <exp_sdk_definition>`
 and other source files.
 
@@ -196,6 +202,8 @@ section in Craft Parts documentation.
 Add interface plugs
 -------------------
 
+.. @artefact interface plug
+
 In |sdk_markup|,
 :ref:`interfaces <exp_interfaces>` provide a controllable way
 of exposing the resources of the host system to the workshops,
@@ -251,6 +259,8 @@ and maintained between refresh operations.
 Add hooks
 ---------
 
+.. @artefact SDK hook
+
 To prepare the SDK for use,
 add the :ref:`hooks <exp_sdk_hooks>`
 that run at different stages of the workshop's life cycle,
@@ -298,6 +308,9 @@ installing the prerequisites and preparing it for use.
 Persist: save and restore
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. @artefact restore-state
+.. @artefact save-state
+
 Also under :file:`go/hooks/`,
 create two files
 named :file:`save-state` and :file:`restore-state`:
@@ -337,7 +350,11 @@ During a :command:`workshop refresh` operation:
 Report: check health
 ~~~~~~~~~~~~~~~~~~~~
 
+.. @artefact check-health
+
 Finally, create a hook named :file:`check-health`:
+
+.. @artefact workshopctl
 
 .. code-block:: shell
    :caption: check-health
@@ -390,6 +407,8 @@ Under :file:`go/`, run:
    $ sdkcraft
 
 
+.. @artefact SDK part
+
 This builds all :ref:`SDK parts <exp_sdk_parts>`
 defined in the :file:`sdkcraft.yaml` file,
 e.g. pulling source code, applying patches, configuring and compiling it
@@ -410,6 +429,8 @@ Optionally, you can clean the build cache before a build attempt:
    $ sdkcraft clean && sdkcraft
 
 
+.. @artefact SDK metadata
+
 Ran without arguments,
 :command:`sdkcraft` builds and packs the SDK into the :file:`go.sdk` file,
 which contains the build artefacts from the previous step
@@ -420,6 +441,8 @@ along with SDK metadata, hooks and other components.
 
 Publish the SDK
 ---------------
+
+.. @artefact SDK Store
 
 When an SDK is ready and packed,
 you need to publish it to the SDK Store

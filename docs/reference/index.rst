@@ -8,7 +8,6 @@ provide technical background
 that may be required to use |ws_markup| and |sdk_markup|.
 
 
-
 Command-line interfaces
 -----------------------
 
@@ -23,6 +22,9 @@ provided by |ws_markup| and |sdk_markup|:
 
 Definition formats
 ------------------
+
+.. @artefact SDK
+.. @artefact workshop (container)
 
 Workshops and SDKs are defined in YAML and share a number of basic elements
 such as plugs, base images and so on.

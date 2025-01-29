@@ -3,6 +3,10 @@
 SDK concepts
 ============
 
+.. @artefact SDK
+.. @artefact SDK publisher
+.. @artefact SDK Store
+
 SDKs are essential workshop components
 that install the required system and language packages,
 configure the workshop for their operation
@@ -19,6 +23,10 @@ SDKs are distributed through channels similar to
 
 SDK state
 ---------
+
+.. @artefact restore-state
+.. @artefact save-state
+.. @artefact SDK state
 
 An SDK can store any data specific to it,
 such as a model training configuration,
@@ -42,8 +50,12 @@ they are restored using the :samp:`restore-state` hooks.
 SDK definition
 --------------
 
+.. @artefact SDK definition
+
 An SDK is defined by the SDK publisher;
 the definition may look like this:
+
+.. @artefact sdkcraft (CLI)
 
 .. code-block:: yaml
    :caption: sdkcraft.yaml
@@ -66,6 +78,8 @@ the definition may look like this:
 
 SDK hooks
 ---------
+
+.. @artefact SDK hook
 
 SDK publishers can define optional *hooks*
 that control and extend the workshop's internal behaviour
@@ -90,6 +104,8 @@ understanding the events that trigger them can help you with troubleshooting.
 
 Interfaces
 ----------
+
+.. @artefact interface
 
 To make SDKs customisable and extensible,
 |ws_markup| implements a counterpart to
@@ -170,11 +186,15 @@ Related CLI operations
 A number of basic workshop operations
 affect plugs and slots in different ways.
 
+.. @artefact workshop launch
+
 When you :command:`workshop launch` a workshop,
 an auto-connect task handles each interface plug,
 finding a candidate slot,
 verifying the plug's eligibility for the slot based on their declarations
 and connecting the two.
+
+.. @artefact workshop refresh
 
 On :command:`workshop refresh`,
 existing connections are preserved in the refreshed workshop
@@ -182,6 +202,8 @@ if their plugs were connected before the operation.
 A newer version of an SDK may drop a plug that was previously connected;
 such connections are removed,
 but the host-based content remains.
+
+.. @artefact interface connection
 
 On :command:`workshop remove`,
 both the interface connections and the default host directories
@@ -209,6 +231,8 @@ that have been established by any |ws_markup| projects.
 System SDK
 ~~~~~~~~~~
 
+.. @artefact system SDK
+
 Every workshop contains a special *system SDK*
 that exposes system resources through its slots.
 It's unavailable from the SDK Store;
@@ -233,6 +257,8 @@ but this detail isn't exposed in :file:`sdkcraft.yaml`.
 
 Sketch SDK
 ----------
+
+.. @artefact sketch SDK
 
 The sketch SDK is another special type of SDK.
 Again, it's unavailable from the SDK Store;

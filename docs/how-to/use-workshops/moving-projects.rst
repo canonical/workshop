@@ -3,6 +3,8 @@
 How to move projects around
 ===========================
 
+.. @artefact project
+
 It may be unclear how workshops react to everyday operations
 such as moving or copying a project directory.
 Let's spend some time talking about different aspects of this.
@@ -25,6 +27,8 @@ Things change *after* you run :command:`workshop launch`:
      - name: go
        channel: latest/stable
 
+.. @artefact workshop --project
+.. @artefact workshop launch
 
 .. code-block:: console
 
@@ -36,6 +40,8 @@ Moving a project
 
 This is the simplest scenario.
 Start in the same project directory where you launched the workshop:
+
+.. @artefact workshop list
 
 .. code-block:: console
 
@@ -120,6 +126,8 @@ Removing a project
 |ws_markup| doesn't handle file deletion automatically;
 make sure you remove all workshops
 before deleting the project directory:
+
+.. @artefact workshop remove
 
 .. code-block:: console
 

@@ -5,6 +5,9 @@
 workshop (CLI)
 ==============
 
+.. @artefact workshop (CLI)
+.. @artefact workshopd
+
 |ws_markup| includes an eponymous command-line utility,
 :command:`workshop`;
 it is the daily go-to instrument for regular users,

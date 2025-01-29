@@ -11,6 +11,10 @@ it is important to understand how these concepts fit together.
 Workshops and projects
 ----------------------
 
+.. @artefact project
+.. @artefact workshop (container)
+.. @artefact workshop definition
+
 A *workshop* is a container that enables consistent environment builds.
 It is tied to a definition that lists SDKs and is stored as a :file:`.yaml` file
 under a project directory.
@@ -28,6 +32,8 @@ enables you to use them inside the workshop.
 
 SDKs
 ----
+
+.. @artefact SDK
 
 With |sdk_markup|, you can package and publish software dependencies
 as isolated *SDKs* to be used in a workshop definition by |ws_markup|,

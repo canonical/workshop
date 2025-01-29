@@ -11,6 +11,8 @@ By using the interface,
 the SDK publisher enables the use of the mount mechanism in the workshop;
 a host location also allows persisting data outside the workshop.
 
+.. @artefact host data source
+
 The interface defines a target directory inside the workshop,
 to which a source directory is mounted at run-time.
 Typically, it would provide resources to be consumed by the SDK,
@@ -103,6 +105,8 @@ can be used to manage the connection manually.
 
 To check if the interface is connected:
 
+.. @artefact workshop connections
+
 .. code-block:: console
 
    $ workshop connections --all
@@ -113,6 +117,8 @@ To check if the interface is connected:
 
 
 This means a source directory is mounted to the target:
+
+.. @artefact workshop info
 
 .. code-block:: console
    :emphasize-lines: 13
@@ -146,6 +152,8 @@ Remount
 The :command:`workshop remount` command sets a new source directory on the host
 for the target directory inside the workshop:
 
+.. @artefact workshop remount
+
 .. code-block:: console
 
    $ workshop remount ws/mount-sdk:cache ~/.local/cache/
@@ -160,6 +168,9 @@ which prevents data corruption.
 To reset a remounted plug to its default source location,
 use :samp:`workshop disconnect` with the :option:`!--forget` option,
 then refresh the workshop:
+
+.. @artefact workshop disconnect
+.. @artefact workshop refresh
 
 .. code-block:: console
 

@@ -7,6 +7,9 @@ This is an overview of security considerations for |ws_markup| and |sdk_markup|.
 Privileges
 ----------
 
+.. @artefact workshopd
+.. @artefact API
+
 |ws_markup| has a client-server architecture;
 its CLI, which is the contact surface for the users,
 is confined as a snap and neither needs nor requires elevated privileges to run.
@@ -20,6 +23,9 @@ for implementation provides the benefits of a mature container technology.
 built, installed and run as a snap;
 it neither needs nor requires elevated privileges to work
 and securely confines the SDK build process to a container.
+
+.. @artefact SDK
+.. @artefact SDK Store
 
 Packaged SDKs are uploaded to the SDK Store.
 Currently, it's implemented using `GCP
@@ -71,6 +77,8 @@ the implementation is largely similar to :program:`snapd`'s
 - Some interfaces, such as mounts, are connected automatically by default;
   others require manual approval by the user.
   All connections are subject to built-in validation policies.
+
+.. @artefact SDK publisher
 
 - The use of interfaces reflects the least privilege principle,
   allowing publishers and users to request only the necessary permissions,

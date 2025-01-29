@@ -3,6 +3,9 @@
 workshopctl (CLI)
 =================
 
+.. @artefact workshopctl
+.. @artefact SDK hook
+
 SDKs use the :program:`workshopctl` tool when reporting to the workshop;
 to invoke a subcommand, add it to your :ref:`SDK hook <ref_sdk_hooks>`.
 
@@ -20,6 +23,8 @@ Report the health of the SDK.
 
 
 .. rubric:: Description
+
+.. @artefact check-health
 
 This command is essential for the :samp:`check-health` hook
 that runs after launch or refresh operations in a workshop.

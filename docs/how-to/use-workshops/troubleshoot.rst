@@ -69,6 +69,8 @@ for individual workshops, review the snap's logs:
 Explore LXD containers
 ----------------------
 
+.. @artefact workshop (container)
+
 If you notice an issue with a specific workshop,
 use the `LXC`_ utility to identify and troubleshoot it.
 

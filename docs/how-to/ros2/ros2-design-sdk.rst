@@ -3,6 +3,8 @@
 How to design an SDK
 ====================
 
+.. @artefact SDK
+
 For a practical example of SDK design and layout,
 let's see how an SDK for
 `ROS 2
@@ -20,6 +22,9 @@ is structured.
 
 Define the SDK
 --------------
+
+.. @artefact sdkcraft (CLI)
+.. @artefact SDK definition
 
 Here's the entire SDK definition:
 
@@ -61,6 +66,8 @@ Summarily, the definition builds upon |sdk_markup|'s capabilities,
 persisting the important reusable parts of the setup on the host
 and making its GPU capabilities directly available.
 
+.. @artefact SDK hook
+
 However,
 the SDK should actually make use of the directories defined in mount plugs.
 For :samp:`ros-cache`,
@@ -74,6 +81,8 @@ Currently, this is achieved with an SDK hook.
 
 Define the hooks
 ----------------
+
+.. @artefact project
 
 This design doesn't require preserving state between refreshes.
 As seen above, the content is cached on the host,
@@ -245,6 +254,9 @@ At run-time, SDK revisions are available inside the workshop;
 under :file:`/var/lib/workshop/sdk/ros2/`,
 you can see all SDK content that was packed, published and installed.
 There, :file:`current/` always maps to the latest installed revision:
+
+.. @artefact workshop shell
+.. @artefact SDK revision
 
 .. code-block:: console
 

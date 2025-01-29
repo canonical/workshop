@@ -3,6 +3,7 @@
 SDKs
 ====
 
+.. @artefact SDK
 
 .. _ref_sdk_directory:
 
@@ -18,6 +19,9 @@ to initialise, define, pack and publish the SDK.
 
 SDK parts
 ---------
+
+.. @artefact sdkcraft (CLI)
+.. @artefact SDK part
 
 Parts can be thought of as the building blocks of |ws_markup| and |sdk_markup|.
 Each part in the :file:`sdkcraft.yaml` :ref:`definition <ref_sdk_definition>`
@@ -43,6 +47,9 @@ refer to the corresponding Craft Parts
 SDK plugs and slots
 -------------------
 
+.. @artefact interface plug
+.. @artefact interface slot
+
 Currently, |ws_markup| and |sdk_markup| support the following interface plugs:
 
 - :ref:`Camera <ref_camera_interface>`
@@ -58,6 +65,8 @@ Slots can only be defined for the :samp:`mount` interface.
 
 Camera interface
 ~~~~~~~~~~~~~~~~
+
+.. @artefact camera interface
 
 A camera plug in the definition must specify the plug name and the interface:
 
@@ -83,6 +92,8 @@ as video capture devices.
 Desktop interface
 ~~~~~~~~~~~~~~~~~
 
+.. @artefact desktop interface
+
 A desktop plug in the definition must specify the plug name and the interface:
 
 .. code-block:: yaml
@@ -105,6 +116,8 @@ This makes the host's Wayland socket directly available inside the workshop.
 
 GPU interface
 ~~~~~~~~~~~~~
+
+.. @artefact GPU interface
 
 A GPU plug in the definition must specify the plug name and the interface:
 
@@ -129,6 +142,8 @@ via the GPU pass-through mechanism.
 
 Mount interface
 ~~~~~~~~~~~~~~~
+
+.. @artefact mount interface
 
 A mount plug in the definition must specify the plug name, the interface, the target directory and optionally whether to be read-only:
 
@@ -160,6 +175,8 @@ and the *source* directory:
         interface: mount
         workshop-source: <WORKSHOP DIRECTORY>
 
+.. @artefact $SDK
+
 This exposes the :samp:`workshop-source` directory inside the workshop
 to be mounted to another directory within the workshop.
 The :envvar:`$SDK` variable can be used to refer to the SDK installation path
@@ -174,6 +191,8 @@ inside the workshop.
 
 SSH interface
 ~~~~~~~~~~~~~
+
+.. @artefact SSH interface
 
 An SSH plug in the definition must specify the plug name and the interface:
 
@@ -223,6 +242,9 @@ which can be defined when the SDK's is built using |sdk_markup|:
        using :ref:`workshopctl <ref_workshopctl>`,
        which affects the :ref:`status <ref_workshop_status>` of the workshop.
 
+.. @artefact workshopctl
+.. @artefact check-health
+.. @artefact workshop status
 
    * - :samp:`restore-state`
 
@@ -233,6 +255,7 @@ which can be defined when the SDK's is built using |sdk_markup|:
      - Restores SDK-specific data from the :ref:`state directory <ref_sdk_state>`.
        The hook itself comes from the *new* SDK version.
 
+.. @artefact restore-state
 
    * - :samp:`save-state`
 
@@ -242,6 +265,7 @@ which can be defined when the SDK's is built using |sdk_markup|:
      - Saves SDK-specific data to the :ref:`state directory <ref_sdk_state>`.
        The hook itself comes from the *old* SDK version.
 
+.. @artefact save-state
 
    * - :samp:`setup-base`
 
@@ -249,6 +273,10 @@ which can be defined when the SDK's is built using |sdk_markup|:
        after unpacking the base image
        and starting the workshop,
        but before setting its status to *Ready*.
+
+.. @artefact SDK base image
+.. @artefact setup-base
+.. @artefact workshop base image
 
      - Configures the base image for the SDK to become operational.
 
@@ -282,6 +310,8 @@ a zero code indicates success.
 SDK state
 ---------
 
+.. @artefact SDK state
+
 An SDK cat store any data specific to it within the workshop.
 For this purpose, an environment variable named :envvar:`$SDK_STATE_DIR`
 is exposed by |ws_markup| at run-time;
@@ -294,6 +324,8 @@ can use to preserve and recover the data respectively.
 
 SDK channels
 ------------
+
+.. @artefact SDK channel
 
 When SDKs are published by their creators and consumed by workshops,
 different versions and releases are tracked through the use of channels.

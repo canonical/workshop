@@ -3,6 +3,11 @@
 SDK health reports with :program:`workshopctl`
 ==============================================
 
+.. @artefact workshopd
+.. @artefact workshopctl
+.. @artefact SDK
+.. @artefact SDK health
+
 The :program:`workshopctl` tool allows an SDK
 to talk to the :program:`workshopd` daemon,
 giving SDK authors a way to manage health checks and report their health.
@@ -41,6 +46,8 @@ If it's not :samp:`okay`,
 you can also supply an error code with a user-friendly message
 to provide further details.
 
+.. @artefact SDK publisher
+
 This command is essential for SDK publishers
 to communicate the health status of their SDKs
 within the workshop environment;
@@ -49,6 +56,9 @@ then :program:`workshopd` determines the overall health status of a workshop.
 
 Workshop status
 ---------------
+
+.. @artefact check-health
+.. @artefact workshop status
 
 The :samp:`check-health` hook is central to this,
 as it tells the :program:`workshopd` daemon the health of the SDK

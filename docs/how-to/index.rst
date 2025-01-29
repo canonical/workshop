@@ -24,6 +24,8 @@ moving projects within the file system or using |ws_markup| with Git:
 Study examples
 --------------
 
+.. @artefact SDK
+
 This section presents a case study for `ROS2 <https://www.ros.org/>`_,
 a popular robotics-oriented framework.
 The articles discuss the design of a ROS2-oriented SDK and its practical usage:
@@ -36,6 +38,10 @@ The articles discuss the design of a ROS2-oriented SDK and its practical usage:
 
 Build SDKs
 ----------
+
+.. @artefact SDK definition
+.. @artefact SDK publisher
+.. @artefact SDK Store
 
 To create SDKs for |ws_markup|, SDK publishers use |sdk_markup|.
 This tool is installed separately and accepts an SDK definition

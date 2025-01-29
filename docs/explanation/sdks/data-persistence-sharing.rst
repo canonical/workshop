@@ -19,6 +19,8 @@ you need to mount a lot of directories to make it work,
 and the handling of these mounts both inside and outside the container
 can quickly become an overhead.
 
+.. @artefact SDK
+
 |ws_markup| addresses this issue by providing a way
 to reuse and share content between the host and the workshop via SDKs
 while keeping manual intervention to a necessary minimum.
@@ -51,6 +53,8 @@ you use the :samp:`mount` interface
 to define the target directory
 where the content will be mounted inside the workshop
 per each directory you want to retain during the workshop's life cycle.
+
+.. @artefact sdkcraft (CLI)
 
 .. code-block:: yaml
    :caption: sdkcraft.yaml
@@ -125,6 +129,8 @@ it explicitly lists the host directories to be mounted to each target.
 
 This can also be done with |ws_markup|,
 and the :command:`workshop remount` command is the key to it:
+
+.. @artefact workshop remount
 
 .. code-block:: console
 

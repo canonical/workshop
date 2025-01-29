@@ -3,6 +3,8 @@
 SDKs
 ====
 
+.. @artefact SDK
+
 These topics cover the many aspects of defining and using SDKs
 with |ws_markup| and |sdk_markup|:
 

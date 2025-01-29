@@ -3,6 +3,8 @@
 Desktop interface
 =================
 
+.. @artefact desktop interface
+
 The desktop interface
 provides access to the host system's display (Wayland/X11) socket(s)
 from inside the workshop,
@@ -17,6 +19,9 @@ The interface isn't connected automatically at launch and refresh
 for security reasons.
 The :command:`workshop connect` and :command:`workshop disconnect` commands
 can be invoked manually after the workshop has started:
+
+.. @artefact workshop connect
+.. @artefact workshop disconnect
 
 .. code-block:: console
 
@@ -61,6 +66,8 @@ and the following environment variables have been set:
 
 To check if the interface is connected:
 
+.. @artefact workshop connections
+
 .. code-block:: console
 
    $ workshop connections --all
@@ -71,6 +78,8 @@ To check if the interface is connected:
 
 
 This means the host's display socket (Wayland, X11 or both) is available inside the workshop:
+
+.. @artefact workshop shell
 
 .. code-block:: console
 

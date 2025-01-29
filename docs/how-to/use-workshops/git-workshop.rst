@@ -3,6 +3,8 @@
 How to use workshops with Git
 =============================
 
+.. @artefact workshop (container)
+
 Workshops are designed to be used in common development ecosystems,
 which makes their encounter with Git almost inevitable.
 Let's look at how you can integrate workshops into your repo.
@@ -34,6 +36,8 @@ Next,
 launch the workshop
 and start working on your code:
 
+.. @artefact workshop launch
+
 .. code-block:: console
 
    $ workshop launch
@@ -55,11 +59,15 @@ Mind that any activity
 that relies on the workshop's contents
 should now occur inside the workshop:
 
+.. @artefact workshop exec
+
 .. code-block:: console
 
    $ git add . && git commit -m "initial commit"
    $ workshop exec golang go build -x main.go
 
+
+.. @artefact project
 
 However, the resulting artefacts are exposed in the project directory:
 
@@ -71,6 +79,8 @@ However, the resulting artefacts are exposed in the project directory:
 
 
 They stay there even if you remove the workshop:
+
+.. @artefact workshop remove
 
 .. code-block:: console
 
@@ -124,6 +134,8 @@ so you create a new worktree just for that:
    $ cd ../hotfix/
 
 
+.. @artefact workshop base image
+
 Instead of bothering with virtual machines,
 update the definition
 to change the base image:
@@ -153,6 +165,8 @@ Next, launch the redefined workshop to work on the problem:
 As with regular directories,
 |ws_markup| works well with
 :literalref:`git worktree move<https://git-scm.com/docs/git-worktree#_commands>`:
+
+.. @artefact workshop list
 
 .. code-block:: console
 

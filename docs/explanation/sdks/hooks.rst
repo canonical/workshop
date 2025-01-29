@@ -5,6 +5,13 @@
 SDK hooks
 =========
 
+.. @artefact SDK
+.. @artefact SDK hook
+.. @artefact check-health
+.. @artefact restore-state
+.. @artefact save-state
+.. @artefact setup-base
+
 |ws_markup| and |sdk_markup| enable optional life cycle *hooks*
 that control and extend the behaviour of an SDK.
 

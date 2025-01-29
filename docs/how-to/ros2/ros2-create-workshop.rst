@@ -25,6 +25,8 @@ under the :samp:`latest/edge` channel.
 Get the sources ready
 ---------------------
 
+.. @artefact project
+
 Let's use the ROS 2 examples
 for the demonstration.
 Choose a project directory
@@ -72,6 +74,8 @@ Your project directory should now look like this:
 
 All set, so launch the workshop:
 
+.. @artefact workshop launch
+
 .. code-block:: console
 
    $ workshop launch
@@ -92,6 +96,8 @@ Build the project
 |ws_markup| mounts the project directory
 inside the workshop as :file:`/project/`,
 so open a shell and go there:
+
+.. @artefact workshop shell
 
 .. code-block:: console
 
@@ -131,6 +137,8 @@ so the build cache can be persisted and reused
 after the workshop is stopped and restarted, or even refreshed.
 
 Try this for yourself:
+
+.. @artefact workshop refresh
 
 .. code-block:: console
 

@@ -3,12 +3,18 @@
 Workshop definition
 ===================
 
-Filename convention
--------------------
+.. @artefact project
 
 A project which defines a single workshop can store a definition file
 named :file:`workshop.yaml` or :file:`.workshop.yaml`
 in the project directory.
+
+
+Filename convention
+-------------------
+
+.. @artefact project workshops
+.. @artefact workshop name
 
 When multiple workshops are defined,
 their definition files must be stored in the :file:`.workshop/` subdirectory.
@@ -47,6 +53,8 @@ and includes a number of mandatory and optional keys:
      - Workshop's base image
        that provides the underlying OS capabilities.
 
+.. @artefact workshop base image
+
        It can be :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`
        or :samp:`ubuntu@24.04`.
 
@@ -54,6 +62,8 @@ and includes a number of mandatory and optional keys:
      - object
      - List of individual SDKs
        from the SDK Store to include in the workshop.
+
+.. @artefact SDK
 
        Each entry points to an existing SDK
        and specifies its retrieval channel.
@@ -125,6 +135,9 @@ Each SDK is described with the following keys:
          to specify a path inside the workshop
          to be used as the plug's target directory.
 
+.. @artefact mount interface attributes
+.. @artefact plug binding
+
    * - :samp:`slots`
      - object
      - Defines additional slots under the SDK;
@@ -138,6 +151,7 @@ Each SDK is described with the following keys:
        :file:`/project` or :envvar:`$SDK`-based paths can be used;
        :envvar:`$SDK` expands into the SDK's installation path in the workshop.
 
+.. @artefact $SDK
 
 JSON Schema
 -----------
@@ -145,6 +159,8 @@ JSON Schema
 The following
 `JSON Schema`
 formalises the description above:
+
+.. @artefact workshop schema
 
 .. dropdown:: Workshop definition schema
 
@@ -194,6 +210,8 @@ is bound to the :samp:`mod-cache` plug of the :samp:`go` SDK:
          data:
            bind: go:mod-cache
 
+
+.. @artefact system SDK
 
 This YAML file, besides using the :samp:`tensorflow` and :samp:`cuda` SDKs,
 defines an additional slot under the system SDK, a plug under :samp:`tensorflow`

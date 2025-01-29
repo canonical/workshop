@@ -1,58 +1,345 @@
+"$SDK":
+  category: interface
+  type: envvar
+  specs:
+  - SK039
+
+"$WORKSHOP":
+  category: "workshopd"
+  type: envvar
+  specs: []
+
+"$WORKSHOPD_DEBUG":
+  category: "workshopd"
+  type: envvar
+  specs: []
+
+"API":
+  category: "workshopd"
+  type: endpoint
+  specs:
+  - SK009
+  - SK013
+
+"GPU interface":
+  category: interface
+  type: concept
+  specs:
+  - SK029
+
+"SDK":
+  category: SDK
+  type: concept
+  specs:
+  - SK000
+
+"SDK base image":
+  category: SDK
+  type: concept
+  specs:
+  - SK001
+
+"SDK channel":
+  category: SDK
+  type: concept
+  specs:
+  - SK001
+  - SK011
+  - SK026
+
+"SDK definition":
+  category: SDK
+  type: file
+  specs:
+  - SK001
+  - SK004
+  - SK026
+
+"SDK health":
+  category: SDK
+  type: concept
+  specs: []
+
+"SDK hook":
+  category: SDK
+  type: concept
+  specs:
+  - SK000
+  - SK005
+
+"SDK hook context":
+  category: SDK
+  type: concept
+  specs:
+  - SK012
+
+"SDK metadata":
+  category: SDK
+  type: concept
+  specs:
+  - SK000
+  - SK020
+
+"SDK name":
+  category: SDK
+  type: concept
+  specs:
+  - SK001
+
+"SDK part":
+  category: SDK
+  type: concept
+  specs:
+  - SK000
+
+"SDK publisher":
+  category: SDK
+  type: concept
+  specs:
+  - SK001
+
+"SDK revision":
+  category: SDK
+  type: concept
+  specs:
+  - SK001
+  - SK011
+
+"SDK schema":
+  category: SDK
+  type: schema
+  specs: []
+
+"SDK state":
+  category: SDK
+  type: concept
+  specs: []
+
+"SDK Store":
+  category: SDK
+  type: concept
+  specs:
+  - SK001
+
+"camera interface":
+  category: interface
+  type: concept
+  specs:
+  - SK042
+
+"check-health":
+  category: SDK
+  type: action
+  specs:
+  - SK023
+
+"desktop interface":
+  category: interface
+  type: concept
+  specs:
+  - SK034
+
+"host data source":
+  category: interface
+  type: concept
+  specs:
+  - SK020
+  - SK031
+
+"installation":
+  category: "workshop (CLI)"
+  type: action
+  specs: []
+
+"interface":
+  category: interface
+  type: concept
+  specs:
+  - SK000
+  - SK015
+  - SK020
+  - SK026
+
+"interface connection":
+  category: interface
+  type: concept
+  specs:
+  - SK020
+
+"interface plug":
+  category: interface
+  type: concept
+  specs:
+  - SK020
+
+"interface slot":
+  category: interface
+  type: concept
+  specs:
+  - SK020
+
+"mount interface":
+  category: interface
+  type: concept
+  specs:
+  - SK020
+  - SK026
+  - SK031
+
+"mount interface attributes":
+  category: interface
+  type: concept
+  specs:
+  - SK039
+
+"plug binding":
+  category: interface
+  type: concept
+  specs:
+  - SK035
+
+"project":
+  category: project
+  type: concept
+  specs:
+  - SK000
+  - SK013
+
+"project workshops":
+  category: project
+  type: concept
+  specs:
+  - SK000
+
+"restore-state":
+  category: SDK
+  type: action
+  specs:
+  - SK012
+
+"save-state":
+  category: SDK
+  type: action
+  specs:
+  - SK012
+
+"setup-base":
+  category: SDK
+  type: action
+  specs:
+  - SK005
+
+"sketch SDK":
+  category: SDK
+  type: concept
+  specs:
+  - SK036
+
+"sdkcraft (CLI)":
+  category: "sdkcraft (CLI)"
+  type: ""
+  specs:
+  - SK026
+
+"SSH interface":
+  category: interface
+  type: concept
+  specs:
+  - SK032
+
+"system SDK":
+  category: interface
+  type: concept
+  specs:
+  - SK028
+  - SK039
+
 "workshop (CLI)":
   category: "workshop (CLI)"
   type: tool
   specs:
   - SK000
-installation:
+
+"workshop (container)":
+  category: workshop (container)
+  type: concept
+  specs:
+  - SK000
+  - SK003
+  - SK007
+
+"workshop --help":
   category: "workshop (CLI)"
-  type: action
+  type: command
   specs: []
+
 "workshop --project":
   category: "workshop (CLI)"
   type: option
   specs:
   - SK002
   - SK007
+
+"workshop .lock":
+  category: workshop (container)
+  type: file
+  specs:
+  - SK006
+  - SK003
+  - SK007
+  - SK008
+
+"workshop base image":
+  category: workshop (container)
+  type: file
+  specs:
+  - SK001
+
 "workshop changes":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK003
+
 "workshop connect":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK028
+
 "workshop connections":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK028
+
+"workshop definition":
+  category: workshop (container)
+  type: file
+  specs:
+  - SK001
+  - SK006
+  - SK008
+
 "workshop disconnect":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK028
+
 "workshop exec":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK009
-"workshop hack":
-  category: "workshop (CLI)"
-  type: command
-  specs:
-  - SK036
-"workshop help":
-  category: "workshop (CLI)"
-  type: command
-  specs: []
+
 "workshop info":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK014
   - SK027
+
 "workshop launch":
   category: "workshop (CLI)"
   type: command
@@ -61,149 +348,124 @@ installation:
   - SK003
   - SK008
   - SK020
+
 "workshop list":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK002
   - SK006
+
+"workshop name":
+  category: workshop (container)
+  type: concept
+  specs:
+  - SK001
+  - SK014
+
 "workshop okay":
   category: "workshop (CLI)"
   type: command
   specs: []
+
+"workshop recovery":
+  category: workshop (container)
+  type: action
+  specs:
+  - SK008
+
 "workshop refresh":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK012
   - SK020
+
 "workshop remount":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK027
+
 "workshop remove":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK018
   - SK020
+
+"workshop schema":
+  category: workshop (container)
+  type: schema
+  specs:
+  - SK001
+
+"workshop shell":
+  category: "workshop (CLI)"
+  type: command
+  specs: []
+
+"workshop sketch-sdk":
+  category: "workshop (CLI)"
+  type: command
+  specs:
+  - SK036
+
 "workshop start":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK010
+
+"workshop state management":
+  category: workshop (container)
+  type: concept
+  specs:
+  - SK003
+
+"workshop status":
+  category: workshop (container)
+  type: concept
+  specs:
+  - SK003
+  - SK005
+  - SK007
+  - SK010
+  - SK012
+  - SK015
+
 "workshop stop":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK008
   - SK010
+
 "workshop tasks":
   category: "workshop (CLI)"
   type: command
   specs:
   - SK003
+
 "workshop warnings":
   category: "workshop (CLI)"
   type: command
   specs: []
+
+"workshopctl":
+  category: workshop (container)
+  type: tool
+  specs:
+  - SK023
+
 "workshopd":
-  category: "workshopd (daemon)"
+  category: "workshopd"
   type: daemon
   specs:
   - SK009
   - SK013
-"$WORKSHOP":
-  category: "workshopd (daemon)"
-  type: envvar
-  specs: []
-"$WORKSHOPD_DEBUG":
-  category: "workshopd (daemon)"
-  type: envvar
-  specs: []
-"API":
-  category: "workshopd (daemon)"
-  type: endpoint
-  specs:
-  - SK009
-  - SK013
-"run":
-  category: "workshopd (daemon)"
+
+"workshopd run":
+  category: "workshopd"
   type: command
   specs: []
-project:
-  category: project
-  type: concept
-  specs:
-  - SK000
-  - SK013
-"project workshops":
-  category: project
-  type: concept
-  specs:
-  - SK000
-"sdkcraft (CLI)":
-  category: "sdkcraft (CLI)"
-  type: ""
-  specs:
-  - SK026
-"hack SDK":
-  category: SDK
-  type: concept
-  specs:
-  - SK036
-SDK:
-  category: SDK
-  type: concept
-  specs:
-  - SK000
-"SDK channel":
-  category: SDK
-  type: concept
-  specs:
-  - SK001
-  - SK011
-  - SK026
-"SDK definition .yaml":
-  category: SDK
-  type: file
-  specs:
-  - SK026
-"SDK file format":
-  category: SDK
-  type: file
-  specs:
-  - SK001
-  - SK004
-  - SK026
-"workshop (LXD instance)":
-  category: "workshop (LXD instance)"
-  type: concept
-  specs:
-  - SK000
-  - SK003
-  - SK007
-"workshop base image":
-  category: "workshop (LXD instance)"
-  type: file
-  specs:
-  - SK001
-"camera interface":
-  category: Interface
-  type: concept
-  specs:
-  - SK042
-"desktop interface":
-  category: Interface
-  type: concept
-  specs:
-  - SK034
-interface:
-  category: Interface
-  type: concept
-  specs:
-  - SK000
-  - SK015
-  - SK020
-  - SK026

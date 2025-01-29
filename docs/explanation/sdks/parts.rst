@@ -5,6 +5,9 @@
 SDK parts
 =========
 
+.. @artefact SDK
+.. @artefact SDK part
+
 Parts provide a way to modularise the SDK and manage its dependencies,
 ultimately making it easier to maintain and update
 by separating its deployment into sourcing, building and staging phases.

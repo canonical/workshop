@@ -3,6 +3,9 @@
 Interface concepts
 ==================
 
+.. @artefact SDK
+.. @artefact interface
+
 In |ws_markup|, SDKs can act as providers and consumers of resources
 such as the GPU or file directories.
 Host system resources
@@ -18,6 +21,8 @@ Such connections are uniformly established via the interface system.
 
 Connections
 -----------
+
+.. @artefact interface connection
 
 Interface connections are a mechanism for communication and resource sharing.
 It is an integral part of workshop confinement,

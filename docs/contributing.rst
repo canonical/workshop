@@ -25,6 +25,11 @@ The guidelines below will keep your contributions effective and meaningful.
 
 Environment setup
 -----------------
+
+.. @artefact workshopd
+.. @artefact API
+.. @artefact workshopd run
+
 #. ``Workshop`` has a client-server architecture.
    Its ``workshopd`` daemon exposes a RESTful API (see :file:`internal/daemon/api.go`) to the clients.
    To run the daemon locally:
@@ -255,6 +260,10 @@ This can be accomplished by using the `-artifacts` flag when running `spread`.
 How to run a local SDK Store
 ----------------------------
 
+.. @artefact SDK
+.. @artefact sdkcraft (CLI)
+.. @artefact SDK Store
+
 To test SDKs with |ws_markup| locally without publishing,
 it is possible to run a local instance of SDK Store.
 This guide uses the open-source `fake-gcs-server <https://github.com/fsouza/fake-gcs-server>`_.
@@ -281,15 +290,21 @@ however, the remainder of the structure and naming convention is mandatory.
 
 Here:
 
+.. @artefact SDK name
+
 - :samp:`<SDK>` is the SDK name (e.g. :samp:`my-sdk`)
 
 - :samp:`<RELEASE>` is the SDK release (e.g. :samp:`latest`)
+
+.. @artefact SDK channel
 
 - :samp:`<CHANNEL>` is the SDK channel (e.g. :samp:`edge`)
 
 
 Copy the SDK
 ~~~~~~~~~~~~
+
+.. @artefact SDK definition
 
 Place the SDK files in the deepest directory from the previous step
 (e.g. :file:`fake-store/sdk-store/my-sdk/latest/edge/my-sdk/`).

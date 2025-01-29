@@ -3,6 +3,9 @@
 Workshop concepts
 =================
 
+.. @artefact project
+.. @artefact workshop (container)
+
 A *workshop*
 (lowercase; not to be confused with |ws_markup| itself)
 is a container that is described in a definition file,
@@ -15,6 +18,8 @@ but it's not recommended to rely on this implementation detail.
 
 Workshop status
 ---------------
+
+.. @artefact workshop status
 
 A workshop's life-cycle can see it switch between several statuses:
 
@@ -61,6 +66,9 @@ provide more details of valid transitions.
 Workshop definition
 -------------------
 
+.. @artefact workshop base image
+.. @artefact workshop definition
+
 This is a YAML file
 that lists the base image of the workshop
 and the specific components installed on top of it.
@@ -80,6 +88,9 @@ A simple definition might look like this:
      - name: go
        channel: latest/stable
 
+
+.. @artefact SDK
+.. @artefact interface
 
 It specifies a *base* and an *SDK*.
 A more complete definition would usually list several SDKs
@@ -116,6 +127,8 @@ Binding a plug to another plug makes them both refer to a single entity;
 any action on a bound plug affects all bindings, and vice versa.
 This comes handy if the SDKs implement different features on the same resources
 or simply use a singleton-like interface (:samp:`gpu` is a good example).
+
+.. @artefact SDK publisher
 
 .. note::
 
@@ -163,6 +176,8 @@ Here, if you remount :samp:`pytorch:datasets`,
 the :samp:`tensorflow:datasets` plug is also remounted
 because they reference the same entity:
 
+.. @artefact workshop info
+
 .. code-block:: console
 
    $ workshop remount digits/pytorch:datasets /new-mount/
@@ -192,6 +207,8 @@ reducing the potential for mistakes.
 When you run :command:`workshop connections`,
 a bound plug will have :samp:`bind` listed under :samp:`Notes`,
 along with the line number of the target plug:
+
+.. @artefact workshop connections
 
 .. code-block:: console
 

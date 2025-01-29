@@ -3,6 +3,8 @@
 ROS2: case study
 ================
 
+.. @artefact SDK
+
 These topics present an end-to-end scenario
 of using |ws_markup| and |sdk_markup| with `ROS2 <https://www.ros.org/>`_,
 a popular robotics-oriented framework:
