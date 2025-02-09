@@ -1,4 +1,6 @@
 canonical-sphinx[full] @ git+https://github.com/canonical/canonical-sphinx@main
+GitPython
+PyYAML
 sphinx-autobuild
 sphinxcontrib-mermaid
 sphinxcontrib-svg2pdfconverter[CairoSVG]

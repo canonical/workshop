@@ -1,0 +1,9 @@
+prefix: "sdks"
+repo_url: "https://github.com/akcano/sdks-test.git"
+branches:
+  - name: "ubuntu-22.04"
+    top_dirs:
+      - "ros2"
+  - name: "ubuntu-24.04"
+    top_dirs:
+      - "java"

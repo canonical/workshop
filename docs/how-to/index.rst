@@ -21,21 +21,6 @@ moving projects within the file system or using |ws_markup| with Git:
    Use workshops <use-workshops/index>
 
 
-Study examples
---------------
-
-.. @artefact SDK
-
-This section presents a case study for `ROS2 <https://www.ros.org/>`_,
-a popular robotics-oriented framework.
-The articles discuss the design of a ROS2-oriented SDK and its practical usage:
-
-.. toctree::
-   :maxdepth: 2
-
-   ros2/index
-
-
 Build SDKs
 ----------
 

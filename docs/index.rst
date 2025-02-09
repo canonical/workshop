@@ -14,6 +14,7 @@
    how-to/index
    explanation/index
    reference/index
+   sdks/index
    Contribution <contributing>
 
 
