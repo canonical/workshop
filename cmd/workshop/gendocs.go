@@ -5,9 +5,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/canonical/gencodo"
 	"github.com/spf13/cobra"
-
-	"github.com/canonical/workshop/cmd/workshop/gendocs"
 )
 
 type CmdDocs struct {
@@ -45,7 +44,7 @@ func (c *CmdDocs) Run(cmd *cobra.Command, av []string) error {
 		log.Fatalf("failed to create docs directory: %v", err)
 	}
 
-	err = gendocs.GenReSTTreeCustom(c.root.Command(c.root.project), docDir, filePrepender, linkHandler)
+	err = gencodo.GenReSTTreeCustom(c.root.Command(c.root.project), docDir, filePrepender, linkHandler)
 	if err != nil {
 		log.Fatalf("failed to generate documentation: %v", err)
 	}

@@ -1,16 +1,17 @@
 module github.com/canonical/workshop
 
-go 1.23
+go 1.24.0
 
 require (
 	cloud.google.com/go/storage v1.37.0
 	github.com/adrg/xdg v0.4.0
+	github.com/canonical/gencodo v0.0.2
 	github.com/canonical/lxd v0.0.0-20241119164425-14e4d099c7a3
 	github.com/canonical/x-go v0.0.0-20230522092633-7947a7587f5b
 	github.com/gorilla/websocket v1.5.1
 	github.com/pkg/term v1.1.0
 	github.com/spf13/afero v1.11.0
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/sys v0.29.0
 	google.golang.org/api v0.160.0
@@ -62,7 +63,7 @@ require (
 	github.com/pkg/xattr v0.4.10 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.32.0
 	golang.org/x/net v0.33.0 // indirect
