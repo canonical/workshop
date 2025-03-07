@@ -51,6 +51,7 @@ execute: |
   EOF
 
   echo "Connect the desktop interface for an x11 session"
+  sudo -u ubuntu XDG_RUNTIME_DIR=/run/user/1000 systemctl --user unset-environment WAYLAND_DISPLAY
   sudo -u ubuntu touch /tmp/.Xauthority
   sudo -u ubuntu XDG_RUNTIME_DIR=/run/user/1000 systemctl --user set-environment DISPLAY=:0 XAUTHORITY=/tmp/.Xauthority
   workshop_exec connect ws-desktop/test-sdk-desktop:desktop :desktop
