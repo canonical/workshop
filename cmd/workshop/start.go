@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/canonical/workshop/internal/progress"
 	"github.com/canonical/x-go/strutil"
 	"github.com/spf13/cobra"
 )
@@ -77,7 +78,7 @@ func (c *CmdStart) Run(cmd *cobra.Command, av []string) error {
 		return err
 	}
 
-	if _, err := c.wait(cli, changeId); err != nil {
+	if _, err := c.wait(cli, changeId, progress.DisplayModeDefault); err != nil {
 		if err == errNoWait {
 			return nil
 		}

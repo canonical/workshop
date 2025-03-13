@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/canonical/workshop/internal/progress"
 	"github.com/canonical/x-go/strutil"
 	"github.com/spf13/cobra"
 )
@@ -14,6 +15,8 @@ type CmdRefresh struct {
 	WaitOnError bool
 	Continue    bool
 	Abort       bool
+	Raw         bool
+	Verbose     bool
 }
 
 func (c *CmdRefresh) Command() *cobra.Command {
@@ -94,6 +97,12 @@ $ workshop refresh nimble/sketch`,
 	cmd.PersistentFlags().BoolVar(&c.Abort, "abort",
 		false,
 		"Abort the previously paused operation, reverting any changes.")
+	cmd.PersistentFlags().BoolVar(&c.Verbose, "verbose",
+		false,
+		"Show verbose output")
+	cmd.PersistentFlags().BoolVar(&c.Raw, "raw",
+		false,
+		"Show raw output")
 
 	return cmd
 }
@@ -120,6 +129,10 @@ func (c *CmdRefresh) Run(cmd *cobra.Command, av []string) error {
 
 	if c.WaitOnError && c.Continue {
 		return fmt.Errorf("cannot refresh: '--wait-on-error' incompatible with '--continue'")
+	}
+
+	if c.Raw && c.Verbose {
+		return fmt.Errorf("cannot refresh: '--raw' incompatible with '--verbose'")
 	}
 
 	// We should have no more than one argument (a single workshop) for a
@@ -157,19 +170,31 @@ func (c *CmdRefresh) Run(cmd *cobra.Command, av []string) error {
 		mode = "abort"
 	}
 
+	displayMode := progress.DisplayModeDefault
+	if c.Verbose {
+		displayMode = progress.DisplayModeVerbose
+	}
+	if c.Raw {
+		displayMode = progress.DisplayModeRaw
+	}
+
 	changeId, err := cli.Refresh(project.Id, av, mode)
 	if err != nil {
 		return err
 	}
 
-	if _, err := c.wait(cli, changeId); err != nil {
+	if chg, err := c.wait(cli, changeId, displayMode); err != nil {
 		if err == errNoWait {
 			return nil
 		}
+
 		if err == errWaitOnError {
-			return fmt.Errorf("cannot refresh; fix the errors reported,\n"+
-				"then run \"workshop refresh --continue %s\".\n"+
-				"To abort and revert, run \"workshop refresh --abort %s\"", workshopName(av[0]), workshopName(av[0]))
+			return fmt.Errorf(`%s
+
+To proceed, resolve the issue and run "workshop refresh --continue %s"
+To cancel and undo: "workshop refresh --abort %s"
+To view more information: "workshop tasks %s"
+		`, taskErrorFromChange(chg), workshopName(av[0]), workshopName(av[0]), changeId)
 		}
 
 		return fmt.Errorf("%v\n%s refresh aborted", err, strutil.Quoted(av))

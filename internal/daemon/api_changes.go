@@ -16,12 +16,14 @@ package daemon
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"golang.org/x/exp/slices"
 
+	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/state"
 )
 
@@ -119,6 +121,19 @@ func change2changeInfo(chg *state.Change) *changeInfo {
 	var data map[string]*json.RawMessage
 	if chg.Get("api-data", &data) == nil {
 		chgInfo.Data = data
+	}
+
+	log := chg.State().Cached(chg.ID() + "-log")
+	hl, ok := log.(*hookstate.HookLog)
+	if ok {
+		m, err := json.Marshal(hl.LastEntry())
+		if err != nil {
+			fmt.Println("Cannot marshall")
+		}
+		if chgInfo.Data == nil {
+			chgInfo.Data = make(map[string]*json.RawMessage)
+		}
+		chgInfo.Data["log"] = (*json.RawMessage)(&m)
 	}
 
 	return chgInfo

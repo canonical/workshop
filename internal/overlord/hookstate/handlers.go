@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/spf13/afero"
 	"gopkg.in/tomb.v2"
@@ -118,13 +119,14 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 		return err
 	}
 
-	// create a memory out/err to log the hook output into the task's log
-	memFs := afero.NewMemMapFs()
-	out, err := memFs.Create(fmt.Sprintf("%s-%s", w, projectId))
-	if err != nil {
-		return err
+	hl := &HookLog{
+		log:       new([]byte),
+		lastEntry: new([]byte),
 	}
-	defer out.Close()
+
+	task.State().Lock()
+	task.State().Cache(task.Change().ID()+"-log", hl)
+	task.State().Unlock()
 
 	hook.Environment["WORKSHOP_COOKIE"] = hookCtx.ID()
 	args := workshop.Execution{
@@ -144,8 +146,8 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 		},
 		ExecControls: workshop.ExecControls{
 			Stdin:  nil,
-			Stdout: out,
-			Stderr: out,
+			Stdout: hl,
+			Stderr: hl,
 		},
 	}
 
@@ -158,10 +160,9 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 	err = exectx.WaitExecution(ctx)
 
 	st := task.State()
-	hookLog, _ := afero.ReadFile(memFs, out.Name())
-	if len(hookLog) > 0 {
+	if len(*hl.log) > 0 {
 		st.Lock()
-		task.Logf("%s", string(hookLog))
+		task.Logf("%s", string(*hl.log))
 		st.Unlock()
 	}
 
@@ -208,4 +209,27 @@ func createHookContext(task *state.Task, repo *repository, hook *HookSetup) (*Co
 	}
 	hookCtx.handler = handlers[0]
 	return hookCtx, nil
+}
+
+type HookLog struct {
+	log       *[]byte
+	lastEntry *[]byte
+	lock      sync.Mutex
+}
+
+func (h *HookLog) Write(p []byte) (int, error) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	currentLen := len(*h.log)
+	*h.log = append(*h.log, p...)
+	*h.lastEntry = append(*h.lastEntry, p...)
+	return len(*h.log) - currentLen, nil
+}
+
+func (h *HookLog) LastEntry() []byte {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	p := *h.lastEntry
+	*h.lastEntry = []byte{}
+	return p
 }

@@ -45,7 +45,7 @@ type waitMixin struct {
 var errNoWait = errors.New("no wait for op")
 var errWaitOnError = errors.New("wait-on-error")
 
-func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error) {
+func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMode) (*client.Change, error) {
 	if wmx.NoWait {
 		fmt.Fprintf(Stdout, "%s\n", id)
 		return nil, errNoWait
@@ -81,7 +81,10 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 	tMax := time.Time{}
 
 	var lastID string
-	lastLog := map[string]string{}
+
+	display := progress.NewDisplay(mode)
+	defer display.Close()
+
 	for {
 		var rebootingErr error
 		chg, err := cli.Change(id)
@@ -114,13 +117,8 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 			tMax = time.Time{}
 		}
 
-		maybeShowLog := func(t *client.Task) {
-			nowLog := lastLogStr(t.Log)
-			if lastLog[t.ID] != nowLog {
-				pb.Notify(nowLog)
-				lastLog[t.ID] = nowLog
-			}
-		}
+		var out []byte
+		_ = chg.Get("log", &out)
 
 		// Tasks in "wait" state communicate the wait reason
 		// via the log mechanism. So make sure the log is
@@ -131,8 +129,7 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 		// the messages: "Task set to wait until a manual system restart allows to continue"
 		for _, t := range chg.Tasks {
 			if t.Status == "Wait" {
-				maybeShowLog(t)
-				return nil, errWaitOnError
+				return chg, errWaitOnError
 			}
 		}
 
@@ -141,12 +138,20 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 			switch {
 			case t.Status != "Doing":
 				continue
+			case t.ID != lastID:
+				display.ClearData() // Erase log
+				lastID = t.ID
+				continue
 			case t.Progress.Total == 1:
-				pb.Spin(t.Summary)
+				// Task has no measurable progress
+				display.Render(t.Summary, out)
+				//pb.Spin(t.Summary)
 			case t.ID == lastID:
-				pb.Set(float64(t.Progress.Done))
+				// Task has measurable progress, we want to display it
+				display.Render(t.Summary, out)
+				//pb.Set(float64(t.Progress.Done))
 			default:
-				pb.Start(t.Summary, float64(t.Progress.Total))
+				//pb.Start(t.Summary, float64(t.Progress.Total))
 				lastID = t.ID
 			}
 			break
@@ -159,6 +164,8 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 				}
 				return chg, errors.New(i18n.G(`change finished in status "Error" with no error message`))
 			}
+			display.ClearData()
+			display.Render("", nil)
 			return chg, nil
 		}
 
@@ -171,11 +178,4 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 		// 100ms.
 		time.Sleep(pollTime)
 	}
-}
-
-func lastLogStr(logs []string) string {
-	if len(logs) == 0 {
-		return ""
-	}
-	return logs[len(logs)-1]
 }

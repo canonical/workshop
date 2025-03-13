@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -146,6 +147,23 @@ func (c *CmdRoot) doCompleteWorkshopNames(args []string, status []string) ([]str
 		}
 	}
 	return workshops, cobra.ShellCompDirectiveNoFileComp
+}
+
+// Iterates through the task list associated with a change, finds a task in
+// wait status and removes <date><time> "ERROR" from the last log entry,
+// returning the result
+func taskErrorFromChange(chg *client.Change) string {
+	for _, task := range chg.Tasks {
+		if task.Status == "Wait" && len(task.Log) > 0 {
+			taskError := task.Log[len(task.Log)-1]
+			i := strings.Index(taskError, " ")
+			if i >= 0 && strings.HasPrefix(taskError[i:], " ERROR ") {
+				return fmt.Sprintf(`cannot perform the following tasks:
+- %s (%s)`, task.Summary, taskError[i+len(" ERROR "):])
+			}
+		}
+	}
+	return ""
 }
 
 var (

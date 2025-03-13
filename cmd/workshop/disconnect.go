@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
+	"github.com/canonical/workshop/internal/progress"
 )
 
 type CmdDisconnect struct {
@@ -108,7 +109,7 @@ func (c *CmdDisconnect) Run(cmd *cobra.Command, av []string) error {
 		return err
 	}
 
-	if _, err := c.wait(cli, changeId); err != nil {
+	if _, err := c.wait(cli, changeId, progress.DisplayModeDefault); err != nil {
 		if err == errNoWait {
 			return nil
 		}

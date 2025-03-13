@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
+	"github.com/canonical/workshop/internal/progress"
 )
 
 type CmdLaunch struct {
@@ -16,6 +17,8 @@ type CmdLaunch struct {
 	WaitOnError bool
 	Continue    bool
 	Abort       bool
+	Verbose     bool
+	Raw         bool
 }
 
 func (c *CmdLaunch) Command() *cobra.Command {
@@ -72,6 +75,12 @@ $ workshop launch`,
 	cmd.PersistentFlags().BoolVar(&c.NoWait, "no-wait",
 		false,
 		"Return the change ID, don't wait for the operation to finish.")
+	cmd.PersistentFlags().BoolVar(&c.Verbose, "verbose",
+		false,
+		"Show verbose output")
+	cmd.PersistentFlags().BoolVar(&c.Raw, "raw",
+		false,
+		"Show raw output")
 
 	return cmd
 }
@@ -89,6 +98,10 @@ func (c *CmdLaunch) Run(cmd *cobra.Command, av []string) error {
 
 	if c.WaitOnError && c.Continue {
 		return fmt.Errorf("cannot launch: '--wait-on-error' incompatible with '--continue'")
+	}
+
+	if c.Raw && c.Verbose {
+		return fmt.Errorf("cannot launch: '--raw' incompatible with '--verbose'")
 	}
 
 	// We should have no more than one argument (a single workshop) for a
@@ -131,14 +144,23 @@ func (c *CmdLaunch) Run(cmd *cobra.Command, av []string) error {
 		return err
 	}
 
-	if _, err := c.wait(cli, changeId); err != nil {
+	displayMode := progress.DisplayModeDefault
+	if c.Verbose {
+		displayMode = progress.DisplayModeVerbose
+	}
+	if c.Raw {
+		displayMode = progress.DisplayModeRaw
+	}
+
+	if _, err := c.wait(cli, changeId, displayMode); err != nil {
 		if err == errNoWait {
 			return nil
 		}
 		if err == errWaitOnError {
-			return fmt.Errorf("cannot launch; fix the errors reported,\n"+
-				"then run \"workshop launch --continue %s\".\n"+
-				"To abort and revert, run \"workshop launch --abort %s\"", workshopName(av[0]), workshopName(av[0]))
+			return fmt.Errorf(`
+To proceed, resolve the issue and run "workshop launch --continue %s"
+To cancel: "workshop launch --abort %s"
+To view more information: "workshop tasks %s"`, workshopName(av[0]), workshopName(av[0]), changeId)
 		}
 		return fmt.Errorf("%v\n%s launch aborted", err, strutil.Quoted(av))
 	}
