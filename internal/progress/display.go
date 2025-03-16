@@ -2,6 +2,7 @@ package progress
 
 import (
 	"fmt"
+	"unicode"
 
 	"golang.org/x/term"
 )
@@ -30,11 +31,9 @@ func NewDisplay(mode DisplayMode) Display {
 	case DisplayModeRaw:
 		return &rawDisplay{}
 	case DisplayModeVerbose:
-		width, _, _ := term.GetSize(0)
-		return &VerboseDisplay{DefaultDisplay: DefaultDisplay{width: width}, maxLines: numDisplayLines, viewLines: -1}
+		return &VerboseDisplay{maxLines: numDisplayLines, viewLines: -1}
 	default:
-		width, _, _ := term.GetSize(0)
-		return &DefaultDisplay{width: width}
+		return &DefaultDisplay{}
 	}
 }
 
@@ -46,19 +45,54 @@ type DefaultDisplay struct {
 func (d *DefaultDisplay) ClearData() {}
 
 // Todo
-//   - fancy line wrapping
 //   - progress
 func (d *DefaultDisplay) Render(task string, _ []byte) {
-	// Print summary and spin
-	remain := d.width - len(task)
-	fmt.Printf("\033[0K%s%*s\r", task, remain, spinner[d.spin])
-	d.spin++
-	if d.spin >= len(spinner) {
-		d.spin = 0
+	d.width = termWidth()
+
+	// Clear line
+	fmt.Printf("\033[0K")
+
+	// Print task, splits on nearest space where the line would exceed the term
+	// width
+	msg := []rune(task)
+	var i int
+	for len(msg) > d.width {
+		for i = d.width; i >= 0; i-- {
+			if unicode.IsSpace(msg[i]) {
+				break
+			}
+		}
+		if i < 1 {
+			// didn't find anything; print the whole thing and try again
+			fmt.Printf(string(msg[:d.width]))
+			msg = msg[d.width:]
+		} else {
+			// found a space; print up to but not including it, and skip it
+			fmt.Printf(string(msg[:i]))
+			msg = msg[i+1:]
+		}
+	}
+
+	remain := d.width - len(msg)
+	if remain > 0 {
+		fmt.Printf("%s%*s\r", string(msg), remain, spinner[d.spin])
+		d.spin++
+		if d.spin >= len(spinner) {
+			d.spin = 0
+		}
 	}
 }
 
 func (d *DefaultDisplay) Close() {
 	// Re-enable cursor
 	fmt.Print("\033[?25h")
+}
+
+func termWidth() int {
+	col, _, _ := term.GetSize(0)
+	if col <= 0 {
+		// default to 80.
+		col = 80
+	}
+	return col
 }

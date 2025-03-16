@@ -22,7 +22,6 @@ import (
 	"unicode"
 
 	"github.com/canonical/x-go/strutil/quantity"
-	"golang.org/x/term"
 )
 
 var stdout io.Writer = os.Stdout
@@ -51,15 +50,6 @@ var (
 	// go back to normal video
 	exitAttributeMode = "\033[0m"
 )
-
-var termWidth = func() int {
-	col, _, _ := term.GetSize(0)
-	if col <= 0 {
-		// give up
-		col = 80
-	}
-	return col
-}
 
 func (p *ANSIMeter) Start(label string, total float64) {
 	p.label = []rune(label)

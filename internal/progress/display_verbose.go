@@ -39,6 +39,9 @@ func (w *VerboseDisplay) Render(task string, b []byte) {
 	fmt.Print("\033[48;5;238m")
 	// Print
 	for _, line := range w.lines {
+		if len(line) > w.width {
+			line = line[:w.width]
+		}
 		// Erase line, then print (we don't need the erase, this however ensures
 		// the background colour is applied to the entire width.
 		fmt.Println("\033[K" + line)

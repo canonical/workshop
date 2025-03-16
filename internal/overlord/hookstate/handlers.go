@@ -119,10 +119,7 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 		return err
 	}
 
-	hl := &HookLog{
-		log:       new([]byte),
-		lastEntry: new([]byte),
-	}
+	hl := &HookLog{}
 
 	task.State().Lock()
 	task.State().Cache(task.Change().ID()+"-log", hl)
@@ -160,9 +157,9 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 	err = exectx.WaitExecution(ctx)
 
 	st := task.State()
-	if len(*hl.log) > 0 {
+	if len(hl.log) > 0 {
 		st.Lock()
-		task.Logf("%s", string(*hl.log))
+		task.Logf("%s", string(hl.log))
 		st.Unlock()
 	}
 
@@ -212,24 +209,24 @@ func createHookContext(task *state.Task, repo *repository, hook *HookSetup) (*Co
 }
 
 type HookLog struct {
-	log       *[]byte
-	lastEntry *[]byte
+	log       []byte
+	lastEntry []byte
 	lock      sync.Mutex
 }
 
 func (h *HookLog) Write(p []byte) (int, error) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	currentLen := len(*h.log)
-	*h.log = append(*h.log, p...)
-	*h.lastEntry = append(*h.lastEntry, p...)
-	return len(*h.log) - currentLen, nil
+	currentLen := len(h.log)
+	h.log = append(h.log, p...)
+	h.lastEntry = append(h.lastEntry, p...)
+	return len(h.log) - currentLen, nil
 }
 
 func (h *HookLog) LastEntry() []byte {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	p := *h.lastEntry
-	*h.lastEntry = []byte{}
+	p := h.lastEntry
+	h.lastEntry = []byte{}
 	return p
 }
