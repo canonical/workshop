@@ -13,8 +13,8 @@ import (
 )
 
 // Copies the user's $XAUTHORITY file to the Workshopd run directory.
-func MigrateXauthority(user *user.User, xauth string) (err error) {
-	if xauth == "" {
+func MigrateXauthority(user *user.User, xauthPath string) (err error) {
+	if xauthPath == "" {
 		return fmt.Errorf("xauth cannot be empty")
 	}
 
@@ -36,7 +36,7 @@ func MigrateXauthority(user *user.User, xauth string) (err error) {
 	// since the user can just steal it without having to use workshop. This code
 	// is just to ensure that a user who doesn't have those privileges can't
 	// steal the file via 'workshop connect'
-	f, err := os.Stat(xauth)
+	f, err := os.Stat(xauthPath)
 	if err != nil {
 		return err
 	}
@@ -51,8 +51,25 @@ func MigrateXauthority(user *user.User, xauth string) (err error) {
 		return fmt.Errorf("Xauthority file isn't owned by the current user %s", user.Uid)
 	}
 
-	destFile := filepath.Join(destDir, ".Xauthority")
-	err = osutil.CopyFile(xauth, filepath.Join(destDir, ".Xauthority"), osutil.CopyFlagOverwrite)
+	xauth, err := os.Open(xauthPath)
+	if err != nil {
+		return err
+	}
+	defer xauth.Close()
+
+	xauthEntries, err := ProcessFile(xauth)
+	if err != nil {
+		return err
+	}
+
+	for i := range xauthEntries {
+		xauthEntries[i].Family = FamilyWild
+		xauthEntries[i].Host = []byte("workshop")
+	}
+
+	b := EncodeEntries(xauthEntries)
+
+	err = os.WriteFile(filepath.Join(destDir, ".Xauthority"), b, 0644)
 	if err != nil {
 		return err
 	}
@@ -62,7 +79,7 @@ func MigrateXauthority(user *user.User, xauth string) (err error) {
 		return err
 	}
 
-	if err = sys.ChownPath(destFile, uid, gid); err != nil {
+	if err = sys.ChownPath(filepath.Join(destDir, ".Xauthority"), uid, gid); err != nil {
 		return err
 	}
 

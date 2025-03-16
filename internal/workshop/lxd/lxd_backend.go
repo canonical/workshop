@@ -849,7 +849,7 @@ write_files:
     Description=Required for x11 support
 
     [Path]
-    PathChanged=/var/lib/workshop/run/
+    PathModified=/var/lib/workshop/run/Xauthority/.Xauthority
     Unit=xauth-copy.service
 
     [Install]
@@ -878,7 +878,7 @@ write_files:
   path: /etc/apt/apt.conf.d/01norecommend
 runcmd:
   - systemctl daemon-reload
-  - systemctl enable xauth-copy.service
+  - systemctl enable --now xauth-copy.service
   - systemctl enable --now xauth-watch.path
 `
 
