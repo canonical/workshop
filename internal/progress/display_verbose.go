@@ -18,7 +18,7 @@ func (w *VerboseDisplay) ClearData() {
 	w.viewLines = 0
 }
 
-func (w *VerboseDisplay) Render(task string, b []byte) {
+func (w *VerboseDisplay) Render(task string, b []byte, current, total float64) {
 	s := bufio.NewScanner(bytes.NewReader(b))
 	for s.Scan() {
 		if s.Text() == "" {
@@ -30,7 +30,7 @@ func (w *VerboseDisplay) Render(task string, b []byte) {
 	i := max(len(w.lines)-w.maxLines, 0)
 	w.lines = w.lines[i:]
 
-	w.DefaultDisplay.Render(task, nil)
+	w.DefaultDisplay.Render(task, nil, current, total)
 
 	// Clear below spinner
 	fmt.Print("\n\033[0J")

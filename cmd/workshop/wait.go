@@ -80,8 +80,6 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 
 	tMax := time.Time{}
 
-	var lastID string
-
 	display := progress.NewDisplay(mode)
 	defer display.Close()
 
@@ -138,23 +136,9 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 			switch {
 			case t.Status != "Doing":
 				continue
-			case t.ID != lastID:
-				display.ClearData() // Erase log
-				lastID = t.ID
-				continue
-			case t.Progress.Total == 1:
-				// Task has no measurable progress
-				display.Render(t.Summary, out)
-				//pb.Spin(t.Summary)
-			case t.ID == lastID:
-				// Task has measurable progress, we want to display it
-				display.Render(t.Summary, out)
-				//pb.Set(float64(t.Progress.Done))
 			default:
-				//pb.Start(t.Summary, float64(t.Progress.Total))
-				lastID = t.ID
+				display.Render(t.Summary, out, float64(t.Progress.Done), float64(t.Progress.Total))
 			}
-			break
 		}
 
 		if chg.Ready {
@@ -164,8 +148,7 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 				}
 				return chg, errors.New(i18n.G(`change finished in status "Error" with no error message`))
 			}
-			display.ClearData()
-			display.Render("", nil)
+			display.Render("", nil, 0, 0)
 			return chg, nil
 		}
 

@@ -11,7 +11,7 @@ type rawDisplay struct {
 	lastTask string
 }
 
-func (r *rawDisplay) Render(task string, b []byte) {
+func (r *rawDisplay) Render(task string, b []byte, _, _ float64) {
 	var lines []string
 	s := bufio.NewScanner(bytes.NewReader(b))
 	for s.Scan() {
