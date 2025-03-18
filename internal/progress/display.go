@@ -2,11 +2,14 @@ package progress
 
 import (
 	"fmt"
+	"os"
 	"time"
 	"unicode"
 
 	"github.com/canonical/x-go/strutil/quantity"
 	"golang.org/x/term"
+
+	"github.com/canonical/workshop/internal/ptyutil"
 )
 
 type DisplayMode int
@@ -17,7 +20,33 @@ const (
 	DisplayModeRaw
 )
 
-var numDisplayLines = 7
+// Ansi escape sequences
+const (
+	// clear to end of line
+	clrEOL = "\033[K"
+	// clear to end of screen
+	clrEOS = "\n\033[0J"
+	// make cursor invisible
+	cursorInvisible = "\033[?25l"
+	// make cursor visible
+	cursorVisible = "\033[?25h"
+	// inverse text (white on black -> black on white)
+	setInverse = "\033[7m"
+	// set colour
+	setBackground = "\033[48;5;238m"
+	// reset formatting
+	resetFormatting = "\033[0m"
+	// move cursor %d lines up
+	moveCursorUp = "\033[%dA"
+	// move cursor %d lines down
+	moveCursorDown = "\033[%dB"
+)
+
+var (
+	numDisplayLines = 7
+	stdout          = os.Stdout
+	spinner         = []string{"/", "-", "\\", "|"}
+)
 
 type Display interface {
 	Render(task string, log []byte, progress, total float64)
@@ -25,15 +54,19 @@ type Display interface {
 }
 
 func NewDisplay(mode DisplayMode) Display {
-	// Hide cursor
-	fmt.Print("\033[?25l")
 
 	switch mode {
 	case DisplayModeRaw:
 		return &rawDisplay{}
 	case DisplayModeVerbose:
+		fmt.Fprint(stdout, cursorInvisible)
 		return &VerboseDisplay{maxLines: numDisplayLines, viewLines: -1}
 	default:
+		// Default to quiet if stdout is not a terminal
+		if !ptyutil.IsTerminal(int(stdout.Fd())) {
+			return &QuietDisplay{}
+		}
+		fmt.Fprint(stdout, cursorInvisible)
 		return &DefaultDisplay{}
 	}
 }
@@ -62,8 +95,7 @@ func (d *DefaultDisplay) Render(task string, _ []byte, current, total float64) {
 	d.task.total = total
 	d.task.current = current
 
-	// Clear line
-	fmt.Printf("\033[0K")
+	fmt.Fprint(stdout, clrEOL)
 
 	// Print task, splits on nearest space where the line would exceed the term
 	// width
@@ -77,11 +109,11 @@ func (d *DefaultDisplay) Render(task string, _ []byte, current, total float64) {
 		}
 		if i < 1 {
 			// didn't find anything; print the whole thing and try again
-			fmt.Printf(string(msg[:d.width]))
+			fmt.Fprint(stdout, string(msg[:d.width]))
 			msg = msg[d.width:]
 		} else {
 			// found a space; print up to but not including it, and skip it
-			fmt.Printf(string(msg[:i]))
+			fmt.Fprint(stdout, string(msg[:i]))
 			msg = msg[i+1:]
 		}
 	}
@@ -97,7 +129,7 @@ func (d *DefaultDisplay) Render(task string, _ []byte, current, total float64) {
 
 func (d *DefaultDisplay) Close() {
 	// Re-enable cursor
-	fmt.Print("\033[?25h")
+	fmt.Fprint(stdout, cursorVisible)
 }
 
 func termWidth() int {
@@ -110,6 +142,7 @@ func termWidth() int {
 }
 
 func (d *DefaultDisplay) renderProgress(msg string) {
+	// Taken from snapd -> ansimeter to ensure consistent output
 	// time left: 5
 	//    gutter: 1
 	//     speed: 8
@@ -143,7 +176,7 @@ func (d *DefaultDisplay) renderProgress(msg string) {
 	out = append(out, []rune(speed)...)
 	out = append(out, []rune(timeleft)...)
 	i := int(d.task.current * float64(d.width) / d.task.total)
-	fmt.Fprint(stdout, "\r", enterReverseMode, string(out[:i]), exitAttributeMode, string(out[i:]))
+	fmt.Fprint(stdout, "\r", setInverse, string(out[:i]), resetFormatting, string(out[i:]))
 }
 
 func (d *DefaultDisplay) renderSpinner(msg string) {
@@ -166,4 +199,30 @@ func (d *DefaultDisplay) percent() string {
 		return "???%"
 	}
 	return fmt.Sprintf("%3.0f%%", q)
+}
+
+// QuietDisplay is a display that shows nothing.
+type QuietDisplay struct {
+	DefaultDisplay
+}
+
+func (q *QuietDisplay) Render(_ string, _ []byte, _, _ float64) {}
+
+func (q *QuietDisplay) Close() {}
+
+func norm(col int, msg []rune) []rune {
+	if col <= 0 {
+		return []rune{}
+	}
+	out := make([]rune, col)
+	copy(out, msg)
+	d := col - len(msg)
+	if d < 0 {
+		out[col-1] = '…'
+	} else {
+		for i := len(msg); i < col; i++ {
+			out[i] = ' '
+		}
+	}
+	return out
 }

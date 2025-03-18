@@ -43,7 +43,7 @@ var mockWaitChangeJSON = `{"type": "sync", "result":{
     "ready": false,
     "spawn-time": "2015-02-21T01:02:03Z",
     "ready-time": "2015-02-21T01:02:04Z",
-    "tasks": [{"kind": "bar", "summary": "some summary", "status": "Wait", "progress": {"done": 1, "total": 1}, "spawn-time": "2015-02-21T01:02:03Z", "ready-time": "2015-02-21T01:02:04Z"}]
+		"tasks": [{"kind": "bar", "summary": "some summary", "status": "Wait", "progress": {"done": 1, "total": 1}, "spawn-time": "2015-02-21T01:02:03Z", "ready-time": "2015-02-21T01:02:04Z", "log":["2015-02-21T01:02:03Z ERROR something failed"]}]
 }}`
 
 var mockAbortedChangeJSON = `{"type": "sync", "result":{
@@ -172,7 +172,12 @@ func (m *workshopRefresh) TestRefreshWaitOnErrorFailed(c *check.C) {
 
 	err := cmd.Run(nil, nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `cannot refresh; fix the errors reported,\nthen run "workshop refresh --continue ws".\nTo abort and revert, run "workshop refresh --abort ws"`)
+	c.Assert(err, check.ErrorMatches, `cannot perform the following tasks:
+- some summary \(something failed\)
+
+To proceed, resolve the issue and run "workshop refresh --continue ws"
+To cancel and undo: "workshop refresh --abort ws"
+To view more information: "workshop tasks 42"`)
 	c.Check(n, check.Equals, 4)
 }
 

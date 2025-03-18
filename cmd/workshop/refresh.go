@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/canonical/workshop/internal/progress"
 	"github.com/canonical/x-go/strutil"
 	"github.com/spf13/cobra"
+
+	"github.com/canonical/workshop/internal/progress"
 )
 
 type CmdRefresh struct {
@@ -193,8 +194,7 @@ func (c *CmdRefresh) Run(cmd *cobra.Command, av []string) error {
 
 To proceed, resolve the issue and run "workshop refresh --continue %s"
 To cancel and undo: "workshop refresh --abort %s"
-To view more information: "workshop tasks %s"
-		`, taskErrorFromChange(chg), workshopName(av[0]), workshopName(av[0]), changeId)
+To view more information: "workshop tasks %s"`, taskErrorFromChange(chg), workshopName(av[0]), workshopName(av[0]), changeId)
 		}
 
 		return fmt.Errorf("%v\n%s refresh aborted", err, strutil.Quoted(av))

@@ -87,7 +87,12 @@ func (m *workshopLaunch) TestLaunchWaitOnErrorFailed(c *check.C) {
 
 	err := cmd.Run(nil, []string{"ws"})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `cannot launch; fix the errors reported,\nthen run "workshop launch --continue ws".\nTo abort and revert, run "workshop launch --abort ws"`)
+	c.Assert(err, check.ErrorMatches, `cannot perform the following tasks:
+- some summary \(something failed\)
+
+To proceed, resolve the issue and run "workshop launch --continue ws"
+To cancel: "workshop launch --abort ws"
+To view more information: "workshop tasks 42"`)
 }
 
 func (m *workshopLaunch) TestLaunchWaitOnErrorAbortedSuccessfully(c *check.C) {

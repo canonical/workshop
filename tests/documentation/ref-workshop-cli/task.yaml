@@ -45,7 +45,7 @@ execute: |
   # Refresh (TODO)
   sed -i "s/22.04/24.04/g" .workshop/nimble.yaml
   sed -i "s/latest/noble/g" .workshop/nimble.yaml
-  workshop_exec refresh --wait-on-error
+  workshop_exec refresh --wait-on-error || true
   workshop_exec refresh --abort || workshop_exec refresh --continue || true
 
   # Exec

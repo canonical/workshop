@@ -1,0 +1,10 @@
+## OS
+Ubuntu 25.04, up-to-date daily build
+
+## Version
+6.2-bde4d03 (--channel latest/stable)
+
+## Description
+LXD creates the instance successfully, however within the container `systemctl is-system-running` reports `starting` indefinitely. 
+
+`systemctl --failed` shows that `snap.lxd.activate.service` failed with `not-found`

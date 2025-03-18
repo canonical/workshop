@@ -1,8 +1,6 @@
 package progress
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 )
 
@@ -12,22 +10,11 @@ type rawDisplay struct {
 }
 
 func (r *rawDisplay) Render(task string, b []byte, _, _ float64) {
-	var lines []string
-	s := bufio.NewScanner(bytes.NewReader(b))
-	for s.Scan() {
-		if s.Text() == "" {
-			continue
-		}
-		lines = append(lines, s.Text())
-	}
-
 	if r.lastTask != task {
-		fmt.Println(task)
+		fmt.Fprintln(stdout, task)
 		r.lastTask = task
 	}
-	for _, line := range lines {
-		fmt.Println(line)
-	}
+	fmt.Fprintln(stdout, b)
 }
 
 func (r *rawDisplay) Close() {

@@ -69,15 +69,6 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 		}
 	}()
 
-	pb := progress.MakeProgressBar()
-	defer func() {
-		pb.Finished()
-		// next two not strictly needed for CLI, but without
-		// them the tests will leak goroutines.
-		signal.Stop(c)
-		close(c)
-	}()
-
 	tMax := time.Time{}
 
 	display := progress.NewDisplay(mode)
@@ -103,7 +94,7 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 			if now.After(tMax) {
 				return nil, err
 			}
-			pb.Spin(i18n.G("Waiting for server to restart"))
+			display.Render("Waiting for server to restart", nil, 0, 0)
 			time.Sleep(pollTime)
 			continue
 		}
@@ -111,7 +102,7 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 			rebootingErr = maintErr
 		}
 		if !tMax.IsZero() {
-			pb.Finished()
+			display.Close()
 			tMax = time.Time{}
 		}
 

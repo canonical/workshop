@@ -33,10 +33,10 @@ func (w *VerboseDisplay) Render(task string, b []byte, current, total float64) {
 	w.DefaultDisplay.Render(task, nil, current, total)
 
 	// Clear below spinner
-	fmt.Print("\n\033[0J")
+	fmt.Printf("\n%s", clrEOS)
 
-	// Set colour
-	fmt.Print("\033[48;5;238m")
+	fmt.Fprint(stdout, setBackground)
+
 	// Print
 	for _, line := range w.lines {
 		if len(line) > w.width {
@@ -44,14 +44,14 @@ func (w *VerboseDisplay) Render(task string, b []byte, current, total float64) {
 		}
 		// Erase line, then print (we don't need the erase, this however ensures
 		// the background colour is applied to the entire width.
-		fmt.Println("\033[K" + line)
+		fmt.Println(clrEOL + line)
 	}
-	// Reset formatting
-	fmt.Print("\033[0m")
+
+	fmt.Fprint(stdout, resetFormatting)
 
 	w.viewLines = len(w.lines)
 	// Reset cursor to top of 'VerboseDisplay'
-	fmt.Printf("\033[%dA", w.viewLines+1) // +1 for spinner
+	fmt.Printf(moveCursorUp, w.viewLines+1) // +1 for spinner
 }
 
 func (w *VerboseDisplay) Close() {
@@ -60,6 +60,6 @@ func (w *VerboseDisplay) Close() {
 	// lines (if still present) and ensures future output exists in the correct
 	// location
 	if w.viewLines > 0 {
-		fmt.Printf("\033[%dB\n", w.viewLines)
+		fmt.Printf(moveCursorDown, w.viewLines)
 	}
 }

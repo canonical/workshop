@@ -152,15 +152,16 @@ func (c *CmdLaunch) Run(cmd *cobra.Command, av []string) error {
 		displayMode = progress.DisplayModeRaw
 	}
 
-	if _, err := c.wait(cli, changeId, displayMode); err != nil {
+	if chg, err := c.wait(cli, changeId, displayMode); err != nil {
 		if err == errNoWait {
 			return nil
 		}
 		if err == errWaitOnError {
-			return fmt.Errorf(`
+			return fmt.Errorf(`%s
+
 To proceed, resolve the issue and run "workshop launch --continue %s"
 To cancel: "workshop launch --abort %s"
-To view more information: "workshop tasks %s"`, workshopName(av[0]), workshopName(av[0]), changeId)
+To view more information: "workshop tasks %s"`, taskErrorFromChange(chg), workshopName(av[0]), workshopName(av[0]), changeId)
 		}
 		return fmt.Errorf("%v\n%s launch aborted", err, strutil.Quoted(av))
 	}

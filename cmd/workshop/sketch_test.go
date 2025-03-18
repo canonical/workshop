@@ -398,7 +398,12 @@ hooks:
 	defer restore()
 
 	err := cmd.Run(cmd.Command(), []string{"ws"})
-	c.Assert(err, check.ErrorMatches, `cannot refresh; fix the errors reported,\nthen run "workshop refresh --continue ws".\nTo abort and revert, run "workshop refresh --abort ws"`)
+	c.Assert(err, check.ErrorMatches, `cannot perform the following tasks:
+- some summary \(something failed\)
+
+To proceed, resolve the issue and run "workshop refresh --continue ws"
+To cancel and undo: "workshop refresh --abort ws"
+To view more information: "workshop tasks 43"`)
 
 	err = cmd.Run(cmd.Command(), []string{"ws"})
 	c.Assert(err, check.IsNil)

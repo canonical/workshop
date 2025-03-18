@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/canonical/workshop/internal/progress"
 	"github.com/canonical/x-go/strutil"
 	"github.com/spf13/cobra"
+
+	"github.com/canonical/workshop/internal/progress"
 )
 
 type CmdStart struct {
