@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"time"
-	"unicode"
 
 	"github.com/canonical/x-go/strutil/quantity"
 	"golang.org/x/term"
@@ -25,7 +24,7 @@ const (
 	// clear to end of line
 	clrEOL = "\033[K"
 	// clear to end of screen
-	clrEOS = "\n\033[0J"
+	clrEOS = "\033[0J"
 	// make cursor invisible
 	cursorInvisible = "\033[?25l"
 	// make cursor visible
@@ -85,46 +84,37 @@ type taskInfo struct {
 }
 
 func (d *DefaultDisplay) Render(task string, _ []byte, current, total float64) {
-	d.width = termWidth()
+	// Handle screen size changes
+	width := termWidth()
+	if d.width != width {
+		d.width = width
+		fmt.Fprint(stdout, clrEOS)
+	}
+
+	// Handle task changes
 	if d.task.name != task {
-		// Task changed, reset
 		d.task.name = task
 		d.task.startTime = time.Now().UTC()
 	}
+
+	// Trim task to match terminal width. This is an interactive shell, if a user
+	// wants to see more output, they can make their shell larger, or use --raw.
+	// In practice, this line rarely exceeds 40 chars which is comfortably
+	// renderable on a 1/4 split vertical monitor.
+	task = task[:min(len(task), d.width)]
 
 	d.task.total = total
 	d.task.current = current
 
 	fmt.Fprint(stdout, clrEOL)
 
-	// Print task, splits on nearest space where the line would exceed the term
-	// width
-	msg := []rune(task)
-	var i int
-	for len(msg) > d.width {
-		for i = d.width; i >= 0; i-- {
-			if unicode.IsSpace(msg[i]) {
-				break
-			}
-		}
-		if i < 1 {
-			// didn't find anything; print the whole thing and try again
-			fmt.Fprint(stdout, string(msg[:d.width]))
-			msg = msg[d.width:]
-		} else {
-			// found a space; print up to but not including it, and skip it
-			fmt.Fprint(stdout, string(msg[:i]))
-			msg = msg[i+1:]
-		}
-	}
-
 	// Task has no measurable progress, render a spinner
 	if d.task.total == 1 || d.task.total == 0 {
-		d.renderSpinner(string(msg))
+		d.renderSpinner(task)
 		return
 	}
 
-	d.renderProgress(string(msg))
+	d.renderProgress(task)
 }
 
 func (d *DefaultDisplay) Close() {
@@ -142,29 +132,23 @@ func termWidth() int {
 }
 
 func (d *DefaultDisplay) renderProgress(msg string) {
-	// Taken from snapd -> ansimeter to ensure consistent output
-	// time left: 5
-	//    gutter: 1
-	//     speed: 8
-	//    gutter: 1
-	//   percent: 4
-	//    gutter: 1
-	//          =====
-	//           20
-	// and we want to leave at least 10 for the label, so:
-	//  * if      width <= 15, don't show any of this (progress bar is good enough)
-	//  * if 15 < width <= 20, only show time left (time left + gutter = 6)
-	//  * if 20 < width <= 29, also show percentage (percent + gutter = 5
-	//  * if 29 < width      , also show speed (speed+gutter = 9)
+	// Taken in part from snapd -> ansimeter to ensure consistent output.
+	// Modified to ensure that we have the requisite width for the current task
+	// Widths (including single-space gap, used below):
+	// 	time left: 6
+	//		percent: 5
+	// 						11 (cumulative total)
+	// 			speed: 9
+	//						20 (total)
 	var percent, speed, timeleft string
-	if d.width > 15 {
+	if d.width > len(msg)+6 {
 		since := time.Now().UTC().Sub(d.task.startTime).Seconds()
 		per := since / d.task.current
 		left := (d.task.total - d.task.current) * per
 		timeleft = " " + quantity.FormatDuration(left)
-		if d.width > 20 {
+		if d.width > len(msg)+11 {
 			percent = " " + d.percent()
-			if d.width > 29 {
+			if d.width > len(msg)+20 {
 				speed = " " + quantity.FormatBPS(d.task.current, since, -1)
 			}
 		}
@@ -176,13 +160,13 @@ func (d *DefaultDisplay) renderProgress(msg string) {
 	out = append(out, []rune(speed)...)
 	out = append(out, []rune(timeleft)...)
 	i := int(d.task.current * float64(d.width) / d.task.total)
-	fmt.Fprint(stdout, "\r", setInverse, string(out[:i]), resetFormatting, string(out[i:]))
+	fmt.Fprint(stdout, setInverse, string(out[:i]), resetFormatting, string(out[i:]), "\r")
 }
 
 func (d *DefaultDisplay) renderSpinner(msg string) {
 	remain := d.width - len(msg)
 	if remain > 0 {
-		fmt.Printf("%s%*s\r", msg, remain, spinner[d.spin])
+		fmt.Fprintf(stdout, "%s%*s\r", msg, remain, spinner[d.spin])
 		d.spin++
 		if d.spin >= len(spinner) {
 			d.spin = 0
