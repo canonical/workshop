@@ -2,22 +2,38 @@ package progress
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/canonical/workshop/client"
 )
 
-type rawDisplay struct {
+type RawDisplay struct {
 	DefaultDisplay
-	lastTask string
 }
 
-func (r *rawDisplay) Render(task string, b []byte, _, _ float64) {
-	if r.lastTask != task {
-		fmt.Fprintln(stdout, task)
-		r.lastTask = task
+// Renders progress in the following format:
+// TASK: <task summary>
+// <hook stdout (where applicable)>
+func (r *RawDisplay) Render(task client.Task) {
+	if r.lastTask.ID != task.ID {
+		fmt.Fprintf(stdout, "%s%s\n", "TASK: ", task.Summary)
+		r.lastTask.ID = task.ID
 	}
-	fmt.Fprintln(stdout, b)
+	// Compress output, ignore empty and newlines
+	if len(*r.buffer) > 0 && string(*r.buffer) != "\n" {
+		fmt.Fprintln(stdout, strings.TrimSuffix(string(*r.buffer), "\n"))
+	}
+	*r.buffer = []byte{}
 }
 
-func (r *rawDisplay) Close() {
+func (r *RawDisplay) Flush() {
+	if len(*r.buffer) > 0 {
+		fmt.Fprintln(stdout, strings.TrimSuffix(string(*r.buffer), "\n"))
+	}
+	*r.buffer = []byte{}
+}
+
+func (r *RawDisplay) Close() {
 	r.DefaultDisplay.Close()
 	fmt.Println()
 }

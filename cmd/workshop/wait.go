@@ -94,7 +94,7 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 			if now.After(tMax) {
 				return nil, err
 			}
-			display.Render("Waiting for server to restart", nil, 0, 0)
+			display.Errorf("Waiting for server to restart")
 			time.Sleep(pollTime)
 			continue
 		}
@@ -106,29 +106,18 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 			tMax = time.Time{}
 		}
 
-		var out []byte
-		_ = chg.Get("log", &out)
-
-		// Tasks in "wait" state communicate the wait reason
-		// via the log mechanism. So make sure the log is
-		// visible even if the normal progress reporting
-		// has tasks in "Doing" state (like "check-refresh")
-		// that would suppress displaying the log. This will
-		// ensure on a classic+modes system the user sees
-		// the messages: "Task set to wait until a manual system restart allows to continue"
-		for _, t := range chg.Tasks {
-			if t.Status == "Wait" {
-				return chg, errWaitOnError
-			}
-		}
+		_ = chg.Get("log", display.Buffer())
 
 		// progress reporting
 		for _, t := range chg.Tasks {
 			switch {
+			case t.Status == "Wait":
+				display.Render(*t)
+				return chg, errWaitOnError
 			case t.Status != "Doing":
 				continue
 			default:
-				display.Render(t.Summary, out, float64(t.Progress.Done), float64(t.Progress.Total))
+				display.Render(*t)
 			}
 		}
 
@@ -139,9 +128,11 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 				}
 				return chg, errors.New(i18n.G(`change finished in status "Error" with no error message`))
 			}
-			display.Render("", nil, 0, 0)
 			return chg, nil
 		}
+
+		// ensure we write out all logs, and spin if not already
+		display.Flush()
 
 		if rebootingErr != nil {
 			return nil, rebootingErr

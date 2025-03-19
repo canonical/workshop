@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
+	"time"
 
 	"github.com/spf13/afero"
 	"gopkg.in/tomb.v2"
@@ -84,7 +84,7 @@ func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
 	}
 }
 
-func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, projectId string, hook *HookSetup) error {
+func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, _ string, hook *HookSetup) error {
 	hookPath := sdk.SdkHookPath(hook.Sdk, hook.Type())
 
 	wsFs, err := h.backend.WorkshopFs(ctx, w)
@@ -156,6 +156,15 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 	}
 	err = exectx.WaitExecution(ctx)
 
+	// Ensure the client receives the full log, timeout after 500ms, in practice
+	// this should never be more than 200
+	ti := time.Now().Add(500 * time.Millisecond)
+	for len(hl.lastEntry) > 0 {
+		if ti.After(time.Now()) {
+			break
+		}
+	}
+
 	st := task.State()
 	if len(hl.log) > 0 {
 		st.Lock()
@@ -211,12 +220,9 @@ func createHookContext(task *state.Task, repo *repository, hook *HookSetup) (*Co
 type HookLog struct {
 	log       []byte
 	lastEntry []byte
-	lock      sync.Mutex
 }
 
 func (h *HookLog) Write(p []byte) (int, error) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
 	currentLen := len(h.log)
 	h.log = append(h.log, p...)
 	h.lastEntry = append(h.lastEntry, p...)
@@ -224,8 +230,6 @@ func (h *HookLog) Write(p []byte) (int, error) {
 }
 
 func (h *HookLog) LastEntry() []byte {
-	h.lock.Lock()
-	defer h.lock.Unlock()
 	p := h.lastEntry
 	h.lastEntry = []byte{}
 	return p

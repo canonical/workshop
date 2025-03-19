@@ -8,6 +8,7 @@ import (
 	"github.com/canonical/x-go/strutil/quantity"
 	"golang.org/x/term"
 
+	"github.com/canonical/workshop/client"
 	"github.com/canonical/workshop/internal/ptyutil"
 )
 
@@ -48,42 +49,57 @@ var (
 )
 
 type Display interface {
-	Render(task string, log []byte, progress, total float64)
+	// Buffer returns the underlying buffer for logs
+	Buffer() *[]byte
+	// Render should be called in a loop. It takes a task and renders an
+	// appropriate output
+	Render(task client.Task)
+	// Error renders the message. It should be used when it is not suitable or
+	// possible to provide a task. (e.g. a backend error)
+	Errorf(message string)
+	// Flush should be called after each render loop, this achieves two things:
+	//  1. If no tasks are in the doing state, the spinner will still work
+	//  2. Any logs that were not displayed whilst the task was in 'doing' will
+	//     have a chance to be rendered
+	Flush()
+	// Close should be called when the display is no longer needed. This ensures
+	// any formatting is returned to the default
 	Close()
 }
 
 func NewDisplay(mode DisplayMode) Display {
-
+	d := DefaultDisplay{lastTask: &client.Task{}, buffer: new([]byte)}
 	switch mode {
 	case DisplayModeRaw:
-		return &rawDisplay{}
+		return &RawDisplay{DefaultDisplay: d}
 	case DisplayModeVerbose:
 		fmt.Fprint(stdout, cursorInvisible)
-		return &VerboseDisplay{maxLines: numDisplayLines, viewLines: -1}
+		return &VerboseDisplay{DefaultDisplay: d, maxLines: numDisplayLines, viewLines: -1}
 	default:
 		// Default to quiet if stdout is not a terminal
 		if !ptyutil.IsTerminal(int(stdout.Fd())) {
 			return &QuietDisplay{}
 		}
 		fmt.Fprint(stdout, cursorInvisible)
-		return &DefaultDisplay{}
+		return &d
 	}
 }
 
 type DefaultDisplay struct {
-	spin  int
-	width int
-	task  taskInfo
+	spin     int
+	haveSpun bool
+	width    int
+	buffer   *[]byte
+	lastTask *client.Task
 }
 
-type taskInfo struct {
-	name      string
-	startTime time.Time
-	current   float64
-	total     float64
+func (d *DefaultDisplay) Buffer() *[]byte {
+	return d.buffer
 }
 
-func (d *DefaultDisplay) Render(task string, _ []byte, current, total float64) {
+func (d *DefaultDisplay) Render(task client.Task) {
+	d.lastTask = &task
+
 	// Handle screen size changes
 	width := termWidth()
 	if d.width != width {
@@ -91,34 +107,37 @@ func (d *DefaultDisplay) Render(task string, _ []byte, current, total float64) {
 		fmt.Fprint(stdout, clrEOS)
 	}
 
-	// Handle task changes
-	if d.task.name != task {
-		d.task.name = task
-		d.task.startTime = time.Now().UTC()
-	}
-
-	// Trim task to match terminal width. This is an interactive shell, if a user
-	// wants to see more output, they can make their shell larger, or use --raw.
-	// In practice, this line rarely exceeds 40 chars which is comfortably
-	// renderable on a 1/4 split vertical monitor.
-	task = task[:min(len(task), d.width)]
-
-	d.task.total = total
-	d.task.current = current
+	// Trim task summary to match terminal width. This is an interactive shell,
+	// if a user wants to see more output, they can make their shell larger, or
+	// use --raw. In practice, this line rarely exceeds 40 characters which is
+	// comfortably renderable in nearly all circumstances.
+	task.Summary = task.Summary[:min(len(task.Summary), d.width)]
 
 	fmt.Fprint(stdout, clrEOL)
 
 	// Task has no measurable progress, render a spinner
-	if d.task.total == 1 || d.task.total == 0 {
-		d.renderSpinner(task)
+	if task.Progress.Total == 1 || task.Progress.Total == 0 {
+		d.renderSpinner()
 		return
 	}
 
-	d.renderProgress(task)
+	d.renderProgress()
+}
+
+func (d *DefaultDisplay) Errorf(msg string) {
+	d.renderSpinner()
+}
+
+func (d *DefaultDisplay) Flush() {
+	if !d.haveSpun {
+		d.renderSpinner()
+	}
+	*d.buffer = []byte{}
+	d.haveSpun = false
 }
 
 func (d *DefaultDisplay) Close() {
-	// Re-enable cursor
+	fmt.Fprint(stdout, clrEOL)
 	fmt.Fprint(stdout, cursorVisible)
 }
 
@@ -131,54 +150,59 @@ func termWidth() int {
 	return width
 }
 
-func (d *DefaultDisplay) renderProgress(msg string) {
+func (d *DefaultDisplay) renderProgress() {
 	// Taken in part from snapd -> ansimeter to ensure consistent output.
-	// Modified to ensure that we have the requisite width for the current task
-	// Widths (including single-space gap, used below):
+	// Modified to ensure that we have the requisite width for the current task.
+	//
+	// Reference widths (including single-space gap):
 	// 	time left: 6
 	//		percent: 5
 	// 						11 (cumulative total)
 	// 			speed: 9
 	//						20 (total)
 	var percent, speed, timeleft string
-	if d.width > len(msg)+6 {
-		since := time.Now().UTC().Sub(d.task.startTime).Seconds()
-		per := since / d.task.current
-		left := (d.task.total - d.task.current) * per
+	if d.width > len(d.lastTask.Summary)+6 {
+		since := time.Now().UTC().Sub(d.lastTask.SpawnTime).Seconds()
+		per := since / float64(d.lastTask.Progress.Done)
+		left := (float64(d.lastTask.Progress.Total) - float64(d.lastTask.Progress.Done)) * per
 		timeleft = " " + quantity.FormatDuration(left)
-		if d.width > len(msg)+11 {
-			percent = " " + d.percent()
-			if d.width > len(msg)+20 {
-				speed = " " + quantity.FormatBPS(d.task.current, since, -1)
+		if d.width > len(d.lastTask.Summary)+11 {
+			percent = " " + d.percent(d.lastTask)
+			if d.width > len(d.lastTask.Summary)+20 {
+				speed = " " + quantity.FormatBPS(float64(d.lastTask.Progress.Done), since, -1)
 			}
 		}
 	}
 
 	out := make([]rune, 0, d.width)
-	out = append(out, norm(d.width-len(percent)-len(speed)-len(timeleft), []rune(msg))...)
+	out = append(out, norm(d.width-len(percent)-len(speed)-len(timeleft), []rune(d.lastTask.Summary))...)
 	out = append(out, []rune(percent)...)
 	out = append(out, []rune(speed)...)
 	out = append(out, []rune(timeleft)...)
-	i := int(d.task.current * float64(d.width) / d.task.total)
+	i := int(float64(d.lastTask.Progress.Done) * float64(d.width) / float64(d.lastTask.Progress.Total))
 	fmt.Fprint(stdout, setInverse, string(out[:i]), resetFormatting, string(out[i:]), "\r")
 }
 
-func (d *DefaultDisplay) renderSpinner(msg string) {
-	remain := d.width - len(msg)
+func (d *DefaultDisplay) renderSpinner() {
+	remain := d.width - len(d.lastTask.Summary)
 	if remain > 0 {
-		fmt.Fprintf(stdout, "%s%*s\r", msg, remain, spinner[d.spin])
+		fmt.Fprintf(stdout, "%s%*s\r", d.lastTask.Summary, remain, spinner[d.spin])
 		d.spin++
 		if d.spin >= len(spinner) {
 			d.spin = 0
 		}
+		d.haveSpun = true
+		return
 	}
+	// No room for the spinner
+	fmt.Fprintf(stdout, "%s", d.lastTask.Summary)
 }
 
-func (d *DefaultDisplay) percent() string {
-	if d.task.total == 0. {
+func (d *DefaultDisplay) percent(t *client.Task) string {
+	if float64(t.Progress.Done) == 0. {
 		return "---%"
 	}
-	q := d.task.current * 100 / d.task.total
+	q := float64(t.Progress.Done) * 100 / float64(t.Progress.Total)
 	if q > 999.4 || q < 0. {
 		return "???%"
 	}
@@ -190,7 +214,7 @@ type QuietDisplay struct {
 	DefaultDisplay
 }
 
-func (q *QuietDisplay) Render(_ string, _ []byte, _, _ float64) {}
+func (q *QuietDisplay) Render(_ client.Task) {}
 
 func (q *QuietDisplay) Close() {}
 
