@@ -35,8 +35,8 @@ Suppose something goes wrong during :command:`workshop refresh`:
    $ workshop refresh
 
      Error: cannot perform the following tasks:
-     - Run hook "setup-base" for "go" SDK (command failed with an error code (1))
-     Refresh aborted
+     - Run hook "setup-base" for "go" SDK (command exit code 1)
+     "go" refresh aborted
 
 
 To investigate the failure,
@@ -92,7 +92,7 @@ Wait on error
 
 The :option:`!--wait-on-error` option in :command:`workshop refresh` and
 :command:`workshop launch`
-pauses the refresh when an error occurs;
+pauses the command when an error occurs;
 instead of reverting the workshop to its previous state,
 |ws_markup| will leave it as is for you to investigate:
 
@@ -100,10 +100,12 @@ instead of reverting the workshop to its previous state,
 
    $ workshop refresh --wait-on-error
 
-     YYYY-MM-DDT00:00:00 ERROR command exit code 1
-     error: cannot refresh; fix the errors reported,
-     then run "workshop refresh --continue blank".
-     To abort and revert, run "workshop refresh --abort blank"
+     error: cannot perform the following tasks:
+     - Run hook "setup-base" for "go" SDK (command exit code 1) 
+
+     To proceed, resolve the issue and run "workshop refresh --continue go"
+     To cancel and undo: "workshop refresh --abort go"
+     To view more information: "workshop tasks 1"
 
 To help determine what went wrong, use the :command:`workshop changes` and
 :command:`workshop tasks` commands discussed above.
@@ -133,6 +135,55 @@ Otherwise, undo the changes with the :option:`!--abort` option:
 
 The effect will be the same as if you hadn't used :option:`!--wait-on-error`:
 the workshop will revert to its previous state.
+
+
+Raw and Verbose
+---------------
+
+The :option:`!--verbose` or :option:`!--raw` flags can be used with 
+:command:`launch` and :command:`refresh` 
+to modify what is shown when running the commands. 
+
+:option:`!--verbose` includes the output of any hooks currently being executed
+inside a workshop underneath the currently running task. For example if an SDK
+is running apt-get update in the `setup-base` hook, 
+the output may look like the below:
+
+.. code-block:: console
+   
+   $ worshop refresh --verbose
+     Run hook "setup-base" for "example" SDK
+     Get:48 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 c-n-f Metadata [1256 B]
+     Get:49 http://archive.ubuntu.com/ubuntu noble-backports/restricted amd64 Components [216 B]
+     Get:50 http://archive.ubuntu.com/ubuntu noble-backports/restricted amd64 c-n-f Metadata [116 B]
+     Get:51 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Components [212 B]
+     Get:52 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 c-n-f Metadata [116 B]
+     Fetched 31.3 MB in 7s (4405 kB/s)
+     Reading package lists...
+
+
+:option:`!--raw` includes the same information as :option:`!--verbose`, 
+however renders it as simple text without any terminal effects. This is 
+particularly useful for CI pipelines and other non-interactive environments:
+
+.. code-block:: console
+   
+   $ workshop refresh --raw
+     TASK: Create SDK state storage
+     TASK: Run hook "save-state" for "example" SDK
+     TASK: Remove "system" SDK profile
+     TASK: Remove "example" SDK profile
+     TASK: Stash previous "dev" workshop
+     TASK: Create new "dev" workshop
+     TASK: Mount project directory "/dev"
+     TASK: Start "dev" workshop
+     TASK: Install "system" SDK
+     TASK: Install "example" SDK
+     TASK: Run hook "setup-base" for "example" SDK
+     Hit:1 http://archive.ubuntu.com/ubuntu noble InRelease
+     Get:2 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+     Get:3 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+     Get:4 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
 
 
 List and suppress warnings

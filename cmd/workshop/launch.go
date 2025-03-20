@@ -45,6 +45,13 @@ If multiple workshops are listed and an error occurs,
 the operation is aborted and no workshops are constructed.
 
 
+The '--verbose' and '--raw' options show the output from SDK hooks run during
+the launch. '--verbose' shows a limited number of lines at a given time, and is
+designed for interactive use. '--raw' shows the same information, however 
+renders every line and as such is ideal for a non-interactive environment where 
+output is desired.
+
+
 Notes:
 
 - Names listed as arguments must match respective 'name:' values in definitions.
@@ -77,10 +84,10 @@ $ workshop launch`,
 		"Return the change ID, don't wait for the operation to finish.")
 	cmd.PersistentFlags().BoolVar(&c.Verbose, "verbose",
 		false,
-		"Show verbose output")
+		"Show verbose output; renders a scrolling window with SDK hook output")
 	cmd.PersistentFlags().BoolVar(&c.Raw, "raw",
 		false,
-		"Show raw output")
+		"Show raw output; shows the same information as verbose without using terminal effects")
 
 	return cmd
 }

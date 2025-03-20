@@ -46,6 +46,13 @@ If multiple workshops are listed and an error occurs,
 the operation is aborted and reverted for all of them.
 
 
+The '--verbose' and '--raw' options show the output from SDK hooks run during
+the refresh. '--verbose' shows a limited number of lines at a given time, and 
+is designed for interactive use. '--raw' shows the same information, however 
+renders every line and as such is ideal for a non-interactive environment where 
+output is desired.
+
+
 Notes:
 
 - The workshop must be 'Ready' to be refreshed.
