@@ -106,7 +106,7 @@ func (wmx waitMixin) wait(cli *client.Client, id string, mode progress.DisplayMo
 			tMax = time.Time{}
 		}
 
-		_ = chg.Get("log", display.Buffer())
+		_ = chg.Get("log", display.TaskLog())
 
 		// progress reporting
 		for _, t := range chg.Tasks {

@@ -119,7 +119,7 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, _ st
 		return err
 	}
 
-	hl := &HookLog{}
+	hl := &HookLog{TaskID: task.ID()}
 
 	task.State().Lock()
 	task.State().Cache(task.Change().ID()+"-log", hl)
@@ -156,9 +156,8 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, _ st
 	}
 	err = exectx.WaitExecution(ctx)
 
-	// Ensure the client receives the full log, timeout after 500ms, in practice
-	// this should never be more than 200
-	ti := time.Now().Add(500 * time.Millisecond)
+	// Ensure the client receives the full log, timeout after 200ms.
+	ti := time.Now().Add(200 * time.Millisecond)
 	for len(hl.lastEntry) > 0 {
 		if ti.After(time.Now()) {
 			break
@@ -218,6 +217,7 @@ func createHookContext(task *state.Task, repo *repository, hook *HookSetup) (*Co
 }
 
 type HookLog struct {
+	TaskID    string
 	log       []byte
 	lastEntry []byte
 }

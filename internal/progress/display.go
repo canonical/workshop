@@ -49,8 +49,7 @@ var (
 )
 
 type Display interface {
-	// Buffer returns the underlying buffer for logs
-	Buffer() *[]byte
+	TaskLog() *TaskLog
 	// Render should be called in a loop. It takes a task and renders an
 	// appropriate output
 	Render(task client.Task)
@@ -67,8 +66,13 @@ type Display interface {
 	Close()
 }
 
+type TaskLog struct {
+	Log    []byte
+	TaskID string
+}
+
 func NewDisplay(mode DisplayMode) Display {
-	d := DefaultDisplay{lastTask: &client.Task{}, buffer: new([]byte)}
+	d := DefaultDisplay{lastTask: &client.Task{}}
 	switch mode {
 	case DisplayModeRaw:
 		return &RawDisplay{DefaultDisplay: d}
@@ -76,7 +80,7 @@ func NewDisplay(mode DisplayMode) Display {
 		fmt.Fprint(stdout, cursorInvisible)
 		return &VerboseDisplay{DefaultDisplay: d, maxLines: numDisplayLines, viewLines: -1}
 	default:
-		// Default to quiet if stdout is not a terminal
+		// Default to quiet if stdout is not a terminal and --raw is not specified
 		if !ptyutil.IsTerminal(int(stdout.Fd())) {
 			return &QuietDisplay{}
 		}
@@ -89,12 +93,12 @@ type DefaultDisplay struct {
 	spin     int
 	haveSpun bool
 	width    int
-	buffer   *[]byte
+	taskLog  TaskLog
 	lastTask *client.Task
 }
 
-func (d *DefaultDisplay) Buffer() *[]byte {
-	return d.buffer
+func (d *DefaultDisplay) TaskLog() *TaskLog {
+	return &d.taskLog
 }
 
 func (d *DefaultDisplay) Render(task client.Task) {
@@ -132,7 +136,7 @@ func (d *DefaultDisplay) Flush() {
 	if !d.haveSpun {
 		d.renderSpinner()
 	}
-	*d.buffer = []byte{}
+	d.taskLog.Log = []byte{}
 	d.haveSpun = false
 }
 
@@ -195,7 +199,7 @@ func (d *DefaultDisplay) renderSpinner() {
 		return
 	}
 	// No room for the spinner
-	fmt.Fprintf(stdout, "%s", d.lastTask.Summary)
+	fmt.Fprintf(stdout, "%s\r", d.lastTask.Summary)
 }
 
 func (d *DefaultDisplay) percent(t *client.Task) string {
@@ -214,9 +218,17 @@ type QuietDisplay struct {
 	DefaultDisplay
 }
 
+func (q *QuietDisplay) TaskLog() *TaskLog {
+	return &TaskLog{}
+}
+
 func (q *QuietDisplay) Render(_ client.Task) {}
 
 func (q *QuietDisplay) Close() {}
+
+func (d *QuietDisplay) Errorf(msg string) {}
+
+func (q *QuietDisplay) Flush() {}
 
 func norm(col int, msg []rune) []rune {
 	if col <= 0 {

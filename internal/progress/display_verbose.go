@@ -28,7 +28,7 @@ func (v *VerboseDisplay) Render(task client.Task) {
 	v.DefaultDisplay.Render(task)
 
 	v.renderLines()
-	*v.buffer = []byte{}
+	v.taskLog.Log = []byte{}
 }
 
 func (v *VerboseDisplay) Flush() {
@@ -38,7 +38,7 @@ func (v *VerboseDisplay) Flush() {
 	v.haveSpun = false
 	v.appendLines()
 	v.renderLines()
-	*v.buffer = []byte{}
+	v.taskLog.Log = []byte{}
 }
 
 func (v *VerboseDisplay) Close() {
@@ -54,7 +54,7 @@ func (v *VerboseDisplay) Close() {
 }
 
 func (v *VerboseDisplay) appendLines() {
-	s := bufio.NewScanner(bytes.NewReader(*v.buffer))
+	s := bufio.NewScanner(bytes.NewReader(v.taskLog.Log))
 	for s.Scan() {
 		if s.Text() == "" {
 			continue

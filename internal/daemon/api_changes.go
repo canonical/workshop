@@ -126,7 +126,13 @@ func change2changeInfo(chg *state.Change) *changeInfo {
 	log := chg.State().Cached(chg.ID() + "-log")
 	hl, ok := log.(*hookstate.HookLog)
 	if ok {
-		m, err := json.Marshal(hl.LastEntry())
+		m, err := json.Marshal(struct {
+			Log    []byte
+			TaskID string
+		}{
+			Log:    hl.LastEntry(),
+			TaskID: hl.TaskID,
+		})
 		if err != nil {
 			fmt.Println("Cannot marshall")
 		}
