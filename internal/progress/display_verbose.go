@@ -33,7 +33,7 @@ func (v *VerboseDisplay) Render(task client.Task) {
 
 func (v *VerboseDisplay) Flush() {
 	if !v.haveSpun {
-		v.renderSpinner()
+		v.renderSpinner(v.lastTask.Summary)
 	}
 	v.haveSpun = false
 	v.appendLines()

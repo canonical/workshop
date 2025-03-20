@@ -121,7 +121,7 @@ func (d *DefaultDisplay) Render(task client.Task) {
 
 	// Task has no measurable progress, render a spinner
 	if task.Progress.Total == 1 || task.Progress.Total == 0 {
-		d.renderSpinner()
+		d.renderSpinner(task.Summary)
 		return
 	}
 
@@ -129,12 +129,12 @@ func (d *DefaultDisplay) Render(task client.Task) {
 }
 
 func (d *DefaultDisplay) Errorf(msg string) {
-	d.renderSpinner()
+	d.renderSpinner(msg)
 }
 
 func (d *DefaultDisplay) Flush() {
 	if !d.haveSpun {
-		d.renderSpinner()
+		d.renderSpinner(d.lastTask.Summary)
 	}
 	d.taskLog.Log = []byte{}
 	d.haveSpun = false
@@ -187,10 +187,10 @@ func (d *DefaultDisplay) renderProgress() {
 	fmt.Fprint(stdout, setInverse, string(out[:i]), resetFormatting, string(out[i:]), "\r")
 }
 
-func (d *DefaultDisplay) renderSpinner() {
-	remain := d.width - len(d.lastTask.Summary)
+func (d *DefaultDisplay) renderSpinner(message string) {
+	remain := d.width - len(message)
 	if remain > 0 {
-		fmt.Fprintf(stdout, "%s%*s\r", d.lastTask.Summary, remain, spinner[d.spin])
+		fmt.Fprintf(stdout, "%s%*s\r", message, remain, spinner[d.spin])
 		d.spin++
 		if d.spin >= len(spinner) {
 			d.spin = 0
@@ -199,7 +199,7 @@ func (d *DefaultDisplay) renderSpinner() {
 		return
 	}
 	// No room for the spinner
-	fmt.Fprintf(stdout, "%s\r", d.lastTask.Summary)
+	fmt.Fprintf(stdout, "%s\r", message)
 }
 
 func (d *DefaultDisplay) percent(t *client.Task) string {
