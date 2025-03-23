@@ -37,7 +37,24 @@ func (x *X11TestSuit) TearDownTest(c *check.C) {
 	x.restore()
 }
 
-func (x *X11TestSuit) TestMigrateXAuthoritySuccess(c *check.C) {
+func (x *X11TestSuit) TestMigrateXAuthority(c *check.C) {
+	user, err := user.Current()
+	c.Assert(err, check.IsNil)
+
+	xf, err := os.Create(filepath.Join(dirs.WorkshopdRunDir, ".workshop-Xauthority"))
+	c.Assert(err, check.IsNil)
+	defer xf.Close()
+
+	_, err = xf.Write(constructTestCookie(displayNone))
+	c.Assert(err, check.IsNil)
+
+	err = x11.MigrateXauthority(user, filepath.Join(dirs.WorkshopdRunDir, ".workshop-Xauthority"))
+	c.Assert(err, check.IsNil)
+
+	c.Assert(filepath.Join(dirs.WorkshopdRunDir, user.Uid, "Xauthority", ".Xauthority"), testutil.FilePresent)
+}
+
+func (x *X11TestSuit) TestMigrateXAuthorityInvalidFile(c *check.C) {
 	user, err := user.Current()
 	c.Assert(err, check.IsNil)
 
@@ -46,9 +63,9 @@ func (x *X11TestSuit) TestMigrateXAuthoritySuccess(c *check.C) {
 	defer xf.Close()
 
 	err = x11.MigrateXauthority(user, filepath.Join(dirs.WorkshopdRunDir, ".workshop-Xauthority"))
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.ErrorMatches, "invalid Xauthority file: EOF")
 
-	c.Assert(filepath.Join(dirs.WorkshopdRunDir, user.Uid, "Xauthority", ".Xauthority"), testutil.FilePresent)
+	c.Assert(filepath.Join(dirs.WorkshopdRunDir, user.Uid, "Xauthority", ".Xauthority"), testutil.FileAbsent)
 }
 
 func (x *X11TestSuit) TestMigrateXAuthorityOwnershipFail(c *check.C) {

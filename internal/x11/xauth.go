@@ -2,6 +2,7 @@ package x11
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -37,30 +38,30 @@ func ProcessFile(r io.Reader) ([]Entry, error) {
 		_, err := r.Read(family)
 		if err != nil {
 			if len(entries) == 0 {
-				return nil, err
+				return nil, fmt.Errorf("invalid Xauthority file: %w", err)
 			}
 			return entries, nil
 		}
 
 		entry.Family = Family(binary.BigEndian.Uint16(family))
-		err = ReadNext(r, &entry.Host)
+		err = readNext(r, &entry.Host)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid Xauthority file: %w", err)
 		}
 
-		err = ReadNext(r, &entry.Display)
+		err = readNext(r, &entry.Display)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid Xauthority file: %w", err)
 		}
 
-		err = ReadNext(r, &entry.AuthorisationMethod)
+		err = readNext(r, &entry.AuthorisationMethod)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid Xauthority file: %w", err)
 		}
 
-		err = ReadNext(r, &entry.AuthorisationData)
+		err = readNext(r, &entry.AuthorisationData)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid Xauthority file: %w", err)
 		}
 
 		entries = append(entries, entry)
@@ -83,7 +84,7 @@ func EncodeEntries(entries []Entry) []byte {
 	return b
 }
 
-func ReadNext(r io.Reader, dest *[]byte) error {
+func readNext(r io.Reader, dest *[]byte) error {
 	l := make([]byte, 2)
 	_, err := r.Read(l)
 	if err != nil {
