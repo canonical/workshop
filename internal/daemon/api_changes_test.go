@@ -27,6 +27,7 @@ import (
 	"golang.org/x/exp/slices"
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/state"
 )
 
@@ -35,7 +36,7 @@ func setupChanges(st *state.State) []string {
 	chg1.Set("workshop", "one")
 	chg1.Set("project-id", "123")
 	t1 := st.NewTask("create-workshop", "1...")
-	t2 := st.NewTask("start-workshop", "2...")
+	t2 := st.NewTask("run-hook", "2...")
 	chg1.AddAll(state.NewTaskSet(t1, t2))
 	t1.Logf("l11")
 	t1.Logf("l12")
@@ -246,7 +247,7 @@ func (s *apiSuite) TestStateChange(c *check.C) {
 	stateChangeCmd := apiCmd("/v1/changes/{id}")
 
 	// Execute
-	req, err := http.NewRequest("POST", "/v1/change/"+ids[0], nil)
+	req, err := http.NewRequest("GET", "/v1/change/"+ids[0], nil)
 	c.Assert(err, check.IsNil)
 	rsp := v1GetChange(stateChangeCmd, req, nil).(*resp)
 	rec := httptest.NewRecorder()
@@ -284,11 +285,86 @@ func (s *apiSuite) TestStateChange(c *check.C) {
 			},
 			map[string]interface{}{
 				"id":         ids[3],
-				"kind":       "start-workshop",
+				"kind":       "run-hook",
 				"summary":    "2...",
 				"status":     "Do",
 				"progress":   map[string]interface{}{"label": "", "done": 0., "total": 1.},
 				"spawn-time": "2016-04-21T01:02:03Z",
+			},
+		},
+		"data": map[string]interface{}{
+			"n": float64(42),
+		},
+	})
+}
+
+func (s *apiSuite) TestStateChangeVerbose(c *check.C) {
+	restore := state.MockTime(time.Date(2016, 04, 21, 1, 2, 3, 0, time.UTC))
+	defer restore()
+
+	// Setup
+	d := s.daemon(c)
+	st := d.overlord.State()
+	st.Lock()
+	ids := setupChanges(st)
+	chg := st.Change(ids[0])
+	chg.Set("api-data", map[string]int{"n": 42})
+	task := chg.Tasks()[0]
+	task.Set("api-data", map[string]string{"foo": "bar"})
+	hl := hookstate.NewHookLog()
+	_, err := hl.Write([]byte("verbose task output line\nsecond line\nunfinished line"))
+	c.Assert(err, check.IsNil)
+	st.Cache(hookstate.HookLogKey(chg.Tasks()[1].ID()), hl)
+	st.Unlock()
+	s.vars = map[string]string{"id": ids[0]}
+
+	stateChangeCmd := apiCmd("/v1/changes/{id}")
+
+	// Execute
+	req, err := http.NewRequest("GET", "/v1/change/"+ids[0]+"?verbose=true", nil)
+	c.Assert(err, check.IsNil)
+	rsp := v1GetChange(stateChangeCmd, req, nil).(*resp)
+	rec := httptest.NewRecorder()
+	rsp.ServeHTTP(rec, req)
+
+	// Verify
+	c.Check(rec.Code, check.Equals, 200)
+	c.Check(rsp.Status, check.Equals, 200)
+	c.Check(rsp.Type, check.Equals, ResponseTypeSync)
+	c.Check(rsp.Result, check.NotNil)
+
+	var body map[string]interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &body)
+	c.Check(err, check.IsNil)
+	c.Check(body["result"], check.DeepEquals, map[string]interface{}{
+		"id":         ids[0],
+		"kind":       "launch",
+		"summary":    "launch...",
+		"status":     "Do",
+		"ready":      false,
+		"spawn-time": "2016-04-21T01:02:03Z",
+		"project-id": "123",
+		"tasks": []interface{}{
+			map[string]interface{}{
+				"id":         ids[2],
+				"kind":       "create-workshop",
+				"summary":    "1...",
+				"status":     "Do",
+				"log":        []interface{}{"2016-04-21T01:02:03Z INFO l11", "2016-04-21T01:02:03Z INFO l12"},
+				"progress":   map[string]interface{}{"label": "", "done": 0., "total": 1.},
+				"spawn-time": "2016-04-21T01:02:03Z",
+				"data": map[string]interface{}{
+					"foo": "bar",
+				},
+			},
+			map[string]interface{}{
+				"id":         ids[3],
+				"kind":       "run-hook",
+				"summary":    "2...",
+				"status":     "Do",
+				"progress":   map[string]interface{}{"label": "", "done": 0., "total": 1.},
+				"spawn-time": "2016-04-21T01:02:03Z",
+				"log":        []interface{}{"verbose task output line", "second line"},
 			},
 		},
 		"data": map[string]interface{}{
@@ -360,7 +436,7 @@ func (s *apiSuite) TestStateChangeAbort(c *check.C) {
 			},
 			map[string]interface{}{
 				"id":         ids[3],
-				"kind":       "start-workshop",
+				"kind":       "run-hook",
 				"summary":    "2...",
 				"status":     "Hold",
 				"progress":   map[string]interface{}{"label": "", "done": 1., "total": 1.},

@@ -63,7 +63,7 @@ func (c *CmdTasks) Run(cmd *cobra.Command, av []string) error {
 
 	var change *client.Change
 	if len(av) > 0 {
-		change, err = cli.Change(av[0])
+		change, err = cli.Change(av[0], false)
 		if err != nil {
 			return err
 		}

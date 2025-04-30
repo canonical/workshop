@@ -96,6 +96,9 @@ $ workshop refresh --continue`,
 	cmd.PersistentFlags().BoolVar(&c.NoWait, "no-wait",
 		false,
 		"Return the change ID, don't wait for the operation to finish.")
+	cmd.PersistentFlags().BoolVar(&c.verbose, "verbose",
+		false,
+		"Combine stdout and stderr output from hooks.")
 
 	cmd.MarkFlagsMutuallyExclusive("abort", "continue", "wait-on-error")
 
@@ -112,12 +115,6 @@ func workshopName(name string) string {
 }
 
 func (c *CmdRefresh) RunRefresh(cli *client.Client, project *client.Project, av []string) error {
-	// We should have no more than one argument (a single workshop) for a
-	// wait-on-error operation
-	if (c.Abort || c.Continue || c.WaitOnError) && len(av) > 1 {
-		return fmt.Errorf("cannot refresh: '--wait-on-error' incompatible with multiple workshops")
-	}
-
 	mode := "transactional"
 	if c.WaitOnError {
 		mode = "wait-on-error"

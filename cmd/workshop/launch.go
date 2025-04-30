@@ -72,30 +72,17 @@ $ workshop launch`,
 	cmd.PersistentFlags().BoolVar(&c.NoWait, "no-wait",
 		false,
 		"Return the change ID, don't wait for the operation to finish.")
+	cmd.PersistentFlags().BoolVar(&c.verbose, "verbose",
+		false,
+		"Combine stdout and stderr output from hooks.")
+
+	cmd.MarkFlagsMutuallyExclusive("abort", "continue", "wait-on-error")
 
 	return cmd
 }
 
 func (c *CmdLaunch) Run(cmd *cobra.Command, av []string) error {
 	av = strutil.Deduplicate(av)
-
-	if c.Abort && c.Continue {
-		return fmt.Errorf("cannot launch: '--abort' incompatible with '--continue'")
-	}
-
-	if c.WaitOnError && c.Abort {
-		return fmt.Errorf("cannot launch: '--wait-on-error' incompatible with '--abort'")
-	}
-
-	if c.WaitOnError && c.Continue {
-		return fmt.Errorf("cannot launch: '--wait-on-error' incompatible with '--continue'")
-	}
-
-	// We should have no more than one argument (a single workshop) for a
-	// wait-on-error operation
-	if (c.Abort || c.Continue || c.WaitOnError) && len(av) > 1 {
-		return fmt.Errorf("cannot launch: '--wait-on-error' incompatible with multiple workshops")
-	}
 
 	cli, err := c.root.client()
 	if err != nil {

@@ -40,6 +40,7 @@ var (
 type waitMixin struct {
 	NoWait    bool
 	skipAbort bool
+	verbose   bool
 }
 
 var errNoWait = errors.New("no wait for op")
@@ -82,10 +83,10 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 	tMax := time.Time{}
 
 	var lastID string
-	lastLog := map[string]string{}
+	seenLog := map[string]int{}
 	for {
 		var rebootingErr error
-		chg, err := cli.Change(id)
+		chg, err := cli.Change(id, wmx.verbose)
 		if err != nil {
 			// a client.Error means we were able to communicate with
 			// the server (got an answer)
@@ -115,14 +116,6 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 			tMax = time.Time{}
 		}
 
-		maybeShowLog := func(t *client.Task) {
-			nowLog := lastLogStr(t.Log)
-			if lastLog[t.ID] != nowLog {
-				pb.Notify(nowLog)
-				lastLog[t.ID] = nowLog
-			}
-		}
-
 		// Tasks in "wait" state communicate the wait reason
 		// via the log mechanism. So make sure the log is
 		// visible even if the normal progress reporting
@@ -132,7 +125,6 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 		// the messages: "Task set to wait until a manual system restart allows to continue"
 		for _, t := range chg.Tasks {
 			if t.Status == "Wait" {
-				maybeShowLog(t)
 				return nil, errWaitOnError
 			}
 		}
@@ -143,6 +135,14 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 			case t.Status != "Doing" && t.Status != "Undoing":
 				continue
 			case t.Progress.Total == 1:
+				if wmx.verbose {
+					cur := seenLog[t.ID]
+
+					for ; cur < len(t.Log); cur++ {
+						pb.Notify(t.Log[cur])
+					}
+					seenLog[t.ID] = cur
+				}
 				pb.Spin(t.Summary)
 			case t.ID == lastID:
 				pb.Set(float64(t.Progress.Done))
@@ -172,11 +172,4 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 		// 100ms.
 		time.Sleep(pollTime)
 	}
-}
-
-func lastLogStr(logs []string) string {
-	if len(logs) == 0 {
-		return ""
-	}
-	return logs[len(logs)-1]
 }

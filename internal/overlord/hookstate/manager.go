@@ -78,6 +78,7 @@ func New(s *state.State, runner *state.TaskRunner) *HookManager {
 	s.Unlock()
 
 	runner.AddHandler("run-hook", handlersetup.OnDo(manager.doRunHook), nil)
+	runner.AddCleanup("run-hook", manager.doHookCleanup)
 
 	setupHooks(manager)
 

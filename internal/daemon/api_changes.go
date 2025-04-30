@@ -17,11 +17,13 @@ package daemon
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"golang.org/x/exp/slices"
 
+	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/state"
 )
 
@@ -62,7 +64,7 @@ type taskInfoProgress struct {
 	Total int    `json:"total"`
 }
 
-func change2changeInfo(chg *state.Change) *changeInfo {
+func change2changeInfo(chg *state.Change, verbose bool) *changeInfo {
 	status := chg.Status()
 	chgInfo := &changeInfo{
 		ID:      chg.ID(),
@@ -86,12 +88,32 @@ func change2changeInfo(chg *state.Change) *changeInfo {
 	for j, t := range tasks {
 		label, done, total := t.Progress()
 
+		var taskLog []string
+		// Only hooks support verbose output.
+		if verbose && t.Kind() == "run-hook" {
+			cached := chg.State().Cached(hookstate.HookLogKey(t.ID()))
+			hookLog, ok := cached.(*hookstate.HookLog)
+			if ok && hookLog != nil {
+				rawout := hookLog.Output()
+				for {
+					line, err := rawout.ReadString('\n')
+					if err != nil {
+						break
+					}
+					line = strings.TrimRight(line, "\n")
+					taskLog = append(taskLog, line)
+				}
+			}
+		} else {
+			taskLog = t.Log()
+		}
+
 		taskInfo := &taskInfo{
 			ID:      t.ID(),
 			Kind:    t.Kind(),
 			Summary: t.Summary(),
 			Status:  t.Status().String(),
-			Log:     t.Log(),
+			Log:     taskLog,
 			Progress: taskInfoProgress{
 				Label: label,
 				Done:  done,
@@ -186,12 +208,23 @@ func v1GetChanges(c *Command, r *http.Request, _ *userState) Response {
 		if !filter(chg) {
 			continue
 		}
-		chgInfos = append(chgInfos, change2changeInfo(chg))
+		chgInfos = append(chgInfos, change2changeInfo(chg, false))
 	}
 	return SyncResponse(chgInfos, http.StatusOK)
 }
 
 func v1GetChange(c *Command, r *http.Request, _ *userState) Response {
+	query := r.URL.Query()
+
+	var err error
+	var verbose bool
+	if val := query.Get("verbose"); len(val) > 0 {
+		verbose, err = strconv.ParseBool(val)
+		if err != nil {
+			return statusBadRequest(`invalid "verbose" parameter: %v`, err)
+		}
+	}
+
 	changeID := muxVars(r)["id"]
 	st := c.d.overlord.State()
 	st.Lock()
@@ -201,11 +234,12 @@ func v1GetChange(c *Command, r *http.Request, _ *userState) Response {
 		return statusNotFound("cannot find change with id %q", changeID)
 	}
 
-	return SyncResponse(change2changeInfo(chg), http.StatusOK)
+	return SyncResponse(change2changeInfo(chg, verbose), http.StatusOK)
 }
 
 func v1PostChange(c *Command, r *http.Request, _ *userState) Response {
 	chID := muxVars(r)["id"]
+
 	state := c.d.overlord.State()
 	state.Lock()
 	defer state.Unlock()
@@ -237,7 +271,7 @@ func v1PostChange(c *Command, r *http.Request, _ *userState) Response {
 	// actually ask to proceed with the abort
 	stateEnsureBefore(state, 0)
 
-	return SyncResponse(change2changeInfo(chg), http.StatusOK)
+	return SyncResponse(change2changeInfo(chg, false), http.StatusOK)
 }
 
 func v1GetChangeWait(c *Command, r *http.Request, _ *userState) Response {
@@ -278,5 +312,5 @@ func v1GetChangeWait(c *Command, r *http.Request, _ *userState) Response {
 
 	st.Lock()
 	defer st.Unlock()
-	return SyncResponse(change2changeInfo(change), http.StatusOK)
+	return SyncResponse(change2changeInfo(change, false), http.StatusOK)
 }

@@ -1,12 +1,14 @@
 package hookstate
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strings"
+	"sync"
 
+	"github.com/canonical/x-go/strutil"
 	"github.com/spf13/afero"
 	"gopkg.in/tomb.v2"
 
@@ -17,6 +19,11 @@ import (
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
+)
+
+const (
+	hookRawOutputBufferSize = 1024 * 1024 * 10
+	hookTaskLogSize         = 1024 * 64
 )
 
 func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
@@ -83,7 +90,7 @@ func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
 			return fmt.Errorf("cannot run hook \"save-state\" for %q SDK: %v", hook.Sdk, err)
 		}
 
-		return h.executeHook(ctx, task, w, prj.ProjectId, &hook, execArgs)
+		return h.executeHook(ctx, task, &hook, execArgs)
 	case RestoreState:
 		fs, err := h.backend.WorkshopFs(ctx, w)
 		if err != nil {
@@ -99,9 +106,9 @@ func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
 			return fmt.Errorf("cannot run hook \"restore-state\" for %q SDK: state storage path is not a directory", hook.Sdk)
 		}
 
-		return h.executeHook(ctx, task, w, prj.ProjectId, &hook, execArgs)
+		return h.executeHook(ctx, task, &hook, execArgs)
 	case SetupBase:
-		if err = h.executeHook(ctx, task, w, prj.ProjectId, &hook, execArgs); err != nil {
+		if err = h.executeHook(ctx, task, &hook, execArgs); err != nil {
 			return err
 		}
 		return h.backend.Snapshot(ctx, w, workshop.SnapshotId(w, hook.Sdk))
@@ -133,16 +140,62 @@ func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
 		xdgRuntimeDir := filepath.Join(dirs.XdgRuntimeDirBase, workshop.User.Uid)
 		execArgs.Environment["XDG_RUNTIME_DIR"] = xdgRuntimeDir
 		execArgs.Environment["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=" + filepath.Join(xdgRuntimeDir, "bus")
-		return h.executeHook(ctx, task, w, prj.ProjectId, &hook, execArgs)
+		return h.executeHook(ctx, task, &hook, execArgs)
 	default:
-		return h.executeHook(ctx, task, w, prj.ProjectId, &hook, execArgs)
+		return h.executeHook(ctx, task, &hook, execArgs)
 	}
 }
 
-func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, projectId string, hook *HookSetup, execArgs *workshop.ExecArgs) error {
+type HookLogKey string
+
+type HookLog struct {
+	l   sync.Mutex
+	buf *strutil.LimitedBuffer
+}
+
+func NewHookLog() *HookLog {
+	return &HookLog{
+		buf: strutil.NewLimitedBuffer(-1, hookRawOutputBufferSize),
+	}
+}
+
+func (h *HookLog) Output() *bytes.Buffer {
+	h.l.Lock()
+	defer h.l.Unlock()
+
+	return bytes.NewBuffer(h.buf.Bytes())
+}
+
+func (h *HookLog) taskLog() []byte {
+	h.l.Lock()
+	defer h.l.Unlock()
+
+	// 10 lines per task log to be stored in the state as a sensible default
+	// (see task.Logf).
+	return strutil.TruncateOutput(h.buf.Bytes(), 10, hookTaskLogSize)
+}
+
+func (h *HookLog) Write(buf []byte) (n int, err error) {
+	h.l.Lock()
+	defer h.l.Unlock()
+
+	return h.buf.Write(buf)
+}
+
+func (h *HookLog) flush() {
+	h.l.Lock()
+	defer h.l.Unlock()
+
+	buf := h.buf.Bytes()
+	if len(buf) > 0 && buf[len(buf)-1] != '\n' {
+		_, _ = h.buf.Write([]byte{'\n'})
+	}
+}
+
+func (h *HookManager) executeHook(ctx context.Context, task *state.Task, hook *HookSetup, execArgs *workshop.ExecArgs) error {
 	hookPath := sdk.SdkHookPath(hook.Sdk, hook.Type())
 
-	wsFs, err := h.backend.WorkshopFs(ctx, w)
+	wsFs, err := h.backend.WorkshopFs(ctx, hook.Workshop)
 	if err != nil {
 		return err
 	}
@@ -174,67 +227,38 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 		return err
 	}
 
-	// create a memory out/err to log the hook output into the task's log
-	memfs := afero.NewMemMapFs()
-	stdout, err := memfs.Create(fmt.Sprintf("%s-%s-%s-stdout", w, projectId, hook.Type()))
-	if err != nil {
-		return err
-	}
-	defer stdout.Close()
+	hookOutErr := NewHookLog()
 
-	stderr, err := memfs.Create(fmt.Sprintf("%s-%s-%s-stderr", w, projectId, hook.Type()))
-	if err != nil {
-		return err
-	}
-	defer stderr.Close()
+	st := task.State()
+	st.Lock()
+	st.Cache(HookLogKey(task.ID()), hookOutErr)
+	st.Unlock()
 
 	execArgs.Environment["WORKSHOP_COOKIE"] = hookCtx.ID()
 	args := workshop.Execution{
 		ExecArgs: *execArgs,
 		ExecControls: workshop.ExecControls{
 			Stdin:  nil,
-			Stdout: stdout,
-			Stderr: stderr,
+			Stdout: hookOutErr,
+			Stderr: hookOutErr,
 		},
 	}
 
-	exectx, err := h.backend.Exec(ctx, w, &args)
+	exectx, err := h.backend.Exec(ctx, hook.Workshop, &args)
 	// Handle errors that are unrelated to the command, for example, LXD-related
 	// issues. An error here means the execution has not started at all.
 	if err != nil {
 		return err
 	}
+
 	err = exectx.WaitExecution(ctx)
 
-	st := task.State()
-	isNewLine := func(r rune) bool { return r == '\n' }
-	outlog, _ := afero.ReadFile(memfs, stdout.Name())
-	if len(outlog) > 0 {
-		lines := strings.FieldsFunc(string(outlog), isNewLine)
-		st.Lock()
-		for _, line := range lines {
-			task.Logf("%s", line)
-		}
-		st.Unlock()
-	}
+	hookOutErr.flush()
+	taskLog := hookOutErr.taskLog()
 
-	errlog, _ := afero.ReadFile(memfs, stderr.Name())
-	if err != nil {
-		lines := strings.FieldsFunc(string(errlog), isNewLine)
+	if len(taskLog) > 0 {
 		st.Lock()
-		for i, line := range lines {
-			if i == len(lines)-1 {
-				if exerr, isCmdError := err.(*workshop.ErrExec); isCmdError {
-					// If it's an exec error, the return value would only
-					// contain the status code which is often useless to return
-					// to the upper level. We'll attempt to return the last
-					// known error line for better claririty.
-					err = fmt.Errorf("%s (exit code: %d)", line, exerr.Status)
-				}
-			} else {
-				task.Errorf("%s", line)
-			}
-		}
+		task.Logf(string(taskLog))
 		st.Unlock()
 	}
 
@@ -263,6 +287,13 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, w, proj
 	}
 
 	return err
+}
+
+func (h *HookManager) doHookCleanup(task *state.Task, tomb *tomb.Tomb) error {
+	h.state.Lock()
+	h.state.Cache(HookLogKey(task.ID()), nil)
+	h.state.Unlock()
+	return nil
 }
 
 func createHookContext(task *state.Task, repo *repository, hook *HookSetup) (*Context, error) {

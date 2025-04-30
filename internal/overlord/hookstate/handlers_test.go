@@ -542,3 +542,52 @@ func (s *hookSuite) launchWorkshop(c *check.C, newsdk string) {
 	_, err = ws.Create(sdk.SdkHookPath(newsdk, hookstate.FakeHook.String()))
 	c.Check(err, check.IsNil)
 }
+
+func (s *hookSuite) TestExecCombinedHookOutputStoredInLogs(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+	t1 := hookstate.Hook(s.state, s.project.ProjectId, "ws", "one", 0, hookstate.FakeHook)
+
+	chg := s.state.NewChange("sample", "...")
+	setWorkshopProject("ws", s.project, t1)
+	chg.Set("user", "testuser")
+	chg.AddTask(t1)
+
+	s.launchWorkshop(c, "one")
+	s.backend.ExecCallback = func(ctx context.Context, name string, args *workshop.Execution) (workshop.ExecContext, error) {
+		return workshop.ExecContext{
+			WaitExecution: func(ctx context.Context) error {
+				_, err := args.Stdout.Write([]byte("hello from hook!\n"))
+				c.Assert(err, check.IsNil)
+				_, err = args.Stdout.Write([]byte("stdout message\n"))
+				c.Assert(err, check.IsNil)
+				_, err = args.Stderr.Write([]byte("\terror message\n"))
+				c.Assert(err, check.IsNil)
+				return &workshop.ErrExec{Status: 1}
+			},
+		}, nil
+	}
+	defer func() {
+		s.backend.ExecCallback = fakebackend.DoExecDefault
+	}()
+
+	s.state.Unlock()
+	err := s.se.Ensure()
+	c.Assert(err, check.IsNil)
+	s.se.Wait()
+	s.state.Lock()
+
+	c.Check(t1.Status(), check.Equals, state.ErrorStatus)
+	c.Check(t1.Log(), check.HasLen, 2)
+	c.Assert(t1.Log()[0], check.Matches, ".*hello from hook!\nstdout message\n\terror message\n$")
+	c.Assert(t1.Log()[1], check.Matches, ".* ERROR command exit code 1$")
+
+	cached := s.state.Cached(hookstate.HookLogKey(t1.ID()))
+	hookOutErr, ok := cached.(*hookstate.HookLog)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(hookOutErr.Output().String(), check.Equals, "hello from hook!\nstdout message\n\terror message\n")
+
+	c.Check(s.mockHandler.BeforeCalled, check.Equals, true)
+	c.Check(s.mockHandler.DoneCalled, check.Equals, false)
+	c.Check(s.mockHandler.ErrorCalled, check.Equals, true)
+}

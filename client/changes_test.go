@@ -37,7 +37,7 @@ func (cs *clientSuite) TestClientChange(c *check.C) {
   "tasks": [{"kind": "bar", "summary": "...", "status": "Do", "progress": {"done": 0, "total": 1}, "spawn-time": "2016-04-21T01:02:03Z", "ready-time": "2016-04-21T01:02:04Z"}]
 }}`
 
-	chg, err := cs.cli.Change("uno")
+	chg, err := cs.cli.Change("uno", false)
 	c.Assert(err, check.IsNil)
 	c.Check(chg, check.DeepEquals, &client.Change{
 		ID:      "uno",
@@ -111,7 +111,7 @@ func (cs *clientSuite) TestClientChangeData(c *check.C) {
   "data": {"n": 42}
 }}`
 
-	chg, err := cs.cli.Change("uno")
+	chg, err := cs.cli.Change("uno", false)
 	c.Assert(err, check.IsNil)
 	var n int
 	err = chg.Get("n", &n)
@@ -133,7 +133,7 @@ func (cs *clientSuite) TestClientChangeRestartingState(c *check.C) {
  "maintenance": {"kind": "system-restart", "message": "system is restarting"}
 }`
 
-	chg, err := cs.cli.Change("uno")
+	chg, err := cs.cli.Change("uno", false)
 	c.Check(chg, check.NotNil)
 	c.Check(chg.ID, check.Equals, "uno")
 	c.Check(err, check.IsNil)
@@ -151,7 +151,7 @@ func (cs *clientSuite) TestClientChangeError(c *check.C) {
   "err": "error message"
 }}`
 
-	chg, err := cs.cli.Change("uno")
+	chg, err := cs.cli.Change("uno", false)
 	c.Assert(err, check.IsNil)
 	c.Check(chg, check.DeepEquals, &client.Change{
 		ID:      "uno",
