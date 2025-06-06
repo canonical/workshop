@@ -260,16 +260,16 @@ func (c *Command) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username, err := LookupUserId(strconv.FormatUint(uint64(uid), 10))
+	usr, err := LookupUserId(strconv.FormatUint(uint64(uid), 10))
 	if err != nil {
 		statusInternalError("cannot get an associated user name: %w", err).ServeHTTP(w, r)
 		return
 	}
 
-	userCtx := context.WithValue(r.Context(), workshop.ContextUser, username.Username)
+	ctx := context.WithValue(r.Context(), workshop.ContextUser, usr.Username)
 
 	if rspf != nil {
-		rsp = rspf(c, r.WithContext(userCtx), user)
+		rsp = rspf(c, r.WithContext(ctx), user)
 	}
 
 	if rsp, ok := rsp.(*resp); ok {

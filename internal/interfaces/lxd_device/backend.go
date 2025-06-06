@@ -43,20 +43,6 @@ func (b *Backend) Name() interfaces.SecuritySystem {
 	return interfaces.SecurityLxdDevice
 }
 
-func lxdClient(ctx context.Context) (lxd.InstanceServer, error) {
-	user, ok := ctx.Value(workshop.ContextUser).(string)
-	if !ok {
-		return nil, fmt.Errorf("context key %s not found", workshop.ContextUser)
-	}
-
-	srv, err := lxd.ConnectLXDUnixWithContext(ctx, LxdSock, nil)
-	if err != nil {
-		return nil, lxdbackend.ErrorWithInstallLXDPrompt(err)
-	}
-
-	return srv.UseProject("workshop." + user), nil
-}
-
 func installMount(user *user.User, fs workshop.WorkshopFs, dev workshop.Mount) (reload bool, err error) {
 	if dev.Type == workshop.WorkshopWorkshop {
 		if _, err = fs.Stat(dev.What); err != nil {
@@ -338,7 +324,7 @@ func (b *Backend) Setup(ctx context.Context, sdkInfo sdk.Ref, repo *interfaces.R
 		Description: fmt.Sprintf("%q SDK profile for %q workshop", sdkInfo.Sdk, sdkInfo.Workshop),
 	}
 
-	conn, err := lxdClient(ctx)
+	conn, err := lxdbackend.ConnectLxd(ctx)
 	if err != nil {
 		return err
 	}
@@ -440,7 +426,7 @@ func (b *Backend) Setup(ctx context.Context, sdkInfo sdk.Ref, repo *interfaces.R
 //
 // This method should be called after removing a sdk.
 func (b *Backend) Remove(ctx context.Context, w, profile string) error {
-	conn, err := lxdClient(ctx)
+	conn, err := lxdbackend.ConnectLxd(ctx)
 	if err != nil {
 		return err
 	}

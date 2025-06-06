@@ -317,7 +317,7 @@ func installSdks(st *state.State, pid, w string, sdks []sdk.Setup, retrieveTasks
 	return all
 }
 
-func launchWorkshop(st *state.State, file *workshop.File, project workshop.Project) *state.TaskSet {
+func launchWorkshop(st *state.State, file *workshop.File) *state.TaskSet {
 	construct := state.NewTaskSet()
 
 	var prev *state.Task
@@ -397,7 +397,7 @@ func launch(st *state.State, file *workshop.File, sdks []sdk.Setup, project work
 	createDirs := st.NewTask("create-workshop-storage", fmt.Sprintf("Create %q storage directories", file.Name))
 	addTaskSet(state.NewTaskSet(createDirs))
 
-	create := launchWorkshop(st, file, project)
+	create := launchWorkshop(st, file)
 	addTaskSet(create)
 
 	install := installSdks(st, project.ProjectId, file.Name, sdks, rmap)
@@ -472,7 +472,7 @@ func (w *WorkshopManager) RefreshMany(ctx context.Context, projectId string, nam
 			return nil, err
 		}
 
-		tasks, err := refresh(ctx, w.state, plan, wp, req.file)
+		tasks, err := refresh(w.state, plan, wp, req.file)
 		if err != nil {
 			return nil, fmt.Errorf("cannot refresh %q: %w", name, err)
 		}
@@ -637,7 +637,7 @@ func resolveRefresh(w *workshop.Workshop, newfile *workshop.File, candidates []s
 	return plan, nil
 }
 
-func refresh(ctx context.Context, st *state.State, plan *refreshPlan, w *workshop.Workshop, file *workshop.File) (*state.TaskSet, error) {
+func refresh(st *state.State, plan *refreshPlan, w *workshop.Workshop, file *workshop.File) (*state.TaskSet, error) {
 	refresh := state.NewTaskSet()
 	prev := (*state.TaskSet)(nil)
 	addTaskSet := func(ts *state.TaskSet) {

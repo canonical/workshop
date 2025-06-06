@@ -1,6 +1,7 @@
 package lxdbackend
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net/http"
@@ -27,8 +28,6 @@ func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
 		return fmt.Errorf("context key project-id not found")
 	}
 
-	instance := InstanceName(name, projectId)
-	stashedInsance := workshop.StashNamePrefix + instance
 	conn, err := s.LxdClient(ctx)
 	if err != nil {
 		return err
@@ -45,7 +44,16 @@ func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
 		}
 	})
 
-	if err = s.copyInstance(conn, instance, stashedInsance, LxdProjectName(user), LxdStashProjectName(user)); err != nil {
+	instance := InstanceName(name, projectId)
+	stashed := instanceStashName(name, projectId)
+
+	sourceProject, err1 := lxdProjectName(user)
+	targetProject, err2 := lxdStashProjectName(user)
+	if err = cmp.Or(err1, err2); err != nil {
+		return err
+	}
+
+	if err = s.copyInstance(conn, instance, stashed, sourceProject, targetProject); err != nil {
 		return err
 	}
 
@@ -64,22 +72,29 @@ func (s *Backend) UnstashWorkshop(ctx context.Context, name string) error {
 		return fmt.Errorf("context key project-id not found")
 	}
 
-	instance := InstanceName(name, projectId)
-	stashedInsance := workshop.StashNamePrefix + instance
 	conn, err := s.LxdClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Disconnect()
 
-	if err := s.copyInstance(conn, stashedInsance, instance, LxdStashProjectName(user), LxdProjectName(user)); err != nil {
+	instance := InstanceName(name, projectId)
+	stash := instanceStashName(name, projectId)
+
+	sourceProject, err1 := lxdStashProjectName(user)
+	targetProject, err2 := lxdProjectName(user)
+	if err = cmp.Or(err1, err2); err != nil {
+		return err
+	}
+
+	if err := s.copyInstance(conn, stash, instance, sourceProject, targetProject); err != nil {
 		return err
 	}
 
 	return s.startWorkshop(conn, ctx, name)
 }
 
-// Moves the instance between LXD projects.
+// Copies the instance between LXD projects.
 func (s *Backend) copyInstance(conn lxd.InstanceServer, srcName, dstName, sourceProject, targetProject string) error {
 	conn = conn.UseProject(sourceProject)
 	instance, _, err := conn.GetInstance(srcName)
@@ -118,8 +133,13 @@ func (s *Backend) RemoveWorkshopStash(ctx context.Context, name string) error {
 		return fmt.Errorf("context key project-id not found")
 	}
 
-	conn = conn.UseProject(LxdStashProjectName(user))
-	iname := workshop.StashNamePrefix + InstanceName(name, projectId)
+	stash, err := lxdStashProjectName(user)
+	if err != nil {
+		return err
+	}
+
+	conn = conn.UseProject(stash)
+	iname := instanceStashName(name, projectId)
 
 	op, err := conn.DeleteInstance(iname)
 	if err != nil {

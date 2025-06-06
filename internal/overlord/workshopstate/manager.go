@@ -63,8 +63,8 @@ func (w *WorkshopManager) Workshop(ctx context.Context, name, pId string) (*work
 	return workshop, nil
 }
 
-// Returns latest file for a workshop. The state must be locked,
-// as listing projects can update project metadata.
+// Returns latest file for a workshop. The state must be locked, as listing
+// projects can update project metadata.
 func (w *WorkshopManager) WorkshopFile(ctx context.Context, name, pId string) (*workshop.File, error) {
 	user, ok := ctx.Value(workshop.ContextUser).(string)
 	if !ok {
@@ -85,8 +85,8 @@ func (w *WorkshopManager) WorkshopFile(ctx context.Context, name, pId string) (*
 	return p.Workshop(name)
 }
 
-// Returns all workshop files for a project. The state must be locked,
-// as listing projects can update project metadata.
+// Returns all workshop files for a project. The state must be locked, as
+// listing projects can update project metadata.
 func (w *WorkshopManager) WorkshopFiles(ctx context.Context, pId string) (map[string]string, error) {
 	user, ok := ctx.Value(workshop.ContextUser).(string)
 	if !ok {

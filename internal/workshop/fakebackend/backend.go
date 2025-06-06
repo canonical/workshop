@@ -457,10 +457,10 @@ func (s *FakeWorkshopBackend) RemoveWorkshopStash(ctx context.Context, name stri
 	s.workshopLock.Lock()
 	defer s.workshopLock.Unlock()
 
-	if s.StashedWorkshops[projectId][workshop.StashNamePrefix+name] == nil {
+	if s.StashedWorkshops[projectId]["stash-"+name] == nil {
 		return fmt.Errorf("stashed workshop %q not found", name)
 	}
-	delete(s.StashedWorkshops[projectId], workshop.StashNamePrefix+name)
+	delete(s.StashedWorkshops[projectId], "stash-"+name)
 	return nil
 }
 
@@ -473,7 +473,7 @@ func (s *FakeWorkshopBackend) UnstashWorkshop(ctx context.Context, name string) 
 	s.workshopLock.Lock()
 	defer s.workshopLock.Unlock()
 
-	wp := s.StashedWorkshops[projectId][workshop.StashNamePrefix+name]
+	wp := s.StashedWorkshops[projectId]["stash-"+name]
 	if wp == nil {
 		return fmt.Errorf("stashed workshop %q not found", name)
 	}
@@ -506,9 +506,9 @@ func (s *FakeWorkshopBackend) StashWorkshop(ctx context.Context, name string) er
 	wcpy := *wp.Workshop
 	stashed := *wp
 	stashed.Workshop = &wcpy
-	stashed.Name = workshop.StashNamePrefix + name
+	stashed.Name = "stash-" + name
 
-	s.StashedWorkshops[projectId][workshop.StashNamePrefix+name] = &stashed
+	s.StashedWorkshops[projectId][stashed.Name] = &stashed
 	return nil
 }
 

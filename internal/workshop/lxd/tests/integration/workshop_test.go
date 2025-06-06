@@ -66,8 +66,8 @@ func (f *wsOps) TearDownSuite(c *check.C) {
 	lxdclient, err := f.bd.LxdClient(f.ctx)
 	c.Check(err, check.IsNil)
 
-	helper.CleanupLxdProject(c, lxdclient, lxdbackend.LxdProjectName(f.usr.Username))
-	helper.CleanupLxdProject(c, lxdclient, lxdbackend.LxdStashProjectName(f.usr.Username))
+	helper.CleanupLxdProject(c, lxdclient, "workshop."+f.usr.Username)
+	helper.CleanupLxdProject(c, lxdclient, "workshop-stash."+f.usr.Username)
 	f.restoreLookupUsr()
 	f.restoreNewId()
 

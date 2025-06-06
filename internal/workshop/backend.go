@@ -60,8 +60,6 @@ type WorkshopConfigValue struct {
 	Value string
 }
 
-var StashNamePrefix string = "stash-"
-
 type Stash interface {
 	// Make a stash of the workshop. The workshop will be stopped and will not
 	// be available to other workshop operations, e.g. list, stop, start and so

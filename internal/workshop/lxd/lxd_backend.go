@@ -78,11 +78,15 @@ func InstanceName(name string, project_id string) string {
 	return fmt.Sprintf("%s-%s", name, project_id)
 }
 
+func instanceStashName(name string, pid string) string {
+	return "stash-" + InstanceName(name, pid)
+}
+
 func ImageAlias(name string) string {
 	return fmt.Sprintf("workshop-%s-%s", name, runtime.GOARCH)
 }
 
-func ErrorWithInstallLXDPrompt(err error) error {
+func ErrorLxdBackend(err error) error {
 	switch {
 	case errors.Is(err, unix.ECONNREFUSED):
 		return fmt.Errorf(`cannot connect to LXD: %w
@@ -112,7 +116,7 @@ func New() (*Backend, error) {
 	// Create LXD storage pool if it doesn't exist
 	conn, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
-		return nil, ErrorWithInstallLXDPrompt(err)
+		return nil, ErrorLxdBackend(err)
 	}
 	defer conn.Disconnect()
 
@@ -241,7 +245,12 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 	}
 	defer conn.Disconnect()
 
-	userName, ok := ctx.Value(workshop.ContextUser).(string)
+	info, err := conn.GetConnectionInfo()
+	if err != nil {
+		return err
+	}
+
+	username, ok := ctx.Value(workshop.ContextUser).(string)
 	if !ok {
 		return fmt.Errorf("context key user not found")
 	}
@@ -251,7 +260,7 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 		return fmt.Errorf("context key project-id not found")
 	}
 
-	// Check if we have the base image stored locally
+	// Check if we have the base image stored locally.
 	alias, _, err := conn.GetImageAlias(ImageAlias(file.Base))
 	if err != nil {
 		return err
@@ -262,7 +271,7 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 		return err
 	}
 
-	usr, err := osutil.UserLookup(userName)
+	usr, err := osutil.UserLookup(username)
 	if err != nil {
 		return err
 	}
@@ -289,7 +298,7 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 			Source: api.InstanceSource{
 				Type:        "image",
 				Fingerprint: image.Fingerprint,
-				Project:     LxdProjectName(usr.Username),
+				Project:     info.Project,
 			},
 		}
 		op, err := conn.CreateInstance(req)
@@ -299,7 +308,7 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 
 		return op.Wait()
 	default:
-		// Rebuild the existing workshop
+		// Rebuild the existing workshop.
 		for _, snapshot := range inst.Snapshots {
 			op, err := conn.DeleteInstanceSnapshot(inst.Name, snapshot.Name)
 			if err != nil {
@@ -318,7 +327,7 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 			return err
 		}
 
-		// Get an updated instance configuration
+		// Get an updated instance configuration.
 		rebuilt, etag, err := conn.GetInstance(inst.Name)
 		if err != nil {
 			return err
@@ -926,20 +935,22 @@ func (s *Backend) WorkshopFs(ctx context.Context, name string) (workshop.Worksho
 	return workshop.NewWorkshopFs(sftp), nil
 }
 
-func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {
+func ConnectLxd(ctx context.Context) (lxd.InstanceServer, error) {
 	user, ok := ctx.Value(workshop.ContextUser).(string)
 	if !ok {
 		return nil, fmt.Errorf("context key %s not found", workshop.ContextUser)
 	}
 
-	if srv, err := lxd.ConnectLXDUnixWithContext(ctx, "", nil); err != nil {
-		return nil, ErrorWithInstallLXDPrompt(err)
-	} else {
-		if err = InitLxdProject(srv, user); err != nil {
-			return nil, err
-		}
-		return srv.UseProject(LxdProjectName(user)), nil
+	conn, err := lxd.ConnectLXDUnixWithContext(ctx, "", nil)
+	if err != nil {
+		return nil, ErrorLxdBackend(err)
 	}
+
+	return switchLxdProject(conn, user)
+}
+
+func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {
+	return ConnectLxd(ctx)
 }
 
 func defaultDevices(pid, w string) map[string]map[string]string {
@@ -979,7 +990,7 @@ func proxyToLxdDevice(proxy workshop.ProxyEntry) map[string]string {
 func checkNvidia() (bool, error) {
 	conn, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
-		return false, ErrorWithInstallLXDPrompt(err)
+		return false, ErrorLxdBackend(err)
 	}
 	defer conn.Disconnect()
 

@@ -90,8 +90,7 @@ func (f *wsExec) SetUpSuite(c *check.C) {
 
 	f.ctx = helper.CreateTestContext(f.usr.Username, f.project.ProjectId)
 
-	f.lxdClient, _ = f.be.(*lxdbackend.Backend).LxdClient(f.ctx)
-	err = lxdbackend.InitLxdProject(f.lxdClient, f.usr.Username)
+	f.lxdClient, err = f.be.(*lxdbackend.Backend).LxdClient(f.ctx)
 	c.Check(err, check.IsNil)
 
 	f.lookupUserRestore = osutil.FakeUserLookup(func(name string) (*user.User, error) {
@@ -120,8 +119,8 @@ func (f *wsExec) TearDownSuite(c *check.C) {
 	f.newProjectidRestore()
 	f.restoreImageServer()
 	f.restoreDevices()
-	helper.CleanupLxdProject(c, f.lxdClient, lxdbackend.LxdProjectName(f.usr.Username))
-	helper.CleanupLxdProject(c, f.lxdClient, lxdbackend.LxdStashProjectName(f.usr.Username))
+	helper.CleanupLxdProject(c, f.lxdClient, "workshop."+f.usr.Username)
+	helper.CleanupLxdProject(c, f.lxdClient, "workshop-stash."+f.usr.Username)
 }
 
 func (f *wsExec) exec(stdin string, workshop, projectId string, opts *client.ExecOptions) (stdout, stderr string, waitErr error) {
