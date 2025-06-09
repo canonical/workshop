@@ -347,28 +347,62 @@ func (f *wsProject) TestLxdBackendLoadProjectAsDifferentUser(c *check.C) {
 	c.Assert(prj.Path, check.Equals, projectDir)
 }
 
-func (f *wsProject) TestPosixUsername(c *check.C) {
+func (f *wsProject) TestInitLxdProjectFails(c *check.C) {
+	count := 0
 	restore := osutil.FakeUserLookup(func(name string) (*user.User, error) {
-		if name != "ubuntu" {
+		count++
+		if name != "test@user" {
 			return nil, errors.New("unexpected username!")
 		}
+		if count == 2 {
+			return nil, errors.New("test error: unknown user")
+		}
 		return &user.User{
-			Username: "ubuntu",
+			Username: "test@user",
 			Uid:      "1001",
 		}, nil
 	})
 	defer restore()
-	ctx := context.WithValue(context.Background(), workshop.ContextUser, "ubuntu")
+	ctx := context.WithValue(context.Background(), workshop.ContextUser, "test@user")
 
-	p, err := lxdbackend.ConnectLxd(ctx)
+	be := lxdbackend.Backend{}
+	_, err := be.LxdClient(ctx)
+	c.Assert(err, check.ErrorMatches, "test error: unknown user")
+
+	projects, err := f.client.GetProjectNames()
+	c.Assert(err, check.IsNil)
+	c.Assert(projects, check.Not(testutil.Contains), "workshop.test@user")
+	c.Assert(projects, check.Not(testutil.Contains), "workshop-stash.test@user")
+}
+
+func (f *wsProject) TestPosixUsernameAsProjectSuffix(c *check.C) {
+	restore := osutil.FakeUserLookup(func(name string) (*user.User, error) {
+		if name != "testuser0" {
+			return nil, errors.New("unexpected username!")
+		}
+		return &user.User{
+			Username: "testuser0",
+			Uid:      "1001",
+		}, nil
+	})
+	defer restore()
+	ctx := context.WithValue(context.Background(), workshop.ContextUser, "testuser0")
+
+	be := lxdbackend.Backend{}
+	p, err := be.LxdClient(ctx)
 	c.Assert(err, check.IsNil)
 
 	props, err := p.GetConnectionInfo()
 	c.Assert(err, check.IsNil)
-	c.Assert(props.Project, check.Equals, "workshop.ubuntu")
+	c.Assert(props.Project, check.Equals, "workshop.testuser0")
+
+	projects, err := p.GetProjectNames()
+	c.Assert(err, check.IsNil)
+	c.Assert(projects, testutil.Contains, "workshop.testuser0")
+	c.Assert(projects, testutil.Contains, "workshop-stash.testuser0")
 }
 
-func (f *wsProject) TestNonPosixUsername(c *check.C) {
+func (f *wsProject) TestNonPosixUsernameAsProjectSuffix(c *check.C) {
 	restore := osutil.FakeUserLookup(func(name string) (*user.User, error) {
 		if name != "ubuntu@canonical.com" {
 			return nil, errors.New("unexpected username!")
@@ -381,10 +415,16 @@ func (f *wsProject) TestNonPosixUsername(c *check.C) {
 	defer restore()
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "ubuntu@canonical.com")
 
-	p, err := lxdbackend.ConnectLxd(ctx)
+	be := lxdbackend.Backend{}
+	p, err := be.LxdClient(ctx)
 	c.Assert(err, check.IsNil)
 
 	props, err := p.GetConnectionInfo()
 	c.Assert(err, check.IsNil)
 	c.Assert(props.Project, check.Equals, "workshop.1001")
+
+	projects, err := p.GetProjectNames()
+	c.Assert(err, check.IsNil)
+	c.Assert(projects, testutil.Contains, "workshop.1001")
+	c.Assert(projects, testutil.Contains, "workshop-stash.1001")
 }

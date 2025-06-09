@@ -113,22 +113,26 @@ func New() (*Backend, error) {
 		imageServer = srv
 	}
 
-	// Create LXD storage pool if it doesn't exist
+	// TODO: run this logic for a specific user. The code below implies the
+	// default project activated for the connection. As we have seen, every user
+	// has to create its own storage pool to avoid issues with id mapping of a
+	// volume with the same name (e.g. both users have system-1 volume for the
+	// system SDK that cannot be successfully mounted for another user).
 	conn, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
 		return nil, ErrorLxdBackend(err)
 	}
 	defer conn.Disconnect()
 
+	// Create LXD storage pool if it doesn't exist.
 	pools, err := conn.GetStoragePools()
 	if err != nil {
 		return nil, err
 	}
-	// Workshop does not require an existing storage pool.
-	// However, once the workshop storage pool exists,
-	// `lxd init --auto` won't add another one,
-	// and non-Workshop LXD containers can't be launched
-	// without further manual configuration.
+	// Workshop does not require an existing storage pool. However, once the
+	// workshop storage pool exists, `lxd init --auto` won't add another one,
+	// and non-Workshop LXD containers can't be launched without further manual
+	// configuration.
 	if len(pools) == 0 {
 		return nil, errors.New(`LXD not initialized
 
@@ -139,11 +143,10 @@ To initialize LXD: 'lxd init --auto'`)
 	if err != nil {
 		return nil, err
 	}
-	// Workshop does not require an existing network.
-	// However, once the workshopbr0 network pool exists,
-	// `lxd init --auto` won't add another one,
-	// and non-Workshop LXD containers won't have network access
-	// without further manual configuration.
+	// Workshop does not require an existing network. However, once the
+	// workshopbr0 network pool exists, `lxd init --auto` won't add another one,
+	// and non-Workshop LXD containers won't have network access without further
+	// manual configuration.
 	if len(networks) == 0 {
 		return nil, errors.New(`LXD not initialized
 
@@ -936,17 +939,26 @@ func (s *Backend) WorkshopFs(ctx context.Context, name string) (workshop.Worksho
 }
 
 func ConnectLxd(ctx context.Context) (lxd.InstanceServer, error) {
-	user, ok := ctx.Value(workshop.ContextUser).(string)
-	if !ok {
-		return nil, fmt.Errorf("context key %s not found", workshop.ContextUser)
-	}
-
 	conn, err := lxd.ConnectLXDUnixWithContext(ctx, "", nil)
 	if err != nil {
 		return nil, ErrorLxdBackend(err)
 	}
 
-	return switchLxdProject(conn, user)
+	user, ok := ctx.Value(workshop.ContextUser).(string)
+	if !ok {
+		return nil, fmt.Errorf("context key %s not found", workshop.ContextUser)
+	}
+
+	project, err := lxdProjectName(user)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = initLxdProject(conn, project, user); err != nil {
+		return nil, err
+	}
+
+	return conn.UseProject(project), err
 }
 
 func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {

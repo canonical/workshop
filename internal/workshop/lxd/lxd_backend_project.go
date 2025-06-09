@@ -2,7 +2,6 @@ package lxdbackend
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -29,14 +28,14 @@ func lxdProjectConfig(username string) map[string]string {
 }
 
 // Checks if a user name can be used in a LXD project name.
-var isValidUsername = regexp.MustCompile(`^[a-zA-Z0-9-._]*$`).MatchString
+var isValidProjectSuffix = regexp.MustCompile(`^[a-zA-Z][-a-zA-Z0-9._]*$`).MatchString
 
-func projectName(prefix, user string) (string, error) {
-	if isValidUsername(user) {
-		return prefix + user, nil
+func projectName(prefix, username string) (string, error) {
+	if isValidProjectSuffix(username) {
+		return prefix + username, nil
 	}
 
-	u, err := osutil.UserLookup(user)
+	u, err := osutil.UserLookup(username)
 	if err != nil {
 		return "", err
 	}
@@ -51,21 +50,7 @@ func lxdStashProjectName(user string) (string, error) {
 	return projectName("workshop-stash.", user)
 }
 
-// Initialise the Workshop project namespace.
-func switchLxdProject(conn lxd.InstanceServer, username string) (lxd.InstanceServer, error) {
-	project, err := lxdProjectName(username)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = initLxdProject(conn, project, username); err != nil {
-		return nil, err
-	}
-
-	return conn.UseProject(project), err
-}
-
-// Create LXD projects (regular and stash) for the user.
+// Create regular and stash LXD projects for the user if they don't exist.
 func initLxdProject(conn lxd.InstanceServer, project, username string) error {
 	names, err := conn.GetProjectNames()
 	if err != nil {
@@ -73,36 +58,40 @@ func initLxdProject(conn lxd.InstanceServer, project, username string) error {
 	}
 
 	if !slices.Contains(names, project) {
-		stash, err := lxdStashProjectName(username)
-		if err != nil {
-			return err
-		}
-
-		err1 := conn.CreateProject(api.ProjectsPost{
+		err = conn.CreateProject(api.ProjectsPost{
 			ProjectPut: api.ProjectPut{
 				Config:      lxdProjectConfig(username),
 				Description: fmt.Sprintf(`Workshop project for "%s" user`, username),
 			},
 			Name: project,
 		})
+		if err != nil {
+			return err
+		}
+	}
 
-		rev := revert.New()
-		rev.Add(func() { _ = conn.DeleteProject(project) })
+	rev := revert.New()
+	defer rev.Fail()
+	rev.Add(func() { _ = conn.DeleteProject(project) })
 
-		err2 := conn.CreateProject(api.ProjectsPost{
+	stash, err := lxdStashProjectName(username)
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(names, stash) {
+		err = conn.CreateProject(api.ProjectsPost{
 			ProjectPut: api.ProjectPut{
 				Config:      lxdProjectConfig(username),
 				Description: fmt.Sprintf(`Workshop stash project for "%s" user`, username),
 			},
 			Name: stash,
 		})
-
-		if err = cmp.Or(err1, err2); err != nil {
+		if err != nil {
 			return err
 		}
-		rev.Success()
 	}
 
+	rev.Success()
 	return nil
 }
 

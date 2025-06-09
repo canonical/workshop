@@ -18,16 +18,6 @@ func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
 	rev := revert.New()
 	defer rev.Fail()
 
-	user, ok := ctx.Value(workshop.ContextUser).(string)
-	if !ok {
-		return fmt.Errorf("context key %s not found", workshop.ContextUser)
-	}
-
-	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
-	if !ok {
-		return fmt.Errorf("context key project-id not found")
-	}
-
 	conn, err := s.LxdClient(ctx)
 	if err != nil {
 		return err
@@ -43,6 +33,16 @@ func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
 			logger.Debugf("On StashWorkshop: Cannot restart %q workshop after failed stash operation: %v", name, rerr)
 		}
 	})
+
+	user, ok := ctx.Value(workshop.ContextUser).(string)
+	if !ok {
+		return fmt.Errorf("context key %s not found", workshop.ContextUser)
+	}
+
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return fmt.Errorf("context key project-id not found")
+	}
 
 	instance := InstanceName(name, projectId)
 	stashed := instanceStashName(name, projectId)
