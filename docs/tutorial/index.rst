@@ -104,7 +104,7 @@ and
 
 .. code-block:: console
 
-   $ sudo snap install --dangerous --classic ./workshop_0.1.15_amd64.snap
+   $ sudo snap install --dangerous --classic ./workshop_0.1.17_amd64.snap
 
 
 Shell integration (optional)
