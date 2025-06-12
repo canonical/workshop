@@ -34,7 +34,7 @@ func (cs *clientSuite) TestClientChange(c *check.C) {
   "ready": false,
   "spawn-time": "2016-04-21T01:02:03Z",
   "ready-time": "2016-04-21T01:02:04Z",
-  "tasks": [{"kind": "bar", "summary": "...", "status": "Do", "progress": {"done": 0, "total": 1}, "spawn-time": "2016-04-21T01:02:03Z", "ready-time": "2016-04-21T01:02:04Z"}]
+  "tasks": [{"kind": "bar", "summary": "...", "status": "Do", "progress": {"done": 0, "total": 1}, "spawn-time": "2016-04-21T01:02:03Z", "ready-time": "2016-04-21T01:02:04Z", "doing-time":242401344}]
 }}`
 
 	chg, err := cs.cli.Change("uno", false)
@@ -51,6 +51,7 @@ func (cs *clientSuite) TestClientChange(c *check.C) {
 			Progress:  client.TaskProgress{Done: 0, Total: 1},
 			SpawnTime: time.Date(2016, 04, 21, 1, 2, 3, 0, time.UTC),
 			ReadyTime: time.Date(2016, 04, 21, 1, 2, 4, 0, time.UTC),
+			DoingTime: 242401344,
 		}},
 
 		SpawnTime: time.Date(2016, 04, 21, 1, 2, 3, 0, time.UTC),

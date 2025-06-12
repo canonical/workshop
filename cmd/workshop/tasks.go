@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 
 	"github.com/canonical/workshop/client"
-	"github.com/canonical/workshop/internal/timeutil"
 )
 
 type CmdTasks struct {
@@ -96,20 +96,17 @@ func (c *CmdTasks) Run(cmd *cobra.Command, av []string) error {
 
 		if len(tasks) > 0 {
 			w := tabWriter()
-			fmt.Fprintf(w, "ID\tStatus\tSpawn\tReady\tSummary\n")
+			fmt.Fprintf(w, "Status\tDuration\tSummary\n")
 
 			for _, tsk := range tasks {
-				spawnTime := timeutil.Human(tsk.SpawnTime)
-				readyTime := timeutil.Human(tsk.ReadyTime)
-				if tsk.ReadyTime.IsZero() {
-					readyTime = "-"
+				duration := tsk.DoingTime.Round(time.Millisecond).String()
+				if tsk.DoingTime == 0 {
+					duration = "-"
 				}
 
 				fmt.Fprintln(w, strings.Join([]string{
-					tsk.ID,
 					tsk.Status,
-					spawnTime,
-					readyTime,
+					duration,
 					tsk.Summary}, "\t"))
 			}
 			w.Flush()

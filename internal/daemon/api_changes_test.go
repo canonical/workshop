@@ -26,6 +26,7 @@ import (
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/check.v1"
+	"gopkg.in/tomb.v2"
 
 	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/state"
@@ -226,6 +227,80 @@ func (s *apiSuite) TestStateChangesForWorkshop(c *check.C) {
 
 	_, err = rsp.MarshalJSON()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *apiSuite) TestStateChangeDoingTimes(c *check.C) {
+	restore := state.MockTime(time.Date(2016, 04, 21, 1, 2, 3, 0, time.UTC))
+	defer restore()
+
+	d := s.daemon(c)
+
+	d.Overlord().Loop()
+	defer d.Overlord().Stop()
+
+	d.overlord.TaskRunner().AddHandler("doing-test", func(task *state.Task, tomb *tomb.Tomb) error {
+		time.Sleep(50 * time.Microsecond)
+		return nil
+	}, nil)
+
+	st := d.Overlord().State()
+	st.Lock()
+	task := st.NewTask("doing-test", "...")
+	chg := st.NewChange("doing", "launch...")
+	chg.AddTask(task)
+	st.Unlock()
+	c.Assert(chg, check.NotNil)
+
+	<-chg.Ready()
+
+	st.Lock()
+	err := chg.Err()
+	st.Unlock()
+	c.Assert(err, check.IsNil)
+
+	stateChangeCmd := apiCmd("/v1/changes/{id}")
+
+	// Execute
+	req, err := http.NewRequest("GET", "/v1/change/"+chg.ID(), nil)
+	c.Assert(err, check.IsNil)
+	s.vars = map[string]string{"id": chg.ID()}
+	rsp := v1GetChange(stateChangeCmd, req, nil).(*resp)
+	rec := httptest.NewRecorder()
+	rsp.ServeHTTP(rec, req)
+
+	// Verify
+	c.Check(rec.Code, check.Equals, 200)
+	c.Check(rsp.Status, check.Equals, 200)
+	c.Check(rsp.Type, check.Equals, ResponseTypeSync)
+	c.Check(rsp.Result, check.NotNil)
+
+	var body map[string]interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &body)
+	c.Check(err, check.IsNil)
+	st.Lock()
+	doingTime := float64(task.DoingTime().Nanoseconds())
+	st.Unlock()
+	c.Check(body["result"], check.DeepEquals, map[string]interface{}{
+		"id":         chg.ID(),
+		"kind":       "doing",
+		"summary":    "launch...",
+		"status":     "Done",
+		"ready":      true,
+		"spawn-time": "2016-04-21T01:02:03Z",
+		"ready-time": "2016-04-21T01:02:03Z",
+		"tasks": []interface{}{
+			map[string]interface{}{
+				"id":         task.ID(),
+				"kind":       "doing-test",
+				"summary":    "...",
+				"status":     "Done",
+				"progress":   map[string]interface{}{"label": "", "done": 1., "total": 1.},
+				"spawn-time": "2016-04-21T01:02:03Z",
+				"ready-time": "2016-04-21T01:02:03Z",
+				"doing-time": doingTime,
+			},
+		},
+	})
 }
 
 func (s *apiSuite) TestStateChange(c *check.C) {

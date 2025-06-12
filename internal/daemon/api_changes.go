@@ -52,8 +52,9 @@ type taskInfo struct {
 	Log      []string         `json:"log,omitempty"`
 	Progress taskInfoProgress `json:"progress"`
 
-	SpawnTime time.Time  `json:"spawn-time,omitempty"`
-	ReadyTime *time.Time `json:"ready-time,omitempty"`
+	SpawnTime time.Time     `json:"spawn-time,omitempty"`
+	ReadyTime *time.Time    `json:"ready-time,omitempty"`
+	DoingTime time.Duration `json:"doing-time,omitempty"`
 
 	Data map[string]*json.RawMessage `json:"data,omitempty"`
 }
@@ -62,6 +63,30 @@ type taskInfoProgress struct {
 	Label string `json:"label"`
 	Done  int    `json:"done"`
 	Total int    `json:"total"`
+}
+
+func getTaskLog(tsk *state.Task, verbose bool) []string {
+	taskLog := []string{}
+	st := tsk.State()
+	// Only hooks support verbose output.
+	if verbose && tsk.Kind() == "run-hook" {
+		cached := st.Cached(hookstate.HookLogKey(tsk.ID()))
+		hookLog, ok := cached.(*hookstate.HookLog)
+		if ok && hookLog != nil {
+			rawout := hookLog.Output()
+			for {
+				line, err := rawout.ReadString('\n')
+				if err != nil {
+					break
+				}
+				line = strings.TrimRight(line, "\n")
+				taskLog = append(taskLog, line)
+			}
+		}
+	} else {
+		taskLog = tsk.Log()
+	}
+	return taskLog
 }
 
 func change2changeInfo(chg *state.Change, verbose bool) *changeInfo {
@@ -88,25 +113,7 @@ func change2changeInfo(chg *state.Change, verbose bool) *changeInfo {
 	for j, t := range tasks {
 		label, done, total := t.Progress()
 
-		var taskLog []string
-		// Only hooks support verbose output.
-		if verbose && t.Kind() == "run-hook" {
-			cached := chg.State().Cached(hookstate.HookLogKey(t.ID()))
-			hookLog, ok := cached.(*hookstate.HookLog)
-			if ok && hookLog != nil {
-				rawout := hookLog.Output()
-				for {
-					line, err := rawout.ReadString('\n')
-					if err != nil {
-						break
-					}
-					line = strings.TrimRight(line, "\n")
-					taskLog = append(taskLog, line)
-				}
-			}
-		} else {
-			taskLog = t.Log()
-		}
+		taskLog := getTaskLog(t, verbose)
 
 		taskInfo := &taskInfo{
 			ID:      t.ID(),
@@ -120,6 +127,7 @@ func change2changeInfo(chg *state.Change, verbose bool) *changeInfo {
 				Total: total,
 			},
 			SpawnTime: t.SpawnTime(),
+			DoingTime: t.DoingTime(),
 		}
 		readyTime := t.ReadyTime()
 		if !readyTime.IsZero() {

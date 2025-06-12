@@ -163,7 +163,7 @@ func (h *HookLog) Output() *bytes.Buffer {
 	h.l.Lock()
 	defer h.l.Unlock()
 
-	return bytes.NewBuffer(h.buf.Bytes())
+	return bytes.NewBuffer(bytes.Clone(h.buf.Bytes()))
 }
 
 func (h *HookLog) taskLog() []byte {
@@ -172,7 +172,7 @@ func (h *HookLog) taskLog() []byte {
 
 	// 10 lines per task log to be stored in the state as a sensible default
 	// (see task.Logf).
-	return strutil.TruncateOutput(h.buf.Bytes(), 10, hookTaskLogSize)
+	return bytes.Clone(strutil.TruncateOutput(h.buf.Bytes(), 10, hookTaskLogSize))
 }
 
 func (h *HookLog) Write(buf []byte) (n int, err error) {
@@ -292,6 +292,7 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, hook *H
 func (h *HookManager) doHookCleanup(task *state.Task, tomb *tomb.Tomb) error {
 	h.state.Lock()
 	h.state.Cache(HookLogKey(task.ID()), nil)
+	logger.Debugf("On HookManager.doHookCleanup: cleaned up logs for task %s", task.ID())
 	h.state.Unlock()
 	return nil
 }

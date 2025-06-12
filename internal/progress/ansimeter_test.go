@@ -189,7 +189,7 @@ func (ansiSuite) TestNotify(c *check.C) {
 	defer progress.MockSimpleEscapes()()
 	defer progress.MockTermWidth(func() int { return width })()
 
-	p := &progress.ANSIMeter{}
+	p := progress.NewANSIMeter(progress.NotifierRaw)
 	p.Start("working", 1e300)
 
 	width = 10

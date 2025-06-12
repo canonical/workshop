@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"slices"
 	"time"
 
 	"github.com/canonical/x-go/i18n"
@@ -40,7 +41,9 @@ var (
 type waitMixin struct {
 	NoWait    bool
 	skipAbort bool
-	verbose   bool
+
+	verbose bool
+	colorMixin
 }
 
 var errNoWait = errors.New("no wait for op")
@@ -52,11 +55,14 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 		fmt.Fprintf(Stdout, "%s\n", id)
 		return nil, errNoWait
 	}
-	// Intercept sigint
+	wmx.Color = "auto"
+
+	// Intercept sigint.
 	c := make(chan os.Signal, 2)
 
 	signal.Notify(c, os.Interrupt)
 	go func() {
+
 		sig := <-c
 		if sig != nil && wmx.skipAbort {
 			fmt.Fprintln(Stdout, "cannot interrupt: it may break the workshop, please wait until the operation is finished")
@@ -71,7 +77,12 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 		}
 	}()
 
-	pb := progress.MakeProgressBar()
+	var pb progress.Meter
+	if wmx.verbose {
+		pb = progress.MakeProgressBar(progress.NotifierRaw)
+	} else {
+		pb = progress.MakeProgressBar(progress.NotifierQuiet)
+	}
 	defer func() {
 		pb.Finished()
 		// next two not strictly needed for CLI, but without
@@ -83,7 +94,6 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 	tMax := time.Time{}
 
 	var lastID string
-	seenLog := map[string]int{}
 	for {
 		var rebootingErr error
 		chg, err := cli.Change(id, wmx.verbose)
@@ -129,25 +139,20 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 			}
 		}
 
-		// progress reporting
+		wmx.maybeShowLogs(pb, chg)
+
+		// Report progress.
+		countPrefix := fmtDoneCount(chg)
 		for _, t := range chg.Tasks {
 			switch {
 			case t.Status != "Doing" && t.Status != "Undoing":
 				continue
 			case t.Progress.Total == 1:
-				if wmx.verbose {
-					cur := seenLog[t.ID]
-
-					for ; cur < len(t.Log); cur++ {
-						pb.Notify(t.Log[cur])
-					}
-					seenLog[t.ID] = cur
-				}
-				pb.Spin(t.Summary)
+				pb.Spin(countPrefix + t.Summary)
 			case t.ID == lastID:
 				pb.Set(float64(t.Progress.Done))
 			default:
-				pb.Start(t.Summary, float64(t.Progress.Total))
+				pb.Start(countPrefix+t.Summary, float64(t.Progress.Total))
 				lastID = t.ID
 			}
 			break
@@ -172,4 +177,59 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 		// 100ms.
 		time.Sleep(pollTime)
 	}
+}
+
+var (
+	seenLines     = map[string]int{}
+	summarisedIds = map[string]bool{}
+)
+
+var sortByReady = func(a, b *client.Task) int {
+	if a.ReadyTime.IsZero() {
+		return 1
+	}
+	if b.ReadyTime.IsZero() {
+		return -1
+	}
+	return a.ReadyTime.Compare(b.ReadyTime)
+}
+
+func (wmx waitMixin) maybeShowLogs(pb progress.Meter, chg *client.Change) {
+	if !wmx.verbose {
+		return
+	}
+
+	tasks := slices.Clone(chg.Tasks)
+	slices.SortFunc(tasks, sortByReady)
+
+	esc := wmx.getEscapes()
+	for _, t := range tasks {
+		if t.Status == "Doing" || t.Status == "Done" {
+			cur := seenLines[t.ID]
+
+			for ; cur < len(t.Log); cur++ {
+				pb.Notify(t.Log[cur])
+			}
+
+			seenLines[t.ID] = cur
+
+			_, summarised := summarisedIds[t.ID]
+			// We have shown all the task's logs and since it's in Done,
+			// there'll be now new lines.
+			if !summarised && t.Status == "Done" {
+				pb.Notify(esc.green + esc.tick + esc.end + " " + t.Summary)
+				summarisedIds[t.ID] = true
+			}
+		}
+	}
+}
+
+func fmtDoneCount(chg *client.Change) string {
+	done := 0
+	for _, t := range chg.Tasks {
+		if t.Status == "Done" {
+			done++
+		}
+	}
+	return fmt.Sprintf("(%d/%d) ", done, len(chg.Tasks))
 }

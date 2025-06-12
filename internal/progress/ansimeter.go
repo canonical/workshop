@@ -27,14 +27,38 @@ import (
 
 var stdout io.Writer = os.Stdout
 
+type notifyer interface {
+	Notify(msg string)
+}
+
+func NewANSIMeter(nt NotifyerType) *ANSIMeter {
+	switch nt {
+	case NotifierQuiet:
+		return &ANSIMeter{
+			notifier: &nilNotifier{},
+		}
+	case NotifierRaw:
+		return &ANSIMeter{
+			notifier: &rawPrintNotifier{},
+		}
+	case NotifierLimitedWindow:
+		return &ANSIMeter{
+			notifier: newLimitedWindowNotifier(defaultNotificationLines),
+		}
+	default:
+		panic("unknown notifier type for ANSIMeter")
+	}
+}
+
 // ANSIMeter is a progress.Meter that uses ANSI escape codes to make
 // better use of the available horizontal space.
 type ANSIMeter struct {
-	label   []rune
-	total   float64
-	written float64
-	spin    int
-	t0      time.Time
+	label    []rune
+	total    float64
+	written  float64
+	spin     int
+	t0       time.Time
+	notifier notifyer
 }
 
 // these are the bits of the ANSI escapes (beyond \r) that we use
@@ -42,6 +66,7 @@ type ANSIMeter struct {
 var (
 	// clear to end of line
 	clrEOL = "\033[K"
+	clrEOS = "\033[0J"
 	// make cursor invisible
 	cursorInvisible = "\033[?25l"
 	// make cursor visible
@@ -50,7 +75,92 @@ var (
 	enterReverseMode = "\033[7m"
 	// go back to normal video
 	exitAttributeMode = "\033[0m"
+	// move cursor %d lines up
+	moveCursorUp = "\033[%dA"
 )
+
+const defaultNotificationLines = 5
+
+type nilNotifier struct{}
+
+func (*nilNotifier) Notify(string) {}
+
+// limitedWindowNotifier manages a scrolling fixed-size window for notifications.
+type limitedWindowNotifier struct {
+	history  []string
+	numLines int
+}
+
+func newLimitedWindowNotifier(numLines int) *limitedWindowNotifier {
+	if numLines <= 0 {
+		numLines = defaultNotificationLines
+	}
+	return &limitedWindowNotifier{
+		history:  make([]string, 0, numLines),
+		numLines: numLines,
+	}
+}
+
+// Notify adds a message and displays the updated window to stdout.
+// New messages effectively appear at the bottom of the window, and old messages scroll off the top.
+func (lwn *limitedWindowNotifier) Notify(msg string) {
+	lwn.history = append(lwn.history, msg)
+
+	if len(lwn.history) > lwn.numLines {
+		lwn.history = lwn.history[len(lwn.history)-lwn.numLines:]
+	}
+
+	linesToPrint := len(lwn.history)
+
+	if linesToPrint > 0 {
+		fmt.Fprint(stdout, "\n")
+		fmt.Fprint(stdout, clrEOS)
+
+		for i := 0; i < linesToPrint; i++ {
+			fmt.Fprint(stdout, "\r", exitAttributeMode, clrEOL)
+			fmt.Fprint(stdout, lwn.history[i])
+
+			if i < linesToPrint-1 { // For all but the last line printed
+				fmt.Fprint(stdout, "\n")
+			}
+		}
+		fmt.Fprintf(stdout, moveCursorUp, linesToPrint)
+		fmt.Fprint(stdout, "\r")
+	}
+}
+
+type rawPrintNotifier struct {
+}
+
+func (*rawPrintNotifier) Notify(msgstr string) {
+	col := termWidth()
+	// Clear the current line, reset attributes, and move cursor to the beginning.
+	fmt.Fprint(stdout, "\r", exitAttributeMode, clrEOL)
+
+	msg := []rune(msgstr)
+	var breakPoint int
+	// Word wrap the message if it's longer than the terminal width.
+	for len(msg) > col {
+		breakPoint = col // Default break point if no space is found within the first `col` characters.
+		// Find the last space within the column width to break the line.
+		// Search from right to left within the available width.
+		for searchIdx := col - 1; searchIdx >= 0; searchIdx-- {
+			if unicode.IsSpace(msg[searchIdx]) {
+				breakPoint = searchIdx
+				break // Found a suitable space.
+			}
+		}
+
+		if breakPoint == col { // No space found (or space is beyond `col`), hard break at `col`.
+			fmt.Fprintln(stdout, string(msg[:col]))
+			msg = msg[col:]
+		} else { // Space found at breakPoint (0 <= breakPoint < col).
+			fmt.Fprintln(stdout, string(msg[:breakPoint])) // Print up to the space.
+			msg = msg[breakPoint+1:]                       // Continue with the rest, skipping the space.
+		}
+	}
+	fmt.Fprintln(stdout, string(msg)) // Print the remaining part of the message.
+}
 
 var termWidth = func() int {
 	col, _, _ := term.GetSize(0)
@@ -166,29 +276,8 @@ func (*ANSIMeter) Finished() {
 	fmt.Fprint(stdout, "\r", exitAttributeMode, cursorVisible, clrEOL)
 }
 
-func (*ANSIMeter) Notify(msgstr string) {
-	col := termWidth()
-	fmt.Fprint(stdout, "\r", exitAttributeMode, clrEOL)
-
-	msg := []rune(msgstr)
-	var i int
-	for len(msg) > col {
-		for i = col; i >= 0; i-- {
-			if unicode.IsSpace(msg[i]) {
-				break
-			}
-		}
-		if i < 1 {
-			// didn't find anything; print the whole thing and try again
-			fmt.Fprintln(stdout, string(msg[:col]))
-			msg = msg[col:]
-		} else {
-			// found a space; print up to but not including it, and skip it
-			fmt.Fprintln(stdout, string(msg[:i]))
-			msg = msg[i+1:]
-		}
-	}
-	fmt.Fprintln(stdout, string(msg))
+func (p *ANSIMeter) Notify(msgstr string) {
+	p.notifier.Notify(msgstr)
 }
 
 func (p *ANSIMeter) Write(bs []byte) (n int, err error) {

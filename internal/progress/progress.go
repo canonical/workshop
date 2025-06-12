@@ -22,6 +22,14 @@ import (
 	"golang.org/x/term"
 )
 
+type NotifyerType uint8
+
+const (
+	NotifierQuiet NotifyerType = iota
+	NotifierRaw
+	NotifierLimitedWindow
+)
+
 // Meter is an interface to show progress to the user
 type Meter interface {
 	// Start progress with max "total" steps
@@ -88,12 +96,12 @@ var inTesting bool = len(os.Args) > 0 && strings.HasSuffix(os.Args[0], ".test") 
 //   - otherwise, an ANSIMeter is returned.
 //
 // TODO: instead of making the pivot at creation time, do it at every call.
-func MakeProgressBar() Meter {
+func MakeProgressBar(nt NotifyerType) Meter {
 	if testMeter != nil {
 		return testMeter
 	}
-	if !inTesting && term.IsTerminal(int(os.Stdin.Fd())) {
-		return &ANSIMeter{}
+	if !inTesting && term.IsTerminal(int(os.Stdout.Fd())) {
+		return NewANSIMeter(nt)
 	}
 
 	return QuietMeter{}

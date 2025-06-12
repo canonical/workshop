@@ -50,7 +50,7 @@ func (ts *ProgressTestSuite) TestQuietNotify(c *C) {
 
 func (ts *ProgressTestSuite) TestANSINotify(c *C) {
 	expected := fmt.Sprint("\r", progress.ExitAttributeMode, progress.ClrEOL, "blah blah\n")
-	ts.testNotify(c, &progress.ANSIMeter{}, "ansi", expected)
+	ts.testNotify(c, progress.NewANSIMeter(progress.NotifierRaw), "ansi", expected)
 }
 
 func (ts *ProgressTestSuite) TestTestingNotify(c *C) {
