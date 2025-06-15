@@ -99,7 +99,6 @@ To restart the workshop daemon: 'sudo snap restart workshop'`, err)
 
 Maybe LXD isn't installed?
 To install LXD: 'sudo snap install lxd'
-To initialize LXD: 'lxd init --auto'
 To restart the workshop daemon: 'sudo snap restart workshop'`, err)
 	default:
 		return err
@@ -129,43 +128,7 @@ func New() (*Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Workshop does not require an existing storage pool. However, once the
-	// workshop storage pool exists, `lxd init --auto` won't add another one,
-	// and non-Workshop LXD containers can't be launched without further manual
-	// configuration.
-	if len(pools) == 0 {
-		return nil, errors.New(`LXD not initialized
-
-To initialize LXD: 'lxd init --auto'`)
-	}
-
-	networks, err := conn.GetNetworks()
-	if err != nil {
-		return nil, err
-	}
-	// Workshop does not require an existing network. However, once the
-	// workshopbr0 network pool exists, `lxd init --auto` won't add another one,
-	// and non-Workshop LXD containers won't have network access without further
-	// manual configuration.
-	if len(networks) == 0 {
-		return nil, errors.New(`LXD not initialized
-
-To initialize LXD: 'lxd init --auto'`)
-	}
-
-	poolExists := false
-	for _, pool := range pools {
-		if pool.Name == storagePool {
-			if pool.Driver != storagePoolDriver {
-				return nil, fmt.Errorf("storage pool %q already exists with a different driver: %q", storagePool, pool.Driver)
-			}
-
-			poolExists = true
-			break
-		}
-	}
-
-	if !poolExists {
+	if idx := slices.IndexFunc(pools, func(p api.StoragePool) bool { return p.Name == storagePool }); idx < 0 {
 		req := api.StoragePoolsPost{
 			Name:   storagePool,
 			Driver: storagePoolDriver,
@@ -204,21 +167,15 @@ To initialize LXD: 'lxd init --auto'`)
 			}
 			logger.Noticef("On Backend.New: set storage pool to the minimal size: %dGiB", storagePoolMinimalGiB)
 		}
+	} else if pools[idx].Driver != storagePoolDriver {
+		return nil, fmt.Errorf("storage pool %q already exists with a different driver: %q", storagePool, pools[idx].Driver)
 	}
 
-	networkExists := false
-	for _, network := range networks {
-		if network.Name == networkName {
-			if network.Type != networkType {
-				return nil, fmt.Errorf("network %q already exists with a different type: %q", networkName, network.Type)
-			}
-
-			networkExists = true
-			break
-		}
+	networks, err := conn.GetNetworks()
+	if err != nil {
+		return nil, err
 	}
-
-	if !networkExists {
+	if idx := slices.IndexFunc(networks, func(n api.Network) bool { return n.Name == networkName }); idx < 0 {
 		req := api.NetworksPost{
 			Name: networkName,
 			Type: networkType,
@@ -233,6 +190,8 @@ To initialize LXD: 'lxd init --auto'`)
 		if err := conn.CreateNetwork(req); err != nil {
 			return nil, err
 		}
+	} else if networks[idx].Type != networkType {
+		return nil, fmt.Errorf("network %q already exists with a different type: %q", networkName, networks[idx].Type)
 	}
 
 	return &server, nil

@@ -32,12 +32,11 @@ Install and start LXD
 ---------------------
 
 A major prerequisite for |ws_markup| is `LXD`_;
-ensure it's installed, initialised and running:
+ensure it's installed and running:
 
 .. code-block:: console
 
    $ sudo snap install lxd
-   $ sudo lxd init --auto
    $ sudo snap start --enable lxd.daemon
    $ sudo snap services lxd
 

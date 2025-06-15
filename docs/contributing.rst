@@ -454,7 +454,7 @@ then initialise LXD:
 
 .. code-block:: console
 
-   lxd init --minimal
+   lxd init
 
 
 Publish the release

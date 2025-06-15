@@ -82,7 +82,7 @@ To refresh an existing installation:
    and your distribution's manuals for guidance.
 
 
-With LXD properly installed, initialised and started,
+With LXD properly installed and started,
 proceed to installing |ws_markup|.
 
 
