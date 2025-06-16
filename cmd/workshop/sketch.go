@@ -190,7 +190,7 @@ func restoreSketch(sketchdir, stashdir string) error {
 	return osutil.Rename(stashdir, sketchdir)
 }
 
-func (c *CmdSketch) inferSdkName(cmd *cobra.Command, project string) error {
+func (c *CmdSketch) inferSdkName(project string) error {
 	inferred := false
 	if c.name == "" {
 		c.name = filepath.Base(project)
@@ -443,7 +443,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 
 	var ejectReverter *revert.Reverter
 	if c.eject {
-		if err := c.inferSdkName(cmd, p.Path); err != nil {
+		if err := c.inferSdkName(p.Path); err != nil {
 			return fmt.Errorf("cannot eject: %w", err)
 		}
 
@@ -635,11 +635,7 @@ func (c *CmdSketches) Run(cmd *cobra.Command, _ []string) error {
 
 	var entries []string
 	for _, wp := range wps {
-		entry, err := stashEntry(userDataDir, wp, p)
-		if err != nil {
-			return err
-		}
-
+		entry := stashEntry(userDataDir, wp, p)
 		if entry != nil {
 			entries = append(entries, strings.Join(entry, "\t"))
 		}
@@ -655,7 +651,7 @@ func (c *CmdSketches) Run(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func stashEntry(userDataDir string, w *client.WorkshopInfo, p *client.Project) ([]string, error) {
+func stashEntry(userDataDir string, w *client.WorkshopInfo, p *client.Project) []string {
 	rev := "-"
 	notes := ""
 	exists := false
@@ -678,8 +674,8 @@ func stashEntry(userDataDir string, w *client.WorkshopInfo, p *client.Project) (
 	}
 
 	if !exists {
-		return nil, nil
+		return nil
 	}
 
-	return []string{contractHomeDirectory(p.Path), w.Name, rev, notes}, nil
+	return []string{contractHomeDirectory(p.Path), w.Name, rev, notes}
 }

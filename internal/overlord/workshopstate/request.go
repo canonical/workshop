@@ -467,15 +467,8 @@ func (w *WorkshopManager) RefreshMany(ctx context.Context, projectId string, nam
 		}
 		sdks := ordered(req.installOrder, req.storeSdks, localSdks)
 
-		plan, err := resolveRefresh(wp, req.file, sdks)
-		if err != nil {
-			return nil, err
-		}
-
-		tasks, err := refresh(w.state, plan, wp, req.file)
-		if err != nil {
-			return nil, fmt.Errorf("cannot refresh %q: %w", name, err)
-		}
+		plan := resolveRefresh(wp, req.file, sdks)
+		tasks := refresh(w.state, plan, wp, req.file)
 		if len(tasks.Tasks()) == 0 {
 			continue
 		}
@@ -566,7 +559,7 @@ func (p refreshPlan) Remove() []sdk.Setup {
 	return ordered(revOrder, p.remove)
 }
 
-func resolveRefresh(w *workshop.Workshop, newfile *workshop.File, candidates []sdk.Setup) (*refreshPlan, error) {
+func resolveRefresh(w *workshop.Workshop, newfile *workshop.File, candidates []sdk.Setup) *refreshPlan {
 	plan := &refreshPlan{
 		install:        make([]sdk.Setup, 0),
 		intact:         make([]sdk.Setup, 0),
@@ -634,10 +627,10 @@ func resolveRefresh(w *workshop.Workshop, newfile *workshop.File, candidates []s
 		plan.installOrder = append(plan.installOrder, s.Name)
 	}
 
-	return plan, nil
+	return plan
 }
 
-func refresh(st *state.State, plan *refreshPlan, w *workshop.Workshop, file *workshop.File) (*state.TaskSet, error) {
+func refresh(st *state.State, plan *refreshPlan, w *workshop.Workshop, file *workshop.File) *state.TaskSet {
 	refresh := state.NewTaskSet()
 	prev := (*state.TaskSet)(nil)
 	addTaskSet := func(ts *state.TaskSet) {
@@ -748,7 +741,7 @@ func refresh(st *state.State, plan *refreshPlan, w *workshop.Workshop, file *wor
 		task.Set("project", w.Project)
 	}
 
-	return refresh, nil
+	return refresh
 }
 
 func autoconnectSdks(st *state.State, w string, sdks []sdk.Setup) *state.TaskSet {
@@ -971,26 +964,15 @@ func (w *WorkshopManager) RemoveMany(ctx context.Context, names []string, projec
 		}
 	}
 
-	taskset, err := removeMany(w.state, workshops, project)
-	if err != nil {
-		return nil, err
-	}
-	return taskset, nil
-}
-
-func removeMany(st *state.State, workshops []*workshop.Workshop, project workshop.Project) ([]*state.TaskSet, error) {
 	taskset := []*state.TaskSet{}
 	for _, name := range workshops {
-		remove, err := remove(st, name, project)
-		if err != nil {
-			return nil, err
-		}
+		remove := remove(w.state, name, project)
 		taskset = append(taskset, remove)
 	}
 	return taskset, nil
 }
 
-func remove(st *state.State, w *workshop.Workshop, project workshop.Project) (*state.TaskSet, error) {
+func remove(st *state.State, w *workshop.Workshop, project workshop.Project) *state.TaskSet {
 	removeSet := state.NewTaskSet()
 	var prevRemove *state.TaskSet
 	addTaskSet := func(ts *state.TaskSet) {
@@ -1035,7 +1017,7 @@ func remove(st *state.State, w *workshop.Workshop, project workshop.Project) (*s
 		task.Set("workshop", w.Name)
 		task.Set("project", project)
 	}
-	return removeSet, nil
+	return removeSet
 }
 
 func (w *WorkshopManager) Remount(ctx context.Context, st *state.State, plug sdk.PlugRef, source string) (*state.TaskSet, error) {

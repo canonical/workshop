@@ -12,6 +12,14 @@ type yamlSuite struct{}
 
 var _ = check.Suite(&yamlSuite{})
 
+func (y *yamlSuite) TestNodeRefIsUnmarshaler(c *check.C) {
+	var ref NodeRef
+	var u yaml.Unmarshaler = &ref
+	var node yaml.Node
+	c.Assert(u.UnmarshalYAML(&node), check.IsNil)
+	c.Check(ref.Node, check.Equals, &node)
+}
+
 func (y *yamlSuite) TestNodeRefField(c *check.C) {
 	var nodes struct {
 		Field NodeRef

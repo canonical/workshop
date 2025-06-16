@@ -75,7 +75,7 @@ func (s *workshopctlSuite) SetUpTest(c *check.C) {
 }
 
 func (s *workshopctlSuite) TearDownTest(c *check.C) {
-	os.Unsetenv("WORKSHOP_COOKIE")
+	c.Assert(os.Unsetenv("WORKSHOP_COOKIE"), check.IsNil)
 	clientConfig.BaseURL = ""
 	s.server.Close()
 	os.Args = s.oldArgs

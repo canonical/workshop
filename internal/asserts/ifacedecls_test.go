@@ -1082,7 +1082,7 @@ func (s *plugSlotRulesSuite) TestCompileSlotRuleConnectionConstraintsIDConstrain
 	c.Check(cstrs.SlotSdkTypes, check.DeepEquals, []string{sdk.System.String()})
 }
 
-func checkBoolSlotConnConstraints(c *check.C, subrule string, cstrs []*asserts.SlotConnectionConstraints, always bool) {
+func checkBoolSlotConnConstraints(c *check.C, subrule string, cstrs []*asserts.SlotConnectionConstraints) {
 	c.Assert(cstrs, check.HasLen, 1)
 	cstrs1 := cstrs[0]
 	if strings.HasPrefix(subrule, "deny-") {
@@ -1112,12 +1112,12 @@ func (s *plugSlotRulesSuite) TestCompileSlotRuleDefaults(c *check.C) {
 	c.Assert(rule.AllowInstallation, check.HasLen, 1)
 
 	// connection subrules
-	checkBoolSlotConnConstraints(c, "allow-connection", rule.AllowConnection, true)
-	checkBoolSlotConnConstraints(c, "deny-connection", rule.DenyConnection, false)
+	checkBoolSlotConnConstraints(c, "allow-connection", rule.AllowConnection)
+	checkBoolSlotConnConstraints(c, "deny-connection", rule.DenyConnection)
 	// auto-connection subrules
-	checkBoolSlotConnConstraints(c, "allow-auto-connection", rule.AllowAutoConnection, true)
+	checkBoolSlotConnConstraints(c, "allow-auto-connection", rule.AllowAutoConnection)
 	// ... but deny-auto-connection is on
-	checkBoolSlotConnConstraints(c, "deny-auto-connection", rule.DenyAutoConnection, true)
+	checkBoolSlotConnConstraints(c, "deny-auto-connection", rule.DenyAutoConnection)
 }
 
 func (s *plugSlotRulesSuite) TestCompileSlotRuleConnectionConstraintsSideArityConstraints(c *check.C) {

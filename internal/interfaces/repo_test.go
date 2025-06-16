@@ -1411,7 +1411,7 @@ func mountAutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool {
 
 // internal helper that creates a new repository with two SDKs, one
 // has a mount plug and one a mount slot
-func makeMountConnectionTestSdks(c *C, projectId, plugMountToken, slotMountToken string) (*Repository, *sdk.Info, *sdk.Info) {
+func makeMountConnectionTestSdks(c *C, projectId, plugMountToken, slotMountToken string) *Repository {
 	repo := NewRepository()
 	err := repo.AddInterface(&ifacetest.TestInterface{InterfaceName: "mount", AutoConnectCallback: mountAutoConnect})
 	c.Assert(err, IsNil)
@@ -1438,11 +1438,11 @@ slots:
 	err = repo.AddSdk(slotSdk)
 	c.Assert(err, IsNil)
 
-	return repo, plugSdk, slotSdk
+	return repo
 }
 
 func (s *RepositorySuite) TestAutoConnectMountInterfaceSimple(c *C) {
-	repo, _, _ := makeMountConnectionTestSdks(c, s.projectId, "mylib", "mylib")
+	repo := makeMountConnectionTestSdks(c, s.projectId, "mylib", "mylib")
 	candidateSlots := repo.AutoConnectCandidateSlots(s.projectId, "ws-importer", "mount-plug-sdk", "imported-content", mountPolicyCheck)
 	c.Assert(candidateSlots, HasLen, 1)
 	c.Check(candidateSlots[0].Name, Equals, "exported-content")
@@ -1452,7 +1452,7 @@ func (s *RepositorySuite) TestAutoConnectMountInterfaceSimple(c *C) {
 }
 
 func (s *RepositorySuite) TestAutoConnectMountInterfaceNoMatches(c *C) {
-	repo, _, _ := makeMountConnectionTestSdks(c, s.projectId, "mylib", "otherlib")
+	repo := makeMountConnectionTestSdks(c, s.projectId, "mylib", "otherlib")
 	candidateSlots := repo.AutoConnectCandidateSlots(s.projectId, "ws-importer", "mount-plug-sdk", "imported-content", mountPolicyCheck)
 	c.Check(candidateSlots, HasLen, 0)
 	candidatePlugs := repo.AutoConnectCandidatePlugs(s.projectId, "ws-exporter", "mount-slot-sdk", "exported-content", mountPolicyCheck)

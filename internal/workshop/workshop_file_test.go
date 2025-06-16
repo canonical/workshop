@@ -51,12 +51,12 @@ func (f *workshopFile) createWFile(c *check.C, name, yaml string, checkArgs ...i
 	c.Assert(err, check.IsNil, checkArgs...)
 }
 
-func (f *workshopFile) createSingleWFile(c *check.C, filename, yaml string, checkArgs ...interface{}) {
+func (f *workshopFile) createSingleWFile(c *check.C, filename, yaml string) {
 	err := os.MkdirAll(f.project.Path, os.ModePerm)
-	c.Assert(err, check.IsNil, checkArgs...)
+	c.Assert(err, check.IsNil)
 
 	err = os.WriteFile(filepath.Join(f.project.Path, filename), []byte(yaml), 0644)
-	c.Assert(err, check.IsNil, checkArgs...)
+	c.Assert(err, check.IsNil)
 }
 
 func (f *workshopFile) TestWorkshopFileParse(c *check.C) {

@@ -70,6 +70,8 @@ func checkPrimaryKey(headers map[string]interface{}, primKey string) (string, er
 }
 
 // use 'defl' default if missing
+//
+//nolint:unparam // Copied from snapd.
 func checkIntWithDefault(headers map[string]interface{}, name string, defl int) (int, error) {
 	value, ok := headers[name]
 	if !ok {

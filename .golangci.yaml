@@ -15,10 +15,16 @@ linters:
     - errcheck
   enable:
     - nilerr
+    - unparam
   settings:
     staticcheck:
       dot-import-whitelist:
         - github.com/canonical/workshop/internal/overlord/handlersetup
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters: [unparam]
+        text: always receives (".*"|[0-9]+)$
 
 issues:
   # these values ensure that all issues will be surfaced

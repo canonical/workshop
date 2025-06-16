@@ -74,9 +74,9 @@ func Connect(st *state.State, plugW *workshop.Workshop, slotW *workshop.Workshop
 	return ts, nil
 }
 
-func maybeAddDisconnect(st *state.State, ts *state.TaskSet, conn interfaces.ConnRef, forget bool, seen map[interfaces.ConnRef]bool) error {
+func maybeAddDisconnect(st *state.State, ts *state.TaskSet, conn interfaces.ConnRef, forget bool, seen map[interfaces.ConnRef]bool) {
 	if _, ok := seen[conn]; ok {
-		return nil
+		return
 	}
 
 	dtask := st.NewTask("disconnect", fmt.Sprintf("Disconnect %q from %q", conn.PlugRef.ShortRef(), conn.SlotRef.ShortRef()))
@@ -90,8 +90,6 @@ func maybeAddDisconnect(st *state.State, ts *state.TaskSet, conn interfaces.Conn
 	}
 	ts.AddTask(dtask)
 	seen[conn] = true
-
-	return nil
 }
 
 func disconnect(st *state.State, plugW *workshop.Workshop, conn *interfaces.ConnRef, forget bool, seen map[interfaces.ConnRef]bool) (*state.TaskSet, error) {
@@ -99,15 +97,11 @@ func disconnect(st *state.State, plugW *workshop.Workshop, conn *interfaces.Conn
 	var ts = state.NewTaskSet()
 
 	cref := interfaces.ConnRef{PlugRef: master, SlotRef: conn.SlotRef}
-	if err := maybeAddDisconnect(st, ts, cref, forget, seen); err != nil {
-		return nil, err
-	}
+	maybeAddDisconnect(st, ts, cref, forget, seen)
 
 	for _, slave := range affected {
 		cref = interfaces.ConnRef{PlugRef: slave, SlotRef: conn.SlotRef}
-		if err := maybeAddDisconnect(st, ts, cref, forget, seen); err != nil {
-			return nil, err
-		}
+		maybeAddDisconnect(st, ts, cref, forget, seen)
 	}
 	return ts, nil
 }

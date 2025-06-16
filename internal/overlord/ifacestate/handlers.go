@@ -124,7 +124,7 @@ func (m *InterfaceManager) remountSources(projectId, w, s string) map[string]str
 	return candidates
 }
 
-func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sdk.Info, refs []*interfaces.ConnRef, plugDynamic, slotDynamic map[string]map[string]interface{}) (*state.TaskSet, error) {
+func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sdk.Info, refs []*interfaces.ConnRef, plugDynamic, slotDynamic map[string]map[string]interface{}) *state.TaskSet {
 
 	connectTs := state.NewTaskSet()
 	var affected = map[sdk.Ref]bool{}
@@ -165,7 +165,7 @@ func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sd
 		tsk.Set("project", wp.Project)
 	}
 
-	return connectTs, nil
+	return connectTs
 }
 
 func workshopConns(wp *workshop.Workshop) []interfaces.ConnRef {
@@ -287,11 +287,7 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		}
 	}
 
-	ts, err := m.batchAutoConnectTasks(wp, info, connectRefs, plugDynamic, slotDynamic)
-	if err != nil {
-		return err
-	}
-
+	ts := m.batchAutoConnectTasks(wp, info, connectRefs, plugDynamic, slotDynamic)
 	handlersetup.InjectTasks(task, ts)
 	m.state.EnsureBefore(0)
 	task.SetStatus(state.DoneStatus)

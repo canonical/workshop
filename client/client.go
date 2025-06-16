@@ -344,6 +344,8 @@ func decodeInto(reader io.Reader, v interface{}) error {
 // It expects a "sync" response from the API and on success decodes the JSON
 // response payload into the given value using the "UseNumber" json decoding
 // which produces json.Numbers instead of float64 types for numbers.
+//
+//nolint:unparam // Match related function signatures for consistency.
 func (client *Client) doSync(method, path string, query url.Values, headers map[string]string, body io.Reader, v interface{}) (*ResultInfo, error) {
 	var rsp response
 	if err := client.do(method, path, query, headers, body, &rsp); err != nil {
@@ -368,6 +370,7 @@ func (client *Client) doSync(method, path string, query url.Values, headers map[
 	return &rsp.ResultInfo, nil
 }
 
+//nolint:unparam // Match related function signatures for consistency.
 func (client *Client) doAsync(method, path string, query url.Values, headers map[string]string, body io.Reader) (changeID string, err error) {
 	_, changeID, err = client.doAsyncFull(method, path, query, headers, body)
 	return
