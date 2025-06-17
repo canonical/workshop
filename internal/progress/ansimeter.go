@@ -31,7 +31,7 @@ type notifyer interface {
 	Notify(msg string)
 }
 
-func NewANSIMeter(nt NotifyerType) *ANSIMeter {
+func NewANSIMeter(nt NotifierType) *ANSIMeter {
 	switch nt {
 	case NotifierQuiet:
 		return &ANSIMeter{

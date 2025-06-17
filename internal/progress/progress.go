@@ -22,10 +22,10 @@ import (
 	"golang.org/x/term"
 )
 
-type NotifyerType uint8
+type NotifierType uint8
 
 const (
-	NotifierQuiet NotifyerType = iota
+	NotifierQuiet NotifierType = iota
 	NotifierRaw
 	NotifierLimitedWindow
 )
@@ -96,7 +96,7 @@ var inTesting bool = len(os.Args) > 0 && strings.HasSuffix(os.Args[0], ".test") 
 //   - otherwise, an ANSIMeter is returned.
 //
 // TODO: instead of making the pivot at creation time, do it at every call.
-func MakeProgressBar(nt NotifyerType) Meter {
+func MakeProgressBar(nt NotifierType) Meter {
 	if testMeter != nil {
 		return testMeter
 	}

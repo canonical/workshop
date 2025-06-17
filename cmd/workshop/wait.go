@@ -142,17 +142,18 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 		wmx.maybeShowLogs(pb, chg)
 
 		// Report progress.
-		countPrefix := fmtDoneCount(chg)
 		for _, t := range chg.Tasks {
 			switch {
 			case t.Status != "Doing" && t.Status != "Undoing":
 				continue
 			case t.Progress.Total == 1:
-				pb.Spin(countPrefix + t.Summary)
+				summary := wmx.fmtTaskSummary(chg, t)
+				pb.Spin(summary)
 			case t.ID == lastID:
 				pb.Set(float64(t.Progress.Done))
 			default:
-				pb.Start(countPrefix+t.Summary, float64(t.Progress.Total))
+				summary := wmx.fmtTaskSummary(chg, t)
+				pb.Start(summary, float64(t.Progress.Total))
 				lastID = t.ID
 			}
 			break
@@ -204,7 +205,7 @@ func (wmx waitMixin) maybeShowLogs(pb progress.Meter, chg *client.Change) {
 
 	esc := wmx.getEscapes()
 	for _, t := range tasks {
-		if t.Status == "Doing" || t.Status == "Done" {
+		if t.Status == "Doing" || t.Status == "Done" || t.Status == "Error" {
 			cur := seenLines[t.ID]
 
 			for ; cur < len(t.Log); cur++ {
@@ -224,12 +225,33 @@ func (wmx waitMixin) maybeShowLogs(pb progress.Meter, chg *client.Change) {
 	}
 }
 
-func fmtDoneCount(chg *client.Change) string {
-	done := 0
-	for _, t := range chg.Tasks {
-		if t.Status == "Done" {
-			done++
+func (wmx waitMixin) fmtTaskSummary(chg *client.Change, t *client.Task) string {
+	countPrefix := ""
+	if wmx.verbose {
+		countPrefix = fmtFinishedCount(chg)
+	}
+	return countPrefix + t.Summary
+}
+
+func fmtFinishedCount(chg *client.Change) string {
+	finished, total := 0, len(chg.Tasks)
+
+	if chg.Status == "Doing" {
+		for _, t := range chg.Tasks {
+			if t.Status == "Done" {
+				finished++
+			}
 		}
 	}
-	return fmt.Sprintf("(%d/%d) ", done, len(chg.Tasks))
+
+	if chg.Status == "Undoing" {
+		for _, t := range chg.Tasks {
+			// Reverse counting back to 0 if undoing.
+			if t.Status == "Undo" || t.Status == "Undoing" {
+				finished++
+			}
+		}
+	}
+
+	return fmt.Sprintf("(%d/%d) ", finished, total)
 }

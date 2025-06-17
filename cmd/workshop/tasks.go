@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -96,7 +95,16 @@ func (c *CmdTasks) Run(cmd *cobra.Command, av []string) error {
 
 		if len(tasks) > 0 {
 			w := tabWriter()
-			fmt.Fprintf(w, "Status\tDuration\tSummary\n")
+
+			maxDur := len("Duration")
+			for _, tsk := range tasks {
+				dur := len(tsk.DoingTime.Round(time.Millisecond).String())
+				if dur > maxDur {
+					maxDur = dur
+				}
+			}
+
+			fmt.Fprintf(w, "Status\t%*s\tSummary\n", maxDur, "Duration")
 
 			for _, tsk := range tasks {
 				duration := tsk.DoingTime.Round(time.Millisecond).String()
@@ -104,10 +112,11 @@ func (c *CmdTasks) Run(cmd *cobra.Command, av []string) error {
 					duration = "-"
 				}
 
-				fmt.Fprintln(w, strings.Join([]string{
+				fmt.Fprintf(w, "%s\t%*s\t%s\n",
 					tsk.Status,
+					maxDur,
 					duration,
-					tsk.Summary}, "\t"))
+					tsk.Summary)
 			}
 			w.Flush()
 

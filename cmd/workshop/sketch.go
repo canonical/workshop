@@ -488,6 +488,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 
 	cmdrefresh := &CmdRefresh{root: c.root}
 	cmdrefresh.WaitOnError = true
+	cmdrefresh.verbose = true
 
 	if err = cmdrefresh.RunRefresh(cli, p, []string{wp.Name}); err != nil {
 		return err
