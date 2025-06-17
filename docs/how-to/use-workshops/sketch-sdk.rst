@@ -1,10 +1,10 @@
 .. _how_sketch:
 
-How to customise workshops with sketch SDKs
+How to customize workshops with sketch SDKs
 ===========================================
 
 Suppose you built your workshop with a number of SDKs
-only to realise it still lacks some functionality you need.
+only to realize it still lacks some functionality you need.
 Naturally, you'd like to add that,
 but can you align it with the way |ws_markup| operates?
 
@@ -67,7 +67,7 @@ This defines all SDK components in a single file named :file:`sdk.yaml`:
 
 
 The editor presents a minimal setup
-with empty :samp:`hooks`, :samp:`plugs` and :samp:`slots`:
+with empty :samp:`hooks`, :samp:`plugs`, and :samp:`slots`:
 
 .. code-block:: yaml
    :caption: sdk.yaml
@@ -122,7 +122,7 @@ Once you save and exit :file:`sdk.yaml`,
 
 If errors occur, you can :ref:`debug the installation process
 <how_debug_issues_workshops>` as usual with :command:`workshop changes`,
-:command:`workshop tasks` and :command:`workshop refresh --continue` or
+:command:`workshop tasks`, and :command:`workshop refresh --continue` or
 :command:`workshop refresh --abort`.
 Mind that aborting the refresh does not revert your sketched changes,
 so you can restart by running :command:`workshop sketch-sdk` again.

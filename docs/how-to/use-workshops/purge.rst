@@ -9,7 +9,7 @@ or become orphaned if their project directory is removed prematurely.
 
 This guide provides comprehensive steps
 to thoroughly purge such workshops,
-ensuring the removal of their containers, metadata and files.
+ensuring the removal of their containers, metadata, and files.
 
 
 Standard removal procedure
@@ -191,7 +191,7 @@ After performing manual cleanup steps:
 
 
 If issues persist,
-consider seeking community support
+consider seeking community support,
 or reporting a bug with detailed logs and steps taken:
 :ref:`project_community`.
 

@@ -25,7 +25,7 @@ when the :command:`workshop launch` or :command:`workshop refresh` commands ru
 
 - The plug is the consumer,
   indicating that the data will be available at the target directory,
-  where the SDK or the user presumably expects it.
+  where the SDK, or the user presumably expects it.
 
 
 .. _exp_mount_plug:

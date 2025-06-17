@@ -78,7 +78,7 @@ you can streamline your daily |ws_markup| workflows
 and reduce the risk of typing errors.
 
 For more advanced scripting capabilities,
-consider exploring additional features of the SDKs
+consider exploring additional features of the SDKs,
 such as hooks.
 
 

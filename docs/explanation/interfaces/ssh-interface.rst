@@ -11,7 +11,8 @@ allowing it to securely use the host's SSH keys and configuration.
 By using the interface,
 the SDK publisher allows the workshop to connect to the host's SSH agent,
 which can be useful in various SDK-specific tasks
-such as cloning private repositories, accessing remote machines and so on.
+such as cloning private repositories, accessing remote machines, and so on.
+
 
 .. _exp_ssh_plug:
 
@@ -27,7 +28,7 @@ both must be set to :samp:`ssh-agent`.
 Defining the plug in an SDK
 allows the workshops using this SDK to connect to the host's SSH agent,
 which can be useful in various SDK-specific tasks
-such as cloning private repositories, accessing remote machines and so on.
+such as cloning private repositories, accessing remote machines, and so on.
 
 
 .. _exp_ssh_slot:

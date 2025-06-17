@@ -12,7 +12,7 @@ Source directory
 
 All files that go into an SDK should be placed in a *source directory*
 where you'll run |sdk_markup|
-to initialise, define, pack and publish the SDK.
+to initialize, define, pack and publish the SDK.
 
 
 .. _ref_sdk_parts:

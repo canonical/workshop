@@ -57,7 +57,7 @@ SDK hooks
 .. @artefact SDK hook
 
 SDK publishers can define optional *hooks*
-that control and extend the workshop's internal behaviour
+that control and extend the workshop's internal behavior
 to make any framework wrapped as an SDK
 compatible with |ws_markup|'s logic;
 in particular, the hooks manage the SDK state

@@ -6,7 +6,7 @@ How to debug issues in workshops
 To trace the root cause
 of a workshop misbehaving at :command:`workshop refresh` or any other action,
 you can explore its underlying changes and tasks, pause on error,
-list system-wide warnings and acknowledge false positives.
+list system-wide warnings, and acknowledge false positives.
 
 
 List tasks and changes

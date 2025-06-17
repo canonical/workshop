@@ -15,7 +15,7 @@ of running and fixing workshops:
    Forward ports <forward-ports>
    Move projects around <move-projects>
    Purge workshops <purge>
-   Sketch SDKs to customise workshops <sketch-sdk>
+   Sketch SDKs to customize workshops <sketch-sdk>
 
 
 These guides cover the aspects of using |ws_markup| with developer tooling:

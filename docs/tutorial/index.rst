@@ -12,7 +12,7 @@ of the essential |ws_markup| activities.
 
 A workshop is an environment
 that maps your project to its contained dependencies.
-Here, you will practise all the major steps
+Here, you will practice all the major steps
 in the life cycle of a *workshop*,
 from :ref:`defining <tut_define>`, :ref:`launching <tut_launch>`
 and :ref:`refreshing <tut_refresh>` it
@@ -111,7 +111,7 @@ Shell integration (optional)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 |ws_markup| features shell completion for popular shells
-such as :program:`bash`, :program:`zsh` and :program:`fish`.
+such as :program:`bash`, :program:`zsh`, and :program:`fish`.
 
 Bash completion is configured automatically;
 manual setup instructions are available for all shells:
@@ -124,7 +124,7 @@ manual setup instructions are available for all shells:
 
 
 With completion enabled, you can press the :kbd:`Tab` key while typing a command
-to quickly substitute suitable subcommands, flags and arguments.
+to quickly substitute suitable subcommands, flags, and arguments.
 
 
 .. _tut_define_launch:
@@ -180,7 +180,7 @@ Create a project directory named :file:`hello-workshop`:
 
 
 Everything you handle with your workshop goes here:
-your source code, custom assets and so on.
+your source code, custom assets, and so on.
 
 .. @artefact workshop definition
 
@@ -504,7 +504,7 @@ Work with interfaces
 .. @artefact interface
 .. @artefact system SDK
 
-SDKs use interfaces to interact in an organised manner,
+SDKs use interfaces to interact in an organized manner,
 exposing the resources they provide via slots and consuming them via plugs;
 the layout of these plugs and slots is defined by the SDK publishers.
 

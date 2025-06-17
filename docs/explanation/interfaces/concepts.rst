@@ -8,7 +8,7 @@ Interface concepts
 .. @artefact interface
 
 In |ws_markup|, SDKs can act as providers and consumers of resources
-such as the GPU or file directories.
+such as the GPU, or file directories.
 Host system resources
 are exposed via the :ref:`system SDK <exp_system_sdk>`
 that is present in every workshop by design.
@@ -21,7 +21,7 @@ To achieve this, |ws_markup| implements a counterpart to :program:`snapd`'s
 `interface manager <https://snapcraft.io/docs/interface-management>`__,
 which controls whether an SDK can use resources beyond its confines.
 You can think of specific interfaces as resource *types*:
-file system, hardware, computing and so on.
+file system, hardware, computing, and so on.
 
 Specific interfaces are predefined and implemented by |ws_markup|,
 so you cannot create a custom interface type.
@@ -114,12 +114,12 @@ Here's how it works from the outside:
   providing an overview of how workshop connections are laid out.
 
 Some plugs can be auto-connected to their slots at launch or refresh.
-This behaviour varies by interface,
+This behavior varies by interface,
 but the overall aim is to conduct reasonably in each case:
 the :ref:`mount <exp_mount_interface>`
 and the :ref:`GPU <exp_gpu_interface>` interfaces are auto-connected,
 whereas the :ref:`camera <exp_camera_interface>`,
-:ref:`desktop <exp_desktop_interface>` and :ref:`SSH <exp_ssh_interface>`
+:ref:`desktop <exp_desktop_interface>`, and :ref:`SSH <exp_ssh_interface>`
 interfaces require manual connection.
 
 

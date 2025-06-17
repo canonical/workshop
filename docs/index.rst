@@ -28,18 +28,18 @@ created by software publishers and available on the SDK Store.
 
 **It allows you to focus on adding value to your project**.
 With |ws_markup|, you can launch a setup
-that previously took hours to configure in a few commands
+that previously took hours to configure in a few commands,
 and be sure that it stays operational.
 It assists in issue reproduction,
-enables hands-on code reviews
+enables hands-on code reviews,
 and turns environment updates into manageable transactions,
 reducing the need to battle with your tooling every day.
 
 **For those who build and maintain complex, error-prone workspaces**.
-AI/ML, robotics, IoT, EdTech and similar domains
+AI/ML, robotics, IoT, EdTech, and similar domains
 typically use less-than-trivial project layouts
 that depend on multiple Linux distributions or images,
-a plethora of SDKs from many vendors
+a plethora of SDKs from many vendors,
 and a grocery list of libraries and languages.
 That's where |ws_markup| thrives.
 
@@ -118,11 +118,11 @@ aimed at publishers who create and distribute SDKs for |ws_markup|.
 At its core, |ws_markup| builds upon Canonical's mature tech.
 It uses `LXD`_ as the underlying container technology;
 it also follows the tooling paradigm exemplified by
-`Snap <https://snapcraft.io/docs/>`_
+`Snap <https://snapcraft.io/docs/>`_,
 and implemented with
 `Craft CLI <https://craft-cli.readthedocs.io/>`_.
 
-Talk to us if you have a project in AI/ML, robotics or any other field
+Talk to us if you have a project in AI/ML, robotics, or any other field
 where setting up an environment is a daily or weekly activity
 that can easily shave hours off your schedule.
 Tell us about the frustrating parts of your journey,

@@ -123,7 +123,7 @@ so you can start
 
 
 Upon completion,
-the build artefacts can be found in the :file:`~/colcon/` directory:
+the build artifacts can be found in the :file:`~/colcon/` directory:
 
 .. code-block:: console
 
@@ -194,7 +194,7 @@ Let's review the advantages of using |ws_markup| with the ROS 2 SDK:
 
 - **Little or no setup is required to get started**:
   The SDK automates the installation of all prerequisites
-  and reduces the inherent complexity of a ROS 2 installation.
+  and reduces the inherent complexity of a ROS 2 installation.
 
 - **Save time and resources**:
   The project is built in a host-mapped directory,

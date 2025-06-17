@@ -44,7 +44,7 @@ However, both definition types have different purposes and structure:
 - :doc:`definition-files/sdk-definition`
 
 
-Structure and behaviour
+Structure and behavior
 -----------------------
 
 These topics provide detailed guidance on various aspects

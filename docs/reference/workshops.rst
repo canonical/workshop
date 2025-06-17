@@ -31,7 +31,7 @@ SDKs are downloaded from the SDK Store that is specific to |ws_markup|.
 
 After the SDKs are installed, their :samp:`setup-base` hooks run
 in the order the SDK are listed;
-this serves to customise the workshop and prepare the SDKs for use.
+this serves to customize the workshop and prepare the SDKs for use.
 
 The host user running |ws_markup| is mapped to the default workshop user,
 named :samp:`workshop` in the container,

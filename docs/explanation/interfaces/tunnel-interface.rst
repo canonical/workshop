@@ -8,7 +8,7 @@ Tunnel interface
 The tunnel interface
 enables workshops to share network services with the host system,
 and vice versa.
-It supports connections over TCP, UDP and Unix domain sockets.
+It supports connections over TCP, UDP, and Unix domain sockets.
 
 SDKs advertise their services using tunnel interface slots.
 For example, if an SDK installs and advertises a web app,
@@ -31,7 +31,7 @@ but the :ref:`system SDK <exp_system_sdk>` has none by default,
 so system SDK plugs must be declared in the workshop definition.
 
 A basic structure would include the name of the plug,
-the interface (:samp:`tunnel`)
+the interface (:samp:`tunnel`),
 and, optionally, an address (:samp:`endpoint`).
 
 Plugs designate addresses that clients can connect to.
@@ -49,7 +49,7 @@ but the :ref:`system SDK <exp_system_sdk>` has none by default,
 so system SDK slots must be declared in the workshop definition.
 
 A basic structure would include the name of the slot,
-the interface (:samp:`tunnel`)
+the interface (:samp:`tunnel`),
 and, optionally, an address (:samp:`endpoint`).
 
 Slots designate an address that a service can listen on.
@@ -71,7 +71,7 @@ provided that:
 
 - The plug listens on :samp:`localhost` or a Unix domain socket
 
-- The plug can be matched to the slot by its name
+- The plug can be matched to the slot by its name,
   or via a :samp:`connections` entry in the :ref:`definition <exp_workshop_definition>`,
   both subject to |ws_markup|'s
   :ref:`validation rules <exp_interfaces_validation>`.

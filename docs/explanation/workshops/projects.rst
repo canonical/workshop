@@ -13,7 +13,7 @@ Projects
 Technically, a project is a directory
 containing one workshop definition or more.
 
-To initialise a directory as a project,
+To initialize a directory as a project,
 create a
 :ref:`workshop definition <exp_workshop_definition>`
 in it

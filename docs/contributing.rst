@@ -4,20 +4,20 @@ How to contribute
 =================
 
 We believe everyone has something valuable to contribute,
-whether you're a coder, a writer or a tester.
+whether you're a coder, a writer, or a tester.
 Here's how and why you could get involved:
 
 - **Why join us**:
   Work with like-minded people, grow your skills,
-  connect with diverse professionals and make a difference.
+  connect with diverse professionals, and make a difference.
 
 - **What do you get**:
   Personal growth, recognition for your contributions,
-  early access to new features and the joy of seeing your work appreciated.
+  early access to new features, and the joy of seeing your work appreciated.
 
 - **Start early, start simple**:
   Dive into code contributions,
-  improve documentation or be among the first testers.
+  improve documentation, or be among the first testers.
   Your presence matters, regardless of experience or the scale of your input.
 
 The guidelines below will keep your contributions effective and meaningful.
@@ -67,7 +67,7 @@ Environment setup
 Coding
 ------
 
-In Workshop, commit messages differ from conventional commits in capitalisation:
+In Workshop, commit messages differ from conventional commits in capitalization:
 
 .. code-block:: none
 
@@ -105,7 +105,7 @@ which largely reiterates this section.
 
 
 After receiving review comments,
-optimise for commit history clarity.
+optimize for commit history clarity.
 Address review comments with 
 `fixup commits <https://git-scm.com/docs/git-commit/2.32.0#Documentation/git-commit.txt---fixupamendrewordltcommitgt>`_ 
 and rebase using 
@@ -131,7 +131,7 @@ Coding standards
   Remove unused or obsolete code and comments.
   This promotes a cleaner code base and reduces confusion.
 
-- **Normalise symmetries**:
+- **Normalize symmetries**:
   Handle identical operations consistently, using a uniform approach.
   This also improves consistency and readability.
 
@@ -183,9 +183,9 @@ Code structure
   Verify that coupled code elements, files and directories are adjacent.
   For instance, store test data close to the corresponding test code.
 
-- **Group variable declaration and initialisation**:
-  Declare and initialise variables together
-  to improve code organisation and readability.
+- **Group variable declaration and initialization**:
+  Declare and initialize variables together
+  to improve code organization and readability.
 
 - **Divide large expressions**:
   Break down large expressions
@@ -450,7 +450,7 @@ to give permission to access its resources:
 
 
 Log out and re-open your user session for the new group to become active,
-then initialise LXD:
+then initialize LXD:
 
 .. code-block:: console
 

@@ -123,7 +123,7 @@ Share custom host content with a workshop
 -----------------------------------------
 
 One issue that the previous scenario doesn't address
-is customising the source directory of a plug.
+is customizing the source directory of a plug.
 The :command:`docker run` example at the beginning illustrates this approach;
 it explicitly lists the host directories to be mounted to each target.
 

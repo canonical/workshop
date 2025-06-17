@@ -14,7 +14,7 @@ SDK hooks
 .. @artefact setup-project
 
 |ws_markup| and |sdk_markup| enable optional life cycle *hooks*
-that control and extend the behaviour of an SDK.
+that control and extend the behavior of an SDK.
 
 Each hook is a shell script
 that performs SDK-specific, domain-oriented actions in the workshop

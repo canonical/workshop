@@ -406,7 +406,7 @@ JSON Schema
 
 The following
 `JSON Schema`
-formalises the description above:
+formalizes the description above:
 
 .. @artefact workshop schema
 

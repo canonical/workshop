@@ -10,7 +10,7 @@ which makes their encounter with Git almost inevitable.
 Let's look at how you can integrate workshops into your repo.
 
 
-Initialisation
+Initialization
 --------------
 
 To start, place the workshop definition
@@ -69,7 +69,7 @@ should now occur inside the workshop:
 
 .. @artefact project
 
-However, the resulting artefacts are exposed in the project directory:
+However, the resulting artifacts are exposed in the project directory:
 
 .. code-block:: console
 
@@ -111,7 +111,7 @@ is as simple as re-launching the workshop from a new
 But what if you need to maintain multiple branches
 that require different versions of the same workshop?
 A common solution is to clone the repo several times
-to manually synchronise the copies when needed,
+to manually synchronize the copies when needed,
 but this approach is prone to errors and overhead.
 Let's build something better and...
 
@@ -189,7 +189,7 @@ before running :samp:`git worktree remove`:
    $ git worktree remove ../resolved/
 
 
-So using :command:`git worktree` reduces the effort on sync, stash and pull,
+So using :command:`git worktree` reduces the effort on sync, stash, and pull,
 while |ws_markup| allows you to hot-swap an entire OS
 or another complex dependency
 by going from one directory to another.

@@ -55,8 +55,8 @@ Let's review the less trivial sections:
        - The first mount plug, :samp:`ros-cache`, maps ROS 2 configuration
          to a host directory to preserve it between refreshes.
 
-       - The second one, :samp:`colcon-artefacts`,
-         is where the build artefacts will end up at run-time,
+       - The second one, :samp:`colcon-artifacts`,
+         is where the build artifacts will end up at run-time,
          so the build cache can be persisted and reused.
 
        - The GPU plug provides GPU pass-through for the SDK.
@@ -73,7 +73,7 @@ the SDK should actually make use of the directories defined in mount plugs.
 For :samp:`ros-cache`,
 this occurs automatically because it's a default,
 but we need to explicitly tip the SDK
-to place the build under the :samp:`colcon-artefacts` target.
+to place the build under the :samp:`colcon-artifacts` target.
 Currently, this is achieved with an SDK hook.
 
 
@@ -93,7 +93,7 @@ The hook is available as a :download:`file <design-sdk/setup-base>`;
 in this section, let's focus on its major portions and what they do.
 Besides installing the prerequisites, the hook does two important things:
 
-- Points the build configuration to the directory set for :samp:`colcon-artefacts`
+- Points the build configuration to the directory set for :samp:`colcon-artifacts`
 - Looks up project dependencies in the :samp:`/project/` directory,
   assuming the project sources are already mapped there,
   and installs them automatically
@@ -202,7 +202,7 @@ with build, install, and log file paths.
 
 .. important::
 
-   This is where the :samp:`colcon-artefacts` plug from :file:`sdk.yaml`
+   This is where the :samp:`colcon-artifacts` plug from :file:`sdk.yaml`
    comes into play;
    the configuration points the build actions there instead of the default path.
 
@@ -220,7 +220,7 @@ Clones the :program:`colcon` mixin repository
 and adds default mixins for :program:`colcon`,
 updating them as necessary.
 
-Again, the directory configured for the :samp:`colcon-artefacts` plug is used.
+Again, the directory configured for the :samp:`colcon-artifacts` plug is used.
 
 
 Install :program:`rosdep` dependencies
@@ -232,7 +232,7 @@ Install :program:`rosdep` dependencies
    :end-before: [rosdep-dependencies-end]
 
 
-Initialises :program:`rosdep`,
+Initializes :program:`rosdep`,
 a tool for installing system dependencies,
 updates it for our ROS 2 distribution,
 then installs dependencies for the project located under :file:`/project/`,
@@ -247,7 +247,7 @@ if any.
    so this part of the hook will find and install the dependencies for the user.
 
 
-Run-time behaviour
+Run-time behavior
 ------------------
 
 At run-time, SDK revisions are available inside the workshop;

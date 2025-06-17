@@ -11,7 +11,7 @@ from inside the workshop,
 allowing it to securely run GUI applications.
 
 By using the interface,
-the SDK publisher allows the workshop to utilise the host's display
+the SDK publisher allows the workshop to utilize the host's display
 which can be useful for various SDK-specific tasks
 such as building graphical applications or using editors without remote support.
 

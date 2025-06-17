@@ -100,7 +100,7 @@ A simple definition might look like this:
 It specifies a *base* and an *SDK*.
 A more complete definition would usually list several SDKs
 that use different :ref:`interfaces <exp_interfaces>`,
-software packages and :ref:`hooks <exp_sdk_hooks>`.
+software packages, and :ref:`hooks <exp_sdk_hooks>`.
 
 A workshop definition can be hidden by naming it
 :file:`.workshop.yaml` instead of :file:`workshop.yaml`.
@@ -183,7 +183,7 @@ Another optional part of a workshop definition is the :samp:`scripts` section;
 it contains named shell scripts to be copied and executed inside the workshop.
 
 The following example adds four scripts,
-:samp:`lint`, :samp:`shellcheck`, :samp:`unit` and :samp:`cover`,
+:samp:`lint`, :samp:`shellcheck`, :samp:`unit`, and :samp:`cover`,
 intended as utility helpers for a development environment:
 
 .. code-block:: yaml

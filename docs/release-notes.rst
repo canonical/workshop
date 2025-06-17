@@ -93,4 +93,4 @@ Snaps are available for the :samp:`amd64` and :samp:`arm64` architectures.
 
 For prerequisites and other details, see the `Getting Started
 <https://github.com/canonical/workshop?tab=readme-ov-file#getting-started>`_
-section on GitHub or follow the :ref:`tutorial`.
+section on GitHub, or follow the :ref:`tutorial`.

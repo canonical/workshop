@@ -30,7 +30,7 @@ definitions and installing their components. For each workshop, it:
 
 - Retrieves the required components, such as base and SDKs
 
-- Runs SDK setup hooks to initialise the working state
+- Runs SDK setup hooks to initialize the working state
 
 - On success, ties the workshop to the project and starts it
 

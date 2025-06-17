@@ -137,7 +137,7 @@ JSON Schema
 
 The following
 `JSON Schema`
-formalises the description above:
+formalizes the description above:
 
 .. @artefact SDK schema
 
@@ -203,7 +203,7 @@ that uses several :ref:`plugs <ref_sdk_plugs_slots>` and multiple platforms:
        interface: mount
        workshop-target: /home/workshop/.ros
    
-     colcon-artefacts:
+     colcon-artifacts:
        interface: mount
        workshop-target: /home/workshop/colcon
    

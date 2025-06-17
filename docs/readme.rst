@@ -11,7 +11,7 @@ Workshop
 Getting Started
 ---------------
 
-Follow the sections below
+Follow the sections below,
 or refer to the
 `Tutorial
 <https://canonical-workshop.readthedocs-hosted.com/latest/tutorial/>`_

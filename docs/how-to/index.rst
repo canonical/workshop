@@ -13,7 +13,7 @@ Use workshops
 
 These topics address daily |ws_markup|-related scenarios,
 such as debugging individual workshops or the entire |ws_markup| installation,
-moving projects within the file system or using |ws_markup| with Git:
+moving projects within the file system, or using |ws_markup| with Git:
 
 .. toctree::
    :hidden:
@@ -26,7 +26,7 @@ moving projects within the file system or using |ws_markup| with Git:
 - :doc:`Forward ports <use-workshops/forward-ports>`
 - :doc:`Move projects around <use-workshops/move-projects>`
 - :doc:`Purge workshops <use-workshops/purge>`
-- :doc:`Sketch SDKs to customise workshops <use-workshops/sketch-sdk>`
+- :doc:`Sketch SDKs to customize workshops <use-workshops/sketch-sdk>`
 - :doc:`Use workshops with Git <use-workshops/git-workshop>`
 
 

@@ -90,7 +90,7 @@ where each change is built on top of the previous one.
 
 Our SDKs are structured using :ref:`parts <exp_sdk_parts>`;
 their expressiveness makes them more diverse and semantically rich,
-allowing the layout of an SDK to be formalised in a modular way.
+allowing the layout of an SDK to be formalized in a modular way.
 If necessary, the layered approach
 can be mimicked using :ref:`SDK hooks <exp_sdk_hooks>`.
 |ws_markup| uses ZFS snapshots
@@ -268,7 +268,7 @@ it is automatically mounted as :file:`/project/` when the workshop is started:
 
 
 No explicit configuration is needed;
-this behaviour is intentionally consistent across all workshops.
+this behavior is intentionally consistent across all workshops.
 
 
 Bind mounts
@@ -329,7 +329,7 @@ enables remounting existing plugs to new host directories:
 Thus,
 |ws_markup| and |sdk_markup|
 largely leave the design of mount points to the SDK author,
-allowing the user to rely on their default, well-defined behaviour
+allowing the user to rely on their default, well-defined behavior
 with the extra option of adjusting them if necessary.
 
 

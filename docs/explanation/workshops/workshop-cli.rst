@@ -59,7 +59,7 @@ There are several categories of commands that vary by their purpose:
        :command:`warnings`
      - Enumerate workshops, list their details and recent activities.
 
-   * - Utilise
+   * - Utilize
      - :command:`exec`,
        :command:`shell`,
        :command:`run`

@@ -1,7 +1,7 @@
 .. _how_forward_ports:
 
-How to forward ports with tunnelling
-====================================
+How to forward ports with tunneling
+===================================
 
 .. @artefact tunnel interface
 
@@ -38,7 +38,7 @@ and a matching plug to the :samp:`system` SDK:
 .. note::
 
    |ws_markup| doesn't resolve hostnames, but supports the aliases
-   :samp:`localhost`, :samp:`ip6-localhost` and :samp:`ip6-loopback`.
+   :samp:`localhost`, :samp:`ip6-localhost`, and :samp:`ip6-loopback`.
 
 
 Refresh the workshop and start the service,
