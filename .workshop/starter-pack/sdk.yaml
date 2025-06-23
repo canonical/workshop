@@ -1,0 +1,6 @@
+name: starter-pack
+base: ubuntu@24.04
+slots:
+  sphinx-build:
+    interface: tunnel
+    endpoint: 8000

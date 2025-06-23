@@ -4,12 +4,20 @@ sdks:
   - name: go
     channel: noble/stable
   - name: project-tools
+  - name: project-starter-pack
   - name: system
     plugs:
       fake-store:
         interface: tunnel
         endpoint: 8080
+      sphinx-build:
+        interface: tunnel
+        endpoint: 8000
 scripts:
+  docs-run: |
+    make -C docs/ run
+  docs-clean: |
+    make -C docs/ clean-doc
   lint: |
     golangci-lint run
     golangci-lint run --new-from-rev='HEAD~' --config=.golangci.errcheck.yaml

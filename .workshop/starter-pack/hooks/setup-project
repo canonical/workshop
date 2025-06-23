@@ -1,0 +1,10 @@
+rm -rf /tmp/sp /project/docs/{.sphinx/{venv,version,update_sp.py},Makefile}
+
+git clone --depth 1 https://github.com/canonical/sphinx-docs-starter-pack /tmp/sp/
+
+mkdir -p /project/docs/.sphinx
+cp -ar /tmp/sp/docs/Makefile /project/docs/
+cp -ar /tmp/sp/docs/.sphinx/{version,update_sp.py} /project/docs/.sphinx/
+rm -rf /tmp/sp
+
+cd /project/docs/ && make {install,update}
