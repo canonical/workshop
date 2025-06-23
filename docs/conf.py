@@ -73,7 +73,7 @@ ogp_image = "https://assets.ubuntu.com/v1/253da317-image-document-ubuntudocs.svg
 
 # Product favicon; shown in bookmarks, browser tabs, etc.
 
-html_favicon = ".sphinx/_static/favicon.png"
+html_favicon = "_static/favicon.png"
 
 
 # Dictionary of values to pass into the Sphinx context for all pages:
@@ -134,7 +134,7 @@ slug = ''
 
 # Template and asset locations
 
-html_static_path = [".sphinx/_static"]
+html_static_path = ["_static"]
 #templates_path = ["_templates"]
 
 
