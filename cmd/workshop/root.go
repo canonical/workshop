@@ -159,6 +159,7 @@ func (c *CmdRoot) Command() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&c.prj, "project", "p", c.cwd, "Specify the project's directory path.")
 	cmd.PersistentFlags().BoolP("help", "h", false, "Print the help message for the command.")
+	cmd.PersistentFlags().BoolP("version", "v", false, "Print Workshop version.")
 
 	cmd.DisableAutoGenTag = true
 
