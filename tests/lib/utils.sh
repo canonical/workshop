@@ -49,16 +49,8 @@ function prepare_environment() {
     apt-get update
     apt-get install -y --no-install-recommends "linux-modules-extra-$(uname -r)" moreutils jq zfsutils-linux
 
-    mkdir -p /etc/systemd/system/snapd.service.d
-    cat <<EOF >/etc/systemd/system/snapd.service.d/override.conf
-# Workaround for https://bugs.launchpad.net/snapd/+bug/2104066
-[Service]
-Environment=SNAPD_STANDBY_WAIT=1m
-EOF
-    systemctl daemon-reload
-
     systemctl unmask snapd.service
-    systemctl restart snapd.service
+    systemctl start snapd.service
     snap wait system seed.loaded
     # The /snap directory does not exist in some environments
     [ ! -d /snap ] && ln -s /var/lib/snapd/snap /snap
