@@ -411,7 +411,7 @@ func v1PostProjectWorkshop(c *Command, r *http.Request, _ *userState) Response {
 	}
 
 	if !slices.Contains(validActions, reqData.Action) {
-		return statusBadRequest(fmt.Sprintf("unknown action %q", reqData.Action))
+		return statusBadRequest("unknown action %q", reqData.Action)
 	}
 
 	mode, err := actionMode(&reqData)

@@ -258,7 +258,7 @@ func (h *HookManager) executeHook(ctx context.Context, task *state.Task, hook *H
 
 	if len(taskLog) > 0 {
 		st.Lock()
-		task.Logf(string(taskLog))
+		task.Logf("%s", string(taskLog))
 		st.Unlock()
 	}
 

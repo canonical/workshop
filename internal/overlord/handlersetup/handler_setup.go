@@ -66,7 +66,7 @@ func OnDo(handler state.HandlerFunc) state.HandlerFunc {
 				}
 
 				if mode == conflict.ChangeWaitOnError {
-					task.Errorf(err.Error())
+					task.Errorf("%v", err)
 					return &state.Wait{
 						WaitedStatus: state.DoingStatus,
 						Reason:       fmt.Sprintf("wait on error: %v", err),
