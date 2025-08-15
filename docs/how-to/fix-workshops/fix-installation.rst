@@ -29,7 +29,7 @@ If it's outdated, download and install the update:
 
 .. code-block:: console
 
-   $ sudo snap install --dangerous --classic ./workshop_0.1.21_amd64.snap
+   $ sudo snap install --dangerous --classic ./workshop_0.1.22_amd64.snap
 
 
 Install and start LXD
