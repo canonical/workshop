@@ -158,7 +158,6 @@ func (s *Specification) SetGpu(gpu workshop.Gpu) error {
 		"uid":     workshop.User.Uid,
 		"gid":     workshop.User.Gid,
 	}
-
 	return nil
 }
 

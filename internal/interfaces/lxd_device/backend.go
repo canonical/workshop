@@ -30,10 +30,6 @@ import (
 	"github.com/canonical/workshop/internal/x11"
 )
 
-const (
-	LxdSock = "/var/snap/lxd/common/lxd/unix.socket"
-)
-
 var workshopFs = sftpFs
 
 type Backend struct {
@@ -485,6 +481,23 @@ func (e envScript) WriteTo(w io.Writer) (int64, error) {
 	return n, nil
 }
 
+func maybeEnableAmdKfd(s *Specification) {
+	const kfdPath = "/dev/kfd"
+	_, err := os.Stat(kfdPath)
+	if err != nil {
+		return
+	}
+
+	kfdName := lxdbackend.DeviceName(s.Profile.Sdk, s.Profile.Gpu.Name) + "_kfd"
+	s.devices[kfdName] = map[string]string{
+		"type":     "unix-char",
+		"source":   kfdPath,
+		"path":     kfdPath,
+		"required": "false",
+		"gid":      workshop.User.Gid,
+	}
+}
+
 func sftpFs(conn lxd.InstanceServer, pid, w string) (fsutil.Fs, error) {
 	sftp, err := conn.GetInstanceFileSFTP(lxdbackend.InstanceName(w, pid))
 	if err != nil {
@@ -551,7 +564,7 @@ func assignNewProfile(ctx context.Context, conn lxd.InstanceServer, sdkRef sdk.R
 	return clone, nil
 }
 
-func setupProfile(conn lxd.InstanceServer, user *user.User, env map[string]string, sdkRef sdk.Ref, prev, next workshop.SdkProfile) (*revert.Reverter, error) {
+func setupProfile(conn lxd.InstanceServer, s *Specification, sdkRef sdk.Ref, prev workshop.SdkProfile) (*revert.Reverter, error) {
 	fs, err := workshopFs(conn, sdkRef.ProjectId, sdkRef.Workshop)
 	if err != nil {
 		return nil, err
@@ -561,26 +574,32 @@ func setupProfile(conn lxd.InstanceServer, user *user.User, env map[string]strin
 	rev := revert.New()
 	defer rev.Fail()
 
-	if err := setupSshAgent(fs, prev.Agent, next.Agent); err != nil {
+	if err := setupSshAgent(fs, prev.Agent, s.Profile.Agent); err != nil {
 		return nil, err
 	}
 	rev.Add(func() {
-		if reverr := setupSshAgent(fs, next.Agent, prev.Agent); reverr != nil {
+		if reverr := setupSshAgent(fs, s.Profile.Agent, prev.Agent); reverr != nil {
 			logger.Noticef("On setupProfile: cannot undo SSH agent changes: %v", reverr)
 		}
 	})
 
-	if err := setupDesktop(fs, user, env, prev.Desktop, next.Desktop); err != nil {
+	if err := setupDesktop(fs, s.User, s.Environment, prev.Desktop, s.Profile.Desktop); err != nil {
 		return nil, err
 	}
 	rev.Add(func() {
-		if reverr := setupDesktop(fs, user, env, next.Desktop, prev.Desktop); reverr != nil {
+		if reverr := setupDesktop(fs, s.User, s.Environment, s.Profile.Desktop, prev.Desktop); reverr != nil {
 			logger.Noticef("On setupProfile: cannot undo desktop interface changes: %v", reverr)
 		}
 	})
 
+	if s.Profile.Gpu != nil {
+		// LXD does not support AMD KFD passthrough,
+		// so we need to create a device entry for it.
+		maybeEnableAmdKfd(s)
+	}
+
 	// Setup mounts last so other interfaces can create directories to mount.
-	r, err := setupMounts(conn, fs, user, sdkRef.ProjectId, sdkRef.Workshop, prev.Mounts, next.Mounts)
+	r, err := setupMounts(conn, fs, s.User, sdkRef.ProjectId, sdkRef.Workshop, prev.Mounts, s.Profile.Mounts)
 	if err != nil {
 		return nil, err
 	}
@@ -670,7 +689,7 @@ func (b *Backend) Setup(ctx context.Context, sdkRef sdk.Ref, repo *interfaces.Re
 		}
 	}
 
-	rev, err := setupProfile(conn, spec.User, spec.Environment, sdkRef, prev, spec.Profile)
+	rev, err := setupProfile(conn, spec, sdkRef, prev)
 	if err != nil {
 		return err
 	}
