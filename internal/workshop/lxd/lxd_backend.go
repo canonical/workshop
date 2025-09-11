@@ -1123,6 +1123,12 @@ apt:
     # Bypass confirmation prompts
     APT::Get::Assume-Yes "1";
 write_files:
+# Sacrifice some durability for performance:
+# https://wiki.debian.org/Teams/Dpkg/FAQ#Q:_Why_is_dpkg_so_slow_when_using_new_filesystems_such_as_btrfs_or_ext4.3F
+- content: |
+    # Managed by workshop, do not remove
+    force-unsafe-io
+  path: /etc/dpkg/dpkg.cfg.d/unsafe-io
 - content: |
     # Managed by workshop, do not remove
     [Unit]
