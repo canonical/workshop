@@ -102,3 +102,48 @@ jobs:
           name: code-coverage-${{matrix.suite}}
           path: ${{ github.workspace }}.cover/lxd:ubuntu-24.04:tests/
           if-no-files-found: ignore
+  action-tests:
+    needs: build-snap
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        base: ['20.04', '22.04', '24.04']
+    runs-on: ${{ matrix.os }}
+    steps:
+      # The Action can only download released versions of Workshop, but we can
+      # make it use a development snap by putting it in the tool cache. This
+      # hack can be removed once we start publishing snaps for the main branch.
+      - name: Create tool cache
+        run: |
+          arch="$(node -e 'console.log(process.arch)')"
+          path="${RUNNER_TOOL_CACHE}/workshop/0.1.0/${arch}"
+          printf 'path=%s\n' "$path" >> "$GITHUB_OUTPUT"
+
+          mkdir -p "$path"
+          touch "${path}.complete"
+        id: tool_cache
+      - name: Download Workshop Snap
+        uses: actions/download-artifact@master
+        with:
+          name: snap_workshop
+          path: ${{ steps.tool_cache.outputs.path }}
+      - name: Create workshop definition
+        run: |
+          cat >workshop.yaml <<EOF
+          name: test
+          base: ubuntu@$BASE
+          EOF
+        env:
+          BASE: ${{ matrix.base }}
+      - name: Launch workshop
+        uses: canonical/launch-workshop@v0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: '0.1.0'
+      - name: Check base image
+        run: |
+          release="$(workshop exec -- lsb_release --release --short)"
+          [ "${BASE}" = "$release" ]
+        env:
+          BASE: ${{ matrix.base }}
