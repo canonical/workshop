@@ -345,10 +345,7 @@ func (m *WorkshopManager) doStashWorkshop(task *state.Task, tomb *tomb.Tomb) err
 	ctx, cancel := BackendContext(tomb, user, prj.ProjectId)
 	defer cancel()
 
-	if err = m.backend.StashWorkshop(ctx, w); err != nil {
-		return err
-	}
-	return nil
+	return m.backend.StashWorkshop(ctx, w)
 }
 
 func (m *WorkshopManager) undoStashWorkshop(task *state.Task, tomb *tomb.Tomb) error {

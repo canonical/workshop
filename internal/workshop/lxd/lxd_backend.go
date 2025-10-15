@@ -412,7 +412,10 @@ func (s *Backend) updateInstanceState(conn lxd.InstanceServer, ctx context.Conte
 		return err
 	}
 
-	return op.WaitContext(ctx)
+	// The UpdateInstanceState creates a non-cancellable operation which would
+	// result in an "instance in a busy state" for any further requests if we
+	// return on a cancelled context here.
+	return op.Wait()
 }
 
 func (s *Backend) StartWorkshop(ctx context.Context, name string) error {
@@ -429,11 +432,17 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 	rev := revert.New()
 	defer rev.Fail()
 
-	cleanupCtx := context.WithoutCancel(ctx)
 	rev.Add(func() {
 		// Stop workshop's timeout is handled by LXD API, so no need to have
 		// a context with a timeout.
-		if e := s.stopWorkshop(conn, cleanupCtx, name, true); e != nil {
+		revctx := revctx(ctx)
+		revconn, rerr := s.LxdClient(revctx)
+		if rerr != nil {
+			logger.Debugf("On StashWorkshop: Cannot connect to LXD server: %v", rerr)
+			return
+		}
+		defer revconn.Disconnect()
+		if e := s.stopWorkshop(revconn, revctx, name, true); e != nil {
 			logger.Noticef("On StartWorkshop: cannot stop %q workshop on cleanup: %v", name, e)
 		}
 	})

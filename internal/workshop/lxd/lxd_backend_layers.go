@@ -107,11 +107,27 @@ func (s *Backend) Restore(ctx context.Context, name, sk string, file *workshop.F
 	return s.copyInstance(layerConn, conn, snapshot, instance, true, config, exclude)
 }
 
+// Returns a clone of the parent context to be used in cleanup operations on
+// errors or if the parent context was cancelled. The non-cancelled clone will
+// be created even if the parent's context is cancelled.
+func revctx(parent context.Context) context.Context {
+	revctx := context.Background()
+	user, ok := parent.Value(workshop.ContextUser).(string)
+	if ok {
+		revctx = context.WithValue(revctx, workshop.ContextUser, user)
+	}
+	pid, ok := parent.Value(workshop.ContextProjectId).(string)
+	if ok {
+		revctx = context.WithValue(revctx, workshop.ContextProjectId, pid)
+	}
+	return revctx
+}
+
 func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
 	rev := revert.New()
 	defer rev.Fail()
 
-	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	pid, ok := ctx.Value(workshop.ContextProjectId).(string)
 	if !ok {
 		return fmt.Errorf("context key project-id not found")
 	}
@@ -127,12 +143,20 @@ func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
 	}
 
 	rev.Add(func() {
-		if rerr := s.startWorkshop(conn, ctx, name); rerr != nil {
+		revctx := revctx(ctx)
+		revconn, rerr := s.LxdClient(revctx)
+		if rerr != nil {
+			logger.Debugf("On StashWorkshop: Cannot connect to LXD server: %v", rerr)
+			return
+		}
+		defer revconn.Disconnect()
+		rerr = s.startWorkshop(revconn, revctx, name)
+		if rerr != nil {
 			logger.Debugf("On StashWorkshop: Cannot restart %q workshop after failed stash operation: %v", name, rerr)
 		}
 	})
 
-	layers, err := s.layerNames(layerConn, projectId, name, "sdk")
+	layers, err := s.layerNames(layerConn, pid, name, "sdk")
 	if err != nil {
 		return err
 	}
@@ -148,8 +172,8 @@ func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
 	}
 
 	// Backup the workshop itself.
-	instance := InstanceName(name, projectId)
-	stashed := instanceStashName(name, projectId)
+	instance := InstanceName(name, pid)
+	stashed := instanceStashName(name, pid)
 	// Mark the copy as a stash to avoid confusing it with an SDK layer.
 	config := map[string]string{"user.workshop.layer-type": "stash"}
 	if err := s.copyInstance(conn, layerConn, instance, stashed, false, config, nil); err != nil {
@@ -408,6 +432,7 @@ func (s *Backend) deleteLayer(layerConn lxd.InstanceServer, layer string) error 
 }
 
 func (s *Backend) layerClients(ctx context.Context) (lxd.InstanceServer, lxd.InstanceServer, error) {
+	connctx := revctx(ctx)
 	user, ok := ctx.Value(workshop.ContextUser).(string)
 	if !ok {
 		return nil, nil, fmt.Errorf("context key %s not found", workshop.ContextUser)
@@ -418,7 +443,7 @@ func (s *Backend) layerClients(ctx context.Context) (lxd.InstanceServer, lxd.Ins
 		return nil, nil, err
 	}
 
-	conn, err := s.LxdClient(ctx)
+	conn, err := s.LxdClient(connctx)
 	if err != nil {
 		return nil, nil, err
 	}
