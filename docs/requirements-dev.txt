@@ -1,0 +1,4 @@
+
+# Workshop-only requirements for docs
+pre-commit
+sphinxcontrib-mermaid

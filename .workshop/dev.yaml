@@ -20,8 +20,21 @@ actions:
     make -C docs/ run
   docs-clean: |
     make -C docs/ clean-doc
+  docs-clean-all: |
+    make -C docs/ clean
   docs-check: |
     make -C docs/ {spelling,linkcheck,woke,lint-md}
+  docs-upgrade: |
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"' EXIT
+    make -C /project/docs clean
+    rm -rf /project/docs/{Makefile,.sphinx,requirements.txt}
+    rm -rf /project/.github/workflows/{automatic-doc-checks.yml,sphinx-python-dependency-build-checks.yml,markdown-style-checks.yml}
+    git clone --depth 1 https://github.com/canonical/sphinx-docs-starter-pack "$TMP_DIR"
+    cp -ar "$TMP_DIR"/docs/{Makefile,.sphinx,requirements.txt} /project/docs/
+    cp -ar "$TMP_DIR"/.github/workflows/{automatic-doc-checks.yml,sphinx-python-dependency-build-checks.yml,markdown-style-checks.yml} /project/.github/workflows/
+    cat /project/docs/requirements-dev.txt >> /project/docs/requirements.txt || true
+    make -C /project/docs install
   lint: |
     golangci-lint run
     golangci-lint run --new-from-rev='HEAD~' --config=.golangci.errcheck.yaml

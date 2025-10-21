@@ -1,0 +1,6 @@
+if ! make -C /project/docs/ help; then
+  workshopctl set-health error "Starter pack out of order"
+  exit 1
+fi
+
+workshopctl set-health okay

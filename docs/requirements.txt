@@ -8,7 +8,6 @@ sphinx-copybutton
 sphinx-design
 sphinx-notfound-page
 sphinx-reredirects
-sphinx-roles
 sphinx-tabs
 sphinxcontrib-jquery
 sphinxext-opengraph
@@ -25,8 +24,6 @@ sphinx-youtube-links>=0.1.0
 
 # Other dependencies
 packaging
-pre-commit
-sphinxcontrib-mermaid
 sphinxcontrib-svg2pdfconverter[CairoSVG]
 sphinx-last-updated-by-git
 sphinx-sitemap
@@ -34,3 +31,5 @@ sphinx-sitemap
 # Vale dependencies
 rst2html
 vale
+pre-commit
+sphinxcontrib-mermaid

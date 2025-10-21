@@ -1,8 +1,4 @@
-export DEBIAN_FRONTEND=noninteractive
-
 apt-get update
 apt-get install \
     make \
-    python3-venv \
-    aspell \
-    aspell-en
+    python3-venv
