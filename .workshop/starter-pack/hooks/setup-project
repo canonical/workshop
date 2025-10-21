@@ -1,19 +1,2 @@
-# Create a temporary directory that will be automatically cleaned up on exit.
-# We use this to clone the starter pack.
-TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT
-
-# Clean up any previous installation.
-rm -rf /project/docs/Makefile /project/docs/.sphinx /project/docs/requirements.txt
-
-# Clone the starter pack into the temporary directory.
-git clone --depth 1 https://github.com/canonical/sphinx-docs-starter-pack "$TMP_DIR"
-
-# Ensure the docs directory exists.
-mkdir -p /project/docs
-
-# Copy the Makefile and .sphinx directory to the project's docs directory.
-cp -ar "$TMP_DIR/docs/Makefile" "$TMP_DIR/docs/.sphinx" "$TMP_DIR/docs/requirements.txt" /project/docs/
-
-# Install documentation dependencies using the copied Makefile.
+make -C /project/docs clean
 make -C /project/docs install
