@@ -31,5 +31,7 @@ sphinx-sitemap
 # Vale dependencies
 rst2html
 vale
+
+# Workshop-only requirements for docs
 pre-commit
 sphinxcontrib-mermaid

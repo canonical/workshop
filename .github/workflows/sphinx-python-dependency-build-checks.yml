@@ -27,13 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install dependencies
       run: |
         set -ex
         sudo apt-get --fix-missing update
-        sudo apt -y install \
+        sudo apt-get -y install \
           cargo \
           libpython3-dev \
           libxml2-dev \
