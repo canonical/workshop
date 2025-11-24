@@ -20,9 +20,7 @@ import (
 	"net/url"
 )
 
-var (
-	ParseErrorInTest = parseError
-)
+var ParseErrorInTest = parseError
 
 func (client *Client) SetDoer(d doer) {
 	client.doer = d

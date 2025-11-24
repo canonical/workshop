@@ -180,7 +180,7 @@ func (s *kcmdlineTestSuite) TestGetKernelCommandLineKeyValue(c *C) {
 		},
 	} {
 		cmdlineFile := filepath.Join(c.MkDir(), "cmdline")
-		err := os.WriteFile(cmdlineFile, []byte(t.cmdline), 0644)
+		err := os.WriteFile(cmdlineFile, []byte(t.cmdline), 0o644)
 		c.Assert(err, IsNil)
 		r := osutil.MockProcCmdline(cmdlineFile)
 		defer r()
@@ -208,7 +208,7 @@ func (s *kcmdlineTestSuite) TestKernelCommandLine(c *C) {
 	c.Assert(err, ErrorMatches, `.*/cmdline: no such file or directory`)
 	c.Check(cmd, Equals, "")
 
-	err = os.WriteFile(newProcCmdline, []byte("foo bar baz panic=-1\n"), 0644)
+	err = os.WriteFile(newProcCmdline, []byte("foo bar baz panic=-1\n"), 0o644)
 	c.Assert(err, IsNil)
 	cmd, err = osutil.KernelCommandLine()
 	c.Assert(err, IsNil)
@@ -226,25 +226,35 @@ func (s *kcmdlineTestSuite) TestKernelParseCommandLine(c *C) {
 	}{
 		{cmd: ``, exp: []osutil.KernelArgument{}},
 		{cmd: `foo bar baz`, exp: []osutil.KernelArgument{
-			{"foo", "", false}, {"bar", "", false}, {"baz", "", false}}},
+			{"foo", "", false}, {"bar", "", false}, {"baz", "", false},
+		}},
 		{cmd: `"foo"=" many   spaces  " bar`, exp: []osutil.KernelArgument{
-			{`foo"`, " many   spaces  ", true}, {"bar", "", false}}},
+			{`foo"`, " many   spaces  ", true}, {"bar", "", false},
+		}},
 		{cmd: `"foo=bar" foo="bar"`, exp: []osutil.KernelArgument{
-			{"foo", "bar", true}, {"foo", "bar", true}}},
+			{"foo", "bar", true}, {"foo", "bar", true},
+		}},
 		{cmd: `foo=* baz=bar`, exp: []osutil.KernelArgument{
-			{"foo", "*", false}, {"baz", "bar", false}}},
+			{"foo", "*", false}, {"baz", "bar", false},
+		}},
 		{cmd: `foo-dev-mode`, exp: []osutil.KernelArgument{
-			{"foo-dev-mode", "", false}}},
+			{"foo-dev-mode", "", false},
+		}},
 		{cmd: `foo_bar-tee=bar_aa-bb`, exp: []osutil.KernelArgument{
-			{"foo_bar-tee", "bar_aa-bb", false}}},
+			{"foo_bar-tee", "bar_aa-bb", false},
+		}},
 		{cmd: `foo="1$2"`, exp: []osutil.KernelArgument{{"foo", "1$2", true}}},
 		{cmd: `foo=1$2`, exp: []osutil.KernelArgument{{"foo", "1$2", false}}},
 		{cmd: `foo= bar`, exp: []osutil.KernelArgument{{"foo", "", false}, {"bar", "", false}}},
 		{cmd: `foo=""`, exp: []osutil.KernelArgument{{"foo", "", true}}},
-		{cmd: `   cpu=1,2,3   mem=0x2000;0x4000:$2  `,
-			exp: []osutil.KernelArgument{{"cpu", "1,2,3", false}, {"mem", "0x2000;0x4000:$2", false}}},
-		{cmd: "isolcpus=1,2,10-20,100-2000:2/25",
-			exp: []osutil.KernelArgument{{"isolcpus", "1,2,10-20,100-2000:2/25", false}}},
+		{
+			cmd: `   cpu=1,2,3   mem=0x2000;0x4000:$2  `,
+			exp: []osutil.KernelArgument{{"cpu", "1,2,3", false}, {"mem", "0x2000;0x4000:$2", false}},
+		},
+		{
+			cmd: "isolcpus=1,2,10-20,100-2000:2/25",
+			exp: []osutil.KernelArgument{{"isolcpus", "1,2,10-20,100-2000:2/25", false}},
+		},
 		// something more realistic
 		{
 			cmd: `BOOT_IMAGE=/vmlinuz-linux root=/dev/mapper/linux-root rw quiet loglevel=3 rd.udev.log_priority=3 vt.global_cursor_default=0 rd.luks.uuid=1a273f76-3118-434b-8597-a3b12a59e017 rd.luks.uuid=775e4582-33c1-423b-ac19-f734e0d5e21c rd.luks.options=discard,timeout=0 root=/dev/mapper/linux-root apparmor=1 security=apparmor`,

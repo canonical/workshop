@@ -29,9 +29,7 @@ import (
 	"github.com/canonical/workshop/internal/sdk"
 )
 
-var (
-	ErrNoRefreshAvailable = errors.New("SDK has no update available")
-)
+var ErrNoRefreshAvailable = errors.New("SDK has no update available")
 
 var (
 	SDK_STORE_BUCKET_NAME = "sdkstore"
@@ -44,8 +42,7 @@ func New() *GcsStore {
 	return &GcsStore{}
 }
 
-type GcsStore struct {
-}
+type GcsStore struct{}
 
 type storeSdk struct {
 	Name     string       `json:"name"`
@@ -187,7 +184,7 @@ func (c *GcsStore) DownloadSdk(ctx context.Context, setup sdk.Setup, report *pro
 	}
 
 	setup.Sha3_384 = md5ToSha3(hash.Sum(nil))
-	if err := os.WriteFile(target+".sha3-384", []byte(setup.Sha3_384+"\n"), 0666); err != nil {
+	if err := os.WriteFile(target+".sha3-384", []byte(setup.Sha3_384+"\n"), 0o666); err != nil {
 		return nil, err
 	}
 	reverter.Add(func() { _ = os.Remove(target + ".sha3-384") })
@@ -243,7 +240,7 @@ func hashSdk(setup sdk.Setup) (string, error) {
 	}
 
 	digest := md5ToSha3(hash.Sum(nil))
-	if err := os.WriteFile(cache, []byte(digest+"\n"), 0666); err != nil {
+	if err := os.WriteFile(cache, []byte(digest+"\n"), 0o666); err != nil {
 		return "", err
 	}
 	return digest, nil
@@ -277,7 +274,7 @@ func extractSdkYAML(ctx context.Context, setup sdk.Setup) (string, error) {
 		return "", err
 	}
 
-	if err := os.WriteFile(cache, content, 0666); err != nil {
+	if err := os.WriteFile(cache, content, 0o666); err != nil {
 		return "", err
 	}
 	return string(content), nil
@@ -310,7 +307,7 @@ func storeSdkInfoImpl(ctx context.Context, name, channel string) (storeSdk, erro
 	defer client.Close()
 	bkt := client.Bucket(SDK_STORE_BUCKET_NAME)
 
-	var sa = strings.Split(channel, "/")
+	sa := strings.Split(channel, "/")
 	if len(sa) != 2 {
 		return sSdk, fmt.Errorf("%q has an invalid channel %q, must take the form <track>/<risk>", name, channel)
 	}
@@ -383,7 +380,7 @@ func storeSdkReaderImpl(ctx context.Context, setup sdk.Setup) (*sdkReader, error
 	}
 	defer client.Close()
 
-	var sa = strings.Split(setup.Channel, "/")
+	sa := strings.Split(setup.Channel, "/")
 	if len(sa) != 2 {
 		return nil, fmt.Errorf("%s has an invalid channel %s, must take the form <track>/<risk>", setup.Name, setup.Channel)
 	}

@@ -48,7 +48,7 @@ func (s *sftpSuite) SetUpTest(c *check.C) {
 
 	s.client, err = sftp.NewClientPipe(cc, cc)
 	c.Assert(err, check.IsNil)
-	s.fs = fsutil.NewSftpFs(s.client, 0002)
+	s.fs = fsutil.NewSftpFs(s.client, 0o002)
 }
 
 func (s *sftpSuite) TearDownTest(c *check.C) {
@@ -68,7 +68,7 @@ func (s *sftpSuite) TestMkdir(c *check.C) {
 }
 
 func (s *sftpSuite) TestMkdirChmodChown(c *check.C) {
-	c.Assert(s.fs.MkdirChmodChown("testdir", 0717, os.Geteuid(), os.Getegid()), check.IsNil)
+	c.Assert(s.fs.MkdirChmodChown("testdir", 0o717, os.Geteuid(), os.Getegid()), check.IsNil)
 	c.Check(s.path, testutil.DirEquals, []string{"drwx--xrwx testdir"})
 }
 
@@ -79,7 +79,7 @@ func (s *sftpSuite) TestOpen(c *check.C) {
 }
 
 func (s *sftpSuite) TestOpenFile(c *check.C) {
-	file, err := s.fs.OpenFile("testfile", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := s.fs.OpenFile("testfile", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 	c.Assert(err, check.IsNil)
 	c.Assert(file.Close(), check.IsNil)
 	c.Check(s.path, testutil.DirEquals, []string{"-rw-r--r-- testfile"})
@@ -134,7 +134,7 @@ func (s *sftpSuite) TestRename(c *check.C) {
 }
 
 func (s *sftpSuite) TestChmod(c *check.C) {
-	err := s.fs.Chmod("notexist", 0644)
+	err := s.fs.Chmod("notexist", 0o644)
 	c.Assert(err, check.ErrorMatches, `chmod notexist: file does not exist`)
 }
 

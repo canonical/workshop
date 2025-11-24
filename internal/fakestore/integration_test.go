@@ -75,10 +75,10 @@ func (f *storeIntegration) TestStoreDownloadCleanupPrevious(c *check.C) {
 	setup := sdk.Setup{Name: "test-sdk-basic", Channel: "latest/stable", Revision: sdk.R(1)}
 	prev := setup
 	prev.Revision = sdk.R(5)
-	c.Assert(os.WriteFile(prev.Filepath(), nil, 0644), check.IsNil)
+	c.Assert(os.WriteFile(prev.Filepath(), nil, 0o644), check.IsNil)
 	other := setup
 	other.Revision = sdk.R(2)
-	c.Assert(os.WriteFile(other.Filepath(), nil, 0644), check.IsNil)
+	c.Assert(os.WriteFile(other.Filepath(), nil, 0o644), check.IsNil)
 
 	result, err := s.DownloadSdk(context.Background(), setup, nil)
 	c.Assert(err, check.IsNil)
@@ -130,9 +130,9 @@ func (f *storeIntegration) TestStoreDownloadLocksSDKForExclusiveAccess(c *check.
 	})
 
 	// "download" is finished
-	c.Assert(os.WriteFile(target, nil, 0666), check.IsNil)
-	c.Assert(os.WriteFile(target+".sha3-384", []byte(setup.Sha3_384), 0666), check.IsNil)
-	c.Assert(os.WriteFile(target+".yaml", []byte("name: test-sdk-basic"), 0666), check.IsNil)
+	c.Assert(os.WriteFile(target, nil, 0o666), check.IsNil)
+	c.Assert(os.WriteFile(target+".sha3-384", []byte(setup.Sha3_384), 0o666), check.IsNil)
+	c.Assert(os.WriteFile(target+".yaml", []byte("name: test-sdk-basic"), 0o666), check.IsNil)
 	fl.Close()
 	wg.Wait()
 }

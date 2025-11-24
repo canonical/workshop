@@ -26,9 +26,7 @@ import (
 	"github.com/canonical/x-go/i18n"
 )
 
-var (
-	timeNow = time.Now
-)
+var timeNow = time.Now
 
 // start-of-day
 func sod(t time.Time) time.Time {

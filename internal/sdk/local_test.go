@@ -39,14 +39,14 @@ func (s *localSdk) SetUpTest(c *check.C) {
 
 func (s *localSdk) createSource(c *check.C, contents string) string {
 	source := filepath.Join(c.MkDir(), "source")
-	c.Assert(os.Mkdir(source, 0755), check.IsNil)
-	c.Assert(os.WriteFile(filepath.Join(source, "contents"), []byte(contents), 0644), check.IsNil)
+	c.Assert(os.Mkdir(source, 0o755), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(source, "contents"), []byte(contents), 0o644), check.IsNil)
 	return source
 }
 
 func (s *localSdk) createRevision(c *check.C, revision, contents string) string {
-	c.Assert(os.Mkdir(filepath.Join(s.target, revision), 0755), check.IsNil)
-	c.Assert(os.WriteFile(filepath.Join(s.target, revision, "contents"), []byte(contents), 0644), check.IsNil)
+	c.Assert(os.Mkdir(filepath.Join(s.target, revision), 0o755), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(s.target, revision, "contents"), []byte(contents), 0o644), check.IsNil)
 
 	digest, err := osutil.HashDirEntries(sha3.New384(), filepath.Join(s.target, revision))
 	c.Assert(err, check.IsNil)

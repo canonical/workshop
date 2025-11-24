@@ -387,7 +387,6 @@ func (e *AttributeNotFoundError) Error() string {
 		return fmt.Sprintf("attribute %q not found for plug %q", e.Attribute, e.Plug.ShortRef())
 	}
 	return fmt.Sprintf("attribute %q not found for slot %q", e.Attribute, e.Slot.ShortRef())
-
 }
 
 func (slot *SlotInfo) Attr(key string, val interface{}) error {

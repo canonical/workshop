@@ -13,7 +13,7 @@ type CmdStop struct {
 }
 
 func (c *CmdStop) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "stop <WORKSHOP>...",
 		Short: "Stop one or many workshops",
 		Long: `

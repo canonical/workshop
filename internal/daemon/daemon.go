@@ -241,7 +241,7 @@ func (c *Command) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rspf ResponseFunc
-	var rsp = statusMethodNotAllowed("method %q not allowed", r.Method)
+	rsp := statusMethodNotAllowed("method %q not allowed", r.Method)
 
 	switch r.Method {
 	case "GET":

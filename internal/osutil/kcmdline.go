@@ -27,9 +27,7 @@ import (
 	"strings"
 )
 
-var (
-	procCmdline = "/proc/cmdline"
-)
+var procCmdline = "/proc/cmdline"
 
 // MockProcCmdline overrides the path to /proc/cmdline. For use in tests.
 func MockProcCmdline(newPath string) (restore func()) {
@@ -57,16 +55,16 @@ func KernelCommandLineSplit(s string) (out []string, err error) {
 		argValueQuoteEnd              // looking at end of quoted value
 	)
 	var b bytes.Buffer
-	var rs = []rune(s)
-	var last = len(rs) - 1
-	var errUnexpectedQuote = fmt.Errorf("unexpected quoting")
-	var errUnbalancedQUote = fmt.Errorf("unbalanced quoting")
-	var errUnexpectedArgument = fmt.Errorf("unexpected argument")
-	var errUnexpectedAssignment = fmt.Errorf("unexpected assignment")
+	rs := []rune(s)
+	last := len(rs) - 1
+	errUnexpectedQuote := fmt.Errorf("unexpected quoting")
+	errUnbalancedQUote := fmt.Errorf("unbalanced quoting")
+	errUnexpectedArgument := fmt.Errorf("unexpected argument")
+	errUnexpectedAssignment := fmt.Errorf("unexpected assignment")
 	// arguments are:
 	// - arg
 	// - arg=value, where value can be any string, spaces are preserve when quoting ".."
-	var state = argNone
+	state := argNone
 	for idx, r := range rs {
 		maybeSplit := false
 		switch state {

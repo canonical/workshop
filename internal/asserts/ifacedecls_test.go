@@ -1312,7 +1312,6 @@ func (s *nameConstraintsSuite) TestCheck(c *check.C) {
 	for _, notMatching := range []string{"baz", "fooo", "foo12"} {
 		c.Check(nc.Check("slot name", notMatching, nil), check.ErrorMatches, fmt.Sprintf(`slot name %q does not match constraints`, notMatching))
 	}
-
 }
 
 func (s *nameConstraintsSuite) TestCheckSpecial(c *check.C) {

@@ -106,8 +106,8 @@ var _ = check.Suite(&hashSuite{})
 func (s *hashSuite) TestHashDirEntriesMatchesGit(c *check.C) {
 	root := c.MkDir()
 
-	c.Assert(os.WriteFile(filepath.Join(root, "launch.go"), []byte(launchGo), 0644), check.IsNil)
-	c.Assert(os.WriteFile(filepath.Join(root, "main.go"), []byte(mainGo), 0644), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(root, "launch.go"), []byte(launchGo), 0o644), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(root, "main.go"), []byte(mainGo), 0o644), check.IsNil)
 
 	digest, err := osutil.HashDirEntries(sha1.New().(hash.Cloner), root)
 	c.Assert(err, check.IsNil)
@@ -117,21 +117,21 @@ func (s *hashSuite) TestHashDirEntriesMatchesGit(c *check.C) {
 func (s *hashSuite) TestHashDirEntriesRespectsPerms(c *check.C) {
 	root := c.MkDir()
 
-	c.Assert(os.Mkdir(filepath.Join(root, "dir"), 0755), check.IsNil)
-	c.Assert(os.WriteFile(filepath.Join(root, "file"), []byte("foo"), 0644), check.IsNil)
+	c.Assert(os.Mkdir(filepath.Join(root, "dir"), 0o755), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(root, "file"), []byte("foo"), 0o644), check.IsNil)
 
 	digest, err := osutil.HashDirEntries(sha3.New384(), root)
 	c.Assert(err, check.IsNil)
 	first := hex.EncodeToString(digest)
 
-	c.Assert(os.Chmod(filepath.Join(root, "dir"), 0775), check.IsNil)
+	c.Assert(os.Chmod(filepath.Join(root, "dir"), 0o775), check.IsNil)
 
 	digest, err = osutil.HashDirEntries(sha3.New384(), root)
 	c.Assert(err, check.IsNil)
 	second := hex.EncodeToString(digest)
 	c.Check(second, check.Not(check.Equals), first)
 
-	c.Assert(os.Chmod(filepath.Join(root, "file"), 0664), check.IsNil)
+	c.Assert(os.Chmod(filepath.Join(root, "file"), 0o664), check.IsNil)
 
 	digest, err = osutil.HashDirEntries(sha3.New384(), root)
 	c.Assert(err, check.IsNil)
@@ -162,8 +162,8 @@ func (s *hashSuite) TestHashDirEntriesHandlesLinks(c *check.C) {
 func (s *hashSuite) TestHashDirEntriesMeasuresLengths(c *check.C) {
 	root := c.MkDir()
 
-	c.Assert(os.Mkdir(filepath.Join(root, "dir"), 0755), check.IsNil)
-	c.Assert(os.WriteFile(filepath.Join(root, "file"), []byte("üńîċōđę"), 0644), check.IsNil)
+	c.Assert(os.Mkdir(filepath.Join(root, "dir"), 0o755), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(root, "file"), []byte("üńîċōđę"), 0o644), check.IsNil)
 	c.Assert(os.Symlink("ŨŃĪĈŐĐĘ", filepath.Join(root, "link↦")), check.IsNil)
 
 	var metadata []byte

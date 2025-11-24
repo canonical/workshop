@@ -2,13 +2,10 @@ version: '2'
 
 formatters:
   enable:
-    - gci
+    - gofumpt
   settings:
-    gci:
-      sections:
-        - standard
-        - default
-        - Prefix(github.com/canonical/workshop)
+    gofumpt:
+    module-path: github.com/canonical/workshop
 
 linters:
   disable:

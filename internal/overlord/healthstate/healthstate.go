@@ -108,7 +108,7 @@ type HealthState struct {
 // Infers the state of a workshop based on the container's state and any of the
 // operations in progress for the workshop. The state must be locked.
 func WorkshopHealth(st *state.State, ws *workshop.Workshop) HealthState {
-	var healthState = HealthState{
+	healthState := HealthState{
 		Timestamp: time.Now(),
 	}
 
@@ -150,7 +150,7 @@ func WorkshopHealth(st *state.State, ws *workshop.Workshop) HealthState {
 // Examine the tasks of the change to fetch possible check-health hook results
 // for the workshop's SDKs.
 func sdksHealthCheckSummary(chg *state.Change) map[string]HealthCheck {
-	var sdkChecks = map[string]HealthCheck{}
+	sdkChecks := map[string]HealthCheck{}
 	for _, task := range chg.Tasks() {
 		if task.Kind() == "run-hook" {
 			var healthCheck HealthCheck
@@ -220,8 +220,10 @@ func (h *healthHandler) Before() error {
 	return nil
 }
 
-var retryTimeout = 1 * time.Second
-var retriesAllowed = 10
+var (
+	retryTimeout   = 1 * time.Second
+	retriesAllowed = 10
+)
 
 func (h *healthHandler) Done() (err error) {
 	var health HealthCheck

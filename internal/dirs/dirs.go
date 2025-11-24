@@ -119,25 +119,25 @@ func SetCacheDir(cachedir string) {
 }
 
 func CreateDirs() error {
-	if err := os.MkdirAll(BaseDir, 0755); err != nil {
+	if err := os.MkdirAll(BaseDir, 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(CacheDir, 0755); err != nil {
+	if err := os.MkdirAll(CacheDir, 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(BaseDownloads, 0755); err != nil {
+	if err := os.MkdirAll(BaseDownloads, 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(SdkDownloads, 0755); err != nil {
+	if err := os.MkdirAll(SdkDownloads, 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(WorkshopdRunDir, 0755); err != nil {
+	if err := os.MkdirAll(WorkshopdRunDir, 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(WorkshopdLocksDir, 0755); err != nil {
+	if err := os.MkdirAll(WorkshopdLocksDir, 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(WorkshopTlsDir, 0755); err != nil {
+	if err := os.MkdirAll(WorkshopTlsDir, 0o755); err != nil {
 		return err
 	}
 	return nil

@@ -280,21 +280,24 @@ func (r *Repository) Connection(connRef *ConnRef) (*Connection, error) {
 	if plug == nil {
 		return nil, &NoPlugOrSlotError{
 			message: fmt.Sprintf("SDK %q has no plug named %q",
-				connRef.PlugRef.SdkRef().ShortRef(), connRef.PlugRef.Name)}
+				connRef.PlugRef.SdkRef().ShortRef(), connRef.PlugRef.Name),
+		}
 	}
 	// Ensure that such slot exists
 	slot := r.slots[slotkey][connRef.SlotRef.Name]
 	if slot == nil {
 		return nil, &NoPlugOrSlotError{
 			message: fmt.Sprintf("SDK %q has no slot named %q",
-				connRef.SlotRef.SdkRef().ShortRef(), connRef.SlotRef.Name)}
+				connRef.SlotRef.SdkRef().ShortRef(), connRef.SlotRef.Name),
+		}
 	}
 	// Ensure that slot and plug are connected
 	conn, ok := r.slotPlugs[slot][plug]
 	if !ok {
 		return nil, &NotConnectedError{
 			message: fmt.Sprintf("no connection from %q to %q",
-				connRef.PlugRef.ShortRef(), connRef.SlotRef.ShortRef())}
+				connRef.PlugRef.ShortRef(), connRef.SlotRef.ShortRef()),
+		}
 	}
 
 	return conn, nil
@@ -484,13 +487,15 @@ func (r *Repository) Connect(ref *ConnRef, plugStaticAttrs, plugDynamicAttrs, sl
 	plug := r.plugs[plugKey][plugName]
 	if plug == nil {
 		return nil, &NoPlugOrSlotError{
-			message: fmt.Sprintf("cannot connect plug %q: plug not found", ref.PlugRef.ShortRef())}
+			message: fmt.Sprintf("cannot connect plug %q: plug not found", ref.PlugRef.ShortRef()),
+		}
 	}
 	// Ensure that such slot exists
 	slot := r.slots[slotKey][slotName]
 	if slot == nil {
 		return nil, &NoPlugOrSlotError{
-			message: fmt.Sprintf("cannot connect slot %q: slot not found", ref.SlotRef.ShortRef())}
+			message: fmt.Sprintf("cannot connect slot %q: slot not found", ref.SlotRef.ShortRef()),
+		}
 	}
 	// Ensure that plug and slot are compatible
 	if slot.Interface != plug.Interface {
@@ -671,7 +676,8 @@ func (r *Repository) connected(projectId, workshop, sk, plugOrSlotName string) (
 		sdkRef := sdk.Ref{ProjectId: projectId, Workshop: workshop, Sdk: sk}
 		return nil, &NoPlugOrSlotError{
 			message: fmt.Sprintf("SDK %q has no plug or slot named %q",
-				sdkRef.ShortRef(), plugOrSlotName)}
+				sdkRef.ShortRef(), plugOrSlotName),
+		}
 	}
 	// Collect all the relevant connections
 

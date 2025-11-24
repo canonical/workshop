@@ -92,13 +92,12 @@ func (s *apiSuite) workshopFile(ws string, sdks []*sdk.Info) *workshop.File {
 
 func (s *apiSuite) writeSDKMetaFile(c *check.C, fs fsutil.Fs, name, yaml string) {
 	sdkPath := sdk.SdkMetaDir(name)
-	c.Assert(fs.MkdirAll(sdkPath, 0755), check.IsNil)
+	c.Assert(fs.MkdirAll(sdkPath, 0o755), check.IsNil)
 	metaPath := filepath.Join(sdkPath, "sdk.yaml")
-	c.Assert(fs.WriteFile(metaPath, []byte(yaml), 0644), check.IsNil)
+	c.Assert(fs.WriteFile(metaPath, []byte(yaml), 0o644), check.IsNil)
 }
 
 func (s *apiSuite) mockInstalledSDK(c *check.C, yaml string, w string) *workshop.Workshop {
-
 	info := sdk.MockInfo(c, yaml, s.project.ProjectId, w)
 	wf := s.workshopFile(w, []*sdk.Info{info})
 	image := workshop.BaseImage{Name: wf.Base, Fingerprint: "fakeimage123"}
@@ -135,7 +134,8 @@ func (s *apiSuite) mockInstalledSDKBoundPlug(c *check.C, yaml string, w string, 
 		ProjectId: s.project.ProjectId,
 		Workshop:  w,
 		Sdk:       info.Name,
-		Name:      to}
+		Name:      to,
+	}
 	c.Assert(s.d.overlord.InterfaceManager().Repository().AddSdk(info), check.IsNil)
 	wf := s.workshopFile(w, []*sdk.Info{info})
 	image := workshop.BaseImage{Name: wf.Base, Fingerprint: "fakeimage123"}
@@ -207,7 +207,8 @@ func (s *apiSuite) TestConnectionsUnhappy(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(body, check.DeepEquals, map[string]interface{}{
 		"result": map[string]interface{}{
-			"message": "unsupported select qualifier"},
+			"message": "unsupported select qualifier",
+		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
 		"type":        "error",
@@ -475,7 +476,7 @@ func (s *apiSuite) TestConnectionsByIfaceName(c *check.C) {
 
 	s.mockInstalledSDK(c, consumerYaml, "consumer-ws")
 	s.mockInstalledSDK(c, producerYaml, "producer-ws")
-	var differentProducerYaml = `
+	differentProducerYaml := `
 name: different-producer
 base: ubuntu@22.04
 slots:
@@ -484,7 +485,7 @@ slots:
   key: value
   label: label
 `
-	var differentConsumerYaml = `
+	differentConsumerYaml := `
 name: different-consumer
 base: ubuntu@22.04
 plugs:
@@ -930,7 +931,7 @@ func (s *apiSuite) TestConnectionsSorted(c *check.C) {
 
 	d := s.daemon(c)
 
-	var anotherConsumerYaml = `
+	anotherConsumerYaml := `
 name: another-consumer-%s
 base: ubuntu@22.04
 plugs:
@@ -939,7 +940,7 @@ plugs:
   key: value
   label: label
 `
-	var anotherProducerYaml = `
+	anotherProducerYaml := `
 name: another-producer
 base: ubuntu@22.04
 slots:
@@ -1220,7 +1221,7 @@ func (s *apiSuite) TestConnectPlugFailureInterfaceMismatch(c *check.C) {
 	mockIface(c, d, &ifacetest.TestInterface{InterfaceName: "test"})
 	mockIface(c, d, &ifacetest.TestInterface{InterfaceName: "different"})
 
-	var differentProducerYaml = `
+	differentProducerYaml := `
 name: producer
 base: ubuntu@22.04
 slots:
@@ -1549,8 +1550,10 @@ func (s *apiSuite) testDisconnect(c *check.C, pW, pSdk, pName string, sW, sSdk, 
 
 	for n := range opts.bind {
 		cRef := s.connect(c, n)
-		conns[cRef.ID()] = map[string]interface{}{"interface": "test", "auto": opts.auto,
-			"plug-dynamic": map[string]interface{}{"bind": connRef.ID()}}
+		conns[cRef.ID()] = map[string]interface{}{
+			"interface": "test", "auto": opts.auto,
+			"plug-dynamic": map[string]interface{}{"bind": connRef.ID()},
+		}
 	}
 
 	st := d.Overlord().State()
@@ -1618,7 +1621,8 @@ func (s *apiSuite) TestDisconnectPlugAutoSuccess(c *check.C) {
 		map[string]interface{}{
 			"b8639dea/consumer-ws/consumer:plug b8639dea/producer-ws/producer:slot": map[string]interface{}{
 				"auto": true, "interface": "test", "undesired": true,
-			}})
+			},
+		})
 	s.d.state.Unlock()
 }
 

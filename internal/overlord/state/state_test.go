@@ -620,7 +620,6 @@ func (ss *stateSuite) TestCheckpointPreserveLastIds(c *C) {
 	c.Assert(st2.NewChange("install", "...").ID(), Equals, "2")
 
 	c.Assert(st2.NewLane(), Equals, 2)
-
 }
 
 func (ss *stateSuite) TestCheckpointPreserveCleanStatus(c *C) {

@@ -23,7 +23,7 @@ type fsSuite struct {
 
 func TestMain(m *testing.M) {
 	// Ensure consistent file permissions for fsSuite.
-	syscall.Umask(0002)
+	syscall.Umask(0o002)
 	m.Run()
 }
 
@@ -47,7 +47,7 @@ func (f *fsSuite) TestMkdirAll(c *check.C) {
 }
 
 func (f *fsSuite) TestMkdirAllExistingFile(c *check.C) {
-	c.Assert(f.fs.WriteFile("file", nil, 0666), check.IsNil)
+	c.Assert(f.fs.WriteFile("file", nil, 0o666), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"-rw-rw-r-- file"})
 	err := f.fs.MkdirAll("file/dir", os.ModePerm)
 	c.Assert(err, testutil.ErrorIs, syscall.ENOTDIR)
@@ -55,12 +55,12 @@ func (f *fsSuite) TestMkdirAllExistingFile(c *check.C) {
 }
 
 func (f *fsSuite) TestMkdirAllPerms(c *check.C) {
-	c.Assert(f.fs.MkdirAll("one/two", 0700), check.IsNil)
+	c.Assert(f.fs.MkdirAll("one/two", 0o700), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"drwx------ one"})
 	c.Check(filepath.Join(f.path, "one"), testutil.DirEquals, []string{"drwx------ two"})
 	c.Check(filepath.Join(f.path, "one", "two"), testutil.DirEquals, []string{})
 
-	c.Assert(f.fs.MkdirAll("one/two/three", 0711), check.IsNil)
+	c.Assert(f.fs.MkdirAll("one/two/three", 0o711), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"drwx------ one"})
 	c.Check(filepath.Join(f.path, "one"), testutil.DirEquals, []string{"drwx------ two"})
 	c.Check(filepath.Join(f.path, "one", "two"), testutil.DirEquals, []string{"drwx--x--x three"})
@@ -99,7 +99,7 @@ func (f *fsSuite) TestMkdirTempNoParent(c *check.C) {
 	c.Assert(err, check.ErrorMatches, fmt.Sprintf("stat %s/parent: no such file or directory", f.path))
 	c.Check(dir, check.Equals, "")
 
-	c.Assert(f.fs.Mkdir("parent", 0555), check.IsNil)
+	c.Assert(f.fs.Mkdir("parent", 0o555), check.IsNil)
 	dir, err = f.fs.MkdirTemp("parent/", "temp", os.ModePerm)
 	c.Assert(err, check.ErrorMatches, fmt.Sprintf("mkdir %s/parent/temp[0-9]*: permission denied", f.path))
 	c.Check(dir, check.Equals, "")
@@ -141,7 +141,7 @@ func (n *nameCollisionFs) OpenFile(path string, flag int, perm os.FileMode) (fsu
 }
 
 func (f *fsSuite) TestCreateTemp(c *check.C) {
-	file, err := f.fs.CreateTemp("", "test.*.png", 0666)
+	file, err := f.fs.CreateTemp("", "test.*.png", 0o666)
 	c.Assert(err, check.IsNil)
 	name := filepath.Base(file.Name())
 	c.Assert(file.Close(), check.IsNil)
@@ -158,7 +158,7 @@ func (f *fsSuite) TestCreateTempBadPattern(c *check.C) {
 
 func (f *fsSuite) TestCreateTempCollisions(c *check.C) {
 	fs := fsutil.Fs{FsBackend: &nameCollisionFs{f.fs.FsBackend, 5}}
-	file, err := fs.CreateTemp("", "temp", 0644)
+	file, err := fs.CreateTemp("", "temp", 0o644)
 	c.Assert(err, check.IsNil)
 	name := filepath.Base(file.Name())
 	c.Assert(file.Close(), check.IsNil)
@@ -173,13 +173,13 @@ func (f *fsSuite) TestCreateTempCollisions(c *check.C) {
 }
 
 func (f *fsSuite) TestWriteFile(c *check.C) {
-	c.Assert(f.fs.WriteFile("file", []byte("content"), 0644), check.IsNil)
+	c.Assert(f.fs.WriteFile("file", []byte("content"), 0o644), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"-rw-r--r-- file"})
 	content, err := f.fs.ReadFile("/file")
 	c.Assert(err, check.IsNil)
 	c.Check(string(content), check.Equals, "content")
 
-	c.Assert(f.fs.WriteFile("/file", []byte("new"), 0500), check.IsNil)
+	c.Assert(f.fs.WriteFile("/file", []byte("new"), 0o500), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"-rw-r--r-- file"})
 	content, err = f.fs.ReadFile("/file")
 	c.Assert(err, check.IsNil)
@@ -187,19 +187,19 @@ func (f *fsSuite) TestWriteFile(c *check.C) {
 }
 
 func (f *fsSuite) TestWriteFileNoDirectory(c *check.C) {
-	err := f.fs.WriteFile("/var/tmp/file", []byte("content"), 0644)
+	err := f.fs.WriteFile("/var/tmp/file", []byte("content"), 0o644)
 	c.Check(err, testutil.ErrorIs, os.ErrNotExist)
 	c.Check(f.path, testutil.DirEquals, []string{})
 }
 
 func (f *fsSuite) TestAtomicWriteTo(c *check.C) {
-	c.Assert(f.fs.AtomicWriteTo(strings.NewReader("content"), "/file", 0400), check.IsNil)
+	c.Assert(f.fs.AtomicWriteTo(strings.NewReader("content"), "/file", 0o400), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"-r-------- file"})
 	content, err := f.fs.ReadFile("file")
 	c.Assert(err, check.IsNil)
 	c.Check(string(content), check.Equals, "content")
 
-	c.Assert(f.fs.AtomicWriteTo(strings.NewReader("new"), "file", 0500), check.IsNil)
+	c.Assert(f.fs.AtomicWriteTo(strings.NewReader("new"), "file", 0o500), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"-r-x------ file"})
 	content, err = f.fs.ReadFile("/file")
 	c.Assert(err, check.IsNil)
@@ -207,14 +207,14 @@ func (f *fsSuite) TestAtomicWriteTo(c *check.C) {
 }
 
 func (f *fsSuite) TestAtomicWriteToNoDirectory(c *check.C) {
-	err := f.fs.AtomicWriteTo(strings.NewReader("content"), "/var/tmp/file", 0644)
+	err := f.fs.AtomicWriteTo(strings.NewReader("content"), "/var/tmp/file", 0o644)
 	c.Check(err, testutil.ErrorIs, os.ErrNotExist)
 	c.Check(f.path, testutil.DirEquals, []string{})
 }
 
 func (f *fsSuite) TestAtomicWriteSourceError(c *check.C) {
 	expected := errors.New("fake error")
-	err := f.fs.AtomicWriteTo(errorSource{expected}, "/file", 0644)
+	err := f.fs.AtomicWriteTo(errorSource{expected}, "/file", 0o644)
 	c.Check(err, testutil.ErrorIs, expected)
 	c.Check(f.path, testutil.DirEquals, []string{})
 }
@@ -229,7 +229,7 @@ func (s errorSource) WriteTo(w io.Writer) (int64, error) {
 
 func (f *fsSuite) TestAtomicWriteRenameFailed(c *check.C) {
 	c.Assert(f.fs.Mkdir("/file", os.ModePerm), check.IsNil)
-	err := f.fs.AtomicWriteTo(strings.NewReader("content"), "/file", 0644)
+	err := f.fs.AtomicWriteTo(strings.NewReader("content"), "/file", 0o644)
 	c.Check(err, testutil.ErrorIs, os.ErrExist)
 
 	c.Check(f.path, testutil.DirEquals, []string{"drwxrwxr-x file"})
@@ -244,7 +244,7 @@ func (f *fsSuite) TestReadFileNoDirectory(c *check.C) {
 }
 
 func (f *fsSuite) TestRemoveIfExists(c *check.C) {
-	c.Assert(f.fs.WriteFile("file", []byte("content"), 0644), check.IsNil)
+	c.Assert(f.fs.WriteFile("file", []byte("content"), 0o644), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"-rw-r--r-- file"})
 
 	err := f.fs.RemoveIfExists("file")
@@ -271,7 +271,7 @@ func (f *fsSuite) TestRemoveIfExistsEmptyDir(c *check.C) {
 
 func (f *fsSuite) TestRemoveIfExistsNonEmptyDir(c *check.C) {
 	c.Assert(f.fs.Mkdir("nonempty", os.ModePerm), check.IsNil)
-	c.Assert(f.fs.WriteFile("nonempty/file", nil, 0666), check.IsNil)
+	c.Assert(f.fs.WriteFile("nonempty/file", nil, 0o666), check.IsNil)
 	c.Check(f.path, testutil.DirEquals, []string{"drwxrwxr-x nonempty"})
 	c.Check(filepath.Join(f.path, "nonempty"), testutil.DirEquals, []string{"-rw-rw-r-- file"})
 

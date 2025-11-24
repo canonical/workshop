@@ -11,8 +11,7 @@ import (
 	"github.com/canonical/workshop/internal/workshop"
 )
 
-type projectSuite struct {
-}
+type projectSuite struct{}
 
 var _ = check.Suite(&projectSuite{})
 
@@ -28,7 +27,7 @@ connections:
 `
 
 func createWorkshop(dir, name string) error {
-	return os.WriteFile(filepath.Join(dir, workshop.Filename(name)), []byte(fmt.Sprintf(w, name)), 0644)
+	return os.WriteFile(filepath.Join(dir, workshop.Filename(name)), []byte(fmt.Sprintf(w, name)), 0o644)
 }
 
 func (p *projectSuite) TestSomeWorkshopFilesBroken(c *check.C) {
@@ -40,11 +39,11 @@ func (p *projectSuite) TestSomeWorkshopFilesBroken(c *check.C) {
 
 	c.Assert(createWorkshop(w, "w1"), check.IsNil)
 	c.Assert(createWorkshop(w, "w2"), check.IsNil)
-	c.Assert(os.MkdirAll(filepath.Join(w, "test-dir.yaml"), 0755), check.IsNil)
+	c.Assert(os.MkdirAll(filepath.Join(w, "test-dir.yaml"), 0o755), check.IsNil)
 	// broken workshop
-	c.Assert(os.WriteFile(filepath.Join(w, "wb.yaml"), []byte(wb), 0644), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(w, "wb.yaml"), []byte(wb), 0o644), check.IsNil)
 	// no match with the filename pattern
-	c.Assert(os.WriteFile(filepath.Join(w, "test-file.yml"), []byte{}, 0644), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(w, "test-file.yml"), []byte{}, 0o644), check.IsNil)
 	fls, err := project.ReadWorkshops()
 	c.Assert(err, check.IsNil)
 	c.Assert(fls, check.HasLen, 3)
@@ -71,7 +70,7 @@ func (p *projectSuite) TestSingleWorkshopFileBroken(c *check.C) {
 	d := c.MkDir()
 	project := &workshop.Project{Path: d, ProjectId: "42424242"}
 
-	c.Assert(os.WriteFile(filepath.Join(d, ".workshop.yaml"), []byte(wb), 0644), check.IsNil)
+	c.Assert(os.WriteFile(filepath.Join(d, ".workshop.yaml"), []byte(wb), 0o644), check.IsNil)
 	fls, err := project.ReadWorkshops()
 	c.Assert(fls, check.IsNil)
 	c.Assert(err, check.NotNil)
@@ -196,7 +195,7 @@ func (p *projectSuite) TestTrackProjectSubDirectory(c *check.C) {
 	}
 
 	for _, i := range cases {
-		c.Assert(os.MkdirAll(filepath.Join(root, i.project), 0755), check.IsNil)
+		c.Assert(os.MkdirAll(filepath.Join(root, i.project), 0o755), check.IsNil)
 		if i.lockFile == true {
 			project := &workshop.Project{Path: filepath.Join(root, i.project), ProjectId: "42424242"}
 			c.Assert(workshop.UpdateLock(project), check.IsNil)
@@ -205,7 +204,7 @@ func (p *projectSuite) TestTrackProjectSubDirectory(c *check.C) {
 			err := os.Symlink(filepath.Join(root, i.project), filepath.Join(root, i.cwd))
 			c.Assert(err, check.IsNil)
 		} else {
-			c.Assert(os.MkdirAll(filepath.Join(root, i.cwd), 0755), check.IsNil)
+			c.Assert(os.MkdirAll(filepath.Join(root, i.cwd), 0o755), check.IsNil)
 		}
 		_, err := os.Create(filepath.Join(root, i.expected, "workshop.yaml"))
 		c.Assert(err, check.IsNil)

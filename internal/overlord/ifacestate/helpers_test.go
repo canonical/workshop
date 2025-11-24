@@ -138,5 +138,6 @@ func (s *helpersSuite) TestSetConns(c *check.C) {
 		"42424242/ws/app:mount 42424242/ws/core:mount": map[string]interface{}{
 			"auto":      true,
 			"interface": "mount",
-		}})
+		},
+	})
 }

@@ -183,7 +183,8 @@ func (f *FakeWorkshopBackend) LaunchOrRebuildWorkshop(ctx context.Context, file 
 		ws.File = file
 		ws.Image = image
 	} else {
-		ws.Workshop = &workshop.Workshop{Backend: f,
+		ws.Workshop = &workshop.Workshop{
+			Backend: f,
 			Name:    file.Name,
 			Running: false,
 			Project: *prj,
@@ -293,8 +294,10 @@ func (f *FakeWorkshopBackend) AddWorkshopMount(ctx context.Context, name string,
 	f.workshopLock.Lock()
 	defer f.workshopLock.Unlock()
 
-	f.Workshops[projectId][name].Devices[mount.Name] = map[string]string{"type": "disk", "source": mount.What,
-		"path": mount.Where}
+	f.Workshops[projectId][name].Devices[mount.Name] = map[string]string{
+		"type": "disk", "source": mount.What,
+		"path": mount.Where,
+	}
 	return nil
 }
 
@@ -392,7 +395,7 @@ func (f *FakeWorkshopBackend) ProjectWorkshops(ctx context.Context) ([]*workshop
 	}
 	f.workshopLock.Unlock()
 
-	var workshops = make([]*workshop.Workshop, 0)
+	workshops := make([]*workshop.Workshop, 0)
 	for _, name := range names {
 		ws, _ := f.Workshop(ctx, name)
 		workshops = append(workshops, ws)
@@ -537,7 +540,7 @@ func (s *FakeWorkshopBackend) CreateVolume(ctx context.Context, info workshop.Vo
 	}
 
 	vfs := filepath.Join(s.BaseDir, "volumes", info.Name)
-	if err := os.MkdirAll(vfs, 0755); err != nil {
+	if err := os.MkdirAll(vfs, 0o755); err != nil {
 		return err
 	}
 
@@ -573,7 +576,7 @@ func (s *FakeWorkshopBackend) AttachVolume(ctx context.Context, wp, name, where 
 		return fmt.Errorf("volume %q not found", name)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(mnt), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(mnt), 0o755); err != nil {
 		return err
 	}
 

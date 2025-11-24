@@ -220,7 +220,6 @@ func (s *warningSuite) TestListWithWarnings(c *check.C) {
 		default:
 			c.Errorf("expected 2 calls, now on %d", n)
 		}
-
 	})
 	cmdList := &CmdList{root: &CmdRoot{}}
 	err := cmdList.runList()
@@ -245,5 +244,4 @@ Project        Workshop  Status  Notes
 /home/project  ws        Off     -
 `[1:])
 	c.Check(s.Stderr(), check.Equals, "WARNING: There are 2 new warnings. See 'workshop warnings'.\n")
-
 }

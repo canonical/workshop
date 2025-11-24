@@ -7,8 +7,7 @@ import (
 	"gopkg.in/check.v1"
 )
 
-type cmdUtils struct {
-}
+type cmdUtils struct{}
 
 var _ = check.Suite(&cmdUtils{})
 

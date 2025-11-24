@@ -19,6 +19,4 @@
 
 package policy
 
-var (
-	ComposeBaseDeclaration = composeBaseDeclaration
-)
+var ComposeBaseDeclaration = composeBaseDeclaration

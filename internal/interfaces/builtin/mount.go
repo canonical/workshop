@@ -67,8 +67,10 @@ const mountBaseDeclarationPlugs = `
           auto-explicit: true
 `
 
-var knownPlugAttributes = []string{"workshop-target", "mode", "uid", "gid", "read-only"}
-var knownSlotAttributes = []string{"workshop-source"}
+var (
+	knownPlugAttributes = []string{"workshop-target", "mode", "uid", "gid", "read-only"}
+	knownSlotAttributes = []string{"workshop-source"}
+)
 
 // mountInterface allows sharing content between sdks
 type mountInterface struct{}

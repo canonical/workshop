@@ -1216,7 +1216,7 @@ func (w *WorkshopManager) RemoveMany(ctx context.Context, names []string, projec
 
 	ctx = context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 
-	var workshops = make([]*workshop.Workshop, 0, len(names))
+	workshops := make([]*workshop.Workshop, 0, len(names))
 	for _, name := range names {
 		wp, err := w.backend.Workshop(ctx, name)
 		if err != nil {

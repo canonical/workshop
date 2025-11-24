@@ -129,8 +129,7 @@ func (lwn *limitedWindowNotifier) Notify(msg string) {
 	}
 }
 
-type rawPrintNotifier struct {
-}
+type rawPrintNotifier struct{}
 
 func (*rawPrintNotifier) Notify(msgstr string) {
 	col := termWidth()

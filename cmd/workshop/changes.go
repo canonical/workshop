@@ -15,7 +15,7 @@ type CmdChanges struct {
 }
 
 func (c *CmdChanges) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "changes",
 		Args:  cobra.ExactArgs(0),
 		Short: "List recent changes to the workshops in a project",

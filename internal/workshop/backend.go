@@ -17,8 +17,10 @@ import (
 	"github.com/canonical/workshop/internal/sdk"
 )
 
-type ContextKeyProjectId string
-type ContextKeyUser string
+type (
+	ContextKeyProjectId string
+	ContextKeyUser      string
+)
 
 type WorkshopConfigFilter func(config map[string]string) bool
 
@@ -29,8 +31,8 @@ const (
 	Uid = 1000
 	Gid = 1000
 
-	RootUmask   = os.FileMode(0022)
-	NormalUmask = os.FileMode(0002)
+	RootUmask   = os.FileMode(0o022)
+	NormalUmask = os.FileMode(0o002)
 )
 
 var (

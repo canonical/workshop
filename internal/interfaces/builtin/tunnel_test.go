@@ -479,10 +479,12 @@ slots:
 		Name: "tunnel-plug",
 		Connect: workshop.ProxyTarget{
 			Address:  "127.0.0.1:54321",
-			Protocol: "udp"},
+			Protocol: "udp",
+		},
 		Listen: workshop.ProxyTarget{
 			Address:  "0.0.0.0:12345",
-			Protocol: "udp"},
+			Protocol: "udp",
+		},
 		Direction: workshop.HostToWorkshop,
 	}
 	c.Check(deviceSpec.Profile.Tunnels, check.DeepEquals, []workshop.Tunnel{{ProxyEntry: expectedEntry}})
@@ -518,10 +520,12 @@ slots:
 		Name: "tunnel-plug",
 		Connect: workshop.ProxyTarget{
 			Address:  "127.0.0.1:54321",
-			Protocol: "tcp"},
+			Protocol: "tcp",
+		},
 		Listen: workshop.ProxyTarget{
 			Address:  "/run/tunnel.sock",
-			Protocol: "unix"},
+			Protocol: "unix",
+		},
 		Direction: workshop.WorkshopToHost,
 	}
 	c.Check(deviceSpec.Profile.Tunnels, check.DeepEquals, []workshop.Tunnel{{ProxyEntry: expectedEntry}})
@@ -664,10 +668,12 @@ slots:
 		Name: "tunnel-plug",
 		Connect: workshop.ProxyTarget{
 			Address:  "127.0.0.1:54321",
-			Protocol: "tcp"},
+			Protocol: "tcp",
+		},
 		Listen: workshop.ProxyTarget{
 			Address:  "127.0.0.1:54321",
-			Protocol: "tcp"},
+			Protocol: "tcp",
+		},
 		Direction: workshop.HostToWorkshop,
 	}
 	c.Check(deviceSpec.Profile.Tunnels, check.DeepEquals, []workshop.Tunnel{{ProxyEntry: expectedEntry}})
@@ -703,10 +709,12 @@ slots:
 		Name: "tunnel-plug",
 		Connect: workshop.ProxyTarget{
 			Address:  "127.0.0.1:12345",
-			Protocol: "tcp"},
+			Protocol: "tcp",
+		},
 		Listen: workshop.ProxyTarget{
 			Address:  "127.0.0.1:12345",
-			Protocol: "tcp"},
+			Protocol: "tcp",
+		},
 		Direction: workshop.WorkshopToHost,
 	}
 	c.Check(deviceSpec.Profile.Tunnels, check.DeepEquals, []workshop.Tunnel{{ProxyEntry: expectedEntry}})
@@ -877,10 +885,12 @@ slots:
 		Name: "tunnel-plug",
 		Connect: workshop.ProxyTarget{
 			Address:  "127.0.0.1:80",
-			Protocol: "tcp"},
+			Protocol: "tcp",
+		},
 		Listen: workshop.ProxyTarget{
 			Address:  "127.0.0.1:22",
-			Protocol: "tcp"},
+			Protocol: "tcp",
+		},
 		Direction: workshop.WorkshopToHost,
 	}
 	c.Check(deviceSpec.Profile.Tunnels, check.DeepEquals, []workshop.Tunnel{{ProxyEntry: expectedEntry}})
@@ -918,10 +928,12 @@ slots:
 		Name: "tunnel-plug",
 		Connect: workshop.ProxyTarget{
 			Address:  "/home/workshop/app/unix.sock",
-			Protocol: "unix"},
+			Protocol: "unix",
+		},
 		Listen: workshop.ProxyTarget{
 			Address:  socket,
-			Protocol: "unix"},
+			Protocol: "unix",
+		},
 		Direction: workshop.HostToWorkshop,
 	}
 	c.Check(deviceSpec.Profile.Tunnels, check.DeepEquals, []workshop.Tunnel{{ProxyEntry: expectedEntry}})
@@ -960,10 +972,12 @@ slots:
 		Name: "tunnel-plug",
 		Connect: workshop.ProxyTarget{
 			Address:  "/run/user/1111/app/unix.sock",
-			Protocol: "unix"},
+			Protocol: "unix",
+		},
 		Listen: workshop.ProxyTarget{
 			Address:  "/run/user/1000/app.sock",
-			Protocol: "unix"},
+			Protocol: "unix",
+		},
 		Direction: workshop.WorkshopToHost,
 	}
 	c.Check(deviceSpec.Profile.Tunnels, check.DeepEquals, []workshop.Tunnel{{ProxyEntry: expectedEntry}})

@@ -32,12 +32,13 @@ func (ss *stateSuite) TestCopyStateAlreadyExists(c *C) {
 	srcStateFile := filepath.Join(c.MkDir(), "src-state.json")
 
 	dstStateFile := filepath.Join(c.MkDir(), "dst-state.json")
-	err := os.WriteFile(dstStateFile, nil, 0644)
+	err := os.WriteFile(dstStateFile, nil, 0o644)
 	c.Assert(err, IsNil)
 
 	err = state.CopyState(srcStateFile, dstStateFile, []string{"some-data"})
 	c.Assert(err, ErrorMatches, `cannot copy state: "/.*/dst-state.json" already exists`)
 }
+
 func (ss *stateSuite) TestCopyStateNoDataEntriesToCopy(c *C) {
 	srcStateFile := filepath.Join(c.MkDir(), "src-state.json")
 	dstStateFile := filepath.Join(c.MkDir(), "dst-state.json")
@@ -84,7 +85,7 @@ const stateSuffix = `,"changes":{},"tasks":{},"last-change-id":0,"last-task-id":
 func (ss *stateSuite) TestCopyStateIntegration(c *C) {
 	// create a mock srcState
 	srcStateFile := filepath.Join(c.MkDir(), "src-state.json")
-	err := os.WriteFile(srcStateFile, srcStateContent, 0644)
+	err := os.WriteFile(srcStateFile, srcStateContent, 0o644)
 	c.Assert(err, IsNil)
 
 	// copy
@@ -109,7 +110,7 @@ var srcStateContent1 = []byte(`{
 
 func (ss *stateSuite) TestCopyState(c *C) {
 	srcStateFile := filepath.Join(c.MkDir(), "src-state.json")
-	err := os.WriteFile(srcStateFile, srcStateContent1, 0644)
+	err := os.WriteFile(srcStateFile, srcStateContent1, 0o644)
 	c.Assert(err, IsNil)
 
 	dstStateFile := filepath.Join(c.MkDir(), "dst-state.json")
@@ -123,7 +124,7 @@ func (ss *stateSuite) TestCopyState(c *C) {
 
 func (ss *stateSuite) TestCopyStateUnmarshalNotMap(c *C) {
 	srcStateFile := filepath.Join(c.MkDir(), "src-state.json")
-	err := os.WriteFile(srcStateFile, srcStateContent1, 0644)
+	err := os.WriteFile(srcStateFile, srcStateContent1, 0o644)
 	c.Assert(err, IsNil)
 
 	dstStateFile := filepath.Join(c.MkDir(), "dst-state.json")
@@ -133,7 +134,7 @@ func (ss *stateSuite) TestCopyStateUnmarshalNotMap(c *C) {
 
 func (ss *stateSuite) TestCopyStateDuplicatesInDataEntriesAreFine(c *C) {
 	srcStateFile := filepath.Join(c.MkDir(), "src-state.json")
-	err := os.WriteFile(srcStateFile, srcStateContent1, 0644)
+	err := os.WriteFile(srcStateFile, srcStateContent1, 0o644)
 	c.Assert(err, IsNil)
 
 	dstStateFile := filepath.Join(c.MkDir(), "dst-state.json")

@@ -69,7 +69,7 @@ func (p *MountProfile) Save(fname string) error {
 	if _, err := p.WriteTo(&buf); err != nil {
 		return err
 	}
-	return AtomicWriteFile(fname, buf.Bytes(), 0644, AtomicWriteFlags(0))
+	return AtomicWriteFile(fname, buf.Bytes(), 0o644, AtomicWriteFlags(0))
 }
 
 // ReadMountProfile reads and parses a mount profile.

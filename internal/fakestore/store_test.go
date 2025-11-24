@@ -10,8 +10,7 @@ import (
 	"github.com/canonical/workshop/internal/sdk"
 )
 
-type storeSuite struct {
-}
+type storeSuite struct{}
 
 var _ = check.Suite(&storeSuite{})
 
@@ -39,7 +38,7 @@ var testSdkNoBase = `name: test-sdk
 
 func (s *storeSuite) TestSdkActionInstallOK(c *check.C) {
 	r := store.FakeSdkStoreInfo(func(ctx context.Context, name, channel string) (store.StoreSdk, error) {
-		var s = store.StoreSdk{
+		s := store.StoreSdk{
 			Name:     "test-sdk",
 			Channel:  channel,
 			Revision: sdk.Revision{N: 123},
@@ -51,14 +50,15 @@ func (s *storeSuite) TestSdkActionInstallOK(c *check.C) {
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
 	store := store.New()
-	acts := []sdk.SdkAction{{
-		ProjectId: "24242424",
-		Workshop:  "test-workshop",
-		Action:    sdk.Install,
-		Name:      "test-sdk",
-		Base:      "ubuntu@20.04",
-		Channel:   "latest/stable",
-	},
+	acts := []sdk.SdkAction{
+		{
+			ProjectId: "24242424",
+			Workshop:  "test-workshop",
+			Action:    sdk.Install,
+			Name:      "test-sdk",
+			Base:      "ubuntu@20.04",
+			Channel:   "latest/stable",
+		},
 	}
 	res, err := store.SdkAction(context.Background(), acts)
 	c.Assert(res, check.HasLen, 1)
@@ -67,7 +67,7 @@ func (s *storeSuite) TestSdkActionInstallOK(c *check.C) {
 
 func (s *storeSuite) TestSdkActionInstallNoBase(c *check.C) {
 	r := store.FakeSdkStoreInfo(func(ctx context.Context, name, channel string) (store.StoreSdk, error) {
-		var s = store.StoreSdk{
+		s := store.StoreSdk{
 			Name:     "test-sdk",
 			Channel:  channel,
 			Revision: sdk.Revision{N: 123},
@@ -79,14 +79,15 @@ func (s *storeSuite) TestSdkActionInstallNoBase(c *check.C) {
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
 	store := store.New()
-	acts := []sdk.SdkAction{{
-		ProjectId: "24242424",
-		Workshop:  "test-workshop",
-		Action:    sdk.Install,
-		Name:      "test-sdk",
-		Base:      "ubuntu@20.04",
-		Channel:   "latest/stable",
-	},
+	acts := []sdk.SdkAction{
+		{
+			ProjectId: "24242424",
+			Workshop:  "test-workshop",
+			Action:    sdk.Install,
+			Name:      "test-sdk",
+			Base:      "ubuntu@20.04",
+			Channel:   "latest/stable",
+		},
 	}
 	res, err := store.SdkAction(context.Background(), acts)
 	c.Assert(res, check.HasLen, 1)

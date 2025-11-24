@@ -180,7 +180,7 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 	fs, err := f.be.WorkshopFs(f.ctx, "test")
 	c.Assert(err, check.IsNil)
 	defer fs.Close()
-	err = fs.WriteFile("/etc/config-file", nil, 0644)
+	err = fs.WriteFile("/etc/config-file", nil, 0o644)
 	c.Assert(err, check.IsNil)
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
@@ -214,14 +214,14 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 	err = b.Setup(f.ctx, cref, f.repo)
 	c.Assert(err, check.ErrorMatches, "stat /usr/local/workshop-source: file does not exist")
 
-	err = fs.WriteFile("/usr/local/workshop-source", nil, 0644)
+	err = fs.WriteFile("/usr/local/workshop-source", nil, 0o644)
 	c.Assert(err, check.IsNil)
 	err = b.Setup(f.ctx, cref, f.repo)
 	c.Assert(err, check.ErrorMatches, `mount /opt: is a directory`)
 
 	err = fs.Remove("/usr/local/workshop-source")
 	c.Assert(err, check.IsNil)
-	err = fs.Mkdir("/usr/local/workshop-source", 0755)
+	err = fs.Mkdir("/usr/local/workshop-source", 0o755)
 	c.Assert(err, check.IsNil)
 	err = b.Setup(f.ctx, cref, f.repo)
 	c.Assert(err, check.IsNil)
@@ -261,13 +261,13 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 	})
 
 	// Check that the bind mount is created for /usr/local/workshop-source -> /opt
-	err = fs.WriteFile("/opt/tmp", nil, 0644)
+	err = fs.WriteFile("/opt/tmp", nil, 0o644)
 	c.Assert(err, check.IsNil)
 	_, err = fs.Stat("/usr/local/workshop-source/tmp")
 	c.Assert(err, check.IsNil)
 
 	// Check that the bind mount is created for /etc/config-file -> /mnt/a/b
-	file, err := fs.OpenFile("/etc/config-file", os.O_RDWR, 0644)
+	file, err := fs.OpenFile("/etc/config-file", os.O_RDWR, 0o644)
 	c.Assert(err, check.IsNil)
 	_, err = file.Write([]byte("data"))
 	file.Close()
@@ -280,7 +280,7 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 	info, err = fs.Stat("/mnt/a")
 	c.Assert(err, check.IsNil)
 	c.Check(info.IsDir(), check.Equals, true)
-	c.Check(info.Mode().Perm(), check.Equals, os.FileMode(0777))
+	c.Check(info.Mode().Perm(), check.Equals, os.FileMode(0o777))
 	stat, ok := info.Sys().(*sftp.FileStat)
 	c.Assert(ok, check.Equals, true)
 	c.Check(stat.UID, check.Equals, uint32(0))

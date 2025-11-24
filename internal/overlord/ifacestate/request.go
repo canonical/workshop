@@ -94,7 +94,7 @@ func maybeAddDisconnect(st *state.State, ts *state.TaskSet, conn interfaces.Conn
 
 func disconnect(st *state.State, plugW *workshop.Workshop, conn *interfaces.ConnRef, forget bool, seen map[interfaces.ConnRef]bool) (*state.TaskSet, error) {
 	master, affected := MaybeBound(plugW, conn.PlugRef)
-	var ts = state.NewTaskSet()
+	ts := state.NewTaskSet()
 
 	cref := interfaces.ConnRef{PlugRef: master, SlotRef: conn.SlotRef}
 	maybeAddDisconnect(st, ts, cref, forget, seen)

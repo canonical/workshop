@@ -35,8 +35,8 @@ func (f *workshopSuite) SetUpTest(c *check.C) {
 }
 
 func writeFile(c *check.C, path string, content string) {
-	c.Assert(os.MkdirAll(filepath.Dir(path), 0755), check.IsNil)
-	c.Assert(os.WriteFile(path, []byte(content), 0644), check.IsNil)
+	c.Assert(os.MkdirAll(filepath.Dir(path), 0o755), check.IsNil)
+	c.Assert(os.WriteFile(path, []byte(content), 0o644), check.IsNil)
 }
 
 func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {

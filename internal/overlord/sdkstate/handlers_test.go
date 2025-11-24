@@ -48,7 +48,7 @@ var _ = check.Suite(&sdkStateSuite{})
 
 func TestMain(m *testing.M) {
 	// Ensure consistent file permissions for sdkStateSuite.
-	syscall.Umask(0002)
+	syscall.Umask(0o002)
 	m.Run()
 }
 
@@ -141,7 +141,7 @@ func (s *sdkStateSuite) SetUpTest(c *check.C) {
 	s.se.AddManager(s.sdkmgr)
 	s.se.AddManager(s.runner)
 
-	s.installTime = time.Date(2023, 04, 25, 1, 2, 3, 0, time.UTC)
+	s.installTime = time.Date(2023, 4, 25, 1, 2, 3, 0, time.UTC)
 	s.restoreInstallTime = testutil.FakeFunc(func() time.Time { return s.installTime }, &workshop.InstallTimeNow)
 
 	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04", Sdks: []workshop.SdkRecord{
@@ -157,9 +157,9 @@ func (s *sdkStateSuite) mockSdk(c *check.C, meta sdk.Meta) {
 	vfs := c.MkDir()
 
 	path := filepath.Join(vfs, "meta", "sdk.yaml")
-	err := os.MkdirAll(filepath.Dir(path), 0755)
+	err := os.MkdirAll(filepath.Dir(path), 0o755)
 	c.Assert(err, check.IsNil)
-	err = os.WriteFile(path, []byte(meta.SdkYAML), 0644)
+	err = os.WriteFile(path, []byte(meta.SdkYAML), 0o644)
 	c.Assert(err, check.IsNil)
 	volume := workshop.VolumeSetup{
 		Name:     sdk.VolumeName(meta.Name, meta.Revision),

@@ -14,12 +14,14 @@ import (
 )
 
 const (
-	serverMkdirMode = 0755
-	serverOpenMode  = 0644
+	serverMkdirMode = 0o755
+	serverOpenMode  = 0o644
 )
 
-var sftpStatusError = regexp.MustCompile(`^sftp: (.*) \([^()]*\)$`)
-var fileExistsError = regexp.MustCompile(`^([a-z]*) .*: file exists$`)
+var (
+	sftpStatusError = regexp.MustCompile(`^sftp: (.*) \([^()]*\)$`)
+	fileExistsError = regexp.MustCompile(`^([a-z]*) .*: file exists$`)
+)
 
 func NewSftpFs(client *sftp.Client, umask os.FileMode) Fs {
 	return Fs{&sftpFs{client, umask}}

@@ -36,7 +36,8 @@ var _ = Suite(&SortingSuite{})
 func newConnRef(plugWs, plugSdk, plug, slotWs, slotSdk, slot string) *interfaces.ConnRef {
 	return &interfaces.ConnRef{
 		PlugRef: sdk.PlugRef{Workshop: plugWs, Sdk: plugSdk, Name: plug},
-		SlotRef: sdk.SlotRef{Workshop: slotWs, Sdk: slotSdk, Name: slot}}
+		SlotRef: sdk.SlotRef{Workshop: slotWs, Sdk: slotSdk, Name: slot},
+	}
 }
 
 func (s *SortingSuite) TestByInterfaceName(c *C) {

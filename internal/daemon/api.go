@@ -20,83 +20,84 @@ import (
 	"github.com/canonical/workshop/internal/overlord/state"
 )
 
-var api = []*Command{{
-	// See daemon.go:canAccess for details how the access is controlled.
-	Path:    "/v1/projects",
-	GuestOK: false,
-	UserOK:  true,
-	GET:     v1GetProjects,
-	POST:    v1PostProjects,
-}, {
-	Path:    "/v1/sdks",
-	GuestOK: false,
-	UserOK:  true,
-	GET:     v1GetSdks,
-}, {
-	Path:    "/v1/sdks/{name}",
-	GuestOK: false,
-	UserOK:  true,
-	GET:     v1GetSdkInfo,
-}, {
-	Path:    "/v1/projects/{id}/workshops",
-	GuestOK: false,
-	UserOK:  true,
-	GET:     v1GetProjectWorkshops,
-	POST:    v1PostProjectWorkshop,
-}, {
-	Path:    "/v1/projects/{id}/workshops/{name}/exec",
-	GuestOK: false,
-	UserOK:  true,
-	POST:    v1PostWorkshopExec,
-}, {
-	Path:    "/v1/projects/{id}/workshops/{name}",
-	GuestOK: false,
-	UserOK:  true,
-	GET:     v1GetProjectWorkshop,
-}, {
-	Path:    "/v1/projects/{id}/workshops/{name}/mounts",
-	GuestOK: false,
-	UserOK:  true,
-	POST:    v1PostWorkshopMount,
-}, {
-	Path:    "/v1/projects/{id}/workshops/{name}/actions",
-	GuestOK: false,
-	UserOK:  true,
-	GET:     v1GetProjectWorkshopActions,
-}, {
-	Path:    "/v1/connections",
-	GuestOK: false,
-	UserOK:  true,
-	GET:     v1GetConnections,
-	POST:    v1PostConnections,
-}, {
-	Path:   "/v1/changes",
-	UserOK: true,
-	GET:    v1GetChanges,
-}, {
-	Path:   "/v1/warnings",
-	UserOK: true,
-	GET:    v1GetWarnings,
-	POST:   v1PostWarnings,
-}, {
-	Path:   "/v1/changes/{id}",
-	UserOK: true,
-	GET:    v1GetChange,
-	POST:   v1PostChange,
-}, {
-	Path:   "/v1/changes/{id}/wait",
-	UserOK: true,
-	GET:    v1GetChangeWait,
-}, {
-	Path:   "/v1/tasks/{task-id}/websocket/{websocket-id}",
-	UserOK: true,
-	GET:    v1GetTaskWebsocket,
-}, {
-	Path:        "/v1/workshopctl",
-	UserOK:      true,
-	UntrustedOK: true,
-	POST:        v1PostWorkshopCtl,
-},
+var api = []*Command{
+	{
+		// See daemon.go:canAccess for details how the access is controlled.
+		Path:    "/v1/projects",
+		GuestOK: false,
+		UserOK:  true,
+		GET:     v1GetProjects,
+		POST:    v1PostProjects,
+	}, {
+		Path:    "/v1/sdks",
+		GuestOK: false,
+		UserOK:  true,
+		GET:     v1GetSdks,
+	}, {
+		Path:    "/v1/sdks/{name}",
+		GuestOK: false,
+		UserOK:  true,
+		GET:     v1GetSdkInfo,
+	}, {
+		Path:    "/v1/projects/{id}/workshops",
+		GuestOK: false,
+		UserOK:  true,
+		GET:     v1GetProjectWorkshops,
+		POST:    v1PostProjectWorkshop,
+	}, {
+		Path:    "/v1/projects/{id}/workshops/{name}/exec",
+		GuestOK: false,
+		UserOK:  true,
+		POST:    v1PostWorkshopExec,
+	}, {
+		Path:    "/v1/projects/{id}/workshops/{name}",
+		GuestOK: false,
+		UserOK:  true,
+		GET:     v1GetProjectWorkshop,
+	}, {
+		Path:    "/v1/projects/{id}/workshops/{name}/mounts",
+		GuestOK: false,
+		UserOK:  true,
+		POST:    v1PostWorkshopMount,
+	}, {
+		Path:    "/v1/projects/{id}/workshops/{name}/actions",
+		GuestOK: false,
+		UserOK:  true,
+		GET:     v1GetProjectWorkshopActions,
+	}, {
+		Path:    "/v1/connections",
+		GuestOK: false,
+		UserOK:  true,
+		GET:     v1GetConnections,
+		POST:    v1PostConnections,
+	}, {
+		Path:   "/v1/changes",
+		UserOK: true,
+		GET:    v1GetChanges,
+	}, {
+		Path:   "/v1/warnings",
+		UserOK: true,
+		GET:    v1GetWarnings,
+		POST:   v1PostWarnings,
+	}, {
+		Path:   "/v1/changes/{id}",
+		UserOK: true,
+		GET:    v1GetChange,
+		POST:   v1PostChange,
+	}, {
+		Path:   "/v1/changes/{id}/wait",
+		UserOK: true,
+		GET:    v1GetChangeWait,
+	}, {
+		Path:   "/v1/tasks/{task-id}/websocket/{websocket-id}",
+		UserOK: true,
+		GET:    v1GetTaskWebsocket,
+	}, {
+		Path:        "/v1/workshopctl",
+		UserOK:      true,
+		UntrustedOK: true,
+		POST:        v1PostWorkshopCtl,
+	},
 }
 
 var (

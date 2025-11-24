@@ -44,9 +44,11 @@ type waitMixin struct {
 	colorMixin
 }
 
-var errNoWait = errors.New("no wait for op")
-var errWaitOnError = errors.New("wait-on-error")
-var errUndone = errors.New("change undone")
+var (
+	errNoWait      = errors.New("no wait for op")
+	errWaitOnError = errors.New("wait-on-error")
+	errUndone      = errors.New("change undone")
+)
 
 //nolint:unparam // Copied from snapd.
 func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error) {
@@ -61,7 +63,6 @@ func (wmx waitMixin) wait(cli *client.Client, id string) (*client.Change, error)
 
 	signal.Notify(c, os.Interrupt)
 	go func() {
-
 		sig := <-c
 		if sig != nil && wmx.skipAbort {
 			fmt.Fprintln(Stdout, "cannot interrupt: it may break the workshop, please wait until the operation is finished")

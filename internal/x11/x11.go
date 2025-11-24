@@ -49,10 +49,10 @@ func MigrateXauthority(user *user.User, xauth string) (err error) {
 	// parent folder is mounted inside the workshop.
 	// https://discuss.linuxcontainers.org/t/mount-single-file/17975
 	destDir := filepath.Join(dirs.WorkshopdRunDir, user.Uid, "Xauthority")
-	if err := os.MkdirAll(dirs.WorkshopdRunDir, 0755); err != nil {
+	if err := os.MkdirAll(dirs.WorkshopdRunDir, 0o755); err != nil {
 		return err
 	}
-	if err := osutil.MkdirAllChown(destDir, 0700, uid, gid); err != nil {
+	if err := osutil.MkdirAllChown(destDir, 0o700, uid, gid); err != nil {
 		return err
 	}
 

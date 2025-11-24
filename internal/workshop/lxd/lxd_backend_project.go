@@ -343,7 +343,7 @@ func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, pr
 }
 
 func readProjects(jsonData []byte) ([]workshop.Project, error) {
-	var projects = make([]workshop.Project, 0)
+	projects := make([]workshop.Project, 0)
 	if len(jsonData) == 0 {
 		return projects, nil
 	}

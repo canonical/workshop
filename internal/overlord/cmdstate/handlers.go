@@ -183,10 +183,10 @@ func (e *execution) do(ctx context.Context, task *state.Task, backend workshop.B
 	var beforeClosers []io.Closer
 	var afterClosers []io.Closer
 
-	var stdinReader, stdinWriter = io.Pipe()
+	stdinReader, stdinWriter := io.Pipe()
 	afterClosers = append(afterClosers, stdinReader)
 
-	var stdoutReader, stdoutWriter = io.Pipe()
+	stdoutReader, stdoutWriter := io.Pipe()
 	beforeClosers = append(beforeClosers, stdoutWriter)
 	afterClosers = append(afterClosers, stdoutReader)
 
@@ -384,7 +384,8 @@ func (m *CommandManager) doInstallAction(task *state.Task, tomb *tomb.Tomb) erro
 	}
 
 	path := filepath.Join(dirs.WorkshopActionsDir, name)
-	command := []string{"sudo",
+	command := []string{
+		"sudo",
 		"-u",
 		"#" + strconv.Itoa(args.UserId),
 		"-g", "#" + strconv.Itoa(args.GroupId),
@@ -403,11 +404,11 @@ func (m *CommandManager) doInstallAction(task *state.Task, tomb *tomb.Tomb) erro
 	}
 	defer wfs.Close()
 
-	if err := wfs.MkdirAll(dirs.WorkshopActionsDir, 0755); err != nil {
+	if err := wfs.MkdirAll(dirs.WorkshopActionsDir, 0o755); err != nil {
 		return err
 	}
 
-	if err := wfs.AtomicWriteTo(strings.NewReader(string(action)), path, 0644); err != nil {
+	if err := wfs.AtomicWriteTo(strings.NewReader(string(action)), path, 0o644); err != nil {
 		return err
 	}
 

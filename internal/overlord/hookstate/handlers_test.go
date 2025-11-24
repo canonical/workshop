@@ -210,7 +210,7 @@ func (s *hookSuite) TestExecRestoreState(c *check.C) {
 	// case).
 	vfs := s.backend.SdkVolumeContents[volume.Name]
 	c.Check(err, check.IsNil)
-	err = os.MkdirAll(filepath.Join(vfs, "sdk", "one"), 0755)
+	err = os.MkdirAll(filepath.Join(vfs, "sdk", "one"), 0o755)
 	c.Check(err, check.IsNil)
 
 	s.state.Unlock()
@@ -541,17 +541,17 @@ func (s *hookSuite) launchWorkshop(c *check.C, newsdk string) {
 	c.Check(err, check.IsNil)
 	defer ws.Close()
 	c.Check(err, check.IsNil)
-	err = ws.MkdirAll(sdk.SdkHooksDir(newsdk), 0744)
+	err = ws.MkdirAll(sdk.SdkHooksDir(newsdk), 0o744)
 	c.Check(err, check.IsNil)
-	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.SaveState.String()), nil, 0644)
+	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.SaveState.String()), nil, 0o644)
 	c.Check(err, check.IsNil)
-	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.RestoreState.String()), nil, 0644)
+	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.RestoreState.String()), nil, 0o644)
 	c.Check(err, check.IsNil)
-	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.SetupBase.String()), nil, 0644)
+	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.SetupBase.String()), nil, 0o644)
 	c.Check(err, check.IsNil)
-	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.SetupProject.String()), nil, 0644)
+	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.SetupProject.String()), nil, 0o644)
 	c.Check(err, check.IsNil)
-	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.FakeHook.String()), nil, 0644)
+	err = ws.WriteFile(sdk.SdkHookPath(newsdk, hookstate.FakeHook.String()), nil, 0o644)
 	c.Check(err, check.IsNil)
 }
 

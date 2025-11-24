@@ -72,8 +72,10 @@ func (m *workshopLaunch) TestLaunchWaitOnErrorFailed(c *check.C) {
 		case 2:
 			c.Check(r.Method, check.Equals, "POST")
 			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
-			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{"action": "launch",
-				"names": []interface{}{"ws"}, "options": map[string]interface{}{"mode": "wait-on-error"}})
+			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{
+				"action": "launch",
+				"names":  []interface{}{"ws"}, "options": map[string]interface{}{"mode": "wait-on-error"},
+			})
 			w.WriteHeader(202)
 			fmt.Fprintln(w, `{"type":"async", "change": "42", "status-code": 202}`)
 		case 3:
@@ -109,8 +111,10 @@ func (m *workshopLaunch) TestLaunchWaitOnErrorAbortedSuccessfully(c *check.C) {
 		case 2:
 			c.Check(r.Method, check.Equals, "POST")
 			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
-			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{"action": "launch",
-				"names": []interface{}{"ws"}, "options": map[string]interface{}{"mode": "abort"}})
+			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{
+				"action": "launch",
+				"names":  []interface{}{"ws"}, "options": map[string]interface{}{"mode": "abort"},
+			})
 			w.WriteHeader(202)
 			fmt.Fprintln(w, `{"type":"async", "change": "42", "status-code": 202}`)
 		case 3:
@@ -143,8 +147,10 @@ func (m *workshopLaunch) TestLaunchWaitOnErrorContinuedSuccessfully(c *check.C) 
 		case 2:
 			c.Check(r.Method, check.Equals, "POST")
 			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
-			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{"action": "launch",
-				"names": []interface{}{"ws"}, "options": map[string]interface{}{"mode": "continue"}})
+			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{
+				"action": "launch",
+				"names":  []interface{}{"ws"}, "options": map[string]interface{}{"mode": "continue"},
+			})
 			w.WriteHeader(202)
 			fmt.Fprintln(w, `{"type":"async", "change": "42", "status-code": 202}`)
 		case 3:

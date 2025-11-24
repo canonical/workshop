@@ -57,7 +57,7 @@ func NewFileLockWithMode(path string, mode os.FileMode) (*FileLock, error) {
 
 // NewFileLock creates and opens the lock file given by "path" with mode 0600.
 func NewFileLock(path string) (*FileLock, error) {
-	return NewFileLockWithMode(path, 0600)
+	return NewFileLockWithMode(path, 0o600)
 }
 
 // Path returns the path of the lock file.

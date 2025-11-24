@@ -82,9 +82,9 @@ func (s *interfaceManagerSuite) mockSdk(c *check.C, meta sdk.Meta) {
 	vfs := c.MkDir()
 
 	path := filepath.Join(vfs, "meta", "sdk.yaml")
-	err := os.MkdirAll(filepath.Dir(path), 0755)
+	err := os.MkdirAll(filepath.Dir(path), 0o755)
 	c.Assert(err, check.IsNil)
-	err = os.WriteFile(path, []byte(meta.SdkYAML), 0644)
+	err = os.WriteFile(path, []byte(meta.SdkYAML), 0o644)
 	c.Assert(err, check.IsNil)
 
 	s.state.Lock()
@@ -111,7 +111,7 @@ func (s *interfaceManagerSuite) launchWorkshop(c *check.C, ws string, sdks []sdk
 	t, err := template.New("workshop").Parse(fmt.Sprintf(workshopTemplate, ws))
 	c.Assert(err, check.IsNil)
 
-	var workshopFile = bytes.NewBuffer([]byte{})
+	workshopFile := bytes.NewBuffer([]byte{})
 	t.Execute(workshopFile, sdks)
 
 	var wf workshop.File
@@ -156,7 +156,7 @@ func (s *interfaceManagerSuite) launchWorkshop(c *check.C, ws string, sdks []sdk
 }
 
 func (s *interfaceManagerSuite) TestManagerReloadsConnections(c *check.C) {
-	var consumerYaml = `
+	consumerYaml := `
 name: consumer
 base: ubuntu@22.04
 plugs:
@@ -196,7 +196,8 @@ plugs:
 	c.Assert(ifaces.Connections, check.HasLen, 1)
 	cref := &interfaces.ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.prj.ProjectId, Workshop: "ws", Sdk: "consumer", Name: "plug"},
-		SlotRef: sdk.SlotRef{ProjectId: s.prj.ProjectId, Workshop: "ws", Sdk: sdk.System.String(), Name: "mount"}}
+		SlotRef: sdk.SlotRef{ProjectId: s.prj.ProjectId, Workshop: "ws", Sdk: sdk.System.String(), Name: "mount"},
+	}
 	c.Check(ifaces.Connections, check.DeepEquals, []*interfaces.ConnRef{cref})
 
 	conn, err := repo.Connection(cref)
@@ -214,7 +215,7 @@ plugs:
 }
 
 func (s *interfaceManagerSuite) TestManagerDoesntReloadUndesiredAutoconnections(c *check.C) {
-	var consumerYaml = `
+	consumerYaml := `
 name: consumer
 base: ubuntu@22.04
 plugs:
@@ -225,7 +226,7 @@ plugs:
   interface: mount
 `
 
-	var producerYaml = `
+	producerYaml := `
 name: producer
 base: ubuntu@22.04
 slots:
@@ -257,7 +258,7 @@ slots:
 }
 
 func (s *interfaceManagerSuite) TestManagerRemovesNonexistingAutoConnectionss(c *check.C) {
-	var consumerYaml = `
+	consumerYaml := `
 name: consumer
 base: ubuntu@22.04
 plugs:
@@ -268,7 +269,7 @@ plugs:
   interface: mount
 `
 
-	var producerYaml = `
+	producerYaml := `
 name: producer
 base: ubuntu@22.04
 slots:
@@ -317,7 +318,8 @@ func (s *interfaceManagerSuite) TestConnectionStatesAutoManual(c *check.C) {
 			DynamicSlotAttrs: map[string]interface{}{
 				"other-number": int64(9),
 			},
-		}})
+		},
+	})
 }
 
 func (s *interfaceManagerSuite) TestConnectionStatesUndesired(c *check.C) {
@@ -339,7 +341,8 @@ func (s *interfaceManagerSuite) TestConnectionStatesUndesired(c *check.C) {
 			DynamicSlotAttrs: map[string]interface{}{
 				"other-number": int64(9),
 			},
-		}})
+		},
+	})
 }
 
 func (s *interfaceManagerSuite) testConnectionStates(c *check.C, auto, undesired bool, expected map[string]ifacestate.ConnectionState) {

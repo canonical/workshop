@@ -349,7 +349,6 @@ func (ts *taskRunnerSuite) TestSequenceTests(c *C) {
 }
 
 func (ts *taskRunnerSuite) TestAbortAcrossLanesDescendantTask(c *C) {
-
 	// <task>(<lane>)
 	//  t11(1) -> t12(1)                                                  => t15(1)
 	//                   \                                               /
@@ -454,7 +453,6 @@ func (ts *taskRunnerSuite) TestAbortAcrossLanesDescendantTask(c *C) {
 }
 
 func (ts *taskRunnerSuite) TestAbortAcrossLanesStriclyOrderedTasks(c *C) {
-
 	// <task>(<lane>)
 	//  t11(1) -> t12(1)
 	//                   \
@@ -1195,7 +1193,8 @@ func (ts *taskRunnerSuite) TestUndoSequence(c *C) {
 		"undo:5",
 		"undo:3",
 		"undo:2",
-		"undo:1"})
+		"undo:1",
+	})
 }
 
 func (ts *taskRunnerSuite) TestKnownTaskKinds(c *C) {

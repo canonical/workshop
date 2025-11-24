@@ -39,7 +39,7 @@ func (s *hooktestSuite) SetUpTest(c *C) {
 }
 
 func (s *hooktestSuite) TestBefore(c *C) {
-	var callbackCalled = false
+	callbackCalled := false
 	s.mockHandler.BeforeCallback = func() {
 		callbackCalled = true
 	}
@@ -56,7 +56,7 @@ func (s *hooktestSuite) TestBeforeError(c *C) {
 }
 
 func (s *hooktestSuite) TestDone(c *C) {
-	var callbackCalled = false
+	callbackCalled := false
 	s.mockHandler.DoneCallback = func() {
 		callbackCalled = true
 	}

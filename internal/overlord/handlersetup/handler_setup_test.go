@@ -61,7 +61,6 @@ func (s *CommonStateFuncs) TestChangeWaitOnError(c *check.C) {
 	c.Assert(task.Log(), check.HasLen, 1)
 	c.Assert(task.Log()[0], check.Matches, ".*task failed")
 	s.state.Unlock()
-
 }
 
 func (s *CommonStateFuncs) TestExecutionOnDoRetry(c *check.C) {

@@ -20,7 +20,7 @@ type CmdList struct {
 }
 
 func (c *CmdList) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list",
 		Args:  cobra.ExactArgs(0),
 		Short: "List project workshops",

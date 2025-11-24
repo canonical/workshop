@@ -68,8 +68,9 @@ type ExecArgs struct {
 	action   bool
 }
 
-var shortExecHelp = "Run a command and wait for it to complete"
-var longExecHelp = `
+var (
+	shortExecHelp = "Run a command and wait for it to complete"
+	longExecHelp  = `
 The 'exec' subcommand runs an arbitrary command in the specified workshop,
 waiting for it to complete. If a timeout elapses before that, it's terminated.
 
@@ -100,9 +101,11 @@ Notes:
 - You can set the working directory, environment variables, user and group ID
   for running the command in the workshop; reasonable defaults are provided.
 `
+)
 
-var shortShellHelp = "Start an interactive terminal session for the workshop"
-var longShellHelp = `
+var (
+	shortShellHelp = "Start an interactive terminal session for the workshop"
+	longShellHelp  = `
 The 'shell' subcommand runs an interactive terminal session
 in the specified workshop.
 
@@ -117,9 +120,11 @@ Notes:
   it launches the login shell for 'workshop',
   the default non-privileged user in a workshop.
 `
+)
 
-var shortRunHelp = "Run a workshop action and wait for it to complete"
-var longRunHelp = `
+var (
+	shortRunHelp = "Run a workshop action and wait for it to complete"
+	longRunHelp  = `
 The 'run' subcommand runs an action specified in the workshop definition file,
 waiting for it to complete. If a timeout elapses before that, it's terminated.
 
@@ -151,14 +156,17 @@ Notes:
 - You can set the working directory, environment variables, user and group ID
   for running the action in the workshop; reasonable defaults are provided.
 `
+)
 
-var shortActionsHelp = "List workshop actions"
-var longActionsHelp = `
+var (
+	shortActionsHelp = "List workshop actions"
+	longActionsHelp  = `
 This command enumerates all actions in the workshop, printing a YAML map.
 `
+)
 
 func (c *CmdExec) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "exec [flags] [<WORKSHOP>] [--] <COMMAND>...",
 		Args:  maybeNameAndCommand,
 		Short: shortExecHelp,
@@ -231,7 +239,7 @@ func (c *CmdExec) Run(cmd *cobra.Command, av []string) error {
 }
 
 func (c *CmdShell) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "shell [<WORKSHOP>]",
 		Args:  cobra.MaximumNArgs(1),
 		Short: shortShellHelp,
@@ -269,7 +277,7 @@ func (c *CmdShell) Run(cmd *cobra.Command, av []string) error {
 }
 
 func (c *CmdRun) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "run [flags] [<WORKSHOP>] [--] <ACTION> <ARGUMENTS>...",
 		Args:  maybeNameAndAction,
 		Short: shortRunHelp,
@@ -437,7 +445,8 @@ func exec(root *CmdRoot, flags *ExecFlags, args *ExecArgs) error {
 		// ignores the instance configuration by design:
 		// https://documentation.ubuntu.com/lxd/en/latest/instance-exec/#user-groups-and-working-directory
 
-		command := []string{"sudo",
+		command := []string{
+			"sudo",
 			"-u",
 			"#" + strconv.Itoa(flags.UserId),
 			"-g",
@@ -643,7 +652,7 @@ type CmdActions struct {
 }
 
 func (c *CmdActions) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "actions [<WORKSHOP>]",
 		Args:  cobra.MaximumNArgs(1),
 		Short: shortActionsHelp,

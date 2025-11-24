@@ -108,7 +108,7 @@ printf '%s\n' "$@"
 	err = os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(path, []byte(testYaml), 0644)
+	err = os.WriteFile(path, []byte(testYaml), 0o644)
 	c.Assert(err, check.IsNil)
 
 	_, _, err = bd.CreateOrLoadProject(ctx, dir)
@@ -130,14 +130,14 @@ func MockSdkTarball(c *check.C, sdkname, path, meta string) string {
 	sdkfs := filepath.Join(path, sdkname)
 
 	metadir := filepath.Join(sdkfs, "meta")
-	err := os.MkdirAll(metadir, 0755)
+	err := os.MkdirAll(metadir, 0o755)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(filepath.Join(metadir, "sdk.yaml"), []byte(meta), 0644)
+	err = os.WriteFile(filepath.Join(metadir, "sdk.yaml"), []byte(meta), 0o644)
 	c.Assert(err, check.IsNil)
 
 	hooksdir := filepath.Join(sdkfs, "sdk", "hooks")
-	err = os.MkdirAll(hooksdir, 0755)
+	err = os.MkdirAll(hooksdir, 0o755)
 	c.Assert(err, check.IsNil)
 
 	tarball := filepath.Join(path, fmt.Sprintf("%s_1.sdk", sdkname))

@@ -8,8 +8,7 @@ import (
 	lxdbackend "github.com/canonical/workshop/internal/workshop/lxd"
 )
 
-type ProfileSuite struct {
-}
+type ProfileSuite struct{}
 
 var _ = check.Suite(&ProfileSuite{})
 
@@ -32,9 +31,11 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					What:      "/home",
 					Where:     "/opt",
 					MakeWhere: true,
-					Mode:      0123,
+					Mode:      0o123,
 					Owner:     45,
-					Group:     67}},
+					Group:     67,
+				},
+			},
 		}, {
 			Sdk:    "sdk",
 			Mounts: map[string]workshop.Mount{},
@@ -43,11 +44,15 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					Name: "http",
 					Connect: workshop.ProxyTarget{
 						Address:  "127.0.0.1:8080",
-						Protocol: "tcp"},
+						Protocol: "tcp",
+					},
 					Listen: workshop.ProxyTarget{
 						Address:  "0.0.0.0:8000",
-						Protocol: "tcp"},
-					Direction: workshop.HostToWorkshop}}},
+						Protocol: "tcp",
+					},
+					Direction: workshop.HostToWorkshop,
+				},
+			}},
 		}, {
 			Sdk:    "sdk",
 			Mounts: map[string]workshop.Mount{},
@@ -62,7 +67,9 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 						Address:  ".workshop.socket",
 						Protocol: "unix",
 					},
-					Direction: workshop.WorkshopToHost}},
+					Direction: workshop.WorkshopToHost,
+				},
+			},
 		}, {
 			Sdk:    "sdk",
 			Mounts: map[string]workshop.Mount{},
@@ -77,7 +84,9 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 						Address:  ".workshop.socket",
 						Protocol: "unix",
 					},
-					Direction: workshop.WorkshopToHost}},
+					Direction: workshop.WorkshopToHost,
+				},
+			},
 		}, {
 			Sdk: "sdk",
 			Mounts: map[string]workshop.Mount{
@@ -85,7 +94,10 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					Name:  "plug",
 					What:  "/var",
 					Where: "/etc",
-					Type:  workshop.WorkshopWorkshop}}},
+					Type:  workshop.WorkshopWorkshop,
+				},
+			},
+		},
 	}
 
 	for i, t := range []struct {
@@ -109,12 +121,15 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					"type":              "unix-hotplug",
 					"subsystem":         "media",
 					"required":          "false",
-					"ownership.inherit": "true"}},
+					"ownership.inherit": "true",
+				},
+			},
 			map[string]string{
 				"user.workshop.sdk_camera":                  `{"name": "camera"}`,
 				"user.workshop.sdk_camera.type":             "camera",
 				"user.workshop.sdk_camera_video4linux.type": "camera",
-				"user.workshop.sdk_camera_media.type":       "camera"},
+				"user.workshop.sdk_camera_media.type":       "camera",
+			},
 		}, {
 			"sdk",
 			map[string]map[string]string{
@@ -122,7 +137,9 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					"type":    "gpu",
 					"gputype": "physical",
 					"uid":     "1000",
-					"gid":     "1000"}},
+					"gid":     "1000",
+				},
+			},
 			map[string]string{},
 		}, {
 			"sdk",
@@ -135,7 +152,9 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					"user.make-path":   "true",
 					"user.path-mode":   "0o123",
 					"user.path-owner":  "45",
-					"user.path-group":  "67"}},
+					"user.path-group":  "67",
+				},
+			},
 			map[string]string{},
 		}, {
 			"sdk",
@@ -144,9 +163,12 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					"type":    "proxy",
 					"connect": "tcp:127.0.0.1:8080",
 					"listen":  "tcp:0.0.0.0:8000",
-					"bind":    "host"}},
+					"bind":    "host",
+				},
+			},
 			map[string]string{
-				"user.workshop.sdk_http.type": "tunnel"},
+				"user.workshop.sdk_http.type": "tunnel",
+			},
 		}, {
 			"sdk",
 			map[string]map[string]string{
@@ -156,9 +178,12 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					"listen":  "unix:.workshop.socket",
 					"uid":     "1000",
 					"gid":     "1000",
-					"bind":    "instance"}},
+					"bind":    "instance",
+				},
+			},
 			map[string]string{
-				"user.workshop.sdk_ssh-agent.type": "ssh-agent"},
+				"user.workshop.sdk_ssh-agent.type": "ssh-agent",
+			},
 		}, {
 			"sdk",
 			map[string]map[string]string{
@@ -168,21 +193,27 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					"listen":  "unix:.workshop.socket",
 					"uid":     "1000",
 					"gid":     "1000",
-					"bind":    "instance"}},
+					"bind":    "instance",
+				},
+			},
 			map[string]string{
-				"user.workshop.sdk_desktop.type": "desktop-wayland"},
+				"user.workshop.sdk_desktop.type": "desktop-wayland",
+			},
 		}, {
 			"sdk",
 			map[string]map[string]string{
 				"sdk_plug": {
-					"type": "none"}},
+					"type": "none",
+				},
+			},
 			map[string]string{
 				"user.workshop.sdk_plug": `{
           "name": "plug",
           "what": "/var",
           "where": "/etc", 
           "type": 1}`,
-				"user.workshop.sdk_plug.type": "mount"},
+				"user.workshop.sdk_plug.type": "mount",
+			},
 		},
 	} {
 		res, err := lxdbackend.LxdToSdkProfile(t.name, t.devs, t.cfg)

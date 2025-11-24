@@ -58,7 +58,6 @@ func (f *BasePathFs) MkdirChmodChown(path string, perm os.FileMode, uid, gid int
 
 	rev.Success()
 	return nil
-
 }
 
 func (f *BasePathFs) Open(path string) (File, error) {

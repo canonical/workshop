@@ -136,7 +136,7 @@ func addWritableFS(w *tar.Writer, fsys fs.FS) error {
 			h.Name += "/"
 		}
 		// Adjust permissions so user can always write.
-		h.Mode |= 0200
+		h.Mode |= 0o200
 
 		if err := w.WriteHeader(h); err != nil {
 			return err

@@ -297,7 +297,6 @@ func (matcher regexpAttrMatcher) match(apath string, v interface{}, ctx *attrMat
 		return fmt.Errorf("%s %q value %q does not match %v", ctx.attrWord, apath, s, matcher.Regexp)
 	}
 	return nil
-
 }
 
 type altAttrMatcher struct {
@@ -314,7 +313,6 @@ func compileAltAttrMatcher(cc compileContext, l []interface{}) (attrMatcher, err
 		alts[i] = matcher1
 	}
 	return altAttrMatcher{alts}, nil
-
 }
 
 func (matcher altAttrMatcher) feature(flabel string) bool {

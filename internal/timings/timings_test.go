@@ -125,13 +125,16 @@ func (s *timingsSuite) TestSave(c *C) {
 					"level":    float64(1),
 					"label":    "nested measurement",
 					"summary":  "...",
-					"duration": float64(2000000)},
+					"duration": float64(2000000),
+				},
 				map[string]interface{}{
 					"level":    float64(2),
 					"label":    "nested more",
 					"summary":  "...",
-					"duration": float64(3000000)},
-			}},
+					"duration": float64(3000000),
+				},
+			},
+		},
 		map[string]interface{}{
 			"tags":       map[string]interface{}{"change": "12", "task": "3"},
 			"start-time": "2019-03-11T09:01:00.007Z",
@@ -146,13 +149,17 @@ func (s *timingsSuite) TestSave(c *C) {
 					"level":    float64(1),
 					"label":    "nested measurement",
 					"summary":  "...",
-					"duration": float64(5000000)},
+					"duration": float64(5000000),
+				},
 				map[string]interface{}{
 					"level":    float64(2),
 					"label":    "nested more",
 					"summary":  "...",
-					"duration": float64(6000000)},
-			}}})
+					"duration": float64(6000000),
+				},
+			},
+		},
+	})
 }
 
 func (s *timingsSuite) TestSaveNoTimings(c *C) {
@@ -206,7 +213,9 @@ func (s *timingsSuite) TestDuration(c *C) {
 					"summary":  "...",
 					"duration": float64(1000000),
 				},
-			}}})
+			},
+		},
+	})
 }
 
 func (s *timingsSuite) testDurationThreshold(c *C, threshold time.Duration, expected interface{}) {
@@ -258,7 +267,9 @@ func (s *timingsSuite) TestDurationThresholdAll(c *C) {
 					"summary":  "...",
 					"duration": float64(1000000),
 				},
-			}}})
+			},
+		},
+	})
 }
 
 func (s *timingsSuite) TestDurationThreshold(c *C) {
@@ -278,7 +289,9 @@ func (s *timingsSuite) TestDurationThreshold(c *C) {
 					"summary":  "...",
 					"duration": float64(3000000),
 				},
-			}}})
+			},
+		},
+	})
 }
 
 func (s *timingsSuite) TestDurationThresholdRootOnly(c *C) {
@@ -292,7 +305,9 @@ func (s *timingsSuite) TestDurationThresholdRootOnly(c *C) {
 					"summary":  "...",
 					"duration": float64(5000000),
 				},
-			}}})
+			},
+		},
+	})
 }
 
 func (s *timingsSuite) TestDurationThresholdNone(c *C) {

@@ -17,7 +17,7 @@ type CmdDisconnect struct {
 }
 
 func (c *CmdDisconnect) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "disconnect <WORKSHOP>/<SDK>:<PLUG OR SLOT> [<WORKSHOP>/<SDK>]:[<SLOT>]",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Disconnect a plug or a slot",
@@ -101,7 +101,7 @@ func (c *CmdDisconnect) Run(cmd *cobra.Command, av []string) error {
 		slotRef.ProjectId = plugRef.ProjectId
 	}
 
-	var opts = client.DisconnectOptions{Forget: c.forget}
+	opts := client.DisconnectOptions{Forget: c.forget}
 	changeId, err := cli.Disconnect(plugRef.ProjectId, plugRef.Workshop, plugRef.Sdk, plugRef.Name,
 		slotRef.ProjectId, slotRef.Workshop, slotRef.Sdk, slotRef.Name, &opts)
 	if err != nil {

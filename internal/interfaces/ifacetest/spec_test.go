@@ -95,5 +95,6 @@ func (s *SpecificationSuite) SpecificationIface(c *check.C) {
 	c.Assert(r.AddPermanentPlug(s.iface, s.plugInfo), check.IsNil)
 	c.Assert(r.AddPermanentSlot(s.iface, s.slotInfo), check.IsNil)
 	c.Assert(s.spec.Snippets, check.DeepEquals, []string{
-		"connected-plug", "connected-slot", "permanent-plug", "permanent-slot"})
+		"connected-plug", "connected-slot", "permanent-plug", "permanent-slot",
+	})
 }

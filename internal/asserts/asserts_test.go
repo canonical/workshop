@@ -367,7 +367,6 @@ func (as *assertsSuite) TestDecodeWithABodyAndExtraHeaders(c *check.C) {
 	c.Check(a.Header("header1"), check.Equals, "value1")
 	c.Check(a.Header("header2"), check.Equals, "value2")
 	c.Check(a.Body(), check.DeepEquals, []byte("THE-BODY"))
-
 }
 
 const exampleUnsupportedFormat = "type: test-only\n" +

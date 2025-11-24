@@ -26,7 +26,7 @@ func TestWorkshop(t *testing.T) { check.TestingT(t) }
 
 func TestMain(m *testing.M) {
 	// Ensure consistent file permissions for workshopSuite and localSdk.
-	syscall.Umask(0002)
+	syscall.Umask(0o002)
 	m.Run()
 }
 
@@ -43,7 +43,7 @@ func (f *workshopFile) createWFile(c *check.C, name, yaml string, checkArgs ...i
 	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	c.Assert(err, check.IsNil, checkArgs...)
 
-	err = os.WriteFile(path, []byte(yaml), 0644)
+	err = os.WriteFile(path, []byte(yaml), 0o644)
 	c.Assert(err, check.IsNil, checkArgs...)
 }
 
@@ -51,7 +51,7 @@ func (f *workshopFile) createSingleWFile(c *check.C, filename, yaml string) {
 	err := os.MkdirAll(f.project.Path, os.ModePerm)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(filepath.Join(f.project.Path, filename), []byte(yaml), 0644)
+	err = os.WriteFile(filepath.Join(f.project.Path, filename), []byte(yaml), 0o644)
 	c.Assert(err, check.IsNil)
 }
 
@@ -579,7 +579,8 @@ sdks:
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(err, check.IsNil)
 	c.Assert(file.Sdks, check.DeepEquals, []workshop.SdkRecord{
-		{Name: sdk.System.String(), Source: sdk.SystemSource, Slots: map[string]interface{}{"training-data": map[string]interface{}{"workshop-source": "relative/path"}}}})
+		{Name: sdk.System.String(), Source: sdk.SystemSource, Slots: map[string]interface{}{"training-data": map[string]interface{}{"workshop-source": "relative/path"}}},
+	})
 }
 
 func (f *workshopFile) TestWorkshopConnectionsOK(c *check.C) {

@@ -55,7 +55,7 @@ func LxdProfile(conn lxd.InstanceServer, pid, wp, profile string) (*api.Profile,
 }
 
 func LxdToSdkProfile(profile string, devs map[string]map[string]string, config map[string]string) (workshop.SdkProfile, error) {
-	var pr = workshop.NewSdkProfile(profile)
+	pr := workshop.NewSdkProfile(profile)
 	for devname, dev := range devs {
 		name := strings.TrimPrefix(devname, DeviceName(profile, ""))
 

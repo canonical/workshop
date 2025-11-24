@@ -63,16 +63,16 @@ base: ubuntu@20.04
 
 func (s *requestSuite) writeSDKMetaFile(c *check.C, fs fsutil.Fs, name, yaml string) {
 	sdkPath := sdk.SdkMetaDir(name)
-	c.Assert(fs.MkdirAll(sdkPath, 0755), check.IsNil)
+	c.Assert(fs.MkdirAll(sdkPath, 0o755), check.IsNil)
 	metaPath := filepath.Join(sdkPath, "sdk.yaml")
-	c.Assert(fs.WriteFile(metaPath, []byte(yaml), 0644), check.IsNil)
+	c.Assert(fs.WriteFile(metaPath, []byte(yaml), 0o644), check.IsNil)
 }
 
 func (s *requestSuite) launchWorkshopWithSDKs(c *check.C, ws string, sdks []workshop.SdkRecord) {
 	t, err := template.New("workshop").Parse(fmt.Sprintf(workshopTemplate, ws))
 	c.Assert(err, check.IsNil)
 
-	var workshopFile = bytes.NewBuffer([]byte{})
+	workshopFile := bytes.NewBuffer([]byte{})
 	t.Execute(workshopFile, sdks)
 
 	path := workshop.Filepath(s.project.Path, ws)
@@ -80,7 +80,7 @@ func (s *requestSuite) launchWorkshopWithSDKs(c *check.C, ws string, sdks []work
 	err = os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(path, workshopFile.Bytes(), 0644)
+	err = os.WriteFile(path, workshopFile.Bytes(), 0o644)
 	c.Assert(err, check.IsNil)
 
 	wf := workshop.File{Name: ws, Base: "ubuntu@20.04", Sdks: sdks}

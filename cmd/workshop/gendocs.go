@@ -18,7 +18,7 @@ type CmdDocs struct {
 }
 
 func (c *CmdDocs) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:    "generate-docs",
 		Args:   cobra.MaximumNArgs(1),
 		Short:  "Generate workshop reference docs",

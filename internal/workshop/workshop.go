@@ -207,7 +207,7 @@ func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, erro
 // Returns a map of SDK info for installed SDKs. The info includes SDK details
 // parsed from its sdk.yaml, such as base, plugs, slots, etc.
 func (w *Workshop) SdkInfosByInstallOrder(ctx context.Context) ([]*sdk.Info, error) {
-	var infos = make([]*sdk.Info, 0, len(w.Sdks))
+	infos := make([]*sdk.Info, 0, len(w.Sdks))
 	for _, sdk := range w.Sdks {
 		info, err := w.SdkInfo(ctx, sdk.Name)
 		if err != nil {

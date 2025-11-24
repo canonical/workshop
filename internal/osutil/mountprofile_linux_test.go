@@ -47,7 +47,7 @@ func (s *profileSuite) TestLoadMountProfile1(c *C) {
 func (s *profileSuite) TestLoadMountProfile2(c *C) {
 	dir := c.MkDir()
 	fname := filepath.Join(dir, "existing")
-	err := os.WriteFile(fname, []byte("name-1 dir-1 type-1 options-1 1 1 # 1st entry"), 0644)
+	err := os.WriteFile(fname, []byte("name-1 dir-1 type-1 options-1 1 1 # 1st entry"), 0o644)
 	c.Assert(err, IsNil)
 	p, err := osutil.LoadMountProfile(fname)
 	c.Assert(err, IsNil)
@@ -67,7 +67,7 @@ name#-1 dir#-1 type#-1 options#-1 1 1 # inline comment
 # comment without leading spaces
 
 
-`), 0644)
+`), 0o644)
 	c.Assert(err, IsNil)
 	p, err := osutil.LoadMountProfile(fname)
 	c.Assert(err, IsNil)
@@ -108,7 +108,7 @@ func (s *profileSuite) TestSaveMountProfile1(c *C) {
 
 	stat, err := os.Stat(fname)
 	c.Assert(err, IsNil)
-	c.Assert(stat.Mode().Perm(), Equals, os.FileMode(0644))
+	c.Assert(stat.Mode().Perm(), Equals, os.FileMode(0o644))
 
 	c.Assert(fname, testutil.FileEquals, "name-1 dir-1 type-1 options-1 1 1\n")
 }

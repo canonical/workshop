@@ -643,7 +643,7 @@ func (s *interfaceHandlersSuite) launchRemountWorkshop(c *check.C, source string
 	// Note: we set the source attribute for the plug in these tests, however,
 	// it is a dynamic attribute that will be defined when we install an SDK
 	// into a workshop as the default path depends on the username
-	var sdkYaml = `
+	sdkYaml := `
 name: consumer
 base: ubuntu@22.04
 plugs:
@@ -651,7 +651,7 @@ plugs:
         interface: mount
         workshop-target: /opt
 `
-	var systemYaml = `
+	systemYaml := `
 name: system
 base: ubuntu@22.04
 type: system
@@ -725,7 +725,8 @@ func (s *interfaceHandlersSuite) TestRemountSuccessDestExistsAndEmpty(c *check.C
 		StaticPlugAttrs:  map[string]interface{}{"workshop-target": "/opt"},
 		DynamicPlugAttrs: map[string]interface{}{},
 		StaticSlotAttrs:  map[string]interface{}{},
-		DynamicSlotAttrs: map[string]interface{}{"host-source": newSource}})
+		DynamicSlotAttrs: map[string]interface{}{"host-source": newSource},
+	})
 	c.Assert(conns, check.HasLen, 1)
 }
 
@@ -771,7 +772,8 @@ func (s *interfaceHandlersSuite) TestRemountSuccessIfNewSourceDoesNotExist(c *ch
 		StaticPlugAttrs:  map[string]interface{}{"workshop-target": "/opt"},
 		DynamicPlugAttrs: map[string]interface{}{},
 		StaticSlotAttrs:  map[string]interface{}{},
-		DynamicSlotAttrs: map[string]interface{}{"host-source": newSource}})
+		DynamicSlotAttrs: map[string]interface{}{"host-source": newSource},
+	})
 	c.Assert(conns, check.HasLen, 1)
 }
 
@@ -988,9 +990,11 @@ func (s *interfaceHandlersSuite) TestRemountWorksIfNeitherSourceExists(c *check.
 func (s *interfaceHandlersSuite) newDisconnectInterfacesChange(sdkName string) *state.Change {
 	t1 := s.state.NewTask("auto-disconnect", "...")
 	t1.Set("plug", sdk.PlugRef{
-		ProjectId: s.prj.ProjectId, Workshop: "ws-consumer", Sdk: "consumer", Name: "plug"})
+		ProjectId: s.prj.ProjectId, Workshop: "ws-consumer", Sdk: "consumer", Name: "plug",
+	})
 	t1.Set("slot", sdk.PlugRef{
-		ProjectId: s.prj.ProjectId, Workshop: "ws-consumer", Sdk: "producer", Name: "slot"})
+		ProjectId: s.prj.ProjectId, Workshop: "ws-consumer", Sdk: "producer", Name: "slot",
+	})
 	t1.Set("sdk", sdkName)
 	setWorkshopProject("ws-consumer", s.prj, t1)
 
@@ -1715,7 +1719,8 @@ func (s *interfaceHandlersSuite) TestUndoConnectUndesired(c *check.C) {
 			"auto":      true,
 			"interface": "mock-network",
 			"undesired": true,
-		}})
+		},
+	})
 	s.state.Unlock()
 
 	// Execute
@@ -1749,7 +1754,8 @@ func (s *interfaceHandlersSuite) TestUndoConnectUndesired(c *check.C) {
 			Auto:      true,
 			Interface: "mock-network",
 			Undesired: true,
-		}})
+		},
+	})
 }
 
 func (s *interfaceHandlersSuite) TestUndoConnectBackendSetup(c *check.C) {

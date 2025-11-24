@@ -180,8 +180,10 @@ func (m *workshopRefresh) TestRefreshWaitOnErrorFailed(c *check.C) {
 		case 3:
 			c.Check(r.Method, check.Equals, "POST")
 			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
-			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{"action": "refresh",
-				"names": []interface{}{"ws"}, "options": map[string]interface{}{"mode": "wait-on-error", "refresh-option": "restore"}})
+			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{
+				"action": "refresh",
+				"names":  []interface{}{"ws"}, "options": map[string]interface{}{"mode": "wait-on-error", "refresh-option": "restore"},
+			})
 			w.WriteHeader(202)
 			fmt.Fprintln(w, `{"type":"async", "change": "42", "status-code": 202}`)
 		case 4:
@@ -218,8 +220,10 @@ func (m *workshopRefresh) TestRefreshWaitOnErrorAbortedSuccessfully(c *check.C) 
 		case 2:
 			c.Check(r.Method, check.Equals, "POST")
 			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
-			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{"action": "refresh",
-				"names": []interface{}{"ws"}, "options": map[string]interface{}{"mode": "abort"}})
+			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{
+				"action": "refresh",
+				"names":  []interface{}{"ws"}, "options": map[string]interface{}{"mode": "abort"},
+			})
 			w.WriteHeader(202)
 			fmt.Fprintln(w, `{"type":"async", "change": "42", "status-code": 202}`)
 		case 3:
@@ -253,8 +257,10 @@ func (m *workshopRefresh) TestRefreshWaitOnErrorContinuedSuccessfully(c *check.C
 		case 2:
 			c.Check(r.Method, check.Equals, "POST")
 			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
-			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{"action": "refresh",
-				"names": []interface{}{"ws"}, "options": map[string]interface{}{"mode": "continue"}})
+			c.Check(DecodedRequestBody(c, r), check.DeepEquals, map[string]interface{}{
+				"action": "refresh",
+				"names":  []interface{}{"ws"}, "options": map[string]interface{}{"mode": "continue"},
+			})
 			w.WriteHeader(202)
 			fmt.Fprintln(w, `{"type":"async", "change": "42", "status-code": 202}`)
 		case 3:

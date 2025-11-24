@@ -25,7 +25,7 @@ type CmdInfo struct {
 }
 
 func (c *CmdInfo) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "info [<WORKSHOP>]",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "Print the current status and details of a workshop as YAML",

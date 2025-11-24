@@ -76,8 +76,7 @@ func init() {
 	syscheck.RegisterCheck(checkServerCapabilities)
 }
 
-type Backend struct {
-}
+type Backend struct{}
 
 func InstanceName(name string, project_id string) string {
 	return fmt.Sprintf("%s-%s", name, project_id)
@@ -426,7 +425,7 @@ func (s *Backend) patchInstance(ctx context.Context, name, base string) error {
 		return nil
 	}
 
-	return fs.AtomicWriteTo(bytes.NewReader(snapConfineNew), "/etc/apparmor.d/usr.lib.snapd.snap-confine.real", 0644)
+	return fs.AtomicWriteTo(bytes.NewReader(snapConfineNew), "/etc/apparmor.d/usr.lib.snapd.snap-confine.real", 0o644)
 }
 
 func (s *Backend) updateInstanceState(conn lxd.InstanceServer, ctx context.Context, name, action string, timeout int) error {
@@ -715,7 +714,7 @@ func (s *Backend) execCommand(conn lxd.InstanceServer, ctx context.Context, name
 	}
 
 	opmeta := op.Get()
-	var env = map[string]string{}
+	env := map[string]string{}
 	for k, v := range opmeta.Metadata["environment"].(map[string]any) {
 		if value, ok := v.(string); ok {
 			env[k] = value
@@ -739,7 +738,7 @@ func (s *Backend) execCommand(conn lxd.InstanceServer, ctx context.Context, name
 			// unconditionally right after the operation has exited, so it will not be
 			// blocked if we are here
 			<-done
-			var status = int(op.Get().Metadata["return"].(float64))
+			status := int(op.Get().Metadata["return"].(float64))
 			if status != 0 {
 				return &workshop.ErrExec{Status: status}
 			}

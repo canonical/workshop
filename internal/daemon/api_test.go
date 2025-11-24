@@ -89,7 +89,7 @@ func (s *apiSuite) SetUpTest(c *check.C) {
 	s.b, err = fakebackend.New(c.MkDir())
 	c.Check(err, check.IsNil)
 
-	s.installTime = time.Date(2023, 04, 25, 1, 2, 3, 0, time.UTC)
+	s.installTime = time.Date(2023, 4, 25, 1, 2, 3, 0, time.UTC)
 	s.restoreTime = testutil.FakeFunc(func() time.Time { return s.installTime }, &workshop.InstallTimeNow)
 
 	// will be called when project is created

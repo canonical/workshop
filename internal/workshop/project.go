@@ -96,7 +96,7 @@ func (w *Project) ReadWorkshops() (map[string]string, error) {
 		return nil, err
 	}
 
-	var workshops = make(map[string]string, len(files))
+	workshops := make(map[string]string, len(files))
 	for _, f := range files {
 		info, err := os.Stat(f)
 		if err != nil {
@@ -106,7 +106,7 @@ func (w *Project) ReadWorkshops() (map[string]string, error) {
 		if !info.Mode().IsRegular() {
 			continue
 		}
-		var name = strings.TrimSuffix(info.Name(), ".yaml")
+		name := strings.TrimSuffix(info.Name(), ".yaml")
 		workshops[name] = f
 	}
 	return workshops, nil

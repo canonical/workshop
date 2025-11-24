@@ -104,7 +104,7 @@ func (m *InterfaceManager) doAutoConnect(task *state.Task, tomb *tomb.Tomb) (err
 // plug's dynamic attributes.
 func (m *InterfaceManager) remountSources(projectId, w, s string) map[string]string {
 	// [ref.ID]source
-	var candidates = make(map[string]string)
+	candidates := make(map[string]string)
 	refs, err := m.repo.Connections(projectId, w, s)
 	if err != nil {
 		return nil
@@ -126,9 +126,8 @@ func (m *InterfaceManager) remountSources(projectId, w, s string) map[string]str
 }
 
 func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sdk.Info, refs []*interfaces.ConnRef, plugDynamic, slotDynamic map[string]map[string]interface{}) *state.TaskSet {
-
 	connectTs := state.NewTaskSet()
-	var affected = map[sdk.Ref]bool{}
+	affected := map[sdk.Ref]bool{}
 	for _, ref := range refs {
 		connect := m.state.NewTask("connect", fmt.Sprintf("Connect %q to %q", ref.PlugRef.ShortRef(), ref.SlotRef.ShortRef()))
 
@@ -186,10 +185,10 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		return err
 	}
 
-	var connectRefs = []*interfaces.ConnRef{}
-	var wconns = workshopConns(wp)
-	var plugDynamic = make(map[string]map[string]interface{})
-	var slotDynamic = make(map[string]map[string]interface{})
+	connectRefs := []*interfaces.ConnRef{}
+	wconns := workshopConns(wp)
+	plugDynamic := make(map[string]map[string]interface{})
+	slotDynamic := make(map[string]map[string]interface{})
 
 	for _, plug := range info.Plugs {
 		ref := plug.Ref()
@@ -297,7 +296,8 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 }
 
 func (m *InterfaceManager) batchDisconnectTasks(p workshop.Project, workshop, sdkName string,
-	conns map[string]*schema.ConnState, refs []*interfaces.ConnRef) *state.TaskSet {
+	conns map[string]*schema.ConnState, refs []*interfaces.ConnRef,
+) *state.TaskSet {
 	ts := state.NewTaskSet()
 
 	var prev *state.Task
@@ -397,8 +397,8 @@ func getPlugAndSlotRefs(task *state.Task) (sdk.PlugRef, sdk.SlotRef, error) {
 }
 
 func MaybeBound(w *workshop.Workshop, ref sdk.PlugRef) (sdk.PlugRef, []sdk.PlugRef) {
-	var masters = make(map[sdk.PlugRef][]sdk.PlugRef)
-	var slaves = make(map[sdk.PlugRef]sdk.PlugRef)
+	masters := make(map[sdk.PlugRef][]sdk.PlugRef)
+	slaves := make(map[sdk.PlugRef]sdk.PlugRef)
 
 	for _, s := range w.File.Sdks {
 		for name, pl := range s.Plugs {
@@ -1038,7 +1038,7 @@ func (m *InterfaceManager) remount(ctx context.Context, task *state.Task, plug *
 			if err != nil {
 				return err
 			}
-			if err = osutil.MkdirAllChown(source, 0755, uid, gid); err != nil {
+			if err = osutil.MkdirAllChown(source, 0o755, uid, gid); err != nil {
 				return err
 			}
 			task.State().Warnf("cannot find source %q for %q; created directory %q", oldSource, plug.ShortRef(), source)

@@ -32,10 +32,12 @@ import (
 	"github.com/canonical/workshop/internal/version"
 )
 
-var shortRunHelp = "Run the workshop daemon"
-var longRunHelp = `
+var (
+	shortRunHelp = "Run the workshop daemon"
+	longRunHelp  = `
 The run command workshop and starts accepting clients requests
 `
+)
 
 type sharedRunEnterOpts struct {
 	CreateDirs bool
@@ -54,7 +56,7 @@ type cmdRun struct {
 }
 
 func (c *cmdRun) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "run",
 		Args:  cobra.MaximumNArgs(0),
 		Short: shortRunHelp,

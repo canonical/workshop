@@ -214,7 +214,8 @@ func BackgroundDiscardWaitingRefresh(st *state.State, workshop, projectId string
 // for the given workshop. Depending on the mode the change will either be
 // turned into Doing (Continue mode) or Abort (Abort mode).
 func ResumeAfterWait(st *state.State,
-	workshop string, projectId string, mode Mode, action string) (*state.Change, error) {
+	workshop string, projectId string, mode Mode, action string,
+) (*state.Change, error) {
 	if mode != ChangeAbort && mode != ChangeContinue {
 		return nil, fmt.Errorf("cannot resume: only abort or continue can be used to resume the operation")
 	}

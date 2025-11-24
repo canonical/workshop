@@ -107,7 +107,7 @@ var (
 	oneSdk = []workshop.SdkRecord{{Name: "one", Channel: "latest/stable"}}
 
 	oneSdkHealthCheck = map[string]map[string]string{
-		"one": map[string]string{hookstate.CheckHealth.String(): ""},
+		"one": {hookstate.CheckHealth.String(): ""},
 	}
 )
 
@@ -121,11 +121,11 @@ func (s *healthSuite) launchWorkshopWithSDKs(c *check.C, sdks []workshop.SdkReco
 	defer ws.Close()
 
 	for _, sk := range sdks {
-		err = ws.MkdirAll(sdk.SdkHooksDir(sk.Name), 0744)
+		err = ws.MkdirAll(sdk.SdkHooksDir(sk.Name), 0o744)
 		c.Check(err, check.IsNil)
 
 		for name, hook := range hooks[sk.Name] {
-			c.Assert(ws.WriteFile(sdk.SdkHookPath(sk.Name, name), []byte(hook), 0644), check.IsNil)
+			c.Assert(ws.WriteFile(sdk.SdkHookPath(sk.Name, name), []byte(hook), 0o644), check.IsNil)
 		}
 	}
 

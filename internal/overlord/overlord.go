@@ -206,11 +206,11 @@ func (o *Overlord) addManager(mgr StateManager) {
 
 func initStateFileLock() (*osutil.FileLock, error) {
 	lockFilePath := dirs.WorkshopStateLockFile
-	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0o755); err != nil {
 		return nil, err
 	}
 
-	return osutil.NewFileLockWithMode(lockFilePath, 0644)
+	return osutil.NewFileLockWithMode(lockFilePath, 0o644)
 }
 
 func lockWithTimeout(l *osutil.FileLock, timeout time.Duration) error {

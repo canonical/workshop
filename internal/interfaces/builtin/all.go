@@ -40,9 +40,7 @@ func init() {
 	}
 }
 
-var (
-	allInterfaces map[string]interfaces.Interface
-)
+var allInterfaces map[string]interfaces.Interface
 
 func SanitizePlugsSlots(sdkInfo *sdk.Info) {
 	var badPlugs []string

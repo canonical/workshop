@@ -97,7 +97,7 @@ func (s *apiSuite) TestExecUnsupportedModes(c *check.C) {
 		},
 	}
 
-	var requests = []*http.Request{}
+	requests := []*http.Request{}
 	for _, r := range body {
 		req, err := s.createProjectsRequest("POST", "/v1/projects/"+s.project.ProjectId+"/workshops/ws/exec", r)
 		c.Assert(err, check.IsNil)

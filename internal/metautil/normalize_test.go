@@ -27,8 +27,7 @@ import (
 	"github.com/canonical/workshop/internal/metautil"
 )
 
-type normalizeTestSuite struct {
-}
+type normalizeTestSuite struct{}
 
 var _ = Suite(&normalizeTestSuite{})
 

@@ -187,7 +187,7 @@ func (client *Client) ListActions(projectId, name string) (map[string]Action, er
 
 func (client *Client) Remount(plug *PlugRef, source string) (changeId string, err error) {
 	var body bytes.Buffer
-	var remoutReq = Remount{
+	remoutReq := Remount{
 		Action:     "remount",
 		Plug:       plug,
 		HostSource: source,

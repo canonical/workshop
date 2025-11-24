@@ -7,8 +7,7 @@ import (
 	"gopkg.in/check.v1"
 )
 
-type workshopList struct {
-}
+type workshopList struct{}
 
 var _ = check.Suite(&workshopList{})
 

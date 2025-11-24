@@ -286,6 +286,7 @@ func (s *envSuite) TestForExec(c *C) {
 	env := osutil.Environment{"K1": "V1", "K2": "V2"}
 	c.Check(env.ForExec(), DeepEquals, []string{"K1=V1", "K2=V2"})
 }
+
 func (s *envSuite) TestNewExpandableEnv(c *C) {
 	eenv := osutil.NewExpandableEnv("K1", "V1", "K2", "$K1")
 	c.Check(eenv.Get("K1"), Equals, "V1")

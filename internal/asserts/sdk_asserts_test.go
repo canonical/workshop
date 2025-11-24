@@ -139,7 +139,6 @@ func (s *baseDeclSuite) TestDecodeInvalid(c *check.C) {
 		_, err := asserts.Decode([]byte(invalid))
 		c.Check(err, check.ErrorMatches, baseDeclErrPrefix+test.expectedErr)
 	}
-
 }
 
 func (s *baseDeclSuite) TestBuiltin(c *check.C) {

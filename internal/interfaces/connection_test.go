@@ -71,10 +71,12 @@ func (s *connSuite) TearDownTest(c *check.C) {
 }
 
 // Make sure ConnectedPlug,ConnectedSlot, PlugInfo, SlotInfo implement Attrer.
-var _ interfaces.Attrer = (*interfaces.ConnectedPlug)(nil)
-var _ interfaces.Attrer = (*interfaces.ConnectedSlot)(nil)
-var _ interfaces.Attrer = (*sdk.PlugInfo)(nil)
-var _ interfaces.Attrer = (*sdk.SlotInfo)(nil)
+var (
+	_ interfaces.Attrer = (*interfaces.ConnectedPlug)(nil)
+	_ interfaces.Attrer = (*interfaces.ConnectedSlot)(nil)
+	_ interfaces.Attrer = (*sdk.PlugInfo)(nil)
+	_ interfaces.Attrer = (*sdk.SlotInfo)(nil)
+)
 
 func (s *connSuite) TestStaticSlotAttrs(c *check.C) {
 	slot := interfaces.NewConnectedSlot(s.slot, nil, nil)

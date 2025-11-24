@@ -13,7 +13,7 @@ type CmdStart struct {
 }
 
 func (c *CmdStart) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "start <WORKSHOP>...",
 		Short: "Start one or many workshops",
 		Long: `

@@ -81,7 +81,7 @@ func v1PostWorkshopExec(c *Command, r *http.Request, _ *userState) Response {
 		reqData.WorkingDir = workshop.WorkshopProjectPath
 	}
 
-	var environment = make(map[string]string)
+	environment := make(map[string]string)
 
 	for k, e := range reqData.Environment {
 		environment[k] = e
@@ -123,7 +123,7 @@ func v1PostWorkshopExec(c *Command, r *http.Request, _ *userState) Response {
 		return statusBadRequest("cannot %s %s in %q: user is not in context", action, subject, wrkspc)
 	}
 
-	var execArgs = &workshop.ExecArgs{
+	execArgs := &workshop.ExecArgs{
 		Command:     reqData.Command,
 		Environment: environment,
 		WorkDir:     reqData.WorkingDir,

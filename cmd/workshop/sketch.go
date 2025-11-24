@@ -32,7 +32,7 @@ type CmdSketch struct {
 }
 
 func (c *CmdSketch) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "sketch-sdk [--stash|--restore|--eject|--remove] [<WORKSHOP>]",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "Edit the sketch SDK and graft it onto the workshop",
@@ -128,9 +128,7 @@ slots:
   #   endpoint: 8080
 `
 
-var (
-	runTextEditor = shared.TextEditor
-)
+var runTextEditor = shared.TextEditor
 
 func stashSketch(sketchdir, stashdir string) (*revert.Reverter, error) {
 	recs, err := os.ReadDir(sketchdir)
@@ -158,7 +156,7 @@ func stashSketch(sketchdir, stashdir string) (*revert.Reverter, error) {
 	if err := os.Remove(sketchdir); err != nil {
 		return nil, err
 	}
-	reverter.Add(func() { _ = os.MkdirAll(sketchdir, 0755) })
+	reverter.Add(func() { _ = os.MkdirAll(sketchdir, 0o755) })
 
 	clone := reverter.Clone()
 	reverter.Success()
@@ -171,11 +169,11 @@ func clearStash(stashdir string) error {
 		return err
 	}
 	defer os.RemoveAll(temp)
-	if err := os.Chmod(temp, 0755); err != nil {
+	if err := os.Chmod(temp, 0o755); err != nil {
 		return err
 	}
 
-	if err := os.MkdirAll(stashdir, 0755); err != nil {
+	if err := os.MkdirAll(stashdir, 0o755); err != nil {
 		return err
 	}
 	return osutil.Exchange(stashdir, temp)
@@ -246,7 +244,7 @@ func ejectSketch(project, sketchdir string, name string) (*revert.Reverter, erro
 
 	// This won't be cleaned up on failure. In most cases, the user
 	// is likely to retry the eject after fixing the underlying issue.
-	if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return nil, err
 	}
 
@@ -259,7 +257,7 @@ func ejectSketch(project, sketchdir string, name string) (*revert.Reverter, erro
 	}
 	reverter.Add(func() { _ = os.RemoveAll(temp) })
 
-	f, err := os.OpenFile(filepath.Join(temp, "sdk.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+	f, err := os.OpenFile(filepath.Join(temp, "sdk.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +343,7 @@ func hideSketch(sketchdir string) (string, *revert.Reverter, error) {
 		return "", nil, err
 	}
 	reverter.Add(func() { _ = os.RemoveAll(temp) })
-	if err := os.Chmod(temp, 0755); err != nil {
+	if err := os.Chmod(temp, 0o755); err != nil {
 		return "", nil, err
 	}
 
@@ -533,7 +531,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 func editSketchSdk(sketchdir, workshopFile string) error {
 	content, err := os.ReadFile(filepath.Join(sketchdir, "sdk.yaml"))
 	if errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(sketchdir, 0755); err != nil {
+		if err := os.MkdirAll(sketchdir, 0o755); err != nil {
 			return err
 		}
 
@@ -548,7 +546,7 @@ func editSketchSdk(sketchdir, workshopFile string) error {
 		return err
 	}
 	defer os.RemoveAll(temp)
-	if err := os.Chmod(temp, 0755); err != nil {
+	if err := os.Chmod(temp, 0o755); err != nil {
 		return err
 	}
 
@@ -571,10 +569,10 @@ func editSketchSdk(sketchdir, workshopFile string) error {
 }
 
 func writeSketchSdk(path string, content []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, content, 0644)
+	return os.WriteFile(path, content, 0o644)
 }
 
 func writeSketchHooks(sketchdir string, content []byte) error {
@@ -593,7 +591,7 @@ func writeSketchHooks(sketchdir string, content []byte) error {
 func writeHooks(sdkdir string, file SketchFile) error {
 	hooksdir := filepath.Join(sdkdir, "hooks")
 	if len(file.Hooks) > 0 {
-		if err := os.MkdirAll(hooksdir, 0755); err != nil {
+		if err := os.MkdirAll(hooksdir, 0o755); err != nil {
 			return err
 		}
 	}
@@ -604,7 +602,7 @@ func writeHooks(sdkdir string, file SketchFile) error {
 			if !strings.HasSuffix(script, "\n") {
 				script += "\n"
 			}
-			if err := os.WriteFile(hookpath, []byte(script), 0644); err != nil {
+			if err := os.WriteFile(hookpath, []byte(script), 0o644); err != nil {
 				return err
 			}
 		}
@@ -618,7 +616,7 @@ type CmdSketches struct {
 }
 
 func (c *CmdSketches) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "sketches",
 		Args:  cobra.ExactArgs(0),
 		Short: "List sketches",

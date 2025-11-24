@@ -53,7 +53,7 @@ type CmdOkay struct {
 }
 
 func (c *CmdWarnings) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "warnings",
 		Args:  cobra.ExactArgs(0),
 		Short: "List warnings",
@@ -96,7 +96,7 @@ By default, Unicode is used only if the output supports it.`)
 }
 
 func (c *CmdOkay) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "okay",
 		Args:  cobra.ExactArgs(0),
 		Short: "Acknowledge listed warnings",
@@ -255,11 +255,11 @@ func writeWarningTimestamp(t time.Time) error {
 	}
 
 	filename := warnFilename()
-	if err := osutil.MkdirAllChown(filepath.Dir(filename), 0700, uid, gid); err != nil {
+	if err := osutil.MkdirAllChown(filepath.Dir(filename), 0o700, uid, gid); err != nil {
 		return err
 	}
 
-	aw, err := osutil.NewAtomicFile(filename, 0600, 0, uid, gid)
+	aw, err := osutil.NewAtomicFile(filename, 0o600, 0, uid, gid)
 	if err != nil {
 		return err
 	}

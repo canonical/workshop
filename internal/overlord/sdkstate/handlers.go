@@ -167,7 +167,7 @@ func (m *SdkManager) doInstallSdk(task *state.Task, tomb *tomb.Tomb) error {
 		return err
 	}
 	defer fs.Close()
-	if err = fs.MkdirAll(dirs.WorkshopSdksDir, 0755); err != nil {
+	if err = fs.MkdirAll(dirs.WorkshopSdksDir, 0o755); err != nil {
 		return err
 	}
 

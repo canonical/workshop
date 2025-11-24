@@ -221,10 +221,8 @@ type nameMatcher interface {
 	match(name string, special map[string]string) error
 }
 
-var (
-	// validates special name constraints like $INTERFACE
-	validSpecialNameConstraint = regexp.MustCompile(`^\$[A-Z][A-Z0-9_]*$`)
-)
+// validates special name constraints like $INTERFACE
+var validSpecialNameConstraint = regexp.MustCompile(`^\$[A-Z][A-Z0-9_]*$`)
 
 func compileNameMatcher(whichName string, v interface{}) (nameMatcher, error) {
 	s, ok := v.(string)

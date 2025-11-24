@@ -19,6 +19,4 @@
 
 package timeutil
 
-var (
-	HumanTimeSince = humanTimeSince
-)
+var HumanTimeSince = humanTimeSince

@@ -20,7 +20,7 @@ type CmdConnections struct {
 }
 
 func (c *CmdConnections) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "connections [<WORKSHOP>]",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "List interface connections",
@@ -174,7 +174,7 @@ func (c *CmdConnections) Run(cmd *cobra.Command, av []string) error {
 
 	for _, plug := range connections.Plugs {
 		if len(plug.Connections) == 0 && c.all {
-			var bind = maybeBound(plug.Ref(), connections.Plugs)
+			bind := maybeBound(plug.Ref(), connections.Plugs)
 			annotatedConns = append(annotatedConns, connection{
 				plug:          endpoint(plug.Workshop, plug.Sdk, plug.Name),
 				slot:          "-",

@@ -14,7 +14,7 @@ type CmdRemount struct {
 }
 
 func (c *CmdRemount) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "remount <WORKSHOP>/<SDK>:<PLUG> <SOURCE>",
 		Args:  cobra.ExactArgs(2),
 		Short: "Mount a new source location to the mount interface plug's target",

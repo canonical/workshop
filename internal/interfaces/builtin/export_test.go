@@ -28,9 +28,7 @@ import (
 	"github.com/canonical/workshop/internal/sdk"
 )
 
-var (
-	RegisterIface = registerIface
-)
+var RegisterIface = registerIface
 
 // MockInterfaces replaces the set of known interfaces and returns a restore function.
 func MockInterfaces(ifaces map[string]interfaces.Interface) (restore func()) {

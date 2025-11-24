@@ -62,7 +62,7 @@ func (s *workshopHandlers) createWFile(c *check.C, name string, yaml string) {
 	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(path, []byte(yaml), 0644)
+	err = os.WriteFile(path, []byte(yaml), 0o644)
 	c.Assert(err, check.IsNil)
 }
 
@@ -214,7 +214,8 @@ func (s *workshopHandlers) TestRemoveWorkshop(c *check.C) {
 		Sdks: []workshop.SdkRecord{
 			{Name: "test", Channel: "latest/stable"},
 			{Name: "test2", Channel: "latest/stable"},
-		}}, {
+		},
+	}, {
 		Name: "another-ws", Base: "ubuntu@20.04",
 		Sdks: []workshop.SdkRecord{
 			{Name: "test", Channel: "latest/stable"},
@@ -246,9 +247,9 @@ func (s *workshopHandlers) TestRemoveWorkshop(c *check.C) {
 		c.Assert(t1.Status(), check.Equals, state.DoneStatus)
 
 		sdkMountData := workshop.SdkMountDir(userDataDir, s.project.ProjectId, wf.Name, "test")
-		var plugs = []string{"plug1", "plug2"}
+		plugs := []string{"plug1", "plug2"}
 		for _, p := range plugs {
-			err = os.MkdirAll(filepath.Join(sdkMountData, p), 0744)
+			err = os.MkdirAll(filepath.Join(sdkMountData, p), 0o744)
 			c.Assert(err, check.IsNil)
 		}
 	}

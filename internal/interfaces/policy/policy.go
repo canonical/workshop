@@ -118,6 +118,7 @@ func (connc *ConnectCandidate) PlugAttr(arg string) (interface{}, error) {
 func (connc *ConnectCandidate) SlotAttr(arg string) (interface{}, error) {
 	return nestedGet("slot", connc.Slot, arg)
 }
+
 func (connc *ConnectCandidate) checkPlugRule(kind string, rule *asserts.PlugRule) (interfaces.SideArity, error) {
 	context := ""
 	denyConst := rule.DenyConnection

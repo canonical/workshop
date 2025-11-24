@@ -109,7 +109,7 @@ func (s revisionSuite) TestParseRevision(c *C) {
 		e string
 	}
 
-	var tests = []testItem{{
+	tests := []testItem{{
 		s: "unset",
 		n: 0,
 	}, {
@@ -149,7 +149,7 @@ func (s *revisionSuite) TestR(c *C) {
 		e string
 	}
 
-	var tests = []testItem{{
+	tests := []testItem{{
 		v: 0,
 		n: 0,
 	}, {

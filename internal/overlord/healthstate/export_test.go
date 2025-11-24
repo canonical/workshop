@@ -2,9 +2,7 @@ package healthstate
 
 import "time"
 
-var (
-	KnownStatuses = knownSetHealthStatuses
-)
+var KnownStatuses = knownSetHealthStatuses
 
 func FakeRetryTimeout(t time.Duration) (restore func()) {
 	old := retryTimeout

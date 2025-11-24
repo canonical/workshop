@@ -121,7 +121,6 @@ func (iface *tunnelInterface) BeforePrepareSlot(slot *sdk.SlotInfo) error {
 	slot.Attrs["endpoint"] = address
 
 	return nil
-
 }
 
 func normalizeEndpoint(attrs interfaces.Attrer) (string, error) {

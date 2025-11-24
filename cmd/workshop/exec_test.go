@@ -17,8 +17,9 @@ type workshopExec struct {
 
 var _ = check.Suite(&workshopExec{})
 
-var mockWorkshopNoActions = `{"type":"sync","status-code":200,"status":"OK","result":{}}`
-var mockWorkshopWithActions = `{"type":"sync","status-code":200,"status":"OK","result":{
+var (
+	mockWorkshopNoActions   = `{"type":"sync","status-code":200,"status":"OK","result":{}}`
+	mockWorkshopWithActions = `{"type":"sync","status-code":200,"status":"OK","result":{
     "foo":{
         "script":"echo foo"
     },
@@ -26,6 +27,8 @@ var mockWorkshopWithActions = `{"type":"sync","status-code":200,"status":"OK","r
         "script":"echo bar\n"
     }
 }}`
+)
+
 var mockWorkshopActionsError = `{"type":"error","status-code":404,"status":"Not Found","result":{
     "message":"workshop not found"
 }}`

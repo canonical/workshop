@@ -42,9 +42,7 @@ type SdkManager struct {
 	repo    *interfaces.Repository
 }
 
-var (
-	sdkVolumeCooldownTime = 1 * time.Hour // Time to wait before deleting unused SDK volumes.
-)
+var sdkVolumeCooldownTime = 1 * time.Hour // Time to wait before deleting unused SDK volumes.
 
 func New(s *state.State, runner *state.TaskRunner, repo *interfaces.Repository) *SdkManager {
 	manager := &SdkManager{repo: repo}
@@ -75,7 +73,6 @@ func (w *SdkManager) SdkVolumes(ctx context.Context) ([]SdkVolume, error) {
 	for _, vol := range volumes {
 		info, err := sdk.ReadSdkInfo([]byte(vol.Metadata), "", "")
 		if err != nil {
-
 			return nil, err
 		}
 

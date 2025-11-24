@@ -66,11 +66,15 @@ slots:
 			Name: "desktop_wayland",
 			Connect: workshop.ProxyTarget{
 				Address:  "/tmp/wayland-1",
-				Protocol: "unix"},
+				Protocol: "unix",
+			},
 			Listen: workshop.ProxyTarget{
 				Address:  "/run/user/1000/wayland-0-inside-workshop",
-				Protocol: "unix"},
-			Direction: workshop.WorkshopToHost}}
+				Protocol: "unix",
+			},
+			Direction: workshop.WorkshopToHost,
+		},
+	}
 	c.Assert(deviceSpec.Profile.Desktop, check.DeepEquals, expectedProxy)
 }
 
@@ -103,11 +107,15 @@ slots:
 			Name: "desktop_x11",
 			Connect: workshop.ProxyTarget{
 				Address:  "/tmp/.X11-unix/X0",
-				Protocol: "unix"},
+				Protocol: "unix",
+			},
 			Listen: workshop.ProxyTarget{
 				Address:  "/tmp/.X11-unix/X0",
-				Protocol: "unix"},
-			Direction: workshop.WorkshopToHost}}
+				Protocol: "unix",
+			},
+			Direction: workshop.WorkshopToHost,
+		},
+	}
 	c.Assert(deviceSpec.Profile.Desktop, check.DeepEquals, expectedProxy)
 }
 
@@ -140,20 +148,27 @@ slots:
 			Name: "desktop_x11",
 			Connect: workshop.ProxyTarget{
 				Address:  "/tmp/.X11-unix/X2",
-				Protocol: "unix"},
+				Protocol: "unix",
+			},
 			Listen: workshop.ProxyTarget{
 				Address:  "/tmp/.X11-unix/X0",
-				Protocol: "unix"},
-			Direction: workshop.WorkshopToHost},
+				Protocol: "unix",
+			},
+			Direction: workshop.WorkshopToHost,
+		},
 		Wayland: &workshop.ProxyEntry{
 			Name: "desktop_wayland",
 			Connect: workshop.ProxyTarget{
 				Address:  "/var/run/wayland-0",
-				Protocol: "unix"},
+				Protocol: "unix",
+			},
 			Listen: workshop.ProxyTarget{
 				Address:  "/run/user/1000/wayland-0-inside-workshop",
-				Protocol: "unix"},
-			Direction: workshop.WorkshopToHost}}
+				Protocol: "unix",
+			},
+			Direction: workshop.WorkshopToHost,
+		},
+	}
 	c.Assert(deviceSpec.Profile.Desktop, check.DeepEquals, expectedProxy)
 }
 
@@ -187,7 +202,7 @@ slots:
 		What:      filepath.Join(dirs.WorkshopdRunDir, deviceSpec.User.Uid, "Xauthority"),
 		Where:     "/var/lib/workshop/run/Xauthority",
 		MakeWhere: true,
-		Mode:      0755,
+		Mode:      0o755,
 		ReadOnly:  true,
 	}
 	c.Assert(deviceSpec.Profile.Mounts["desktop_xauth"], check.DeepEquals, *expectedMount)

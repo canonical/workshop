@@ -84,7 +84,7 @@ func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
 		if err != nil {
 			return fmt.Errorf("cannot run hook \"save-state\" for %q SDK: %v", hook.Sdk, err)
 		}
-		err = fs.MkdirAll(stateDir, 0755)
+		err = fs.MkdirAll(stateDir, 0o755)
 		fs.Close()
 		if err != nil {
 			return fmt.Errorf("cannot run hook \"save-state\" for %q SDK: %v", hook.Sdk, err)

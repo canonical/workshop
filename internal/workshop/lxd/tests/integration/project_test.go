@@ -57,7 +57,7 @@ func createWFile(c *check.C, projectDir, name, yaml string) {
 	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(path, []byte(yaml), 0644)
+	err = os.WriteFile(path, []byte(yaml), 0o644)
 	c.Assert(err, check.IsNil)
 }
 
@@ -184,7 +184,7 @@ func (f *wsProject) TestLxdBackendLoadProjectDirectoryMoved(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	createWFile(c, projectDir, "test", workshopMock)
-	os.WriteFile(filepath.Join(projectDir, ".workshop.lock"), []byte("b8639dea"), 0644)
+	os.WriteFile(filepath.Join(projectDir, ".workshop.lock"), []byte("b8639dea"), 0o644)
 	err = os.Rename(projectDir, newDir)
 	c.Assert(err, check.IsNil)
 
@@ -217,8 +217,8 @@ func (f *wsProject) TestLxdBackendLoadProjectDirectoryCopied(c *check.C) {
 
 	createWFile(c, projectDir, "test", workshopMock)
 	createWFile(c, newDir, "test", workshopMock)
-	os.WriteFile(filepath.Join(projectDir, ".workshop.lock"), []byte("b8639dea"), 0644)
-	os.WriteFile(filepath.Join(newDir, ".workshop.lock"), []byte("b8639dea"), 0644)
+	os.WriteFile(filepath.Join(projectDir, ".workshop.lock"), []byte("b8639dea"), 0o644)
+	os.WriteFile(filepath.Join(newDir, ".workshop.lock"), []byte("b8639dea"), 0o644)
 
 	prj, created, err := be.CreateOrLoadProject(f.ctx, newDir)
 	c.Assert(err, check.IsNil)

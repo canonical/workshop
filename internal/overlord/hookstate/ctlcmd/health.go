@@ -61,9 +61,7 @@ type healthCommand struct {
 	Code             string `long:"code" value-name:"<code>" description:"optional tool-friendly value representing the problem that makes the SDK unhealthy.  Not a number, but a word with 3-30 characters matching [a-z](-?[a-z0-9])+"`
 }
 
-var (
-	validCode = regexp.MustCompile(`^[a-z](?:-?[a-z0-9])+$`).MatchString
-)
+var validCode = regexp.MustCompile(`^[a-z](?:-?[a-z0-9])+$`).MatchString
 
 func (c *healthCommand) Execute([]string) error {
 	if c.Status == "okay" && (len(c.Message) > 0 || len(c.Code) > 0) {

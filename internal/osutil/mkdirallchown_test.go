@@ -41,8 +41,7 @@ func (mkdacSuite) TestSlashySlashy(c *check.C) {
 		d := c.MkDir()
 		// just in case
 		c.Assert(strings.HasSuffix(d, "/"), check.Equals, false)
-		err := osutil.MkdirAllChown(d+dir, 0755, osutil.NoChown, osutil.NoChown)
+		err := osutil.MkdirAllChown(d+dir, 0o755, osutil.NoChown, osutil.NoChown)
 		c.Assert(err, check.IsNil, check.Commentf("%q", dir))
 	}
-
 }

@@ -80,7 +80,7 @@ type warningsAction struct {
 // Warnings at the given time.
 func (client *Client) Okay(t time.Time) error {
 	var body bytes.Buffer
-	var op = warningsAction{Action: "okay", Timestamp: t}
+	op := warningsAction{Action: "okay", Timestamp: t}
 	if err := json.NewEncoder(&body).Encode(op); err != nil {
 		return err
 	}

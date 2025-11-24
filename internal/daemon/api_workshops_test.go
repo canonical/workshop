@@ -532,13 +532,13 @@ func (s *apiSuite) TestGetWorkshops(c *check.C) {
 			{
 				Name:        "system",
 				Revision:    system.SystemSdkRevision.String(),
-				InstallTime: time.Date(2023, 04, 25, 1, 2, 3, 0, time.UTC),
+				InstallTime: time.Date(2023, 4, 25, 1, 2, 3, 0, time.UTC),
 			},
 			{
 				Name:        "test-sdk",
 				Channel:     "latest/stable",
 				Revision:    "1",
-				InstallTime: time.Date(2023, 04, 25, 1, 2, 3, 0, time.UTC),
+				InstallTime: time.Date(2023, 4, 25, 1, 2, 3, 0, time.UTC),
 			},
 		},
 	}, {
@@ -549,7 +549,7 @@ func (s *apiSuite) TestGetWorkshops(c *check.C) {
 		Sdks: []*SdkInfo{{
 			Name:        "system",
 			Revision:    system.SystemSdkRevision.String(),
-			InstallTime: time.Date(2023, 04, 25, 1, 2, 3, 0, time.UTC),
+			InstallTime: time.Date(2023, 4, 25, 1, 2, 3, 0, time.UTC),
 		}},
 	}})
 
@@ -587,13 +587,14 @@ func (s *apiSuite) TestGetWorkshopInfo(c *check.C) {
 	w.Profiles["system"] = p
 
 	p = workshop.NewSdkProfile("test-sdk")
-	p.Mounts["data"] = workshop.Mount{Name: "data",
+	p.Mounts["data"] = workshop.Mount{
+		Name:      "data",
 		Type:      workshop.HostWorkshop,
 		What:      testSDKSource,
 		MakeWhat:  true,
 		Where:     "/opt/data",
 		MakeWhere: true,
-		Mode:      0755,
+		Mode:      0o755,
 	}
 	p.Tunnels = []workshop.Tunnel{{ProxyEntry: workshop.ProxyEntry{
 		Name:      "dns",
@@ -606,15 +607,17 @@ func (s *apiSuite) TestGetWorkshopInfo(c *check.C) {
 	testSDKSource2 := workshop.SdkMountHostSource(s.user.HomeDir, s.project.ProjectId, "tunnels", "test-sdk-2", "photos")
 
 	p = workshop.NewSdkProfile("test-sdk-2")
-	p.Mounts["photos"] = workshop.Mount{Name: "photos",
+	p.Mounts["photos"] = workshop.Mount{
+		Name:      "photos",
 		Type:      workshop.HostWorkshop,
 		What:      testSDKSource2,
 		MakeWhat:  true,
 		Where:     "/opt/data2",
 		MakeWhere: true,
-		Mode:      0755,
+		Mode:      0o755,
 	}
-	p.Mounts["photos2"] = workshop.Mount{Name: "photos2",
+	p.Mounts["photos2"] = workshop.Mount{
+		Name:  "photos2",
 		Type:  workshop.WorkshopWorkshop,
 		What:  "/photos",
 		Where: "/opt/data3",
@@ -747,7 +750,8 @@ func (s *apiSuite) TestGetWorkshopInfo(c *check.C) {
 				},
 			},
 		},
-		Path: workshop.Filepath(s.project.Path, "tunnels")})
+		Path: workshop.Filepath(s.project.Path, "tunnels"),
+	})
 }
 
 func (s *apiSuite) TestGetWorkshopInfoSomePlugsBound(c *check.C) {
@@ -763,13 +767,14 @@ func (s *apiSuite) TestGetWorkshopInfoSomePlugsBound(c *check.C) {
 
 	testSDKSource := workshop.SdkMountHostSource(s.user.HomeDir, s.project.ProjectId, "somebound", "mount-conflict", "photos")
 	p := workshop.NewSdkProfile("mount-conflict")
-	p.Mounts["photos"] = workshop.Mount{Name: "photos",
+	p.Mounts["photos"] = workshop.Mount{
+		Name:      "photos",
 		Type:      workshop.HostWorkshop,
 		What:      testSDKSource,
 		MakeWhat:  true,
 		Where:     "/opt/data",
 		MakeWhere: true,
-		Mode:      0755,
+		Mode:      0o755,
 	}
 	w.Profiles["mount-conflict"] = p
 
@@ -850,7 +855,8 @@ func (s *apiSuite) TestGetWorkshopInfoSomePlugsBound(c *check.C) {
 				},
 			},
 		},
-		Path: workshop.Filepath(s.project.Path, "somebound")})
+		Path: workshop.Filepath(s.project.Path, "somebound"),
+	})
 }
 
 func (s *apiSuite) TestGetWorkshopActions(c *check.C) {
@@ -964,7 +970,7 @@ func (s *apiSuite) createWFile(c *check.C, name, yaml string) {
 	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(path, []byte(yaml), 0644)
+	err = os.WriteFile(path, []byte(yaml), 0o644)
 	c.Assert(err, check.IsNil)
 }
 
@@ -1011,11 +1017,11 @@ func storeAction(ctx context.Context, actions []sdk.SdkAction) ([]sdk.Meta, erro
 }
 
 func mockSdk(metadir, hooksdir string, meta string) error {
-	if err := os.MkdirAll(metadir, 0755); err != nil {
+	if err := os.MkdirAll(metadir, 0o755); err != nil {
 		return err
 	}
 
-	file, err := os.OpenFile(filepath.Join(metadir, "sdk.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+	file, err := os.OpenFile(filepath.Join(metadir, "sdk.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
 	}
@@ -1024,7 +1030,7 @@ func mockSdk(metadir, hooksdir string, meta string) error {
 		return err
 	}
 
-	return os.MkdirAll(hooksdir, 0755)
+	return os.MkdirAll(hooksdir, 0o755)
 }
 
 func (s *apiSuite) mockTrySdk(c *check.C, name, filename string, meta string) {
@@ -1034,12 +1040,12 @@ func (s *apiSuite) mockTrySdk(c *check.C, name, filename string, meta string) {
 	hooksdir := filepath.Join(sdkdir, "sdk", "hooks")
 	c.Assert(mockSdk(metadir, hooksdir, meta), check.IsNil)
 
-	c.Assert(os.WriteFile(sdkdir+".yaml", []byte(meta), 0666), check.IsNil)
+	c.Assert(os.WriteFile(sdkdir+".yaml", []byte(meta), 0o666), check.IsNil)
 
 	hash := sha3.New384()
 	_, _ = hash.Write([]byte(meta))
 	digest := fmt.Appendf(nil, "%x", hash.Sum(nil))
-	c.Assert(os.WriteFile(sdkdir+".sha3-384", digest, 0666), check.IsNil)
+	c.Assert(os.WriteFile(sdkdir+".sha3-384", digest, 0o666), check.IsNil)
 }
 
 func (s *apiSuite) mockProjectSdk(c *check.C, name string, meta string) {
@@ -1244,7 +1250,7 @@ func (s *apiSuite) TestLaunchWorkshopNoTrySdk(c *check.C) {
 	}
 	s.runActionTest(c, requests, expected)
 
-	c.Assert(os.WriteFile(tryfile, nil, 0666), check.IsNil)
+	c.Assert(os.WriteFile(tryfile, nil, 0o666), check.IsNil)
 
 	requests = []*bytes.Buffer{
 		bytes.NewBufferString(`{"names":["manysdks"],"action":"launch"}`),
@@ -1260,7 +1266,7 @@ func (s *apiSuite) TestLaunchWorkshopNoTrySdk(c *check.C) {
 	}
 	s.runActionTest(c, requests, expected)
 
-	c.Assert(os.WriteFile(trydigest, nil, 0666), check.IsNil)
+	c.Assert(os.WriteFile(trydigest, nil, 0o666), check.IsNil)
 
 	requests = []*bytes.Buffer{
 		bytes.NewBufferString(`{"names":["manysdks"],"action":"launch"}`),
@@ -1554,7 +1560,8 @@ func (s *apiSuite) TestWorkshopConnectionsOK(c *check.C) {
 		{
 			PlugRef: sdk.PlugRef{ProjectId: s.project.ProjectId, Workshop: "workshopconns", Sdk: "test-sdk-2", Name: "photos"},
 			SlotRef: sdk.SlotRef{ProjectId: s.project.ProjectId, Workshop: "workshopconns", Sdk: sdk.System.String(), Name: "mount"},
-		}, {
+		},
+		{
 			PlugRef: sdk.PlugRef{ProjectId: s.project.ProjectId, Workshop: "workshopconns", Sdk: "test-sdk-2", Name: "gpu"},
 			SlotRef: sdk.SlotRef{ProjectId: s.project.ProjectId, Workshop: "workshopconns", Sdk: sdk.System.String(), Name: "gpu"},
 		},
@@ -1941,7 +1948,8 @@ func (s *apiSuite) TestRefreshAddSdk(c *check.C) {
 	s.runActionTest(c, requests, expected)
 
 	s.checkSnapshotCalls(c, "basic", []string{
-		"system"})
+		"system",
+	})
 
 	s.mockProjectSdk(c, "test-sdk-2", testsdk2)
 	s.createWFile(c, "basic", basic_refreshed)

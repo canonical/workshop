@@ -82,14 +82,14 @@ func (s *managerSuite) launchWorkshopWithSDKs(c *check.C, ws string, sdks []work
 	t, err := template.New("workshop").Parse(fmt.Sprintf(workshopTemplate, ws))
 	c.Assert(err, check.IsNil)
 
-	var workshopFile = bytes.NewBuffer([]byte{})
+	workshopFile := bytes.NewBuffer([]byte{})
 	c.Assert(t.Execute(workshopFile, sdks), check.IsNil)
 
 	path := workshop.Filepath(s.project.Path, ws)
 	err = os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(path, workshopFile.Bytes(), 0644)
+	err = os.WriteFile(path, workshopFile.Bytes(), 0o644)
 	c.Assert(err, check.IsNil)
 
 	wf := workshop.File{Name: ws, Base: "ubuntu@22.04"}

@@ -36,8 +36,7 @@ const (
 
 var workshopFs = sftpFs
 
-type Backend struct {
-}
+type Backend struct{}
 
 func (b *Backend) Initialize() error {
 	return nil
@@ -191,7 +190,7 @@ func prepareHostWorkshopMount(fs fsutil.Fs, user *user.User, mnt workshop.Mount)
 			return err
 		}
 
-		if err := osutil.MkdirAllChown(mnt.What, 0755, uid, gid); err != nil {
+		if err := osutil.MkdirAllChown(mnt.What, 0o755, uid, gid); err != nil {
 			return err
 		}
 		// Only change permissions for mounted directory, and ignore umask.
@@ -317,7 +316,7 @@ func readMountProfile(fs fsutil.Fs) (*osutil.MountProfile, []byte, error) {
 }
 
 func writeMountProfile(fs fsutil.Fs, mounts io.WriterTo) error {
-	return fs.AtomicWriteTo(mounts, "/etc/fstab", 0644)
+	return fs.AtomicWriteTo(mounts, "/etc/fstab", 0o644)
 }
 
 func runMountCommand(conn lxd.InstanceServer, pid, w string, cmd []string) error {
@@ -381,7 +380,7 @@ func setupSshAgent(fs fsutil.Fs, prev, next *workshop.SshAgent) error {
 	}
 
 	envVars := map[string]string{"SSH_AUTH_SOCK": next.Listen.Address}
-	return fs.AtomicWriteTo(envScript(envVars), script, 0644)
+	return fs.AtomicWriteTo(envScript(envVars), script, 0o644)
 }
 
 func removeSshAgent(fs fsutil.Fs, prev *workshop.SshAgent) error {
@@ -409,7 +408,7 @@ func setupDesktop(fs fsutil.Fs, user *user.User, env map[string]string, prev, ne
 	}
 
 	envVars := desktopEnvironment(user, env, *next)
-	return fs.AtomicWriteTo(envScript(envVars), script, 0644)
+	return fs.AtomicWriteTo(envScript(envVars), script, 0o644)
 }
 
 func removeDesktop(fs fsutil.Fs, prev *workshop.Desktop) error {

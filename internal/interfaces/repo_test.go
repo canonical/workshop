@@ -174,7 +174,6 @@ func (s *RepositorySuite) TestAllInterfaces(c *C) {
 
 	// The result is always sorted.
 	c.Assert(s.emptyRepo.AllInterfaces(), DeepEquals, []Interface{i1, i2, i3})
-
 }
 
 func (s *RepositorySuite) TestAddBackend(c *C) {
@@ -738,7 +737,8 @@ func (s *RepositorySuite) TestConnectFailsWhenSlotAndPlugAreIncompatible(c *C) {
 		Sdk: &sdk.Info{
 			ProjectId: s.projectId,
 			Workshop:  "ws",
-			Name:      "consumer"},
+			Name:      "consumer",
+		},
 		Name:      "plug",
 		Interface: "other-interface",
 	}
@@ -1338,7 +1338,8 @@ func (s *DisconnectSdkSuite) TestNotConnected(c *C) {
 func (s *DisconnectSdkSuite) TestOutgoingConnection(c *C) {
 	connRef := &ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-a"},
-		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2", Name: "iface-a"}}
+		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2", Name: "iface-a"},
+	}
 	_, err := s.repo.Connect(connRef, nil, nil, nil, nil, nil)
 	c.Assert(err, IsNil)
 	// Disconnect s1 with which has an outgoing connection to s2
@@ -1351,7 +1352,8 @@ func (s *DisconnectSdkSuite) TestOutgoingConnection(c *C) {
 func (s *DisconnectSdkSuite) TestIncomingConnection(c *C) {
 	connRef := &ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2", Name: "iface-b"},
-		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-b"}}
+		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-b"},
+	}
 	_, err := s.repo.Connect(connRef, nil, nil, nil, nil, nil)
 	c.Assert(err, IsNil)
 	// Disconnect s1 with which has an incoming connection from s2
@@ -1366,12 +1368,14 @@ func (s *DisconnectSdkSuite) TestCrossConnection(c *C) {
 	for _, sdkName := range []string{"s1", "s2"} {
 		connRef1 := &ConnRef{
 			PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-a"},
-			SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2", Name: "iface-a"}}
+			SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2", Name: "iface-a"},
+		}
 		_, err := s.repo.Connect(connRef1, nil, nil, nil, nil, nil)
 		c.Assert(err, IsNil)
 		connRef2 := &ConnRef{
 			PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2", Name: "iface-b"},
-			SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-b"}}
+			SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-b"},
+		}
 		_, err = s.repo.Connect(connRef2, nil, nil, nil, nil, nil)
 		c.Assert(err, IsNil)
 		affected, err := s.repo.DisconnectSdk("42424242", "ws", sdkName)
@@ -1384,7 +1388,8 @@ func (s *DisconnectSdkSuite) TestCrossConnection(c *C) {
 func (s *DisconnectSdkSuite) TestParallelInstances(c *C) {
 	_, err := s.repo.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-a"},
-		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2-instance", Name: "iface-a"}}, nil, nil, nil, nil, nil)
+		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2-instance", Name: "iface-a"},
+	}, nil, nil, nil, nil, nil)
 	c.Assert(err, IsNil)
 	affected, err := s.repo.DisconnectSdk("42424242", "ws", "s1")
 	c.Assert(err, IsNil)
@@ -1393,7 +1398,8 @@ func (s *DisconnectSdkSuite) TestParallelInstances(c *C) {
 
 	_, err = s.repo.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2-instance", Name: "iface-b"},
-		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-b"}}, nil, nil, nil, nil, nil)
+		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s1", Name: "iface-b"},
+	}, nil, nil, nil, nil, nil)
 	c.Assert(err, IsNil)
 	affected, err = s.repo.DisconnectSdk("42424242", "ws", "s1")
 	c.Assert(err, IsNil)
@@ -1508,7 +1514,8 @@ func (s *RepositorySuite) TestBeforeConnectValidation(c *C) {
 	policyCheck := func(plug *ConnectedPlug, slot *ConnectedSlot) (bool, error) { return true, nil }
 	conn, err := s.emptyRepo.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.projectId, Workshop: "ws-s1", Sdk: "s1", Name: "consumer"},
-		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws-s2", Sdk: "s2", Name: "producer"}}, nil, plugDynAttrs, nil, slotDynAttrs, policyCheck)
+		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws-s2", Sdk: "s2", Name: "producer"},
+	}, nil, plugDynAttrs, nil, slotDynAttrs, policyCheck)
 	c.Assert(err, IsNil)
 	c.Assert(conn, NotNil)
 
@@ -1545,7 +1552,8 @@ func (s *RepositorySuite) TestBeforeConnectValidationFailure(c *C) {
 
 	conn, err := s.emptyRepo.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.projectId, Workshop: "ws-s1", Sdk: "s1", Name: "consumer"},
-		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws-s2", Sdk: "s2", Name: "producer"}}, nil, plugDynAttrs, nil, slotDynAttrs, policyCheck)
+		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws-s2", Sdk: "s2", Name: "producer"},
+	}, nil, plugDynAttrs, nil, slotDynAttrs, policyCheck)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, `cannot connect plug "ws-s1/s1:consumer": invalid plug`)
 	c.Assert(conn, IsNil)
@@ -1573,7 +1581,8 @@ func (s *RepositorySuite) TestBeforeConnectValidationPolicyCheckFailure(c *C) {
 
 	conn, err := s.emptyRepo.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.projectId, Workshop: "ws-s1", Sdk: "s1", Name: "consumer"},
-		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws-s2", Sdk: "s2", Name: "producer"}}, nil, plugDynAttrs, nil, slotDynAttrs, policyCheck)
+		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws-s2", Sdk: "s2", Name: "producer"},
+	}, nil, plugDynAttrs, nil, slotDynAttrs, policyCheck)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, `policy check failed`)
 	c.Assert(conn, IsNil)
@@ -1598,14 +1607,16 @@ func (s *RepositorySuite) TestConnection(c *C) {
 
 	_, err = s.testRepo.Connection(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "a", Name: "b"},
-		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "producer", Name: "slot"}})
+		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "producer", Name: "slot"},
+	})
 	c.Assert(err, ErrorMatches, `SDK "ws/a" has no plug named "b"`)
 	e, _ := err.(*NoPlugOrSlotError)
 	c.Check(e, NotNil)
 
 	_, err = s.testRepo.Connection(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "consumer", Name: "plug"},
-		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "a", Name: "b"}})
+		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "a", Name: "b"},
+	})
 	c.Assert(err, ErrorMatches, `SDK "ws/a" has no slot named "b"`)
 	e, _ = err.(*NoPlugOrSlotError)
 	c.Check(e, NotNil)
@@ -1679,15 +1690,18 @@ plugs:
 	// Connect a few things for the tests below.
 	_, err := r.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "s1", Name: "i1"},
-		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "s2", Name: "i1"}}, nil, nil, nil, nil, nil)
+		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "s2", Name: "i1"},
+	}, nil, nil, nil, nil, nil)
 	c.Assert(err, IsNil)
 	_, err = r.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "s1", Name: "i1"},
-		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "s2", Name: "i1"}}, nil, nil, nil, nil, nil)
+		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "s2", Name: "i1"},
+	}, nil, nil, nil, nil, nil)
 	c.Assert(err, IsNil)
 	_, err = r.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "s1", Name: "i2"},
-		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "system", Name: "i2"}}, nil, nil, nil, nil, nil)
+		SlotRef: sdk.SlotRef{ProjectId: s.projectId, Workshop: "ws", Sdk: "system", Name: "i2"},
+	}, nil, nil, nil, nil, nil)
 	c.Assert(err, IsNil)
 
 	// Without any names or options we get the summary of all the interfaces.

@@ -76,7 +76,7 @@ func (s *cpSuite) SetUpTest(c *C) {
 	s.f1 = filepath.Join(s.dir, "f1")
 	s.f2 = filepath.Join(s.dir, "f2")
 	s.data = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	c.Assert(os.WriteFile(s.f1, s.data, 0644), IsNil)
+	c.Assert(os.WriteFile(s.f1, s.data, 0o644), IsNil)
 }
 
 func (s *cpSuite) mock() {
@@ -103,7 +103,7 @@ func (s *cpSuite) TestCpOverwrite(c *C) {
 }
 
 func (s *cpSuite) TestCpOverwriteTruncates(c *C) {
-	c.Assert(os.WriteFile(s.f2, []byte("xxxxxxxxxxxxxxxx"), 0644), IsNil)
+	c.Assert(os.WriteFile(s.f2, []byte("xxxxxxxxxxxxxxxx"), 0o644), IsNil)
 	c.Check(osutil.CopyFile(s.f1, s.f2, osutil.CopyFlagOverwrite), IsNil)
 	c.Check(s.f2, testutil.FileEquals, s.data)
 }
@@ -184,7 +184,7 @@ type mockstat struct{}
 
 func (mockstat) Name() string       { return "mockstat" }
 func (mockstat) Size() int64        { return 42 }
-func (mockstat) Mode() os.FileMode  { return 0644 }
+func (mockstat) Mode() os.FileMode  { return 0o644 }
 func (mockstat) ModTime() time.Time { return time.Now() }
 func (mockstat) IsDir() bool        { return false }
 func (mockstat) Sys() interface{}   { return nil }
@@ -194,7 +194,7 @@ func (s *cpSuite) TestCopySpecialFileSimple(c *C) {
 	defer sync.Restore()
 
 	src := filepath.Join(c.MkDir(), "fifo")
-	err := syscall.Mkfifo(src, 0644)
+	err := syscall.Mkfifo(src, 0o644)
 	c.Assert(err, IsNil)
 	dir := c.MkDir()
 	dst := filepath.Join(dir, "copied-fifo")
@@ -217,7 +217,7 @@ func (s *cpSuite) TestCopyPreserveAll(c *C) {
 	src := filepath.Join(c.MkDir(), "meep")
 	dst := filepath.Join(c.MkDir(), "copied-meep")
 
-	err := os.WriteFile(src, []byte(nil), 0644)
+	err := os.WriteFile(src, []byte(nil), 0o644)
 	c.Assert(err, IsNil)
 
 	// Give the file a different mtime to ensure CopyFlagPreserveAll
@@ -249,7 +249,7 @@ func (s *cpSuite) TestCopyPreserveAllSync(c *C) {
 	src := filepath.Join(dir, "meep")
 	dst := filepath.Join(dir, "copied-meep")
 
-	err := os.WriteFile(src, []byte(nil), 0644)
+	err := os.WriteFile(src, []byte(nil), 0o644)
 	c.Assert(err, IsNil)
 
 	err = osutil.CopyFile(src, dst, osutil.CopyFlagPreserveAll|osutil.CopyFlagSync)
@@ -269,7 +269,7 @@ func (s *cpSuite) TestCopyPreserveAllSyncCpFailure(c *C) {
 	src := filepath.Join(dir, "meep")
 	dst := filepath.Join(dir, "copied-meep")
 
-	err := os.WriteFile(src, []byte(nil), 0644)
+	err := os.WriteFile(src, []byte(nil), 0o644)
 	c.Assert(err, IsNil)
 
 	err = osutil.CopyFile(src, dst, osutil.CopyFlagPreserveAll|osutil.CopyFlagSync)
@@ -287,7 +287,7 @@ func (s *cpSuite) TestCopyPreserveAllSyncSyncFailure(c *C) {
 	src := filepath.Join(dir, "meep")
 	dst := filepath.Join(dir, "copied-meep")
 
-	err := os.WriteFile(src, []byte(nil), 0644)
+	err := os.WriteFile(src, []byte(nil), 0o644)
 	c.Assert(err, IsNil)
 
 	err = osutil.CopyFile(src, dst, osutil.CopyFlagPreserveAll|osutil.CopyFlagSync)
@@ -305,14 +305,14 @@ func (s *cpSuite) TestCopyPreserveAllSyncSyncFailure(c *C) {
 func (s *cpSuite) TestCopyAllChown(c *C) {
 	root := c.MkDir()
 
-	c.Assert(os.Mkdir(filepath.Join(root, "a"), 0755), IsNil)
-	c.Assert(os.Mkdir(filepath.Join(root, "a", "dir"), 0700), IsNil)
+	c.Assert(os.Mkdir(filepath.Join(root, "a"), 0o755), IsNil)
+	c.Assert(os.Mkdir(filepath.Join(root, "a", "dir"), 0o700), IsNil)
 	c.Assert(os.WriteFile(filepath.Join(root, "a", "file"), []byte("foo"), os.ModePerm), IsNil)
 	c.Assert(os.Chmod(filepath.Join(root, "a", "file"), os.ModePerm), IsNil)
-	c.Assert(os.WriteFile(filepath.Join(root, "a", "script"), []byte("#!/bin/sh\n"), 0705), IsNil)
-	c.Assert(syscall.Mkfifo(filepath.Join(root, "a", "pipe"), 0644), IsNil)
+	c.Assert(os.WriteFile(filepath.Join(root, "a", "script"), []byte("#!/bin/sh\n"), 0o705), IsNil)
+	c.Assert(syscall.Mkfifo(filepath.Join(root, "a", "pipe"), 0o644), IsNil)
 	c.Assert(os.Mkdir(filepath.Join(root, "target"), os.ModePerm), IsNil)
-	c.Assert(os.WriteFile(filepath.Join(root, "target", "file"), []byte("bar"), 0644), IsNil)
+	c.Assert(os.WriteFile(filepath.Join(root, "target", "file"), []byte("bar"), 0o644), IsNil)
 	c.Assert(os.Symlink(filepath.Join(root, "target"), filepath.Join(root, "a", "link")), IsNil)
 
 	u, err := osutil.UserMaybeSudoUser()
@@ -330,7 +330,7 @@ func (s *cpSuite) TestCopyAllChown(c *C) {
 	c.Assert(err, IsNil)
 
 	b := filepath.Join(c.MkDir(), "b")
-	c.Assert(os.Mkdir(b, 0700), IsNil)
+	c.Assert(os.Mkdir(b, 0o700), IsNil)
 	c.Assert(osutil.CopyAllChown(filepath.Join(root, "a"), b, uid, gid), IsNil)
 
 	c.Check(filepath.Dir(b), testutil.DirEquals, []string{"drwxr-xr-x b"})
@@ -338,7 +338,8 @@ func (s *cpSuite) TestCopyAllChown(c *C) {
 		"drwx------ dir",
 		"-rwxrwxrwx file",
 		"Lrwxrwxrwx link",
-		"-rwx---r-x script"})
+		"-rwx---r-x script",
+	})
 	c.Check(filepath.Join(b, "file"), testutil.FileEquals, "foo")
 	c.Check(filepath.Join(b, "dir"), testutil.DirEquals, []string{})
 	c.Check(filepath.Join(b, "link"), testutil.DirEquals, []string{"-rw-r--r-- file"})
@@ -369,7 +370,7 @@ func (s *cpSuite) TestCopyAllChown(c *C) {
 
 func (s *cpSuite) TestCopyAllChownNoSource(c *C) {
 	root := c.MkDir()
-	c.Assert(os.Mkdir(filepath.Join(root, "b"), 0700), IsNil)
+	c.Assert(os.Mkdir(filepath.Join(root, "b"), 0o700), IsNil)
 
 	u, err := user.Current()
 	c.Assert(err, IsNil)

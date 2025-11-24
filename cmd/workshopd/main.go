@@ -30,9 +30,7 @@ var workshopd = &cobra.Command{
 	TraverseChildren: true,
 }
 
-var (
-	osExit = os.Exit
-)
+var osExit = os.Exit
 
 func main() {
 	l, err := logger.New(os.Stderr, 0)

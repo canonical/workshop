@@ -182,7 +182,7 @@ func (s *Backend) ImportVolume(ctx context.Context, info workshop.VolumeSetup, t
 	}
 
 	// Generate index.yaml for the volume.
-	if err = os.WriteFile(filepath.Join(dir, "index.yaml"), []byte(volumeIndexContent(info.Name)), 0644); err != nil {
+	if err = os.WriteFile(filepath.Join(dir, "index.yaml"), []byte(volumeIndexContent(info.Name)), 0o644); err != nil {
 		return err
 	}
 

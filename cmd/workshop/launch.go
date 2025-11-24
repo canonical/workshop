@@ -20,7 +20,7 @@ type CmdLaunch struct {
 }
 
 func (c *CmdLaunch) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "launch <WORKSHOP>...",
 		Short: "Construct one or many workshops using their definitions",
 		Long: `

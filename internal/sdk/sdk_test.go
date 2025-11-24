@@ -43,7 +43,7 @@ func (s *SdkSuite) TestSourceMarshalUnmarshal(c *check.C) {
 }
 
 func (s *SdkSuite) TestSimple(c *check.C) {
-	var mockYaml = []byte(`name: sdk
+	mockYaml := []byte(`name: sdk
 base: ubuntu@20.04
 `)
 
@@ -58,7 +58,7 @@ base: ubuntu@20.04
 }
 
 func (s *SdkSuite) TestMinimalisticPlug(c *check.C) {
-	var mockYaml = []byte(`name: sdk
+	mockYaml := []byte(`name: sdk
 base: ubuntu@20.04
 plugs:
   training:
@@ -79,7 +79,7 @@ plugs:
 }
 
 func (s *SdkSuite) TestMinimalisticSlot(c *check.C) {
-	var mockYaml = []byte(`name: sdk
+	mockYaml := []byte(`name: sdk
 base: ubuntu@20.04
 slots:
   training:
@@ -492,7 +492,7 @@ slots:
 }
 
 func (s *SdkSuite) TestAddingWorkshopSlotOK(c *check.C) {
-	var mockYaml = []byte(`name: sdk
+	mockYaml := []byte(`name: sdk
 base: ubuntu@20.04
 slots:
   training:
@@ -529,7 +529,7 @@ slots:
 }
 
 func (s *SdkSuite) TestAddingAlreadyExistingSlotFails(c *check.C) {
-	var mockYaml = []byte(`name: sdk
+	mockYaml := []byte(`name: sdk
 base: ubuntu@20.04
 slots:
   training:
@@ -557,7 +557,7 @@ slots:
 }
 
 func (s *SdkSuite) TestAddingAlreadyExistingPlugFails(c *check.C) {
-	var mockYaml = []byte(`name: sdk
+	mockYaml := []byte(`name: sdk
 base: ubuntu@20.04
 plugs:
   training:

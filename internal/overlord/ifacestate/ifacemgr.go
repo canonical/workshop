@@ -192,8 +192,8 @@ func (m *InterfaceManager) StartUp() error {
 // returns a list of fully populated connection references that can be
 // disconnected.
 func (m *InterfaceManager) ResolveDisconnect(
-	plugProject, plugWorkshop, plugSdk, plugName string, slotProject, slotWorkshop, slotSdk, slotName string, forget bool) ([]*interfaces.ConnRef, error) {
-
+	plugProject, plugWorkshop, plugSdk, plugName string, slotProject, slotWorkshop, slotSdk, slotName string, forget bool,
+) ([]*interfaces.ConnRef, error) {
 	var connected func(plugPrj, plugWs, plugSdk, plug, slotPrj, slotWs, slotSdk, slot string) (bool, error)
 	var connectedPlugOrSlot func(projectId, workshop, sdkName, plugOrSlotName string) ([]*interfaces.ConnRef, error)
 

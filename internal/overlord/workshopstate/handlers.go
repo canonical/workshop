@@ -124,7 +124,7 @@ func (m *WorkshopManager) doConstructWorkshop(task *state.Task, tomb *tomb.Tomb)
 		}
 		defer fs.Close()
 
-		if err = fs.MkdirAll(dirs.WorkshopRunDir, 0755); err != nil {
+		if err = fs.MkdirAll(dirs.WorkshopRunDir, 0o755); err != nil {
 			return err
 		}
 	} else {
@@ -163,7 +163,7 @@ func (m *WorkshopManager) doCreateWorkshopStorage(task *state.Task, tomb *tomb.T
 	}
 
 	aptCache := workshop.AptCacheDir(prj.ProjectId, w)
-	if err := os.MkdirAll(aptCache, 0755); err != nil {
+	if err := os.MkdirAll(aptCache, 0o755); err != nil {
 		return err
 	}
 	if err = sys.ChownPath(aptCache, uid, gid); err != nil {
@@ -239,7 +239,7 @@ func (m *WorkshopManager) doMountProject(task *state.Task, tomb *tomb.Tomb) erro
 	}
 
 	// Configure workshop core properties: project directory
-	var prjMount = workshop.Mount{
+	prjMount := workshop.Mount{
 		Name:  workshop.ConfigProjectPathDevice,
 		Type:  workshop.HostWorkshop,
 		What:  prj.Path,
@@ -289,7 +289,7 @@ func (m *WorkshopManager) doStop(task *state.Task, tomb *tomb.Tomb) error {
 	_ = task.Get("force", &force)
 	st.Unlock()
 
-	var stopped = make(chan error)
+	stopped := make(chan error)
 	stopctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go func() {

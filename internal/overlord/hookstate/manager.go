@@ -126,8 +126,7 @@ func (m *HookManager) Register(pattern *regexp.Regexp, generator HandlerGenerato
 	m.repository.addHandlerGenerator(pattern, generator)
 }
 
-type workshopHookHandler struct {
-}
+type workshopHookHandler struct{}
 
 func (h *workshopHookHandler) Before() error {
 	return nil

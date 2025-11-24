@@ -203,7 +203,7 @@ plugs:
 	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
 	plug := info.Plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
-	c.Check(plug.Attrs["mode"], check.Equals, int64(0775))
+	c.Check(plug.Attrs["mode"], check.Equals, int64(0o775))
 	c.Check(plug.Attrs["uid"], check.Equals, int64(1000))
 	c.Check(plug.Attrs["gid"], check.Equals, int64(1000))
 }
@@ -219,7 +219,7 @@ plugs:
 	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
 	plug := info.Plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
-	c.Check(plug.Attrs["mode"], check.Equals, int64(0755))
+	c.Check(plug.Attrs["mode"], check.Equals, int64(0o755))
 	c.Check(plug.Attrs["uid"], check.Equals, int64(0))
 	c.Check(plug.Attrs["gid"], check.Equals, int64(0))
 }
@@ -315,7 +315,7 @@ plugs:
   gid: 456
 `, s.projectId, "ws", "consumer", "mount")
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
-	c.Check(plug.Attrs["mode"], check.Equals, int64(0642))
+	c.Check(plug.Attrs["mode"], check.Equals, int64(0o642))
 	c.Check(plug.Attrs["uid"], check.Equals, int64(123))
 	c.Check(plug.Attrs["gid"], check.Equals, int64(456))
 }
@@ -332,7 +332,7 @@ plugs:
   gid: 4_321
 `, s.projectId, "ws", "consumer", "mount")
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
-	c.Check(plug.Attrs["mode"], check.Equals, int64(0753))
+	c.Check(plug.Attrs["mode"], check.Equals, int64(0o753))
 	c.Check(plug.Attrs["uid"], check.Equals, int64(1000))
 	c.Check(plug.Attrs["gid"], check.Equals, int64(4321))
 }
@@ -616,7 +616,7 @@ slots:
 		MakeWhat:  true,
 		Where:     "/project/training",
 		MakeWhere: true,
-		Mode:      0755,
+		Mode:      0o755,
 		Owner:     123,
 		Group:     321,
 	}

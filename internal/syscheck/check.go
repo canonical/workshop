@@ -2,8 +2,10 @@ package syscheck
 
 import "sync"
 
-var m sync.Mutex
-var checks []func() error
+var (
+	m      sync.Mutex
+	checks []func() error
+)
 
 func RegisterCheck(f func() error) {
 	m.Lock()

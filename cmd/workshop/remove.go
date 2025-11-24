@@ -13,7 +13,7 @@ type CmdRemove struct {
 }
 
 func (c *CmdRemove) Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "remove <WORKSHOP>...",
 		Short: "Remove one or many workshops",
 		Long: `
