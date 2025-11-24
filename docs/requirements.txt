@@ -4,11 +4,9 @@ canonical-sphinx>=0.5.1
 # Extensions previously auto-loaded by canonical-sphinx
 myst-parser
 sphinx-autobuild
-sphinx-copybutton
 sphinx-design
 sphinx-notfound-page
 sphinx-reredirects
-sphinx-roles
 sphinx-tabs
 sphinxcontrib-jquery
 sphinxext-opengraph
@@ -19,14 +17,12 @@ sphinx-contributor-listing>=0.1.0
 sphinx-filtered-toctree>=0.1.0
 sphinx-related-links>=0.1.1
 sphinx-roles>=0.1.0
-sphinx-terminal>=0.1.1
+sphinx-terminal>=1.0.2
 sphinx-ubuntu-images>=0.1.0
 sphinx-youtube-links>=0.1.0
 
 # Other dependencies
 packaging
-pre-commit
-sphinxcontrib-mermaid
 sphinxcontrib-svg2pdfconverter[CairoSVG]
 sphinx-last-updated-by-git
 sphinx-sitemap
