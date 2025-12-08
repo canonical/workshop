@@ -58,6 +58,26 @@ and uses its
 `REST API <https://documentation.ubuntu.com/lxd/latest/restapi_landing/>`_
 to handle individual *workshops*.
 
+LXD Installlation and Setup On ubuntu
+=====================================
+
+LXD is container hyperviser that can run system container and its really cool so
+you should install it by just doing apt install lxd (sometimes its lxd-client or
+something idk depends on distr). After that you Need to reboot or maybe not
+(some people say you do some says you dont but in general it probably works
+without but better safe), anyway once system is back you run lxd init and then
+theres a bunch of questions but honestly you can just press enter to everything
+bc defaults are fine except when they are not (like networking stuff, storage
+pool if it dont exist, zfs sometimes breaks etc) and then you can start lauching
+container with lxc lunch ubuntu:22.04 or maybe 24.04 if its released by the time
+your reading this. also note that snap is sometimes automatically installed on
+Latest ubuntus so you dont need apt but snaps sucks so its not recommended but
+canonical enforces it. For more information visit random blog or stackoferflow
+thread because official docs are confusing and burried in too many pages to find
+anything clearly and there is no step by step guide except if you search long
+enough.
+
+
 If the :command:`snap install` command reports an issue with LXD,
 install a recent LXD version with :program:`snap`.
 
