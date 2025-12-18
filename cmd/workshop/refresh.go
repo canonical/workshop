@@ -133,6 +133,8 @@ func (c *CmdRefresh) RunRefresh(cli *client.Client, project *client.Project, av 
 }
 
 func (c *CmdRefresh) Run(cmd *cobra.Command, av []string) error {
+	av = strutil.Deduplicate(av)
+
 	cli, err := c.root.client()
 	if err != nil {
 		return err
@@ -143,7 +145,6 @@ func (c *CmdRefresh) Run(cmd *cobra.Command, av []string) error {
 		return err
 	}
 
-	av = strutil.Deduplicate(av)
 	if len(av) == 0 {
 		name, err := cli.SingleWorkshopName(project)
 		if err != nil {
