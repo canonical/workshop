@@ -17,14 +17,6 @@ to work in sandboxed environments over a shared project repository,
 thus addressing security and privacy concerns
 while enabling a degree of creativity in your workflows.
 
-.. note::
-
-   This guide uses ``claude-code`` and ``copilot-cli`` as fictional example SDKs
-   to demonstrate multi-agent workflows.
-   These SDKs do not exist in the Workshop SDK Store.
-   You can adapt these patterns to real AI coding tools
-   by packaging them as Workshop SDKs.
-
 This guide demonstrates how to run heterogeneous AI coding SDKs
 in separate Git worktrees,
 comparing their outputs
