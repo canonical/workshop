@@ -1,0 +1,164 @@
+Title: Compare and Synthesize Rubik's Cube Renderer Implementations
+
+Mission:
+
+Analyze two existing GPU-accelerated 3D Rubik's cube renderer implementations,
+compare their design approaches and code quality,
+facilitate user decision-making on major design choices,
+and synthesize the best elements from both into a unified, high-quality implementation.
+
+Context:
+The source prompt is at ./prompts/rubik-shared.md.
+Two independent implementations exist:
+- ../claude/ (claude-code implementation)
+- ../copilot/ (copilot-cli implementation)
+
+Each implementation represents different design philosophies and tooling approaches.
+The goal is to extract the strongest elements from both
+and create a superior synthesis in the current directory.
+
+Task Requirements:
+
+1. Comprehensive Code Analysis
+   - Map the complete structure of both implementations
+   - Identify core rendering algorithms, OpenGL usage patterns, and architectural approaches
+   - Document dependencies (Pygame, PyOpenGL versions and any additional libraries)
+   - Assess code organization and documentation quality
+
+2. Comparative Evaluation Across Dimensions
+   - Code simplicity and readability: clarity of OpenGL operations, naming conventions, inline comments
+   - Architecture maturity: separation of geometry, lighting, and rendering logic
+   - Implementation quality: lighting realism, animation smoothness, FPS stability, GPU utilization
+
+3. Design Decision Extraction
+   - Identify every major design choice where implementations diverge
+   - Document the rationale apparent in each approach
+   - Present trade-offs clearly and neutrally
+
+4. User-Guided Decision Process
+   - For each significant design decision, present choices with pros/cons
+   - Ask the user which approach they prefer
+   - Record user preferences systematically
+
+5. Synthesis Implementation
+   - Create a new implementation incorporating user-selected approaches
+   - Maintain consistency across all design decisions
+   - Ensure the synthesis is coherent, not a patchwork
+
+Process / Steps:
+
+Phase 1: Discovery and Mapping
+1. Recursively explore both codebases
+2. Create a structural comparison matrix (files, functions, OpenGL state management)
+3. Identify the core rendering and lighting implementations in each
+4. Document external dependencies and their versions
+
+Phase 2: Detailed Analysis
+1. Evaluate code simplicity:
+   - Lines of code vs. functionality delivered
+   - Complexity of OpenGL calls and state management
+   - Ease of understanding for a new developer
+2. Evaluate architecture maturity:
+   - Separation of geometry generation, lighting setup, and render loop
+   - Configurability of parameters (rotation speeds, colors, lighting)
+   - Code reuse and modularity
+3. Evaluate implementation quality:
+   - Visual quality of lighting and shading
+   - Smoothness of rotation animation
+   - FPS stability and GPU utilization
+   - Randomization implementation (scrambling, rotation speeds)
+
+Phase 3: Design Decision Catalog
+1. Identify divergent design choices:
+   - Cube geometry generation approach (vertex arrays, display lists, immediate mode)
+   - Lighting model implementation (Phong vs. Blinn-Phong, light positioning)
+   - Texture/material application strategy
+   - Rotation interpolation and timing mechanism
+   - FPS counter rendering approach
+   - OpenGL state initialization and cleanup
+   - Any other architectural differences
+2. For each decision, document:
+   - What claude-code chose and why (inferred from code)
+   - What copilot-cli chose and why (inferred from code)
+   - Observable trade-offs
+
+Phase 4: User Consultation
+1. Run INTERACTIVELY: actively engage the user with questions for every
+   major design decision rather than making assumptions
+2. Present each design decision clearly:
+   - Show code snippets demonstrating the approaches
+   - Explain trade-offs in plain language (e.g., performance vs. simplicity)
+   - Avoid bias toward either implementation
+3. Ask: "For [design decision X], which approach do you prefer:
+   claude-code's [approach A] or copilot-cli's [approach B]?"
+4. Record user's choice and reasoning if provided
+5. Repeat for all major decisions
+
+Phase 5: Synthesis
+1. Create rubiks_cube_renderer.py in current directory
+2. Implement chosen approaches for each design decision
+3. Write clean, well-documented code with inline comments
+4. Ensure consistency across all components
+5. Add header documentation and usage instructions
+6. Create a DECISIONS.md file documenting what was chosen from each source
+
+Phase 6: Validation
+1. Verify the synthesized renderer runs without errors on Ubuntu 24.04
+2. Validate visual output against quality requirements from rubik-shared.md:
+   - 640x480 windowed display with black background
+   - Visible lighting effects and 3D depth perception
+   - Smooth rotation on all three axes
+   - Randomized rotation speeds and scrambled initial state
+   - FPS counter visible and updating
+3. Compare performance with source implementations (FPS, GPU usage)
+4. Test window close mechanisms (ESC key and X button)
+
+Constraints & Guardrails:
+
+- Do NOT make design decisions without user input when implementations diverge significantly
+- Do NOT simply copy one implementation wholesale—actively synthesize
+- Do NOT proceed to synthesis until all major design decisions are resolved
+- Do NOT introduce new features or approaches not present in either source
+- Do NOT delete or modify the source implementations (../claude/ and ../copilot/)
+- Maintain compatibility with Ubuntu 24.04 and Python 3.x
+- If conflicting approaches cannot be reconciled, flag this explicitly and ask for guidance
+- Final output must meet all requirements from rubik-shared.md
+
+Output Specification:
+
+1. Comparison Report (comparison_analysis.md):
+   - Structural overview of both implementations
+   - Comparative analysis across the three dimensions
+   - Table of major design decisions with trade-offs
+
+2. Interactive Decision Log:
+   - Present each design decision to user
+   - Record user preferences in DECISIONS.md
+
+3. Synthesized Implementation (rubiks_cube_renderer.py):
+   - Complete standalone Python script
+   - Header documentation with dependencies and usage
+   - Inline comments for key OpenGL operations
+   - Clean, consistent code style
+
+4. Documentation Files:
+   - README.md explaining synthesis approach (optional, if helpful)
+   - DECISIONS.md documenting synthesis rationale
+
+5. Final Summary:
+   - What was taken from claude-code implementation
+   - What was taken from copilot-cli implementation
+   - Any harmonization or integration work required
+   - Recommendations for future improvements
+
+Quality Checks:
+
+Before Presenting Design Decisions:
+- Have I identified ALL major architectural differences?
+- Are trade-offs explained clearly and neutrally?
+- Have I avoided bias toward either implementation?
+
+Before Synthesis:
+- Have all major design decisions been reviewed with the user?
+- Is there a clear record of user preferences?
+- Are there any unresolved conflicts?

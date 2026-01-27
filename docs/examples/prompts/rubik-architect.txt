@@ -1,0 +1,58 @@
+Title: Generate Rubik's Cube Renderer Planning Documentation
+
+Mission:
+Create planning documentation for a GPU-accelerated 3D Rubik's cube
+renderer. Produce three markdown files (tech-stack.md, design.md,
+requirements.md) in the current directory that guide implementation of the
+specifications in ./prompts/rubik-shared.md.
+
+Context:
+- Source specification: ./prompts/rubik-shared.md
+- Target: Ubuntu 24.04, Python 3.10+
+- Required: Pygame + PyOpenGL for GPU-accelerated rendering
+- Output: 640x480 window with rotating cube and FPS counter
+
+Task Requirements:
+1. Document appropriate libraries for window management, 3D rendering,
+   and GPU acceleration
+2. Design modular architecture separating geometry, lighting, and
+   rendering concerns
+3. Extract functional requirements from rubik-shared.md
+
+Process / Steps:
+1. Read ./prompts/rubik-shared.md for complete requirements
+2. Research library compatibility with Ubuntu 24.04
+3. Design module structure and responsibilities
+4. Write three files in current directory:
+   - tech-stack.md: libraries with versions and justifications
+   - design.md: architecture and module layout
+   - requirements.md: functional requirements and success criteria
+
+Constraints:
+- MUST use Pygame + PyOpenGL (per rubik-shared.md)
+- ONLY recommend pip-installable libraries
+- Keep dependencies minimal
+- No solver—renderer only
+- No user interaction beyond ESC and window close
+- Run INTERACTIVELY: ask questions when in doubt rather than making
+  assumptions, especially for design decisions and library choices
+
+Output Specification:
+tech-stack.md:
+- Library recommendations with installation commands
+- PyOpenGL-accelerate: optional vs. required analysis
+
+design.md:
+- Module breakdown (geometry, lighting, rendering)
+- OpenGL approach and rotation strategy
+- Key design decisions
+
+requirements.md:
+- Functional requirements from rubik-shared.md
+- Non-functional requirements (FPS, GPU usage)
+- Success criteria and out-of-scope items
+
+Quality Checks:
+- Verify libraries exist on PyPI and support Ubuntu 24.04
+- Confirm modular architecture with clear separation
+- Ensure no contradictions between files

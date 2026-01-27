@@ -1,5 +1,6 @@
 AArch
 akcano
+agentic
 api
 artifacts
 AUTH
@@ -41,6 +42,7 @@ EdTech
 elif
 env
 envvar
+Evals
 errcheck
 esac
 fi
@@ -128,6 +130,7 @@ ros
 ROS
 rosdep
 runtime
+sandboxed
 schemas
 sdk
 SDK
@@ -151,6 +154,7 @@ stateDiagram
 stderr
 stdin
 stdout
+subagents
 subcommand
 subcommands
 subdirectory
@@ -166,6 +170,7 @@ teardown
 TestConnectWarnOnExec
 TIOBE
 toolchain
+toolchains
 torchaudio
 torchvision
 transactional

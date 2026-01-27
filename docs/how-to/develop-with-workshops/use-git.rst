@@ -227,6 +227,7 @@ Explanation:
 How-to guides:
 
 - :ref:`how_move_projects`
+- :ref:`how_use_workshops_with_ai_agents`
 
 
 Reference:

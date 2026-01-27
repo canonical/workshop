@@ -1,0 +1,183 @@
+Title: Implement GPU-Accelerated 3D Rubik's Cube Renderer
+
+Mission:
+Read planning documentation from ../design/ directory and implement a
+GPU-accelerated 3D Rubik's cube renderer with continuous rotation and
+realistic lighting. Produce working code that displays a smoothly
+rotating, properly lit 3D cube with FPS counter, following the
+architecture and technology choices specified in the design documents.
+
+Context:
+- Planning documents exist in ../design/ (tech-stack.md, design.md, requirements.md)
+- Source specification: ./prompts/rubik-shared.md
+- Target platform: Ubuntu 24.04, Python 3.10+
+- Purpose: Pure rendering demonstration with GPU acceleration
+- Implementation must be complete and immediately runnable
+- If planning documents have gaps or ambiguities, fill them with reasonable defaults
+
+Task Requirements:
+1. Read and parse all planning documents from ../design/
+2. Implement complete architecture:
+   - 3x3x3 Rubik's cube geometry with visible gaps between cubies
+   - GPU-accelerated rendering using PyOpenGL
+   - Phong or Blinn-Phong lighting model
+   - Continuous multi-axis rotation with randomized speeds
+   - FPS counter overlay
+3. Create dependency management (pip requirements.txt or as specified)
+4. Provide README.md with clear usage instructions
+5. Ensure code follows modern Python best practices
+
+Process / Steps:
+1. Read planning documents:
+   - Load ../design/tech-stack.md to identify required libraries
+   - Load ../design/design.md to understand architecture and module structure
+   - Load ../design/requirements.md to capture functional requirements
+   - If files don't exist or are incomplete, STOP and report the issue
+2. Set up project structure:
+   - Create appropriate file layout based on design.md
+   - Create requirements.txt based on tech-stack.md
+   - Must use Pygame + PyOpenGL (per rubik-shared.md constraints)
+3. Implement core modules (in order):
+   a. Cube geometry generation:
+   - Generate vertex data for 26 visible cubies (3x3x3 with hollow center)
+   - Apply gaps between cubies (scale to ~0.9 of unit size)
+   - Assign distinct colors to each face (white, yellow, red, orange, green, blue)
+   - Position cubies correctly in 3D space
+   b. Lighting and materials:
+   - Implement Phong or Blinn-Phong lighting setup
+   - Configure positional light source
+   - Define material properties (ambient, diffuse, specular)
+   - Enable smooth shading
+   c. Rendering loop:
+   - Initialize Pygame window (640x480, windowed)
+   - Set up OpenGL context with perspective projection
+   - Enable depth testing and backface culling
+   - Implement continuous rotation on X, Y, Z axes
+   - Randomize rotation speeds at initialization (15-45 deg/sec per axis)
+   - Calculate and display FPS counter (upper-left corner)
+   d. Scrambling:
+   - Randomize initial cube state (scrambled appearance)
+   - Apply randomization only at initialization
+   e. Main entry point:
+   - Initialize all systems
+   - Run render loop until ESC or window close
+   - Clean shutdown
+4. Create README.md:
+   - Project description and purpose
+   - Installation instructions (pip install -r requirements.txt)
+   - Usage instructions (python3 rubiks_cube_renderer.py)
+   - Dependencies list
+   - Requirements (Python version, platform, GPU)
+5. Verify implementation:
+   - Test that all dependencies install cleanly
+   - Execute renderer and verify visual output
+   - Confirm smooth rotation at 60+ FPS
+   - Verify lighting effects are visible
+   - Test window close mechanisms (ESC and X button)
+
+Constraints & Guardrails:
+- MUST read planning documents before implementing anything
+- MUST use Pygame + PyOpenGL (no substitutions)
+- MUST follow module structure from design.md
+- Code MUST run on Ubuntu 24.04 with Python 3.10+
+- Window MUST be exactly 640x480 and windowed (not resizable/fullscreen)
+- Background MUST be black
+- NO user interaction required beyond launching and closing
+- NO external asset files (procedurally generate all geometry)
+- NO 3D engines (Unity, Godot, etc.)
+- Prefer single-file implementation unless architect specified otherwise
+- Run NON-INTERACTIVELY: implement according to planning documents,
+  making reasonable decisions for any gaps without asking questions
+- Follow modern Python practices:
+  - Type hints on function signatures
+  - Docstrings for public functions
+  - PEP 8 style (4-space indents, clear naming)
+  - Clean resource management
+- If design documents conflict, prioritize: requirements.md > design.md > tech-stack.md
+
+Output Specification:
+Primary deliverable: rubiks_cube_renderer.py
+
+File must include:
+1. Header documentation:
+   - Brief description of the application
+   - Dependencies and installation instructions
+   - Usage command: python3 rubiks_cube_renderer.py
+2. Implementation:
+   - All imports at the top
+   - Configuration constants (window size, colors, rotation ranges)
+   - Cube geometry generation functions
+   - Lighting and material setup functions
+   - Main render loop
+   - Proper resource cleanup on exit
+3. Inline comments:
+   - Key sections documented
+   - Complex OpenGL operations explained
+   - State changes noted
+
+Additional files (if multi-file structure from design.md):
+- README.md with installation and usage
+- requirements.txt with exact dependency versions
+
+Code quality:
+- Module-level docstring explaining purpose
+- Public functions have docstrings
+- Type hints on function signatures
+- Clear variable names (UPPER_CASE for constants)
+- No print debugging statements left in code
+
+Quality Checks:
+1. Pre-implementation validation:
+   - Confirm ../design/ directory exists
+   - Confirm all three planning documents are readable
+   - Verify Pygame + PyOpenGL are specified in tech-stack.md
+   - Parse rendering approach from design.md
+2. During implementation:
+   - Each module imports successfully (no syntax errors)
+   - OpenGL context initializes without errors
+   - Geometry generates 26 visible cubies
+   - Lighting setup completes successfully
+3. Post-implementation validation:
+   - Install dependencies: pip install -r requirements.txt
+   - Execute renderer: python3 rubiks_cube_renderer.py
+   - Visual check: 640x480 window opens with black background
+   - Cube check: 3x3x3 structure visible with distinct colors
+   - Lighting check: highlights and shadows visible
+   - Animation check: smooth rotation on all three axes
+   - FPS check: counter visible and updating
+   - Performance check: maintains 60+ FPS
+   - Exit check: ESC key and window X button work cleanly
+4. Functional requirements (from rubik-shared.md):
+   - [ ] Application launches without errors on Ubuntu 24.04
+   - [ ] Window opens at exactly 640x480 resolution
+   - [ ] Black background is rendered
+   - [ ] Rubik's cube is visible and properly formed (3x3x3)
+   - [ ] All six face colors are distinguishable
+   - [ ] Cube rotates smoothly on all three axes simultaneously
+   - [ ] Rotation speeds vary per axis within reasonable range
+   - [ ] Initial cube state appears scrambled/randomized
+   - [ ] FPS counter is visible and updates
+   - [ ] Lighting effects clearly visible (not flat shading)
+   - [ ] Gaps between cubies are visible
+   - [ ] No z-fighting or rendering artifacts
+
+Handling Gaps in Planning Documents:
+If design documents are incomplete or contradictory, use these defaults:
+- Geometry approach: Vertex arrays or immediate mode (simplest for demo)
+- Lighting: Single positional light with Phong model
+- Cube size: 3.0 units total, cubies scaled to 0.9 for gaps
+- Camera distance: 10-12 units from origin
+- FOV: 45 degrees
+- Rotation speeds: Random in range 15-45 degrees/second per axis
+- Color scheme: Standard Rubik's (White, Yellow, Red, Orange, Green, Blue)
+- FPS counter: White text, 12pt font, (10, 10) position
+
+Report:
+After implementation, provide:
+- Confirmation that renderer runs successfully
+- Installation command
+- Run command
+- Expected behavior (what user should see)
+- Brief description of any gaps filled from planning documents
+- Any deviations from planning documents with justifications
+- Performance notes (observed FPS, GPU utilization if measurable)

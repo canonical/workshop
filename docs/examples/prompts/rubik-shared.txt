@@ -1,0 +1,169 @@
+Title: GPU-Accelerated 3D Rubik's Cube Renderer with Pygame and OpenGL
+
+Mission:
+Create a standalone Python application that renders a realistic, continuously rotating 3D Rubik's cube using Pygame with OpenGL for GPU acceleration. The cube should display realistic lighting, shadows, and textures on a black background, with randomized initial scrambling and rotation speeds, running in a 640x480 windowed display on Ubuntu 24.04 with FPS counter overlay.
+
+Context:
+This is a pure display application requiring no user interaction beyond launching and closing. The renderer must leverage GPU capabilities through OpenGL for smooth performance. The cube should appear visually appealing with proper 3D lighting models, surface textures that distinguish cube faces, and realistic material properties.
+
+Task Requirements:
+
+1. **Graphics Setup**
+   - Use Pygame for window management and event handling
+   - Use PyOpenGL (OpenGL via Python) for 3D rendering
+   - Create 640x480 windowed display (not fullscreen)
+   - Black background color
+   - Initialize OpenGL perspective projection and viewport
+
+2. **Rubik's Cube Model**
+   - 3x3x3 standard Rubik's cube structure (27 individual cubies, 26 visible)
+   - Six distinct face colors: white, yellow, red, orange, green, blue
+   - Realistic proportions with visible gaps between cubies
+   - Proper UV mapping or texture application for colored faces
+   - Black or dark edge separators between stickers
+
+3. **Lighting and Shading**
+   - Implement Phong or Blinn-Phong lighting model
+   - At least one positional light source for realistic shadows
+   - Ambient, diffuse, and specular components
+   - Enable smooth shading (GL_SMOOTH)
+   - Realistic material properties (slight glossiness on stickers)
+
+4. **Rotation Behavior**
+   - Smooth continuous rotation on all three axes (X, Y, Z) simultaneously
+   - Randomize rotation speeds at initialization within reasonable range (e.g., 15-45 degrees per second per axis)
+   - Randomize initial cube state (scrambled configuration)
+   - Maintain constant rotation speeds throughout runtime
+
+5. **Performance Display**
+   - Real-time FPS counter displayed in upper-left corner
+   - Use contrasting text color (white or light gray) for visibility
+   - Update FPS calculation every frame or using rolling average
+
+6. **Platform Compatibility**
+   - Target Ubuntu 24.04 LTS
+   - Handle dependencies appropriately (pygame, PyOpenGL)
+   - Graceful window close on ESC key or window close button
+
+Process / Steps:
+
+1. **Environment Setup**
+   - Verify Python 3.x availability on Ubuntu 24.04
+   - Install required packages: pygame, PyOpenGL, PyOpenGL-accelerate (optional for performance)
+   - Create project directory structure
+
+2. **Core Implementation**
+   - Initialize Pygame window and OpenGL context
+   - Set up perspective projection matrix (FOV ~45-60 degrees)
+   - Configure depth testing, backface culling
+   - Implement lighting setup (glLight, glLightfv, glEnable(GL_LIGHTING))
+   - Define material properties for cube faces
+
+3. **Cube Geometry**
+   - Generate vertex data for 26 visible cubies (3x3x3 with hollow center)
+   - Apply appropriate transformations for positioning
+   - Assign colors/textures to each face
+   - Create gaps between cubies (e.g., scale cubies to 0.9 of unit size)
+
+4. **Randomization Logic**
+   - Implement cube scrambling algorithm (random rotation sequences)
+   - Randomize X, Y, Z rotation speeds within specified range
+   - Apply randomization at initialization only
+
+5. **Render Loop**
+   - Clear color and depth buffers each frame
+   - Apply cumulative rotations based on time delta
+   - Render all visible cubies with proper transformations
+   - Calculate and render FPS counter using Pygame font rendering
+   - Swap buffers
+   - Handle Pygame events (quit, ESC key)
+
+6. **Testing and Validation**
+   - Verify smooth rotation at 60+ FPS on Ubuntu 24.04
+   - Confirm lighting effects are visible (highlights, shadows)
+   - Check FPS counter updates correctly
+   - Test window close mechanisms
+   - Verify GPU utilization (use nvidia-smi or similar if applicable)
+
+Constraints & Guardrails:
+
+- Use only Pygame and PyOpenGL; no external 3D engines (Unity, Godot, etc.)
+- No user interaction required beyond launching and closing
+- Window must remain 640x480 and windowed (not resizable or fullscreen)
+- All rotation speeds must be within reasonable visual range (not too fast/slow)
+- FPS counter must not obstruct cube view significantly
+- Application must run as a single executable Python script
+- Handle missing dependencies gracefully with clear error messages
+- Clean shutdown without errors or warnings
+- No external asset files required (procedurally generate all geometry)
+- Run NON-INTERACTIVELY: make reasonable implementation decisions without
+  asking questions; proceed with sensible defaults when design choices arise
+
+Output Specification:
+
+Deliver a single Python script file named `rubiks_cube_renderer.py` containing:
+
+1. **Header Documentation**
+   - Brief description of the application
+   - Dependencies and installation instructions
+   - Usage command: `python3 rubiks_cube_renderer.py`
+
+2. **Complete Implementation**
+   - All imports at the top
+   - Configuration constants (window size, color definitions, rotation speed ranges)
+   - Cube geometry generation functions
+   - Lighting and material setup functions
+   - Main render loop
+   - Proper resource cleanup on exit
+
+3. **Inline Comments**
+   - Key sections documented
+   - Complex mathematical operations explained
+   - OpenGL state changes noted
+
+Quality Checks:
+
+Before finalizing the implementation, verify:
+
+1. **Functional Requirements**
+   - [ ] Application launches without errors on Ubuntu 24.04
+   - [ ] Window opens at exactly 640x480 resolution
+   - [ ] Black background is rendered
+   - [ ] Rubik's cube is visible and properly formed (3x3x3 structure)
+   - [ ] All six face colors are distinguishable
+   - [ ] Cube rotates smoothly on all three axes simultaneously
+   - [ ] Rotation speeds vary on each axis within reasonable range
+   - [ ] Initial cube state appears scrambled/randomized
+   - [ ] FPS counter is visible in upper-left corner and updates
+
+2. **Visual Quality**
+   - [ ] Lighting effects are clearly visible (not flat shading)
+   - [ ] Shadows or depth cues provide 3D perception
+   - [ ] Texture or material properties enhance realism
+   - [ ] Gaps between cubies are visible and consistent
+   - [ ] No z-fighting or rendering artifacts
+   - [ ] Smooth animation without stuttering
+
+3. **Performance**
+   - [ ] Maintains 60+ FPS on target hardware
+   - [ ] GPU is being utilized (verify via system monitor)
+   - [ ] No memory leaks during extended runtime
+   - [ ] CPU usage remains reasonable
+
+4. **Code Quality**
+   - [ ] Script runs as standalone file
+   - [ ] Dependencies are documented
+   - [ ] No hardcoded absolute paths
+   - [ ] Graceful handling of missing dependencies
+   - [ ] Clean exit on ESC key and window close
+   - [ ] No Python warnings or deprecation notices
+
+5. **Test Execution**
+   - Run: `python3 rubiks_cube_renderer.py`
+   - Let it run for 30+ seconds
+   - Verify visual appearance matches requirements
+   - Check system resource usage
+   - Close via ESC key and window X button
+   - Confirm no errors in terminal after close
+
+Report any issues discovered during quality checks and iterate until all requirements are met.
