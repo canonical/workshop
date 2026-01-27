@@ -17,6 +17,14 @@ to work in sandboxed environments over a shared project repository,
 thus addressing security and privacy concerns
 while enabling a degree of creativity in your workflows.
 
+.. note::
+
+   This guide uses ``claude-code`` and ``copilot-cli`` as fictional example SDKs
+   to demonstrate multi-agent workflows.
+   These SDKs do not exist in the Workshop SDK Store.
+   You can adapt these patterns to real AI coding tools
+   by packaging them as Workshop SDKs.
+
 This guide demonstrates how to run heterogeneous AI coding SDKs
 in separate Git worktrees,
 comparing their outputs
@@ -119,7 +127,7 @@ Workshop definition
 
 We will be using a single workshop definition
 that adds two different agents as SDKs.
-You can choose a different approach for manageability.
+Consider using separate definitions for better manageability.
 
 Create a workshop definition file in the project root:
 
@@ -337,7 +345,7 @@ creating the design worktree:
 
 
 Run the :samp:`claude-code` agent in interactive mode
-with a smarter model and the synthesis prompt,
+with a smarter model and the architect prompt,
 supplying the worktree as the working directory:
 
 .. code-block:: console
