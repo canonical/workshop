@@ -37,6 +37,8 @@ Thus, you can fix the error and resume the operation or abort and revert it.
 This option can only be used with a single workshop.
 If multiple workshops are listed and an error occurs,
 the operation is aborted and no workshops are constructed.
+Also, if you change the workshop definition while fixing the error,
+you must abort the operation and restart from scratch.
 
 
 Notes:

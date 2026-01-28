@@ -29,6 +29,8 @@ Thus, you can fix the error and resume the operation or abort and revert it.
 This option can only be used with a single workshop.
 If multiple workshops are listed and an error occurs,
 the operation is aborted and reverted for all of them.
+Also, if you change the workshop definition while fixing the error,
+you must abort the operation and restart from scratch.
 
 The "--restore" option restores the workshop from the snapshot that was 
 created after the last successful launch or refresh. Any changes made 
