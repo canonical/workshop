@@ -8,7 +8,7 @@ SPHINXDIR       = .sphinx
 SPHINXOPTS      ?= -c . -d $(SPHINXDIR)/.doctrees -j auto
 SPHINXBUILD     ?= $(VENVDIR)/bin/sphinx-build
 SOURCEDIR       ?= .
-BUILDDIR        = _build
+BUILDDIR        ?= _build
 VENVDIR         ?= $(SPHINXDIR)/venv
 PA11Y           = $(SPHINXDIR)/node_modules/pa11y/bin/pa11y.js --config $(SPHINXDIR)/pa11y.json
 VENV            = $(VENVDIR)/bin/activate
@@ -16,7 +16,7 @@ TARGET          = *
 REQPDFPACKS     = latexmk fonts-freefont-otf texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-font-utils texlive-lang-cjk texlive-xetex plantuml xindy tex-gyre dvipng
 CONFIRM_SUDO    ?= N
 VALE_CONFIG     = $(SPHINXDIR)/vale.ini
-VALEDIR         = $(SPHINXDIR)/venv/lib/python*/site-packages/vale
+VALEDIR         ?= $(VENVDIR)/lib/python*/site-packages/vale
 VOCAB_CANONICAL = $(SPHINXDIR)/styles/config/vocabularies/Canonical
 SPHINX_HOST     ?= 127.0.0.1
 SPHINX_PORT     ?= 8000
@@ -71,8 +71,8 @@ pa11y-install:
 			npm install --prefix $(SPHINXDIR) pa11y; \
 		}
 
-pymarkdownlnt-install:
-	@. $(VENV); test -d $(SPHINXDIR)/venv/lib/python*/site-packages/pymarkdown || pip install pymarkdownlnt
+pymarkdownlnt-install: install
+	@. $(VENV); test -d $(VENVDIR)/lib/python*/site-packages/pymarkdown || pip install pymarkdownlnt==0.9.35
 
 install: $(VENVDIR)
 
@@ -108,7 +108,7 @@ pa11y: pa11y-install html
 	find $(BUILDDIR) -name *.html -print0 | xargs -n 1 -0 $(PA11Y)
 
 lint-md: pymarkdownlnt-install
-	@. $(VENV); pymarkdownlnt --config $(SPHINXDIR)/.pymarkdown.json scan --recurse --exclude=./$(SPHINXDIR)/** $(SOURCEDIR)
+	@. $(VENV); pymarkdownlnt --config $(SPHINXDIR)/.pymarkdown.json scan --recurse --exclude=$(SPHINXDIR)/** $(SOURCEDIR)
 
 vale-install: install
 	@. $(VENV); test -f $(VALE_CONFIG) || python3 $(SPHINXDIR)/get_vale_conf.py
