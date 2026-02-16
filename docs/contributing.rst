@@ -662,6 +662,30 @@ At every release, remember to:
   making sure the updated documentation builds properly.
 
 
+SDK README synchronization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``docs/sync_sdk_readmes.py`` script synchronizes `README.md` files from the
+`canonical/sdks <https://github.com/canonical/sdks>`_ repository
+into ``docs/sdks/`` for inclusion in the documentation.
+
+Run manually to update SDK reference pages:
+
+.. code-block:: console
+
+   export GITHUB_TOKEN=$(gh auth token)
+   python3 docs/sync_sdk_readmes.py
+
+
+The script uses the GitHub REST API to fetch README files
+from top-level directories in the source repository
+and copies them as ``.md`` files in ``docs/sdks/``.
+
+The ``.github/workflows/sync-sdk-readmes.yml`` workflow
+automates this process via manual trigger (``workflow_dispatch``),
+creating a pull request when changes are detected.
+
+
 .. _contributing_cicd:
 
 CI/CD
@@ -702,6 +726,9 @@ Documentation workflows:
 
    * - ``sphinx-python-dependency-build-checks.yml`` (SP)
      - Ensure the Sphinx virtual environment can be built from source.
+
+   * - ``sync-sdk-readmes.yml``
+     - Synchronize SDK README files from the `canonical/sdks` repository.
 
    * - ``update-starter-pack.yaml``
      - Update documentation starter pack files weekly and on demand.

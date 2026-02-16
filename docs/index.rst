@@ -19,6 +19,7 @@
    reference/index
    explanation/index
    Release notes <release-notes/index>
+   sdks/index
    Contribution <contributing>
 
 
@@ -115,6 +116,7 @@ In this documentation
    * - **Reference**
      - :ref:`Workshop CLI <ref_workshop__cli>` •
        :ref:`SDKcraft CLI <ref_sdkcraft__cli>` •
+       :ref:`Reference SDKs <ref_sdks_index>` •
        :ref:`Workshop internals <ref_workshop_internals>` •
        :ref:`SDK internals <ref_sdk_internals>` •
        :ref:`Runtime behavior <exp_arch_runtime_behavior>`

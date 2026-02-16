@@ -1,0 +1,49 @@
+name: Sync SDK READMEs
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  repository_dispatch:
+    types: [sync-sdk-readmes]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-readmes:
+    name: Sync SDK READMEs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Workshop
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Run sync script
+        run: python docs/sync_sdk_readmes.py --target-dir docs/sdks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for changes, commit, and create PR if any
+        run: |
+          git add docs/sdks/
+          if git diff --cached --exit-code; then
+            echo "No changes detected, skipping commit and PR creation."
+          else
+            pr_branch="docs/sync-sdk-readmes-$(date +'%Y%m%d%H%M%S')"
+            git checkout -b $pr_branch
+
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+            git commit -m "Doc: Sync SDK READMEs"
+            git push --set-upstream origin $pr_branch
+
+            gh pr create --title "Doc: Sync SDK READMEs" --body "This PR synchronizes SDK README files from canonical/sdks." --base main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
