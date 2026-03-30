@@ -133,6 +133,7 @@ sphinx==7.4.7
     #   sphinx-last-updated-by-git
     #   sphinx-notfound-page
     #   sphinx-related-links
+    #   sphinx-rerediraffe
     #   sphinx-reredirects
     #   sphinx-roles
     #   sphinx-tabs
@@ -166,6 +167,8 @@ sphinx-last-updated-by-git==0.3.8
 sphinx-notfound-page==1.1.0
     # via -r starter-pack-temp/docs/requirements.txt
 sphinx-related-links==0.1.2
+    # via -r starter-pack-temp/docs/requirements.txt
+sphinx-rerediraffe==0.0.3
     # via -r starter-pack-temp/docs/requirements.txt
 sphinx-reredirects==1.1.0
     # via -r starter-pack-temp/docs/requirements.txt
