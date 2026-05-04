@@ -111,7 +111,7 @@ func (t *apiRequester) Do(req *http.Request) (*http.Response, error) {
 	// To retry requests with a body, we need to read the entire body in
 	// up-front, otherwise it'll be empty on retries.
 	var body []byte
-	if req.Body != nil {
+	if req.Body != nil && req.GetBody == nil {
 		var err error
 		body, err = io.ReadAll(req.Body)
 		if err != nil {
@@ -121,15 +121,16 @@ func (t *apiRequester) Do(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			return nil, fmt.Errorf("closing request body: %w", err)
 		}
+		req.Body = io.NopCloser(bytes.NewReader(body))
+		req.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader(body)), nil
+		}
 	}
 
 	// Try a fixed number of attempts with a doubling delay in between.
 	var resp *http.Response
 	err := retry.Call(retry.CallArgs{
 		Func: func() error {
-			if body != nil {
-				req.Body = io.NopCloser(bytes.NewReader(body))
-			}
 			var err error
 			resp, err = t.doOnce(req) //nolint:bodyclose // resp.Body is closed by the caller.
 			return err

@@ -111,13 +111,17 @@ func (s *APIRequesterSuite) TestDoRetrySuccessBody(c *check.C) {
 
 	mockHTTPClient := NewMockHTTPClient(ctrl)
 	mockHTTPClient.EXPECT().Do(req).DoAndReturn(func(req *http.Request) (*http.Response, error) {
-		b, err := io.ReadAll(req.Body)
+		body, err := req.GetBody()
+		c.Assert(err, check.IsNil)
+		b, err := io.ReadAll(body)
 		c.Assert(err, check.IsNil)
 		c.Assert(string(b), check.Equals, "body")
 		return nil, io.EOF
 	})
 	mockHTTPClient.EXPECT().Do(req).DoAndReturn(func(req *http.Request) (*http.Response, error) {
-		b, err := io.ReadAll(req.Body)
+		body, err := req.GetBody()
+		c.Assert(err, check.IsNil)
+		b, err := io.ReadAll(body)
 		c.Assert(err, check.IsNil)
 		c.Assert(string(b), check.Equals, "body")
 		return emptyResponse(), nil //nolint:bodyclose
