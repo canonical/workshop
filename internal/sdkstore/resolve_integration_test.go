@@ -36,7 +36,7 @@ func (f *resolveIntegration) TestResolveByName(c *check.C) {
 		}},
 	}
 
-	for range 1000 {
+	for range 2000 {
 		client := NewClient(Config{})
 		response, err := client.Resolve(context.Background(), req)
 		c.Assert(err, check.IsNil)
