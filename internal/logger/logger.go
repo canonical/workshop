@@ -169,7 +169,7 @@ func (l *Log) NoGuardDebug(msg string) {
 func New(w io.Writer, flag int) (Logger, error) {
 	logger := &Log{
 		log:   log.New(w, "", flag),
-		debug: debugEnabledOnKernelCmdline(),
+		debug: true,
 	}
 	return logger, nil
 }

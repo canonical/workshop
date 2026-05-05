@@ -1,14 +1,14 @@
-//go:build integration
-
 package sdkstore
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/sdkstore/transport"
 	"github.com/canonical/workshop/internal/testutil"
 )
@@ -18,6 +18,10 @@ type resolveIntegration struct{}
 var _ = check.Suite(&resolveIntegration{})
 
 func (f *resolveIntegration) TestResolveByName(c *check.C) {
+	l, err := logger.New(os.Stderr, 0)
+	c.Assert(err, check.IsNil)
+	logger.SetLogger(l)
+
 	req := transport.ResolveRequest{
 		Packages: []transport.ResolvePackage{{
 			InstanceKey: "random123",
@@ -32,15 +36,16 @@ func (f *resolveIntegration) TestResolveByName(c *check.C) {
 		}},
 	}
 
-	client := NewClient(Config{})
-	var response any
-	err := client.resolve(context.Background(), &response, req)
-	c.Assert(err, check.IsNil)
+	for range 1000 {
+		client := NewClient(Config{})
+		response, err := client.Resolve(context.Background(), req)
+		c.Assert(err, check.IsNil)
 
-	var expected any
-	err = json.Unmarshal(testResolveNameRaw, &expected)
-	c.Assert(err, check.IsNil)
-	c.Check(response, check.DeepEquals, expected)
+		var expected any
+		err = json.Unmarshal(testResolveNameResponse, &expected)
+		c.Assert(err, check.IsNil)
+		c.Check(response, testutil.JsonEquals, expected)
+	}
 }
 
 func (f *resolveIntegration) TestResolveByID(c *check.C) {

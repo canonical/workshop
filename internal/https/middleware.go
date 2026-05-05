@@ -145,7 +145,7 @@ func (lr roundTripRecorder) RoundTrip(req *http.Request) (*http.Response, error)
 	rtt := time.Since(start)
 
 	if err != nil {
-		lr.requestRecorder.RecordError(req.Method, req.URL, err)
+		lr.requestRecorder.RecordError(req.Method, req.URL, fmt.Errorf("CL=%d: %w", req.ContentLength, err))
 	} else {
 		lr.requestRecorder.Record(req.Method, req.URL, res, rtt)
 	}
