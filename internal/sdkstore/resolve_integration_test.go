@@ -22,9 +22,10 @@ func (f *resolveIntegration) TestResolveByName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	logger.SetLogger(l)
 
-	req := transport.ResolveRequest{
-		Packages: []transport.ResolvePackage{{
-			InstanceKey: "random123",
+	req := transport.ResolveRequest{}
+	for i := range 30 {
+		req.Packages = append(req.Packages, transport.ResolvePackage{
+			InstanceKey: "random" + fmt.Sprint(i),
 			Namespace:   "sdk",
 			Name:        "test-sdk-info-multi-base-1",
 			Channel:     "latest/edge",
@@ -33,7 +34,7 @@ func (f *resolveIntegration) TestResolveByName(c *check.C) {
 				Channel:      "22.04",
 				Architecture: "riscv64",
 			},
-		}},
+		})
 	}
 
 	for range 2000 {
