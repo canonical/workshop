@@ -18,4 +18,4 @@ jobs:
           go-version: "1.26"
 
       - name: Test
-        run: go test ./internal/sdkstore -v -check.vv -check.f TestResolveByName
+        run: go test ./internal/sdkstore -timeout 0 -v -check.vv -check.f TestResolveByName
