@@ -3,7 +3,7 @@
 .. meta::
    :description: How-to guide on using Workshop for parallel agentic coding,
                  demonstrating multi-agent workflows with 'claude-code' and
-                 'copilot-cli' SDKs in a shared sandbox environment.
+                 'copilot' SDKs in a shared sandbox environment.
 
 How to use workshops with AI agents
 ===================================
@@ -41,13 +41,13 @@ Each scenario compares agent outputs
 and synthesizes the optimal approach in different ways:
 
 - Scenario 1: Parallel exploration.
-  Run :program:`claude-code` and :program:`copilot-cli` on the same task,
+  Run :program:`claude-code` and :program:`copilot` on the same task,
   then compare implementations and synthesize their best elements.
 
 - Scenario 2: Role-based coding.
   Assign distinct roles to different agents:
   :program:`claude-code` as the architect, creating planning documents,
-  :program:`copilot-cli` as the coder, implementing the design.
+  :program:`copilot` as the coder, implementing the design.
 
 
 Prerequisites
@@ -58,7 +58,7 @@ particularly the use of Git worktrees with workshops.
 Worktrees help isolate and track different agents' runs and outcomes
 while sharing the same project directory and the workshops in it.
 
-Note that the :program:`claude-code` and :program:`copilot-cli` SDKs
+Note that the :program:`claude-code` and :program:`copilot` SDKs
 will prompt for login credentials on their first run;
 you should have a browser window open with the respective account signed in.
 Alternatively,
@@ -147,7 +147,7 @@ Create a workshop definition file in the project root:
    base: ubuntu@24.04
    sdks:
      - name: claude-code
-     - name: copilot-cli
+     - name: copilot
 
    actions:
      claude-auto: |
