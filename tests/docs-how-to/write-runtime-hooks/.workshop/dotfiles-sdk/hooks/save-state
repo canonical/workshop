@@ -1,0 +1,4 @@
+#!/bin/bash
+if [ -f /home/workshop/.dotfiles-uid ]; then
+  cp /home/workshop/.dotfiles-uid "$SDK_STATE_DIR/"
+fi

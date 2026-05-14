@@ -1,0 +1,15 @@
+summary: Test 'How to design the capability topology of a workshop' to ensure it's operational
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove dev || true
+execute: |
+  . "$TESTSLIB"/utils.sh
+  chown -R ubuntu:ubuntu .
+
+  workshop_exec launch dev
+
+  echo "workshop connections lists the wired pair"
+  workshop_exec connections dev | MATCH 'mount.+dev/consumer-sdk:tools.+dev/provider-sdk:bin'
+
+  echo "consumer-sdk reads the marker file the provider exposed via the slot"
+  workshop_exec exec dev -- cat /home/workshop/.local/share/tools/marker | MATCH '^provider-here$'

@@ -1,0 +1,6 @@
+#!/bin/bash
+if [ -f "$SDK_STATE_DIR/.dotfiles-uid" ]; then
+  install -m 0644 -o 1000 -g 1000 \
+    "$SDK_STATE_DIR/.dotfiles-uid" \
+    /home/workshop/.dotfiles-restored-uid
+fi

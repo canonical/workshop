@@ -1,0 +1,9 @@
+name: dotfiles-sdk
+base: ubuntu@22.04
+summary: Synthesized SDK for the write-runtime-hooks how-to
+description: |
+  Ships all five lifecycle hooks. Each hook exercises one distinct contract
+  feature so the test can validate privilege, working directory, environment,
+  and state persistence claims from the how-to.
+
+sdkcraft-started-at: "2026-05-14T00:00:00.000000+00:00"

@@ -1,0 +1,13 @@
+name: provider-sdk
+base: ubuntu@22.04
+summary: Synthesized provider SDK for the design-capability-topology how-to
+description: |
+  Exposes a mount slot named "bin" pointing at a workshop-internal directory
+  that setup-base pre-creates so the slot has something to expose.
+
+sdkcraft-started-at: "2026-05-14T00:00:00.000000+00:00"
+
+slots:
+  bin:
+    interface: mount
+    workshop-source: /home/workshop/provider-bin

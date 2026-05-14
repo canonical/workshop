@@ -1,0 +1,27 @@
+name: dotfiles-sdk
+base: ubuntu@22.04
+summary: Synthesized SDK for the configure-mount-ownership how-to
+description: |
+  Declares mount plugs with default-rule, explicit-ownership, private-mode,
+  and read-only configurations to validate how-to claims.
+
+sdkcraft-started-at: "2026-05-14T00:00:00.000000+00:00"
+
+plugs:
+  default-rule:
+    interface: mount
+    workshop-target: /home/workshop/inferred
+  explicit:
+    interface: mount
+    workshop-target: /var/lib/example
+    uid: 1000
+    gid: 1000
+    mode: 0o755
+  private:
+    interface: mount
+    workshop-target: /home/workshop/.private-secrets
+    mode: 0o700
+  toolchain:
+    interface: mount
+    workshop-target: /home/workshop/.local/share/example-toolchain
+    read-only: true

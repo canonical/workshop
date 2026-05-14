@@ -1,0 +1,27 @@
+summary: Test 'How to write runtime hooks' to ensure it's operational
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove dev || true
+execute: |
+  . "$TESTSLIB"/utils.sh
+  chown -R ubuntu:ubuntu .
+
+  workshop_exec launch dev
+
+  echo "setup-base ran as root in the SDK's hooks directory and installed the profile snippet with \$SDK expanded at hook time."
+  workshop_exec exec dev -- test -f /etc/profile.d/dotfiles.sh
+  workshop_exec exec dev -- cat /etc/profile.d/dotfiles.sh | MATCH '^export DOTFILES_SDK="/var/lib/workshop/sdk/dotfiles-sdk"$'
+
+  echo "setup-project ran as the workshop user from /project; the marker records uid 1000."
+  workshop_exec exec dev -- cat /home/workshop/.dotfiles-uid | MATCH '^1000$'
+
+  echo "setup-project also installed the shipped skel/.bash_aliases into the workshop user's home."
+  workshop_exec exec dev -- test -f /home/workshop/.bash_aliases
+  workshop_exec exec dev -- cat /home/workshop/.bash_aliases | MATCH 'dotfiles-version'
+
+  echo "check-health called workshopctl set-health okay; workshop info reflects that."
+  workshop_exec info dev | MATCH '^status:[[:space:]]+ready'
+
+  # save-state and restore-state only fire when refresh actually swaps the SDK
+  # to a new revision. In-project SDKs do not have a new revision to swap to,
+  # so the hooks are shipped as documented examples but not exercised here.

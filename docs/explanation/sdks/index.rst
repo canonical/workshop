@@ -25,6 +25,7 @@ or install them directly into a workshop.
    :maxdepth: 1
 
    concepts
+   Runtime hooks <runtime-hooks>
    Parts <parts>
 
 

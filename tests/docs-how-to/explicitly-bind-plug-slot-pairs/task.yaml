@@ -1,0 +1,29 @@
+summary: Test 'How to explicitly bind plug-slot pairs when autowiring is ambiguous' to ensure it's operational
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove dev || true
+execute: |
+  . "$TESTSLIB"/utils.sh
+  chown -R ubuntu:ubuntu .
+
+  echo "Stage 1: launch without connections; mount plugs do not auto-connect to regular SDK slots without auto-explicit, so consumer:feed falls back to system:mount."
+  cp dev.yaml .workshop/dev.yaml
+  workshop_exec launch dev
+  workshop_exec connections dev | MATCH '^mount.+dev/consumer:feed.+dev/system:mount'
+
+  echo "Stage 2: add connections entry pointing the plug at provider-b; refresh; verify the chosen slot connects."
+  cp dev.connected.yaml .workshop/dev.yaml
+  workshop_exec refresh dev
+  workshop_exec connections dev | MATCH '^mount.+dev/consumer:feed.+dev/provider-b:data'
+  workshop_exec exec dev -- cat /home/workshop/feed/marker | MATCH '^from-b$'
+
+  echo "Stage 3: workshop disconnect followed by workshop connect to provider-a; runtime change is visible but workshop.yaml on disk is unchanged."
+  EXPECTED_YAML_HASH=$(sha256sum .workshop/dev.yaml | cut -d' ' -f1)
+  workshop_exec disconnect dev/consumer:feed
+  workshop_exec connect dev/consumer:feed dev/provider-a:data
+  workshop_exec connections dev | MATCH '^mount.+dev/consumer:feed.+dev/provider-a:data.+manual'
+  workshop_exec exec dev -- cat /home/workshop/feed/marker | MATCH '^from-a$'
+
+  echo "workshop.yaml on disk is byte-identical after the runtime-only change."
+  ACTUAL_YAML_HASH=$(sha256sum .workshop/dev.yaml | cut -d' ' -f1)
+  test "$EXPECTED_YAML_HASH" = "$ACTUAL_YAML_HASH"

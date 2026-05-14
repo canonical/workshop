@@ -42,44 +42,16 @@ Currently, |ws_markup| and |sdk_markup| support the following:
 - :ref:`GPU interface <exp_gpu_interface>` (auto-connected)
 - :ref:`Mount interface <exp_mount_interface>` (auto-connected)
 - :ref:`SSH interface <exp_ssh_interface>` (manually connected)
+- :ref:`Tunnel interface <exp_tunnel_interface>` (auto-connected for loopback only)
 
-
-.. _exp_plugs_slots:
 
 Plugs and slots
 ---------------
 
-To make use of these interfaces,
-SDKs and :ref:`workshops <exp_workshop_definition_connections>` define *slots*.
-For example, a :ref:`mount interface <exp_mount_interface>` slot
-creates a source directory to be mounted inside the workshop via a plug.
-
-Further, SDKs and :ref:`workshops <exp_workshop_definition_connections>` define *plugs*
-to connect to a slot of a certain interface type.
-For example, a :ref:`mount interface <exp_mount_interface>` plug
-mounts the slot to a target directory inside the workshop.
-
-You can think of the plug as the recipient of the resources exposed by the slot;
-note that a slot can handle connections with multiple plugs.
-
-Connections can be established:
-
-- Automatically:
-  By running :command:`workshop launch`, :command:`workshop refresh`,
-  or :command:`workshop start`.
-
-- Manually:
-  By running :command:`workshop connect` after the workshop has started,
-  or by listing connections in the
-  :ref:`workshop definition <exp_workshop_definition_connections>`
-  and running :command:`workshop refresh`.
-
-
-All connections are subject to validation.
-Also, automatic connections require plugs and slots to have matching details
-and aren't allowed for some interfaces, such as :samp:`ssh-agent`.
-Finally, the order of automatic connections is not guaranteed,
-so you should not rely on it.
+Interfaces become useful when SDKs declare *plugs* to consume them
+and *slots* to provide them.
+See :ref:`exp_plugs_slots` for the full mechanics,
+including the wiring you can express in the workshop definition.
 
 
 .. _exp_interfaces_validation:
@@ -134,39 +106,6 @@ interfaces require manual connection.
 To know how each kind of connection is treated
 when a workshop is launched, refreshed, or restored,
 see :ref:`exp_workshop_connection_lifecycle`.
-
-
-.. _exp_plug_bindings:
-
-Plug bindings
--------------
-
-SDKs usually access host resources via :ref:`interface plugs <exp_plugs_slots>`.
-When multiple SDKs try to use the same resource in conflicting ways, 
-the workshop won't launch and shows an error.
-
-To fix this issue, you can bind one plug to another of the same interface type.
-This makes both plugs point to the same resource without conflicts.
-Any action performed on one plug (like mounting or remounting)
-thus automatically applies to *all* bound plugs.
-
-When you run :command:`workshop connections`,
-a bound plug will have :samp:`bind` listed under :samp:`Notes`,
-along with the line number of the target plug:
-
-.. @artefact workshop connections
-
-.. code-block:: console
-
-   $ workshop connections digits
-
-     INTERFACE  PLUG                    SLOT                 NOTES
-     mount      digits/torchaudio:hub   digits/system:mount  bind.1
-     mount      digits/torchvision:hub  digits/system:mount  bind.1
-
-
-Here, both plugs are listed as :samp:`bind.1`,
-pointing to :samp:`torchaudio:hub` in the *first* line.
 
 
 .. _exp_interfaces_cli_operations:

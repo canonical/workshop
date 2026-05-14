@@ -1,0 +1,4 @@
+#!/bin/bash
+cat <<PROFILE >/etc/profile.d/dotfiles.sh
+export DOTFILES_SDK="$SDK"
+PROFILE

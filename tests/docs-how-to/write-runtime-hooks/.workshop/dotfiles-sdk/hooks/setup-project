@@ -1,0 +1,3 @@
+#!/bin/bash
+id -u >"$HOME/.dotfiles-uid"
+install -m 0644 -t "$HOME" "$SDK/skel/.bash_aliases"

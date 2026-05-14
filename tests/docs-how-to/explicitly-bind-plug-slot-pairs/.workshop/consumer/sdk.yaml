@@ -1,0 +1,14 @@
+name: consumer
+base: ubuntu@22.04
+summary: Synthesized consumer for the ambiguity test
+description: |
+  Declares a mount plug named "feed". With provider-a and provider-b both
+  present, autowiring is ambiguous and the workshop definition must specify
+  which slot to use.
+
+sdkcraft-started-at: "2026-05-14T00:00:00.000000+00:00"
+
+plugs:
+  feed:
+    interface: mount
+    workshop-target: /home/workshop/feed

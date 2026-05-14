@@ -1,0 +1,22 @@
+summary: Test 'How to configure mount ownership' to ensure it's operational
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove dev || true
+execute: |
+  . "$TESTSLIB"/utils.sh
+  chown -R ubuntu:ubuntu .
+
+  workshop_exec launch dev
+
+  echo "Default-rule plug under /home/workshop should default to uid=1000, gid=1000."
+  workshop_exec exec dev -- ls -ldn /home/workshop/inferred | MATCH '^d[rwx-]+ +[0-9]+ +1000 +1000'
+
+  echo "Explicit plug outside the home tree honors uid:1000, gid:1000, mode 0o755."
+  workshop_exec exec dev -- ls -ldn /var/lib/example | MATCH '^drwxr-xr-x +[0-9]+ +1000 +1000'
+
+  echo "Private plug applies mode 0o700 with the path-aware workshop-user default."
+  workshop_exec exec dev -- ls -ldn /home/workshop/.private-secrets | MATCH '^drwx------ +[0-9]+ +1000 +1000'
+
+  echo "Read-only plug rejects writes."
+  ! workshop_exec exec dev -- touch /home/workshop/.local/share/example-toolchain/probe || false
+  workshop_exec exec dev -- touch /home/workshop/.local/share/example-toolchain/probe 2>&1 | MATCH 'Read-only file system'

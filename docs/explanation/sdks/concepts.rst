@@ -45,123 +45,22 @@ the definition may look like this:
    :caption: sdkcraft.yaml
 
 
-.. _exp_sdk_hooks:
+Lifecycle hooks
+---------------
 
-SDK hooks
----------
-
-.. @artefact SDK
-.. @artefact SDK health
 .. @artefact SDK hook
-.. @artefact restore-state
-.. @artefact save-state
-.. @artefact setup-base
-.. @artefact setup-project
 
-|ws_markup| and |sdk_markup| enable optional lifecycle *hooks*
-that control and extend the workshop's internal behavior
-to make any framework wrapped as an SDK
-compatible with |ws_markup|'s logic;
-in particular, the hooks manage the SDK state
-and report its health.
-
-Each hook is a shell script with domain-aware actions
-that |ws_markup| runs in the workshop
-at a particular lifecycle stage
-to ensure that the SDK stays functional.
-Specific examples include :samp:`setup-base`, :samp:`setup-project`,
-:samp:`save-state` and :samp:`restore-state`.
-
-You may see individual hooks mentioned in the output of
-:command:`workshop changes` and :command:`workshop tasks`;
-understanding the events that trigger them can help you with troubleshooting.
-
-When you define an SDK,
-its hooks should be placed in the :file:`hooks/` subdirectory
-next to the :ref:`definition <exp_sdk_definition>`;
-|sdk_markup| lints them with `ShellCheck <https://www.shellcheck.net/>`_
-and packages them along with the :file:`.yaml` file.
-
-
-.. _exp_workshopctl:
-
-Using :program:`workshopctl` with hooks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. @artefact workshopd
-.. @artefact workshopctl
-
-The :program:`workshopctl` CLI tool allows an SDK
-to talk to the :program:`workshopd` daemon.
-Under the hood, :program:`workshopctl` uses a socket exposed by the daemon
-into the workshop environment.
-
-Overall, the interaction between SDKs and the :program:`workshopd` daemon
-focuses on health checks in post-launch or refresh operations.
-
-
-SDK health, workshop status
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. @artefact check-health
-.. @artefact workshop status
-
-An SDK can report its health
-using the :samp:`workshopctl set-health` subcommand,
-which is typically invoked from the :samp:`check-health` hook
-when a workshop launches or refreshes.
-The command requires a health status.
-If it's not :samp:`okay`,
-you can also supply an error code with a user-friendly message
-to provide further details.
-
-.. @artefact SDK publisher
-
-This command is essential for SDK publishers
-to communicate the health status of their SDKs
-within the workshop environment.
-Then, :program:`workshopd` determines the overall
-:ref:`health status <exp_workshop_status>` of a workshop,
-such as *Ready*, *Pending* or *Error*;
-it depends on the runtime results of the :samp:`check-health` hook:
-
-- *Ready* means success: the hook set SDK health to :samp:`okay`
-  and gracefully exited with a zero code.
-
-- *Pending*: The hook set the SDK health to :samp:`waiting`.
-  This means it will be retried, one attempt per second.
-  If the retries fail 10 times consecutively
-  or if 5 seconds pass without :samp:`set-health` being invoked,
-  the SDK health is changed to :samp:`error`.
-
-- *Error*: the hook exited with a nonzero code
-  or explicitly set SDK health to :samp:`error`.
-
-
-.. _exp_sdk_state:
-
-SDK state
----------
-
-.. @artefact restore-state
-.. @artefact save-state
-.. @artefact SDK state
-
-An SDK can store any data specific to it,
-such as a model training configuration,
-within the workshop.
-To enable this,
-the SDK publisher implements save and restore :ref:`hooks <exp_sdk_hooks>`
-when building the SDK using |sdk_markup|.
-Later, |ws_markup| runs these hooks at the appropriate moments
-to consistently handle such data, collectively known as *SDK state*.
-
-For example, before changes are applied to the workshop
-during :command:`workshop refresh`,
-the states of the SDKs are saved
-by invoking their :samp:`save-state` hooks.
-On success,
-they are restored using the :samp:`restore-state` hooks.
+|ws_markup| and |sdk_markup| enable optional lifecycle hooks
+that let an SDK extend the workshop's internal behavior.
+Hooks live in the :file:`hooks/` subdirectory next to the SDK definition
+and run as bash scripts at well-defined points
+during launch and refresh.
+See :ref:`exp_sdk_hooks` for the contract,
+the per-hook environment,
+and how the SDK can talk back to the daemon with :program:`workshopctl`.
+State that has to outlive an SDK refresh
+is handled by the :samp:`save-state` and :samp:`restore-state` hooks
+described in :ref:`exp_sdk_state`.
 
 
 SDK platforms

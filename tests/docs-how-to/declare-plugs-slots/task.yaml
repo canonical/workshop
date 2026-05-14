@@ -1,0 +1,32 @@
+summary: Test 'How to declare plugs and slots' to ensure it's operational
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  install_sdkcraft
+restore: |
+  rm -rf cachekit /tmp/packed-meta.yaml
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  # Scaffold an SDK named cachekit, then replace the generated sdkcraft.yaml
+  # with the one the how-to teaches.
+  mkdir cachekit/ && cd cachekit/
+  chown ubuntu:ubuntu .
+  run_sdkcraft init
+  cp ../sdkcraft.yaml ./sdkcraft.yaml
+  chown ubuntu:ubuntu ./sdkcraft.yaml
+
+  run_sdkcraft pack
+
+  # The packed artifact is named <NAME>_<ARCH>_<BASE>.sdk; the build host is amd64.
+  ARTIFACT=$(ls cachekit_amd64_*.sdk | head -1)
+  test -n "$ARTIFACT"
+
+  # Confirm the embedded meta/sdk.yaml carries the declared plugs and slots
+  # exactly as written in sdkcraft.yaml.
+  tar xOf "$ARTIFACT" meta/sdk.yaml | tee /tmp/packed-meta.yaml
+
+  MATCH "interface: mount" </tmp/packed-meta.yaml
+  MATCH "workshop-target: /home/workshop/.cache/cachekit" </tmp/packed-meta.yaml
+  MATCH "workshop-source: /home/workshop/cachekit-share" </tmp/packed-meta.yaml
+  MATCH "interface: tunnel" </tmp/packed-meta.yaml
+  MATCH "endpoint: 127.0.0.1:8080" </tmp/packed-meta.yaml
