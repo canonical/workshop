@@ -1,0 +1,9 @@
+name: go-dev
+base: ubuntu@22.04
+sdks:
+  - name: go
+    channel: edge
+  - name: project-cache
+    plugs:
+      data:
+        bind: go:mod-cache

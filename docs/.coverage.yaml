@@ -292,11 +292,6 @@
     - SK028
     - SK039
 
-"try SDK":
-  category: SDK
-  type: action
-  specs: []
-
 "tunnel interface":
   category: interface
   type: concept

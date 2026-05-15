@@ -204,7 +204,7 @@ Share in-project tools
 .. @artefact in-project SDK
 
 If multiple workshops need the same custom tooling,
-define an :ref:`in-project SDK <ref_in_project_sdk>`
+define an in-project SDK
 rather than duplicating hooks or configuration.
 In-project SDKs are stored
 in subdirectories of :file:`.workshop/`
@@ -252,7 +252,7 @@ Cross-workshop networking
 You cannot connect a plug in one workshop to a slot in another;
 :command:`workshop connect` rejects such attempts.
 However, all workshops on the same machine share a common host,
-and the :ref:`tunnel interface <exp_tunnel_interface>` can bridge through it.
+and the tunnel interface can bridge through it.
 
 The idea is to compose two independent tunnels:
 one that exposes a service from the backend workshop to the host,
@@ -347,6 +347,7 @@ See also
 
 Explanation:
 
+- :ref:`exp_in_project_sdk`
 - :ref:`exp_multi_workshop_patterns`
 - :ref:`exp_projects`
 - :ref:`exp_tunnel_interface`
@@ -361,7 +362,6 @@ How-to guides:
 
 Reference:
 
-- :ref:`ref_in_project_sdk`
 - :ref:`ref_workshop_connect`
 - :ref:`ref_workshop_connections`
 - :ref:`ref_workshop_definition`

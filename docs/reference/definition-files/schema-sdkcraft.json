@@ -16,6 +16,9 @@
       "title": "CameraPlug",
       "type": "object"
     },
+    "CleanAbsPath": {
+      "type": "string"
+    },
     "DesktopPlug": {
       "additionalProperties": false,
       "description": "SDKcraft project desktop plug definition.",
@@ -31,6 +34,14 @@
       ],
       "title": "DesktopPlug",
       "type": "object"
+    },
+    "Endpoint": {
+      "type": "string"
+    },
+    "FileMode": {
+      "$ref": "#/$defs/Int",
+      "ge": 0,
+      "le": 511
     },
     "GPUPlug": {
       "additionalProperties": false,
@@ -48,6 +59,9 @@
       "title": "GPUPlug",
       "type": "object"
     },
+    "Int": {
+      "type": "integer"
+    },
     "MountPlug": {
       "additionalProperties": false,
       "description": "SDKcraft project mount plug definition.",
@@ -58,26 +72,16 @@
           "type": "string"
         },
         "workshop-target": {
-          "title": "Workshop-Target",
-          "type": "string"
+          "$ref": "#/$defs/CleanAbsPath"
         },
         "uid": {
-          "exclusiveMaximum": 4294967295,
-          "minimum": 0,
-          "title": "Uid",
-          "type": "integer"
+          "$ref": "#/$defs/UserGroupID"
         },
         "gid": {
-          "exclusiveMaximum": 4294967295,
-          "minimum": 0,
-          "title": "Gid",
-          "type": "integer"
+          "$ref": "#/$defs/UserGroupID"
         },
         "mode": {
-          "maximum": 511,
-          "minimum": 0,
-          "title": "Mode",
-          "type": "integer"
+          "$ref": "#/$defs/FileMode"
         },
         "read-only": {
           "default": false,
@@ -102,8 +106,7 @@
           "type": "string"
         },
         "workshop-source": {
-          "title": "Workshop-Source",
-          "type": "string"
+          "$ref": "#/$defs/CleanAbsPath"
         }
       },
       "required": [
@@ -111,6 +114,10 @@
         "workshop-source"
       ],
       "title": "MountSlot",
+      "type": "object"
+    },
+    "Part": {
+      "additionalProperties": true,
       "type": "object"
     },
     "Platform": {
@@ -170,12 +177,81 @@
       "title": "Platform",
       "type": "object"
     },
-    "SSHPlug": {
+    "Plug": {
+      "discriminator": {
+        "mapping": {
+          "camera": "#/$defs/CameraPlug",
+          "desktop": "#/$defs/DesktopPlug",
+          "gpu": "#/$defs/GPUPlug",
+          "mount": "#/$defs/MountPlug",
+          "ssh-agent": "#/$defs/SSHAgentPlug",
+          "tunnel": "#/$defs/TunnelPlug"
+        },
+        "propertyName": "interface"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/CameraPlug"
+        },
+        {
+          "$ref": "#/$defs/DesktopPlug"
+        },
+        {
+          "$ref": "#/$defs/GPUPlug"
+        },
+        {
+          "$ref": "#/$defs/MountPlug"
+        },
+        {
+          "$ref": "#/$defs/SSHAgentPlug"
+        },
+        {
+          "$ref": "#/$defs/TunnelPlug"
+        }
+      ]
+    },
+    "PlugName": {
+      "description": "The name of the plug. This is used when connecting and disconnecting.\n\nThe plug name must consist only of lower-case ASCII letters (``a-z``), numerals\n(``0-9``), and hyphens (``-``). It must start with a letter, not end with a\nhyphen, and not contain two consecutive hyphens.\n",
+      "examples": [
+        "desktop",
+        "gpu",
+        "ssh-agent"
+      ],
+      "pattern": "^[a-z](-?[a-z0-9])*$",
+      "title": "Plug Name",
+      "type": "string"
+    },
+    "Plugs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Plug"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/PlugName"
+      },
+      "type": "object"
+    },
+    "ProjectName": {
+      "description": "The name of the project. This is used when uploading, publishing, or installing.\n\nThe project name must consist only of lower-case ASCII letters (``a``-``z``), numerals\n(``0``-``9``), and hyphens (``-``). It must contain at least one letter, not start or\nend with a hyphen, and not contain two consecutive hyphens. The maximum length is 40\ncharacters.\n",
+      "examples": [
+        "ubuntu",
+        "jupyterlab-desktop",
+        "lxd",
+        "digikam",
+        "kafka",
+        "mysql-router-k8s"
+      ],
+      "maxLength": 40,
+      "minLength": 1,
+      "pattern": "(?!^(system|try-.*|project-.*|sketch)$)^([a-z0-9][a-z0-9-]?)*[a-z]+([a-z0-9-]?[a-z0-9])*$",
+      "title": "Project Name",
+      "type": "string"
+    },
+    "SSHAgentPlug": {
       "additionalProperties": false,
-      "description": "SDKcraft project SSH plug definition.",
+      "description": "SDKcraft project SSH agent plug definition.",
       "properties": {
         "interface": {
-          "const": "ssh",
+          "const": "ssh-agent",
           "title": "Interface",
           "type": "string"
         }
@@ -183,7 +259,44 @@
       "required": [
         "interface"
       ],
-      "title": "SSHPlug",
+      "title": "SSHAgentPlug",
+      "type": "object"
+    },
+    "Slot": {
+      "discriminator": {
+        "mapping": {
+          "mount": "#/$defs/MountSlot",
+          "tunnel": "#/$defs/TunnelSlot"
+        },
+        "propertyName": "interface"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/MountSlot"
+        },
+        {
+          "$ref": "#/$defs/TunnelSlot"
+        }
+      ]
+    },
+    "SlotName": {
+      "description": "The name of the slot. This is used when connecting and disconnecting.\n\nThe slot name must consist only of lower-case ASCII letters (``a-z``), numerals\n(``0-9``), and hyphens (``-``). It must start with a letter, not end with a\nhyphen, and not contain two consecutive hyphens.\n",
+      "examples": [
+        "dashboard",
+        "gdb",
+        "toolchain"
+      ],
+      "pattern": "^[a-z](-?[a-z0-9])*$",
+      "title": "Slot Name",
+      "type": "string"
+    },
+    "Slots": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Slot"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/SlotName"
+      },
       "type": "object"
     },
     "TunnelPlug": {
@@ -196,9 +309,8 @@
           "type": "string"
         },
         "endpoint": {
-          "default": "",
-          "title": "Endpoint",
-          "type": "string"
+          "$ref": "#/$defs/Endpoint",
+          "default": ""
         }
       },
       "required": [
@@ -217,9 +329,8 @@
           "type": "string"
         },
         "endpoint": {
-          "default": "",
-          "title": "Endpoint",
-          "type": "string"
+          "$ref": "#/$defs/Endpoint",
+          "default": ""
         }
       },
       "required": [
@@ -227,26 +338,18 @@
       ],
       "title": "TunnelSlot",
       "type": "object"
+    },
+    "UserGroupID": {
+      "$ref": "#/$defs/Int",
+      "ge": 0,
+      "lt": 4294967295
     }
   },
   "additionalProperties": false,
   "description": "SDKcraft project definition.",
   "properties": {
     "name": {
-      "description": "The name of the project. This is used when uploading, publishing, or installing.\n\nThe project name must consist only of lower-case ASCII letters (``a``-``z``), numerals\n(``0``-``9``), and hyphens (``-``). It must contain at least one letter, not start or\nend with a hyphen, and not contain two consecutive hyphens. The maximum length is 40\ncharacters.\n",
-      "examples": [
-        "ubuntu",
-        "jupyterlab-desktop",
-        "lxd",
-        "digikam",
-        "kafka",
-        "mysql-router-k8s"
-      ],
-      "maxLength": 40,
-      "minLength": 1,
-      "pattern": "(?!^(system|try-.*|project-.*|sketch)$)^([a-z0-9][a-z0-9-]?)*[a-z]+([a-z0-9-]?[a-z0-9])*$",
-      "title": "Project Name",
-      "type": "string"
+      "$ref": "#/$defs/ProjectName"
     },
     "title": {
       "anyOf": [
@@ -296,7 +399,7 @@
     "summary": {
       "anyOf": [
         {
-          "description": "A short description of the project.",
+          "description": "A short description of the project. Maximum length 78 characters.",
           "examples": [
             "Linux for Human Beings",
             "The cross-platform desktop application for JupyterLab",
@@ -406,6 +509,19 @@
           ]
         }
       },
+      "propertyNames": {
+        "description": "The name of this platform. May not contain '/'",
+        "examples": [
+          "riscv64",
+          "my-special-platform"
+        ],
+        "not": {
+          "enum": [
+            "*",
+            "any"
+          ]
+        }
+      },
       "title": "Platforms",
       "type": "object"
     },
@@ -508,8 +624,7 @@
     },
     "parts": {
       "additionalProperties": {
-        "additionalProperties": true,
-        "type": "object"
+        "$ref": "#/$defs/Part"
       },
       "default": {
         "default-part": {
@@ -540,84 +655,12 @@
       "title": "Package-Repositories"
     },
     "plugs": {
-      "default": {},
-      "patternProperties": {
-        "^[a-z](-?[a-z0-9])*$": {
-          "discriminator": {
-            "mapping": {
-              "camera": "#/$defs/CameraPlug",
-              "desktop": "#/$defs/DesktopPlug",
-              "gpu": "#/$defs/GPUPlug",
-              "mount": "#/$defs/MountPlug",
-              "ssh": "#/$defs/SSHPlug",
-              "tunnel": "#/$defs/TunnelPlug"
-            },
-            "propertyName": "interface"
-          },
-          "oneOf": [
-            {
-              "$ref": "#/$defs/CameraPlug"
-            },
-            {
-              "$ref": "#/$defs/DesktopPlug"
-            },
-            {
-              "$ref": "#/$defs/GPUPlug"
-            },
-            {
-              "$ref": "#/$defs/MountPlug"
-            },
-            {
-              "$ref": "#/$defs/SSHPlug"
-            },
-            {
-              "$ref": "#/$defs/TunnelPlug"
-            }
-          ]
-        }
-      },
-      "propertyNames": {
-        "description": "The name of the plug. This is used when connecting and disconnecting.\n\nThe plug name must consist only of lower-case ASCII letters (``a-z``), numerals\n(``0-9``), and hyphens (``-``). It must start with a letter, not end with a\nhyphen, and not contain two consecutive hyphens.\n",
-        "examples": [
-          "desktop",
-          "gpu",
-          "ssh-agent"
-        ]
-      },
-      "title": "Plugs",
-      "type": "object"
+      "$ref": "#/$defs/Plugs",
+      "default": {}
     },
     "slots": {
-      "default": {},
-      "patternProperties": {
-        "^[a-z](-?[a-z0-9])*$": {
-          "discriminator": {
-            "mapping": {
-              "mount": "#/$defs/MountSlot",
-              "tunnel": "#/$defs/TunnelSlot"
-            },
-            "propertyName": "interface"
-          },
-          "oneOf": [
-            {
-              "$ref": "#/$defs/MountSlot"
-            },
-            {
-              "$ref": "#/$defs/TunnelSlot"
-            }
-          ]
-        }
-      },
-      "propertyNames": {
-        "description": "The name of the slot. This is used when connecting and disconnecting.\n\nThe slot name must consist only of lower-case ASCII letters (``a-z``), numerals\n(``0-9``), and hyphens (``-``). It must start with a letter, not end with a\nhyphen, and not contain two consecutive hyphens.\n",
-        "examples": [
-          "dashboard",
-          "gdb",
-          "toolchain"
-        ]
-      },
-      "title": "Slots",
-      "type": "object"
+      "$ref": "#/$defs/Slots",
+      "default": {}
     }
   },
   "required": [

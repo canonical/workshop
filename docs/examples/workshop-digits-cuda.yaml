@@ -1,0 +1,19 @@
+name: digits-cuda
+base: ubuntu@22.04
+sdks:
+  - name: tensorflow
+    plugs:
+      cuda:
+        interface: mount
+        workshop-target: /usr/local/cuda/lib64
+  - name: imagenet
+    slots:
+      images:
+        interface: mount
+        workshop-source: $SDK/images
+  - name: cuda
+connections:
+  - plug: tensorflow:cuda
+    slot: cuda:libs
+  - plug: tensorflow:images
+    slot: imagenet:images

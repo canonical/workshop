@@ -1,158 +1,135 @@
 .. _ref_sdk_definition:
 
 .. meta::
-   :description: Reference for SDK definition files, including filename conventions,
-                 required YAML structure, and field descriptions for Workshop SDKs.
+   :description: Reference for the runtime sdk.yaml definition file. Covers
+                 filename conventions, top-level fields, interface attributes,
+                 the JSON Schema, and worked examples.
 
 SDK definition
 ==============
 
-.. @artefact SDK
 .. @artefact SDK definition
 
-Filename convention
--------------------
-
-.. @artefact sdkcraft (CLI)
-
-When :ref:`crafting and publishing a regular SDK <tut_craft_sdks>`,
-the name of the SDK definition file must be :file:`sdkcraft.yaml` or :file:`.sdkcraft.yaml`.
-
-When an SDK is built from the definition file,
-the resulting package contains the SDK metadata in :file:`sdk.yaml`.
-The difference is that the :file:`sdkcraft.yaml` file
-is used at build time by |sdk_markup|,
-while the :file:`sdk.yaml` file
-is used at runtime by |ws_markup|.
-
-Accordingly,
-in-project SDKs are defined using :file:`sdk.yaml` or :file:`meta/sdk.yaml`
-and stored in :file:`.workshop/<NAME>/`.
-Because these SDKs are defined in-place rather than built,
-they don't support |sdk_markup| build-time features,
-like :samp:`build-base`, :samp:`platforms` or :samp:`parts`.
-
-When :ref:`sketching a local SDK <tut_sketch_sdks>`,
-the SDK definition file is also named :file:`sdk.yaml`
-and stored under :file:`$XDG_DATA_HOME/workshop/`.
-|ws_markup| ignores other files in this directory,
-but hooks can be defined inline.
-Like in-project SDKs,
-the sketch SDK doesn't support |sdk_markup| build-time features.
+The :file:`sdk.yaml` file is the *runtime* SDK definition: |ws_markup| reads it when it installs an SDK in a workshop. For Store SDKs, sketch SDKs, and SDKs from :command:`sdkcraft try`, this file is produced by |sdk_markup| from :file:`sdkcraft.yaml` (see :ref:`ref_sdkcraft_definition`). For in-project SDKs, you author :file:`sdk.yaml` directly.
 
 
-Structure
----------
+Filename and location
+---------------------
 
-The definition in the file must be written in
-`YAML <https://yaml.org/>`__
-and include these top-level fields:
-:samp:`name`, :samp:`version`, and :samp:`platforms`.
-Other fields are optional.
+.. @artefact SDK definition file
 
-.. @artefact SDK base image
-.. @artefact SDK platforms
+- Store, try, and sketch SDKs ship :file:`sdk.yaml` inside their packed contents at :file:`meta/sdk.yaml`.
+- In-project SDKs use :file:`.workshop/<NAME>/sdk.yaml` or :file:`.workshop/<NAME>/meta/sdk.yaml`, relative to the project directory.
+- Sketch SDK definitions live under :file:`$XDG_DATA_HOME/workshop/<NAME>/sdk.yaml`.
+
+In-project and sketch SDKs do not support |sdk_markup| build-time features such as :samp:`build-base`, :samp:`platforms`, or :samp:`parts`. Those belong to :file:`sdkcraft.yaml`.
+
+
+Top-level fields
+----------------
 
 .. list-table::
    :header-rows: 1
    :width: 95
-   :widths: 3 2 15
+   :widths: 2 1 6
 
    * - Key
      - Value
      - Description
 
-   * - :samp:`name`
+   * - :samp:`name` (required)
      - string
-     - SDK's name, used to reference it in the workshop definition.
+     - SDK identifier. Must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them. Up to 40 characters. Cannot be :samp:`system`, :samp:`sketch`, or start with :samp:`try-` or :samp:`project-`; those names are reserved.
 
+   * - :samp:`architecture` (required)
+     - string
+     - CPU architecture the SDK is built for, following `Debian's naming scheme <https://www.debian.org/ports/>`__ (for example, :samp:`amd64`, :samp:`arm64`). Use :samp:`all` for SDKs that ship no compiled binaries.
+
+   * - :samp:`version` (required for built SDKs)
+     - string
+     - SDK version. Semantic versioning is recommended.
+
+       .. note::
+
+          Quote version strings in YAML when they look numeric (for example, :samp:`version: "1.0"`) to avoid type coercion.
+
+   * - :samp:`summary` (required for built SDKs)
+     - string
+     - One-line summary, up to 79 characters.
+
+   * - :samp:`description` (required for built SDKs)
+     - string
+     - Longer free-form description, up to about a hundred words.
+
+   * - :samp:`sdkcraft-started-at` (required for built SDKs)
+     - string
+     - UTC timestamp marking when |sdk_markup| started the build. Set automatically; do not edit by hand.
 
    * - :samp:`base`
      - string
-     - SDK's base image
-       that provides the underlying OS capabilities.
+     - Base operating system image the SDK targets. One of :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`, :samp:`ubuntu@24.04`, or :samp:`ubuntu@26.04`. Omit for SDKs that work on any supported base.
 
-       It can be :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`,
-       :samp:`ubuntu@24.04`, or :samp:`ubuntu@26.04`.
-
-       SDKs with a :samp:`base` can only be added to a workshop with the same :samp:`base`.
-       SDKs without a :samp:`base` can be added to any workshop.
-
-   * - :samp:`build-base`
+   * - :samp:`title`
      - string
-     - Base OS used to build the SDK.
-
-       Required by |sdk_markup| if a :samp:`base` is not defined.
-
-   * - :samp:`version`
-     - string
-     - SDK's arbitrary version;
-       semantic versioning is recommended.
-
-       .. note::
-
-          Use quotes to avoid potential data type mismatches:
-          without them, :samp:`'1.0'` can be interpreted as a number,
-          for example.
-
-
-   * - :samp:`summary`
-     - string
-     - A short one-line summary of up to 79 characters.
-
-
-   * - :samp:`description`
-     - string
-     - A longer, more detailed description of the SDK, up to one hundred words.
-
+     - Human-readable title.
 
    * - :samp:`license`
      - string
-     - Name of the software license under which the SDK is distributed.
+     - License name, as it would appear in package metadata.
 
        .. note::
 
-          Make sure it matches the individual components of the SDK.
+          Match the license to the actual components the SDK installs.
 
+   * - :samp:`contact`
+     - string, array, or URL
+     - Contact information for the SDK publisher.
 
-   * - :samp:`platforms`
-     - object
-     - A collection of named platforms,
-       describing where the SDK can be built and installed.
+   * - :samp:`issues`
+     - string, array, or URL
+     - Where users should report problems with the SDK.
 
-       See :ref:`ref_sdk_platform` for a detailed discussion.
-
-
-   * - :samp:`parts`
-     - object
-     - See :ref:`ref_sdk_parts` for a detailed discussion.
-
+   * - :samp:`source-code`
+     - URL
+     - Where the SDK's source code is hosted.
 
    * - :samp:`plugs`
      - object
-     - See :ref:`ref_sdk_plugs_slots` for a detailed discussion.
+     - Plugs the SDK requests from the workshop environment. Each key is the plug name; each value is an inline plug definition. See :ref:`ref_sdk_definition_interfaces`.
 
    * - :samp:`slots`
      - object
-     - See :ref:`ref_sdk_plugs_slots` for a detailed discussion.
+     - Slots the SDK provides. Each key is the slot name; each value is an inline slot definition. Only the :samp:`mount` and :samp:`tunnel` interfaces support slots on regular SDKs. See :ref:`ref_sdk_definition_interfaces`.
+
+"Required for built SDKs" means |sdk_markup| writes the field when it builds an SDK package; for an in-project SDK you can author :file:`sdk.yaml` with only :samp:`name` and :samp:`architecture`, plus whichever optional fields you need.
+
+
+.. _ref_sdk_definition_interfaces:
+
+Interfaces
+----------
+
+A plug or slot value is an inline definition: a mapping that specifies the :samp:`interface` and any interface-specific attributes. The implicit shorthand :samp:`<NAME>:` or :samp:`<NAME>: <INTERFACE>` expands to :samp:`<NAME>: {interface: <INTERFACE>}`.
+
+.. include:: _interfaces/camera.rst
+
+.. include:: _interfaces/desktop.rst
+
+.. include:: _interfaces/gpu.rst
+
+.. include:: _interfaces/mount.rst
+
+.. include:: _interfaces/ssh-agent.rst
+
+.. include:: _interfaces/tunnel.rst
 
 
 JSON Schema
 -----------
 
-The following
-`JSON Schema`
-formalizes the :file:`sdkcraft.yaml` format:
-
 .. @artefact SDK schema
 
-.. dropdown:: |sdk_markup| definition schema
-
-   .. literalinclude:: schema-sdkcraft.json
-      :language: json
-
-
-This one formalizes the :file:`sdk.yaml` format:
+The following JSON Schema is exported from |sdk_markup|'s runtime metadata model and describes the structure above:
 
 .. dropdown:: SDK definition schema
 
@@ -163,83 +140,35 @@ This one formalizes the :file:`sdk.yaml` format:
 Examples
 --------
 
-This is a real-world example of an SDK definition file
-for a Go development environment.
-It involves a nontrivial layout of build and target architectures,
-and also uses the :ref:`parts <ref_sdk_parts>` mechanism:
+In-project SDK that declares a mount plug:
 
-.. literalinclude:: ../../examples/go-sdkcraft.yaml
+.. literalinclude:: ../../examples/sdk-project-cache.yaml
    :language: yaml
-   :caption: sdkcraft.yaml
+   :caption: .workshop/cache/sdk.yaml
 
+Runtime :file:`sdk.yaml` written by |sdk_markup| for a Go development SDK:
 
-This YAML file defines an SDK that supports multiple bases:
-
-.. code-block:: yaml
-   :caption: sdkcraft.yaml
-
-   name: multibase
-   version: '0.1'
-   summary: Multibase SDK
-   description: |
-     This is my multibase SDK description.
-   license: GPL-3.0
-   platforms:
-     noble:
-       build-on: ['ubuntu@24.04:amd64', 'ubuntu@24.04:arm64']
-       build-for: 'ubuntu@24.04:all'
-     jammy:
-       build-on: ['ubuntu@22.04:amd64', 'ubuntu@22.04:arm64']
-       build-for: 'ubuntu@22.04:all'
-
-
-This is a more elaborate example of an SDK
-that uses several :ref:`plugs <ref_sdk_plugs_slots>`:
-
-.. code-block:: yaml
-   :caption: sdkcraft.yaml
-
-   name: ros2
-   title: The ROS 2 SDK
-   base: ubuntu@24.04
-   version: "0.1"
-   summary: The strictly necessary ROS 2 development environment for your project.
-   description: |
-     The ROS 2 SDK creates a minimum viable development environment
-     for your ROS 2 project.
-     It sets up a bare-bones ROS 2 workspace
-     before installing all of the dependencies
-     for the ROS 2 project mounted by workshop.
-   
-     A developer can thus connect to the workshop
-     to immediately build the project.
-   license: LGPL-2.1
-   platforms:
-     amd64:
-     arm64:
-   
-   plugs:
-     ros-cache:
-       interface: mount
-       workshop-target: /home/workshop/.ros
-   
-     colcon-artifacts:
-       interface: mount
-       workshop-target: /home/workshop/colcon
-   
-     gpu:
-       interface: gpu
+.. literalinclude:: ../../examples/sdk-go-runtime.yaml
+   :language: yaml
+   :caption: meta/sdk.yaml
 
 
 See also
 --------
 
+Explanation:
+
+- :ref:`exp_in_project_sdk`
+- :ref:`exp_sdk_concepts`
+- :ref:`exp_sdk_definition`
+- :ref:`exp_system_sdk`
+
 Reference:
 
 - :ref:`ref_sdk_internals`
+- :ref:`ref_sdkcraft_definition`
 - :ref:`ref_workshop_definition`
 
 Tutorial:
 
 - :ref:`tut_sketch_sdks`
-- :ref:`tut_craft_sdks`
