@@ -7,14 +7,14 @@
   "properties": {
     "name": {
       "type": "string",
-      "description": "Name of the workshop.",
+      "description": "Workshop name. Must start with a lowercase letter and may contain lowercase letters, digits, and hyphens between them. Up to 40 characters. Must match the definition file basename if the workshop is stored under .workshop/.",
       "pattern": "^[a-z](?:-?[a-z0-9])*$",
       "maxLength": 40,
       "errorMessage": "A workshop's name must start with a letter and can only include digits, lowercase letters, and hyphens joining them."
     },
     "base": {
       "type": "string",
-      "description": "Base system for the workshop.",
+      "description": "Base operating system image for the workshop. Must be one of the supported Ubuntu releases. SDKs with a declared base must match the workshop base; SDKs without a base are accepted on any workshop.",
       "enum": [
         "ubuntu@20.04",
         "ubuntu@22.04",
@@ -25,14 +25,14 @@
     },
     "sdks": {
       "type": "array",
-      "description": "List of SDKs used in the workshop.",
+      "description": "Ordered list of SDKs to install on top of the base. Each entry references an existing SDK. The system SDK is installed first implicitly and need not be listed.",
       "uniqueItems": true,
       "items": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string",
-            "description": "Name of the SDK. Optionally prefix with 'try-' or 'project-' exactly once to reference those sources.",
+            "description": "SDK name. Prefix with try- for a locally tried SDK, project- for an in-project SDK, or use system for the built-in system SDK; an unprefixed name resolves to an SDK from the Store. The underlying name must start with a letter, contain only lowercase letters, digits, and hyphens between them, and cannot be agent. Without a prefix the name is at most 40 characters; with try- at most 44; with project- at most 48.",
             "if": {
               "pattern": "^try-"
             },
@@ -57,20 +57,20 @@
           },
           "channel": {
             "type": "string",
-            "description": "Channel used for the SDK. Default is latest/stable unless the SDK is installed from a local source.",
+            "description": "Store channel used to retrieve the SDK at launch and refresh. Snap-like format: [<track>/]<risk>[/<branch>], or <track>, or <risk>/<branch>. Risk is one of stable, candidate, beta, edge. Track is at most 28 characters; branch is at most 128 characters. Default is latest/stable. Only applies to SDKs from the Store; ignored for try-, project-, and system SDKs.",
             "pattern": "^(?:(?:[a-zA-Z0-9](?:[_.-]?[a-zA-Z0-9])*/)?(?:stable|candidate|beta|edge)(?:/[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9])?|[a-zA-Z0-9](?:[_.-]?[a-zA-Z0-9])*|)$",
             "errorMessage": "Channel must look like [<track>/]<risk>[/<branch>] or [<track>]."
           },
           "plugs": {
             "type": "object",
-            "description": "Plugs for the SDK.",
+            "description": "Plug bindings and additional plug definitions for the SDK. Each key must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them.",
             "patternProperties": {
               "^[a-z](?:-?[a-z0-9])*$": {
-                "description": "Plug definition. Provide any YAML value for inline plug attributes, or set 'bind' to reference another plug. When 'bind' is set, no other attributes may be defined.",
+                "description": "Either an inline plug definition (a mapping whose keys are interface-specific attributes such as interface, workshop-target, endpoint) or a binding to another plug declared in the same workshop. To bind, provide a single bind key whose value is the target plug reference; bound plugs cannot define other attributes and cannot also appear in connections.",
                 "properties": {
                   "bind": {
                     "type": "string",
-                    "description": "Reference to a plug in the form [<sdk>:]<plug>. If omitted, the SDK is 'system'.",
+                    "description": "Plug reference in the form [<sdk>:]<plug>. When the <sdk> portion is omitted, system is assumed. The target plug must use the same interface as this plug, must not itself be bound, and must not belong to the system SDK.",
                     "pattern": "^(([a-z0-9]-?)*[a-z](-?[a-z0-9])*)?:[a-z](-?[a-z0-9])*$",
                     "errorMessage": "Bind reference must follow the pattern [<sdk>:]<plug>."
                   }
@@ -83,6 +83,9 @@
                 },
                 "then": {
                   "type": "object",
+                  "properties": {
+                    "bind": true
+                  },
                   "additionalProperties": false,
                   "errorMessage": "When 'bind' is set, no other attributes are allowed on the plug."
                 }
@@ -91,8 +94,14 @@
           },
           "slots": {
             "type": "object",
-            "description": "Slots available for the SDK.",
-            "additionalProperties": true
+            "description": "Additional slot definitions grafted onto the SDK by the workshop. Each key must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them. Each value is an inline slot definition with interface-specific attributes.",
+            "patternProperties": {
+              "^[a-z](?:-?[a-z0-9])*$": {
+                "type": "object",
+                "description": "Inline slot definition. Provide interface and any interface-specific attributes."
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [
@@ -108,20 +117,20 @@
     },
     "connections": {
       "type": "array",
-      "description": "List of connections between plugs and slots.",
+      "description": "Explicit connections from plugs to slots, applied on top of auto-connection. Both endpoints must reference an SDK that is present in the workshop or is implicit (system, sketch), and must share the same interface. A plug that is bound elsewhere cannot also appear here.",
       "uniqueItems": true,
       "items": {
         "type": "object",
         "properties": {
           "plug": {
             "type": "string",
-            "description": "Reference to a plug in the form [<sdk>:]<plug>. If omitted, the SDK is 'system'.",
+            "description": "Plug reference in the form [<sdk>:]<plug>. When the <sdk> portion is omitted, system is assumed.",
             "pattern": "^(([a-z0-9]-?)*[a-z](-?[a-z0-9])*)?:[a-z](-?[a-z0-9])*$",
             "errorMessage": "Plug reference must follow the pattern [<sdk>:]<plug>."
           },
           "slot": {
             "type": "string",
-            "description": "Reference to a slot in the form [<sdk>:]<slot>. If omitted, the SDK is 'system'.",
+            "description": "Slot reference in the form [<sdk>:]<slot>. When the <sdk> portion is omitted, system is assumed.",
             "pattern": "^(([a-z0-9]-?)*[a-z](-?[a-z0-9])*)?:[a-z](-?[a-z0-9])*$",
             "errorMessage": "Slot reference must follow the pattern [<sdk>:]<slot>."
           }
@@ -141,15 +150,15 @@
     },
     "actions": {
       "type": "object",
-      "description": "List of actions to be run in the workshop.",
+      "description": "Named shell scripts available via workshop run. Action names must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them. Each script body runs under bash with errexit and pipefail set; positional parameters $@, $1, $2, ... receive the arguments passed after the workshop name.",
       "patternProperties": {
         "^[a-z](?:-?[a-z0-9])*$": {
           "type": "string",
-          "description": "Shell script."
+          "description": "Shell script body executed by bash inside the workshop."
         }
       },
       "additionalProperties": false,
-      "errorMessage": "Action names must be unique and only appear once."
+      "errorMessage": "Action names must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them."
     }
   },
   "required": [

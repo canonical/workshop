@@ -1,0 +1,13 @@
+name: multibase
+version: "0.1"
+summary: Multibase SDK
+description: |
+  This is my multibase SDK description.
+license: GPL-3.0
+platforms:
+  noble:
+    build-on: [ubuntu@24.04:amd64, ubuntu@24.04:arm64]
+    build-for: ubuntu@24.04:all
+  jammy:
+    build-on: [ubuntu@22.04:amd64, ubuntu@22.04:arm64]
+    build-for: ubuntu@22.04:all

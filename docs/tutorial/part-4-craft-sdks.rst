@@ -455,7 +455,6 @@ Try the SDK
 -----------
 
 .. @artefact sdkcraft (CLI)
-.. @artefact try SDK
 
 When you're confident the SDK is ready to be built,
 try it in-place before uploading it to the Store.

@@ -97,7 +97,7 @@ Refresh the workshop to pick up the changes:
 
 
 One notable difference is that the
-:ref:`connection validation policies <exp_tunnel_connection>`
+connection validation policies
 are more strict when the slot is defined on the host,
 so an extra command is needed to connect the plug to the slot:
 
@@ -234,6 +234,7 @@ See also
 Explanation:
 
 - :ref:`exp_system_sdk`
+- :ref:`exp_tunnel_connection`
 - :ref:`exp_tunnel_interface`
 
 

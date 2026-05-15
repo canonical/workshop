@@ -1,0 +1,10 @@
+name: golang
+base: ubuntu@22.04
+sdks:
+  - name: go
+    channel: "1.26"
+actions:
+  lint: |
+    go vet
+    golangci-lint run
+  tests: go test "$@"

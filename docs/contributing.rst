@@ -534,19 +534,20 @@ At every release, remember to:
 
 - Bump the snap revision used across the docs.
 
-- Update three schema files:
-  ``schema.json``,
-  ``schema-sdk.json``,
-  and ``schema-sdkcraft.json``
-  under ``docs/reference/definition-files/``.
+- Refresh the three schema files under ``docs/reference/definition-files/``.
 
-  The first needs to be updated manually,
-  but you can generate the others in the SDKcraft repository root:
+  Regenerate ``schema-sdk.json`` and ``schema-sdkcraft.json`` in a local SDKcraft repository checkout and copy the outputs over:
 
   .. code-block:: console
 
-     uv run python sdkcraft/models/metadata.py
-     uv run python sdkcraft/models/project.py
+     $ cd <PATH_TO_SDKCRAFT_CHECKOUT>
+     $ uv run python sdkcraft/models/metadata.py
+     $ uv run python sdkcraft/models/project.py
+     $ cp schema-sdk.json schema-sdkcraft.json \
+          <PATH_TO_WORKSHOP_CHECKOUT>/docs/reference/definition-files/
+
+  The workshop ``schema.json`` is hand-audited against
+  ``internal/workshop/workshop_file.go``.
 
 
 - Update the `release notes <https://github.com/canonical/workshop/releases>`_

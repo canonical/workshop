@@ -1,0 +1,15 @@
+name: go
+title: Go SDK
+version: "1.25.1"
+summary: The Go programming language
+description: |
+  Go is an open source programming language that enables the production of simple,
+  efficient and reliable software at scale.
+base: ubuntu@24.04
+architecture: amd64
+license: LGPL-2.1
+sdkcraft-started-at: "2026-04-12T08:30:00Z"
+plugs:
+  mod-cache:
+    interface: mount
+    workshop-target: /home/workshop/go/pkg/mod

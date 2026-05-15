@@ -1,0 +1,4 @@
+name: try-go
+base: ubuntu@24.04
+sdks:
+  - name: try-go

@@ -1,47 +1,39 @@
 .. _ref_workshop_definition:
 
 .. meta::
-   :description: Reference for workshop definition files, including filename
-                 conventions, YAML structure, and required fields for workshops.
+   :description: Reference for the workshop.yaml definition file. Covers
+                 filename conventions, top-level fields, nested structures,
+                 interface attributes, the JSON Schema, and worked examples.
 
 Workshop definition
 ===================
 
 .. @artefact project
+.. @artefact workshop definition
 
-A project which defines a single workshop can store a definition file
-named :file:`workshop.yaml` or :file:`.workshop.yaml` (the latter is hidden)
-in the project directory.
+A *workshop definition* is the YAML file that |ws_markup| reads to launch and refresh a workshop. It names the base image, lists the SDKs to install, declares any extra plugs, slots, or connections, and records reusable shell actions. The file is authored by the workshop's user; see :ref:`exp_workshop_definition` for the broader concepts.
 
 
-Filename convention
--------------------
+Filename and location
+---------------------
 
 .. @artefact project workshops
 .. @artefact workshop name
 
-When multiple workshops are defined,
-their definition files must be stored in the :file:`.workshop/` subdirectory.
-The workshop name must also match the file name
-(without the :samp:`.yaml` extension).
+A project may store a single workshop definition at its root, or several under :file:`.workshop/`.
 
-Workshop names start with a lowercase letter
-and may include only lowercase letters, digits or hyphens.
+- A single workshop: :file:`workshop.yaml` or :file:`.workshop.yaml` in the project directory.
+- Multiple workshops: :file:`.workshop/<NAME>.yaml`, one file per workshop. The :samp:`<NAME>` part of the filename must equal the workshop's :samp:`name` field.
+- A workshop name must start with a lowercase letter and may contain lowercase letters, digits, and hyphens between them. Up to 40 characters.
 
 
-Structure
----------
-
-The definition in the file is written in `YAML <https://yaml.org/>`__
-and includes a number of mandatory and optional keys:
-
-.. @artefact workshop base image
-.. @artefact SDK
+Top-level fields
+----------------
 
 .. list-table::
    :header-rows: 1
    :width: 95
-   :widths: 1 1 7
+   :widths: 2 1 6
 
    * - Key
      - Value
@@ -49,66 +41,44 @@ and includes a number of mandatory and optional keys:
 
    * - :samp:`name` (required)
      - string
-     - Workshop's name, used to reference the workshop itself.
-
-       For workshops defined in the :file:`.workshop/` subdirectory,
-       the definition file must have the same name
-       (followed by :samp:`.yaml`).
+     - Workshop identifier. Subject to the naming rules above. Must match the filename when the definition lives under :file:`.workshop/`.
 
    * - :samp:`base` (required)
      - string
-     - Workshop's base image
-       that provides the underlying OS capabilities.
+     - Base operating system image. One of :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`, :samp:`ubuntu@24.04`, or :samp:`ubuntu@26.04`.
 
-       It can be :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`,
-       :samp:`ubuntu@24.04`, or :samp:`ubuntu@26.04`.
+       SDKs that declare a :samp:`base` must use the same value; SDKs without a :samp:`base` are accepted on any workshop.
 
    * - :samp:`sdks`
      - array
-     - List of individual SDKs
-       from the SDK Store to include in the workshop.
-
-       Each entry points to an existing SDK
-       and specifies its retrieval channel.
-       The SDKs are installed in the order they appear in this list;
-       the exception is the system SDK which is always installed first.
+     - Ordered list of SDK entries. Each entry references an existing SDK and configures it for this workshop. The system SDK is installed first implicitly and need not appear. See :ref:`ref_workshop_definition_sdk_entry`.
 
    * - :samp:`connections`
      - array
-     - List of connections made by the workshop;
-       each links a plug to a slot.
-
-       Any entry in :samp:`connections` must include
-       a :samp:`plug` and a :samp:`slot` from the SDKs listed under :samp:`sdks`
-       (the system SDK is always implicitly included).
-       Both must be strings that reference a plug and a slot
-       with the same interface,
-       using the :samp:`<SDK>:<PLUG>` format.
+     - Explicit connections between plugs and slots, applied on top of |ws_markup|'s auto-connect logic. See :ref:`ref_workshop_definition_connection_entry`.
 
    * - :samp:`actions`
      - object
-     - List of shell actions to be used with :ref:`workshop run <ref_workshop_run>`.
-
-       These are copied into the workshop
-       before being executed by :command:`bash`.
-       The options :samp:`errexit` and :samp:`pipefail`
-       are set by default.
-
-       Arguments passed to :command:`workshop run`
-       are available inside the script
-       through the standard :program:`bash` positional parameters:
-       :samp:`"$@"`, :samp:`"$1"`, and so on.
+     - Named shell scripts available via :command:`workshop run`. See :ref:`ref_workshop_definition_action_entry`.
 
 
-Each SDK is described with the following keys:
+Nested structures
+-----------------
+
+.. _ref_workshop_definition_sdk_entry:
+
+SDK entry
+~~~~~~~~~
 
 .. @artefact plug binding
 .. @artefact $SDK
 
+Each item in :samp:`sdks` is an object with these fields:
+
 .. list-table::
    :header-rows: 1
    :width: 95
-   :widths: 1 1 7
+   :widths: 2 1 6
 
    * - Key
      - Value
@@ -116,139 +86,73 @@ Each SDK is described with the following keys:
 
    * - :samp:`name` (required)
      - string
-     - Name of an existing SDK,
-       typically from the SDK Store.
+     - SDK identifier. The same naming rules as workshop names apply to the underlying SDK name, and :samp:`agent` is reserved.
 
-       - The :ref:`system SDK <ref_system_sdk>` is named :samp:`system`.
+       Use a prefix to select the source:
 
-       - When :ref:`trying out SDKs <ref_try_sdk>`, the name should be prefixed by :samp:`try-`.
+       - no prefix: an SDK from the SDK Store (default).
+       - :samp:`try-<NAME>`: a locally tried SDK in the :ref:`try area <ref_sdkcraft_try>`.
+       - :samp:`project-<NAME>`: an in-project SDK defined under :file:`.workshop/<NAME>/`.
+       - :samp:`system`: the built-in system SDK; listing it explicitly is rarely needed.
 
-       - :ref:`In-project SDKs <ref_in_project_sdk>` should be prefixed by :samp:`project-`.
+       The fully prefixed name is at most 40 characters without a prefix, 44 with :samp:`try-`, and 48 with :samp:`project-`.
 
    * - :samp:`channel`
      - string
-     - SDK version to retrieve during
-       :ref:`launch <ref_workshop_launch>`
-       and
-       :ref:`refresh <ref_workshop_refresh>`
-       operations.
+     - Store channel from which to retrieve the SDK at :ref:`launch <ref_workshop_launch>` and :ref:`refresh <ref_workshop_refresh>`. Uses the `snap channel format <https://snapcraft.io/docs/channels/>`__: :samp:`<TRACK>/<RISK>/<BRANCH>`, with all three parts optional except that at least one must be present.
 
-       It uses a
-       `snap-like format <https://snapcraft.io/docs/channels/>`__
-       of :samp:`<TRACK>/<RISK>/<BRANCH>`.
-       The default is :samp:`latest/stable`
-       (with no branch).
+       Default: :samp:`latest/stable`. Ignored for :samp:`try-`, :samp:`project-`, and :samp:`system` SDKs.
 
-       Only applies to SDKs from the Store.
+       .. note::
+
+          Quote channel values in YAML when they look numeric (for example, :samp:`channel: "1.26"`) to avoid type coercion.
 
    * - :samp:`plugs`
      - object
-     - Lists plug bindings or additional plug definitions under the SDK.
-
-       - A plug binding must name an existing plug in the SDK
-         and set a single :samp:`bind` attribute
-         that references a different plug of the same interface
-         using the :samp:`<SDK>:<PLUG>` format.
-
-       - A plug definition must specify the :samp:`interface`
-         and the relevant attributes (described below).
+     - Plug bindings or additional plug definitions grafted onto the SDK by this workshop. See :ref:`ref_workshop_definition_plug_entry` and :ref:`ref_workshop_definition_interfaces`.
 
    * - :samp:`slots`
      - object
-     - Defines additional slots under the SDK;
-       each entry must specify the :samp:`interface`
-       and the relevant attributes (described below).
+     - Additional slot definitions grafted onto the SDK by this workshop. Each entry specifies the :samp:`interface` and any interface-specific attributes. See :ref:`ref_workshop_definition_interfaces`.
 
 
-.. _ref_system_sdk:
+.. _ref_workshop_definition_plug_entry:
 
-System SDK
-~~~~~~~~~~
+Plug entry (under an SDK)
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. @artefact system SDK
+Each plug under an SDK is either an inline plug definition or a binding to another plug.
 
-The system SDK is built into every workshop
-to expose resources provided by the host system in a consistent way.
-It's not available in the SDK Store,
-so :samp:`channel` isn't relevant and can be omitted.
+.. list-table::
+   :header-rows: 1
+   :width: 95
+   :widths: 2 1 6
 
-Technically, the system SDK is of :samp:`system` type,
-whereas all other SDKs are of :samp:`regular` type,
-but this detail isn't exposed in the definition files.
+   * - Key
+     - Value
+     - Description
 
-Several interfaces expose resources that are host-based and singular by nature;
-the system SDK has default eponymous slots for these interfaces:
-:samp:`system:camera`, :samp:`system:custom-device`, :samp:`system:desktop`,
-:samp:`system:gpu`, :samp:`system:mount`, and :samp:`system:ssh-agent`.
-No other SDKs can declare slots for these interfaces, except for :samp:`mount`.
-The :samp:`system:mount` slot is still unique
-because it's the only one that provides access to the *host* filesystem,
-whereas slots under regular SDKs only expose locations in the workshop.
+   * - :samp:`interface`
+     - string
+     - Required for an inline plug definition; identifies the interface (for example, :samp:`mount`, :samp:`tunnel`). See :ref:`ref_workshop_definition_interfaces` for the attributes each interface accepts.
 
-If additional slots for interfaces like :samp:`tunnel` or :samp:`mount`
-are defined for the system SDK,
-they won't be auto-connected at launch or refresh,
-largely due to security considerations,
-because the system SDK exposes sensitive host system resources.
-To the contrary, plugs added under the system SDK can be auto-connected
-because they expose workshop internals.
+   * - :samp:`bind`
+     - string
+     - Reference to a target plug, in the form :samp:`<SDK>:<PLUG>`. The :samp:`<SDK>` part may be omitted to mean :samp:`system`.
+
+       A bound plug must not carry any other attributes, cannot belong to the system SDK, cannot target a system-SDK plug, cannot chain (bind to a plug that is itself bound), and cannot also appear in :samp:`connections`.
+
+   * - any interface attribute
+     - varies
+     - Inline plug definitions accept the attributes documented under :ref:`ref_workshop_definition_interfaces`.
 
 
-.. _ref_try_sdk:
+.. _ref_workshop_definition_connection_entry:
 
-Trying out SDKs
-~~~~~~~~~~~~~~~
-
-.. @artefact sdkcraft (CLI)
-.. @artefact try SDK
-
-The :command:`sdkcraft try` command makes SDKs available locally
-without having to publish them in the Store.
-
-Workshops consume these SDKs
-using names like :samp:`try-<NAME>`;
-a :samp:`channel` is not required in this case.
-
-
-.. _ref_in_project_sdk:
-
-In-project SDKs
-~~~~~~~~~~~~~~~
-
-.. @artefact in-project SDK
-
-Projects can define their own SDKs
-to configure the workshop in a project-specific way.
-These SDKs are defined by files named like :file:`.workshop/<NAME>/sdk.yaml`,
-relative to the project directory.
-Accordingly, SDK hooks are stored under :file:`.workshop/<NAME>/hooks/`.
-
-Workshops within the project consume these SDKs
-using names like :samp:`project-<NAME>`;
-a :samp:`channel` is not required in this case.
-
-
-Camera interface
+Connection entry
 ~~~~~~~~~~~~~~~~
 
-.. @artefact camera interface
-
-Camera interface plugs must be named :samp:`camera`
-and can't belong to the :ref:`system SDK <ref_system_sdk>`.
-They have no attributes.
-
-The only camera interface slot is :samp:`system:camera`.
-
-
-Custom device interface
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. @artefact custom-device interface
-
-Custom device interface plugs can't belong to the :ref:`system SDK <ref_system_sdk>`.
-They are described by the following attributes:
-
-.. @artefact custom-device interface attributes
+Each item in :samp:`connections` links a plug to a slot of the same interface:
 
 .. list-table::
    :header-rows: 1
@@ -259,49 +163,25 @@ They are described by the following attributes:
      - Value
      - Description
 
-   * - :samp:`subsystem` (required)
+   * - :samp:`plug` (required)
      - string
-     - The Linux kernel subsystem of the host devices to expose,
-       for example :samp:`input`, :samp:`tty`, or :samp:`usb`.
+     - Plug reference, in the form :samp:`<SDK>:<PLUG>`. The :samp:`<SDK>` part may be omitted to mean :samp:`system`. The referenced SDK must appear in :samp:`sdks` or be implicit (:samp:`system`, :samp:`sketch`).
+
+   * - :samp:`slot` (required)
+     - string
+     - Slot reference, in the form :samp:`<SDK>:<SLOT>`. Same rules as :samp:`plug`.
+
+A plug that has a :samp:`bind` set under its SDK entry cannot also be listed in :samp:`connections`.
 
 
-The only custom device interface slot is :samp:`system:custom-device`.
+.. _ref_workshop_definition_action_entry:
 
+Action entry
+~~~~~~~~~~~~
 
-Desktop interface
-~~~~~~~~~~~~~~~~~
+.. @artefact workshop actions
 
-.. @artefact desktop interface
-
-Desktop interface plugs must be named :samp:`desktop`
-and can't belong to the :ref:`system SDK <ref_system_sdk>`.
-They have no attributes.
-
-The only desktop interface slot is :samp:`system:desktop`.
-
-
-GPU interface
-~~~~~~~~~~~~~
-
-.. @artefact GPU interface
-
-GPU interface plugs must be named :samp:`gpu`
-and can't belong to the :ref:`system SDK <ref_system_sdk>`.
-They have no attributes.
-
-The only GPU interface slot is :samp:`system:gpu`.
-
-
-Mount interface
-~~~~~~~~~~~~~~~
-
-.. @artefact mount interface
-
-Mount interface plugs can't belong to the :ref:`system SDK <ref_system_sdk>`.
-They are described by the following attributes:
-
-.. @artefact mount interface attributes
-.. @artefact $SDK
+Each entry in :samp:`actions` maps an action name to a shell script body:
 
 .. list-table::
    :header-rows: 1
@@ -312,183 +192,43 @@ They are described by the following attributes:
      - Value
      - Description
 
-   * - :samp:`workshop-target` (required)
+   * - action name
      - string
-     - A path inside the workshop
-       to be used as the plug's target directory;
-       :file:`/project/` or :envvar:`$SDK`-based paths can be used;
-       :envvar:`$SDK` expands into the SDK's installation path in the workshop.
+     - Must start with a lowercase letter and may contain lowercase letters, digits, and hyphens between them.
 
-   * - :samp:`mode`
-     - integer
-     - File permissions to use when creating :samp:`workshop-target`
-       and any parent directories.
-       Default is 0o775 for normal users,
-       but changes to 0o755 if :samp:`uid` is zero.
-
-   * - :samp:`uid`
-     - integer
-     - User ID to apply when creating :samp:`workshop-target`
-       and any parent directories.
-       Default is 1000 if :samp:`workshop-target` is in
-       :file:`/home/workshop/`, :file:`/project/`, or :file:`/run/user/1000/`.
-       Otherwise the default is 0.
-
-   * - :samp:`gid`
-     - integer
-     - Group ID to use when creating :samp:`workshop-target`
-       and any parent directories.
-       Matches :samp:`uid` by default.
-
-   * - :samp:`read-only`
-     - Boolean
-     - Whether the target directory should be read-only.
-
-
-The only mount interface slot in the :ref:`system SDK <ref_system_sdk>`
-is :samp:`system:mount`.
-It has a single dynamic attribute named :samp:`host-source`,
-which can be only configured at :ref:`remount <ref_workshop_remount>`.
-
-Regular SDKs can declare additional mount interface slots.
-They are described by the following attributes:
-
-.. @artefact mount interface attributes
-.. @artefact $SDK
-
-.. list-table::
-   :header-rows: 1
-   :width: 95
-   :widths: 2 1 6
-
-   * - Key
-     - Value
-     - Description
-
-   * - :samp:`workshop-source` (required)
+   * - action body
      - string
-     - A path inside the workshop
-       to be used as the slot's source directory;
-       :file:`/project/` or :envvar:`$SDK`-based paths can be used;
-       :envvar:`$SDK` expands into the SDK's installation path in the workshop.
+     - A :program:`bash` script. |ws_markup| sets :samp:`errexit` and :samp:`pipefail` before running it. Arguments passed after :command:`workshop run <WORKSHOP>` are available as the standard positional parameters :samp:`"$@"`, :samp:`"$1"`, and so on.
+
+Actions are interpreted lazily: edits to :samp:`actions` are available immediately, without :command:`workshop refresh`.
 
 
-SSH interface
-~~~~~~~~~~~~~
+.. _ref_workshop_definition_interfaces:
 
-.. @artefact SSH interface
+Interfaces
+----------
 
-SSH interface plugs must be named :samp:`ssh-agent`
-and can't belong to the :ref:`system SDK <ref_system_sdk>`.
-They have no attributes.
+The attributes accepted by inline plug and slot definitions depend on the interface. These same attributes appear in SDK definitions (:ref:`ref_sdk_definition` and :ref:`ref_sdkcraft_definition`); a workshop may graft additional plugs and slots that follow them.
 
-The only SSH interface slot is :samp:`system:ssh-agent`.
+.. include:: _interfaces/camera.rst
 
+.. include:: _interfaces/desktop.rst
 
-Tunnel interface
-~~~~~~~~~~~~~~~~
+.. include:: _interfaces/gpu.rst
 
-.. @artefact tunnel interface
+.. include:: _interfaces/mount.rst
 
-Tunnel interface plugs and slots are described by the following attributes:
+.. include:: _interfaces/ssh-agent.rst
 
-.. list-table::
-   :header-rows: 1
-   :width: 95
-   :widths: 2 1 6
-
-   * - Key
-     - Value
-     - Description
-
-   * - :samp:`endpoint`
-     - string
-     - A network address or Unix domain socket
-       to be used as one end of the tunnel.
-
-
-Endpoints are formatted as follows:
-
-.. list-table::
-   :header-rows: 1
-   :width: 95
-   :widths: 2 7
-
-   * - Type
-     - Format
-
-   * - Endpoint
-     - :samp:`<ADDRESS>/<PROTOCOL>` for network endpoints.
-       May be shortened to :samp:`<ADDRESS>` or :samp:`<PROTOCOL>`
-
-       :samp:`<PATH>` or :samp:`@<STRING>` for Unix domain sockets.
-
-   * - Address
-     - :samp:`<HOST>:<PORT>`.
-       May be shortened to :samp:`<HOST>` or :samp:`<PORT>`.
-
-   * - Protocol
-     - Either :samp:`tcp` or :samp:`udp`.
-       The default is :samp:`tcp`.
-
-   * - Host
-     - An IPv4 or IPv6 address.
-
-       If a port is supplied,
-       IPv6 addresses must be enclosed in square brackets.
-
-       Supported aliases: :samp:`localhost`, :samp:`ip6-localhost` and :samp:`ip6-loopback`.
-
-       The default is :samp:`localhost`.
-
-   * - Port
-     - A TCP or UDP port number (1–65535).
-
-       May be omitted,
-       but only on one side of a connection.
-       For such connections,
-       both sides use the same port.
-
-       For security reasons,
-       tunnel interface plugs in the system SDK
-       cannot use privileged ports (1–1023).
-
-   * - Path
-     - An absolute path to a Unix domain socket.
-
-       :envvar:`$HOME` expands into the user's home directory and
-       :envvar:`$XDG_RUNTIME_DIR` expands into the user runtime directory
-       (e.g., :file:`/run/user/1000`).
-
-       For security reasons,
-       tunnel interface plugs in the system SDK
-       cannot listen on sockets outside these two directories.
-
-   * - String
-     - An abstract socket name.
-
-
-The default :samp:`endpoint` is the default network address (:samp:`localhost/tcp`).
-
-Endpoints which start with :samp:`[` or :samp:`@`
-need to be quoted in YAML:
-
-.. code-block:: yaml
-
-   endpoint: '[::1]:8080/tcp'
-   endpoint: '@abstract.sock'
+.. include:: _interfaces/tunnel.rst
 
 
 JSON Schema
 -----------
 
-.. The schema can be exported from internal/workshop/workshop_file.go
-
-The following
-`JSON Schema`
-formalizes the description above:
-
 .. @artefact workshop schema
+
+The following JSON Schema describes the structure above:
 
 .. dropdown:: Workshop definition schema
 
@@ -499,50 +239,23 @@ formalizes the description above:
 Examples
 --------
 
-This YAML file defines a :samp:`golang` workshop
-with a single :samp:`go` SDK
-from the :samp:`1.26/stable` channel,
-and some useful actions:
+Minimal workshop with one Store SDK and two actions:
 
-.. code-block:: yaml
+.. literalinclude:: ../../examples/workshop-golang.yaml
+   :language: yaml
    :caption: .workshop/golang.yaml
 
-   name: golang
-   base: ubuntu@22.04
-   sdks:
-     - name: go
-       channel: 1.26
-   actions:
-     lint: |
-       go vet
-       golangci-lint run
-     tests: go test "$@"
+Workshop with an in-project SDK and a plug binding between SDKs:
 
-
-This YAML file defines a :samp:`go-dev` workshop
-that uses the :samp:`go` SDK from the Store
-and an :ref:`in-project SDK <ref_in_project_sdk>` named :samp:`tunnel`;
-the :samp:`data` plug defined by the :samp:`tunnel` SDK
-is bound to the :samp:`mod-cache` plug of the :samp:`go` SDK:
-
-.. code-block:: yaml
+.. literalinclude:: ../../examples/workshop-go-dev.yaml
+   :language: yaml
    :caption: .workshop/go-dev.yaml
 
-   name: go-dev
-   base: ubuntu@22.04
-   sdks:
-     - name: go
-       channel: edge
-     - name: project-tunnel
-       plugs:
-         data:
-           bind: go:mod-cache
-
-
-This YAML file,
+Workshop that grafts a plug and a slot onto its SDKs
+and adds explicit connections;
 besides using the fictional
 :samp:`tensorflow`, :samp:`imagenet` and :samp:`cuda` SDKs,
-defines an additional slot under the :samp:`imagenet` SDK,
+it defines an additional slot under the :samp:`imagenet` SDK,
 a plug under :samp:`tensorflow`
 and two connections:
 
@@ -553,27 +266,15 @@ and two connections:
   to the preexisting :samp:`cuda:libs`.
 
 .. code-block:: yaml
-   :caption: .workshop/digits-cuda.yaml
+.. literalinclude:: ../../examples/workshop-digits-cuda.yaml
+   :language: yaml
 
-   base: ubuntu@22.04
-   name: digits-cuda
-   sdks:
-     - name: tensorflow
-       plugs:
-         cuda:
-           interface: mount
-           workshop-target: /usr/local/cuda/lib64
-     - name: imagenet
-       slots:
-         images:
-           interface: mount
-           workshop-source: $SDK/images
-     - name: cuda
-   connections:
-     - plug: tensorflow:cuda
-       slot: cuda:libs
-     - plug: tensorflow:images
-       slot: imagenet:images
+
+Workshop that pulls an SDK from the try area:
+
+.. literalinclude:: ../../examples/workshop-try-go.yaml
+   :language: yaml
+   :caption: .workshop/try-go.yaml
 
 
 See also
@@ -584,10 +285,12 @@ Explanation:
 - :ref:`exp_base`
 - :ref:`exp_sdks`
 - :ref:`exp_system_sdk`
+- :ref:`exp_in_project_sdk`
+- :ref:`exp_test_try_sdk`
 - :ref:`exp_workshop_definition`
-
 
 Reference:
 
 - :ref:`ref_sdk_definition`
+- :ref:`ref_sdkcraft_definition`
 - :ref:`ref_workshop_info`
