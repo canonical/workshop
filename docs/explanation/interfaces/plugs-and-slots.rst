@@ -88,9 +88,10 @@ Autowiring
 When a workshop launches or refreshes,
 |ws_markup| tries to connect each plug
 to a slot of the same interface type.
-The attempt succeeds automatically
-when the interface policy permits it
-and exactly one slot in the workshop matches the plug.
+The attempt succeeds for each slot the interface policy
+permits the plug to connect to.
+The policy is what gates auto-connection,
+not the number of candidate slots in the workshop.
 
 Auto-connect behavior varies by interface:
 
@@ -108,16 +109,17 @@ Auto-connect behavior varies by interface:
   They have to be wired explicitly.
 
 
-Autowiring becomes ambiguous
-when more than one slot in the workshop matches a plug.
-In that case,
-the plug is not connected automatically
-and you have to choose a slot yourself.
-The order in which auto-connections are evaluated
-is not guaranteed,
-so the right way to express a specific topology
-is to write it down,
-not to rely on which SDK happens to load first.
+When more than one slot is policy-eligible for the same plug,
+|ws_markup| attempts a connection for each of them
+in an order it does not guarantee.
+That can land you with multiple connections,
+or with a runtime conflict
+when the slots collide on a shared resource
+(two mount slots targeting overlapping paths, for example).
+The right way to express a specific topology
+is to write it down in the workshop definition's
+:ref:`connections list <exp_workshop_definition_connections>`
+instead of leaving it to auto-connection.
 
 
 Wiring mechanisms

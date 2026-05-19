@@ -46,8 +46,11 @@ the slot it is connected to (if any),
 and any notes on the connection.
 A plug that has no slot in the :samp:`SLOT` column
 is unconnected;
-either no slot matches it,
-or several slots match and auto-connection has refused to choose.
+no slot in the workshop is policy-eligible
+for auto-connection to that plug.
+If a slot you wanted was in scope but excluded by the policy
+(typical for the mount interface and regular-SDK slots),
+wire the pair with a top-level :samp:`connections:` entry.
 
 
 Wire a consumer to a specific provider

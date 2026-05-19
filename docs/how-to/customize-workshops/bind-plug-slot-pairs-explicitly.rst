@@ -28,8 +28,12 @@ Detect the ambiguity
 
 When two SDKs in the workshop expose a slot of the same interface
 that could satisfy the same plug,
-auto-connection picks the first eligible candidate it finds,
-which often falls back to the system SDK.
+the interface policy decides whether either of them
+is reachable by auto-connection.
+For the mount interface,
+regular-SDK slots are excluded from auto-connection
+and the plug ends up on the system SDK's default mount slot,
+even though regular providers are in scope.
 This guide uses three synthesized SDKs:
 :samp:`provider-a` and :samp:`provider-b`
 each expose a mount slot named :samp:`data`,
