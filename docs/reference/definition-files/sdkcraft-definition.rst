@@ -88,7 +88,7 @@ Top-level fields
 
    * - :samp:`summary`
      - string
-     - One-line summary, up to 79 characters.
+     - One-line summary, up to 78 characters.
 
    * - :samp:`description`
      - string
