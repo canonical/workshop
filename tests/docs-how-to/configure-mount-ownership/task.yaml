@@ -17,6 +17,5 @@ execute: |
   echo "Private plug applies mode 0o700 with the path-aware workshop-user default."
   workshop_exec exec dev -- ls -ldn /home/workshop/.private-secrets | MATCH '^drwx------ +[0-9]+ +1000 +1000'
 
-  echo "Read-only plug rejects writes."
-  ! workshop_exec exec dev -- touch /home/workshop/.local/share/example-toolchain/probe || false
-  workshop_exec exec dev -- touch /home/workshop/.local/share/example-toolchain/probe 2>&1 | MATCH 'Read-only file system'
+  echo "Read-only plug rejects writes with the expected error."
+  (! workshop_exec exec dev -- touch /home/workshop/.local/share/example-toolchain/probe 2>&1) | MATCH 'Read-only file system'

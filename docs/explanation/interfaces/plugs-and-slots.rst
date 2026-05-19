@@ -94,10 +94,10 @@ and exactly one slot in the workshop matches the plug.
 
 Auto-connect behavior varies by interface:
 
-- The mount interface auto-connects to slots provided by the system SDK
-  by default.
-  A mount plug can also opt in to auto-connecting from slots
-  provided by regular SDKs.
+- The mount interface auto-connects to slots provided by the system SDK.
+  Regular-SDK mount slots are never auto-connected on their own;
+  wire them by listing the pair in the workshop's
+  :ref:`top-level connections <exp_workshop_definition_connections>`.
 
 - The GPU interface auto-connects.
 
@@ -226,17 +226,12 @@ Consider a workshop that installs two SDKs:
   whose target is a path under its workshop user's home.
 
 
-If :samp:`provider-sdk` is the only SDK in the workshop
-that provides a matching slot,
-:samp:`consumer-sdk:tools` opts in to auto-connecting from regular slots,
-and the interface policy permits the pairing,
-the connection happens at launch with no further action.
-
-If a third SDK in the workshop also exposes a mount slot
-that the policy considers a candidate,
-the autowiring is ambiguous
-and the plug stays unconnected.
-You make the choice explicit
+Auto-connection alone does not wire :samp:`consumer-sdk:tools`
+to :samp:`provider-sdk:bin`:
+the mount interface only auto-connects to system-SDK slots,
+so :samp:`consumer-sdk:tools` lands on :samp:`system:mount`
+and :samp:`provider-sdk:bin` stays listed but unconnected.
+You name the pairing explicitly
 with a top-level :samp:`connections:` entry:
 
 .. code-block:: yaml
@@ -245,7 +240,6 @@ with a top-level :samp:`connections:` entry:
    sdks:
      - name: provider-sdk
      - name: consumer-sdk
-     - name: other-provider-sdk
 
    connections:
      - plug: consumer-sdk:tools
@@ -255,7 +249,7 @@ with a top-level :samp:`connections:` entry:
 After :command:`workshop launch` or :command:`workshop refresh`,
 :command:`workshop connections` shows the chosen pairing
 and you can verify that :samp:`consumer-sdk` reads from :samp:`provider-sdk`
-rather than :samp:`other-provider-sdk`.
+rather than the system SDK's default mount slot.
 
 
 See also

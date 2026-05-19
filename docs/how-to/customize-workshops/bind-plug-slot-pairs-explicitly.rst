@@ -50,9 +50,10 @@ Launch the workshop and inspect the connections:
 
 :samp:`consumer:feed` ended up wired to the system SDK's default mount slot,
 not to either regular provider,
-because mount plugs do not auto-connect to regular SDK slots
-unless they opt in with :samp:`auto-explicit: true`.
-The two regular slots are listed but unconnected.
+because mount plugs auto-connect only to system-SDK slots.
+Regular-SDK mount slots are never reached by auto-connection
+and stay listed but unconnected
+until a top-level :samp:`connections:` entry names the pair.
 The result is a working workshop,
 but probably not the one you intended.
 
