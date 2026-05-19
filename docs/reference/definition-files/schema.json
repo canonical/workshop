@@ -58,12 +58,13 @@
           "channel": {
             "type": "string",
             "description": "Store channel used to retrieve the SDK at launch and refresh. Snap-like format: [<track>/]<risk>[/<branch>], or <track>, or <risk>/<branch>. Risk is one of stable, candidate, beta, edge. Track is at most 28 characters; branch is at most 128 characters. Default is latest/stable. Only applies to SDKs from the Store; ignored for try-, project-, and system SDKs.",
-            "pattern": "^(?:(?:[a-zA-Z0-9](?:[_.-]?[a-zA-Z0-9])*/)?(?:stable|candidate|beta|edge)(?:/[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9])?|[a-zA-Z0-9](?:[_.-]?[a-zA-Z0-9])*|)$",
+            "pattern": "^(?:(?:[a-zA-Z0-9](?:[_.-]?[a-zA-Z0-9])*/)?(?:stable|candidate|beta|edge)(?:/[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9])?|[a-zA-Z0-9](?:[_.-]?[a-zA-Z0-9])*)$",
             "errorMessage": "Channel must look like [<track>/]<risk>[/<branch>] or [<track>]."
           },
           "plugs": {
             "type": "object",
             "description": "Plug bindings and additional plug definitions for the SDK. Each key must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them.",
+            "additionalProperties": false,
             "patternProperties": {
               "^[a-z](?:-?[a-z0-9])*$": {
                 "description": "Either an inline plug definition (a mapping whose keys are interface-specific attributes such as interface, workshop-target, endpoint) or a binding to another plug declared in the same workshop. To bind, provide a single bind key whose value is the target plug reference; bound plugs cannot define other attributes and cannot also appear in connections.",
@@ -94,11 +95,11 @@
           },
           "slots": {
             "type": "object",
-            "description": "Additional slot definitions grafted onto the SDK by the workshop. Each key must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them. Each value is an inline slot definition with interface-specific attributes.",
+            "description": "Additional slot definitions grafted onto the SDK by the workshop. Each key must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them. Each value is either an inline slot definition (a mapping with interface and any interface-specific attributes), a string naming the interface, or null to use the key as the interface name.",
             "patternProperties": {
               "^[a-z](?:-?[a-z0-9])*$": {
-                "type": "object",
-                "description": "Inline slot definition. Provide interface and any interface-specific attributes."
+                "type": ["object", "string", "null"],
+                "description": "Slot definition: an inline mapping with interface and any interface-specific attributes, a string naming the interface, or null to take the interface from the key."
               }
             },
             "additionalProperties": false
