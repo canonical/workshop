@@ -109,9 +109,10 @@ Each item in :samp:`sdks` is an object with these fields:
 
    * - :samp:`name` (required)
      - string
-     - SDK identifier.
-       The same naming rules as workshop names apply to the underlying SDK name,
-       and :samp:`agent` is reserved.
+     - SDK identifier. The underlying name must contain
+       at least one lowercase letter and may consist of
+       lowercase letters, digits, and hyphens between them.
+       :samp:`agent` is reserved.
 
        Use a prefix to select the source:
 

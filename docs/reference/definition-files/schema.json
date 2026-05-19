@@ -10,7 +10,7 @@
       "description": "Workshop name. Must start with a lowercase letter and may contain lowercase letters, digits, and hyphens between them. Up to 40 characters. Must match the definition file basename if the workshop is stored under .workshop/.",
       "pattern": "^[a-z](?:-?[a-z0-9])*$",
       "maxLength": 40,
-      "errorMessage": "A workshop's name must start with a letter and can only include digits, lowercase letters, and hyphens joining them."
+      "errorMessage": "A workshop's name must start with a lowercase letter and can only include digits, lowercase letters, and hyphens joining them."
     },
     "base": {
       "type": "string",
@@ -32,7 +32,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "SDK name. Prefix with try- for a locally tried SDK, project- for an in-project SDK, or use system for the built-in system SDK; an unprefixed name resolves to an SDK from the Store. The underlying name must start with a letter, contain only lowercase letters, digits, and hyphens between them, and cannot be agent. Without a prefix the name is at most 40 characters; with try- at most 44; with project- at most 48.",
+            "description": "SDK name. Prefix with try- for a locally tried SDK, project- for an in-project SDK, or use system for the built-in system SDK; an unprefixed name resolves to an SDK from the Store. The underlying name must contain at least one lowercase letter, may consist of lowercase letters, digits, and hyphens between them, and cannot be agent. Without a prefix the name is at most 40 characters; with try- at most 44; with project- at most 48.",
             "if": {
               "pattern": "^try-"
             },
