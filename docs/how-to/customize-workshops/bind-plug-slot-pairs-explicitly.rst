@@ -145,7 +145,7 @@ Explanation:
 
 How-to guides:
 
-- :ref:`how_design_capability_topology`
+- :ref:`how_design_interface_layout`
 - :ref:`how_resolve_plug_conflicts`
 
 

@@ -61,7 +61,7 @@ A complete hook tree looks like this:
 
 
 Each file is a bash script; mark it executable
-(:command:`sdkcraft init` already does this for the scaffolded ones).
+(:command:`sdkcraft init` already does this for the scaffolded ones).
 
 
 Write setup-base
@@ -227,19 +227,22 @@ Confirm:
      status: ready
 
 
-Then refresh the workshop to exercise the state hooks:
+:samp:`save-state` and :samp:`restore-state` only run
+when :command:`workshop refresh` has work to do:
+a new SDK revision to swap in,
+an added or removed SDK,
+or a change to the workshop definition.
+A bare :command:`workshop refresh dev` against an unchanged workshop
+is a no-op and skips every hook.
 
-.. code-block:: console
-
-   $ workshop refresh dev
-   $ workshop exec dev -- cat /home/workshop/.dotfiles-restored-uid
-
-     1000
-
-
-The presence of :file:`.dotfiles-restored-uid` confirms that
-:samp:`save-state` wrote into :envvar:`$SDK_STATE_DIR`
-and :samp:`restore-state` read it back across the refresh.
+To exercise the state hooks,
+bump the SDK to a new revision (for example, with :command:`sdkcraft pack`
+followed by reinstalling it in the workshop)
+or edit the workshop definition so the refresh has something to apply.
+After the refresh,
+:file:`.dotfiles-restored-uid` exists in the workshop user's home,
+confirming that :samp:`save-state` wrote into :envvar:`$SDK_STATE_DIR`
+and :samp:`restore-state` read it back.
 
 
 See also

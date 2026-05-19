@@ -1,4 +1,4 @@
-.. _how_design_capability_topology:
+.. _how_design_interface_layout:
 
 .. meta::
    :description: Wire SDKs together in a workshop by adding explicit

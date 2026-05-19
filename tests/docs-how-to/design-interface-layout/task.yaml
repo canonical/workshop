@@ -1,4 +1,4 @@
-summary: Test 'How to design the capability topology of a workshop' to ensure it's operational
+summary: Test 'How to design the interface layout of a workshop' to ensure it's operational
 restore: |
   . "$TESTSLIB"/utils.sh
   workshop_exec remove dev || true

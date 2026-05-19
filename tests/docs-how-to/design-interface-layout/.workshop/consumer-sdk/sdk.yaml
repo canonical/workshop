@@ -1,6 +1,6 @@
 name: consumer-sdk
 base: ubuntu@22.04
-summary: Synthesized consumer SDK for the design-capability-topology how-to
+summary: Synthesized consumer SDK for the design-interface-layout how-to
 description: |
   Declares a mount plug named "tools" that the workshop definition wires
   to provider-sdk:bin via a top-level connections entry.
