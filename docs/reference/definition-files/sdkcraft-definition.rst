@@ -50,8 +50,8 @@ Top-level fields
 
    * - :samp:`name` (required)
      - string
-     - SDK identifier. Must start with a lowercase letter
-       and contain only lowercase letters, digits, and hyphens between them.
+     - SDK identifier. Must contain at least one lowercase letter
+       and may consist of lowercase letters, digits, and hyphens between them.
        Up to 40 characters.
        Cannot be :samp:`system`, :samp:`sketch`,
        or start with :samp:`try-` or :samp:`project-`; those names are reserved.
