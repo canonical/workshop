@@ -71,8 +71,8 @@
                   "bind": {
                     "type": "string",
                     "description": "Plug reference in the form <sdk>:<plug>. The target plug must use the same interface as this plug, must not itself be bound, and must not belong to the system SDK (so the <sdk> portion must name a non-system SDK).",
-                    "pattern": "^(([a-z0-9]-?)*[a-z](-?[a-z0-9])*)?:[a-z](-?[a-z0-9])*$",
-                    "errorMessage": "Bind reference must follow the pattern <sdk>:<plug>."
+                    "pattern": "^(?!system:)(([a-z0-9]-?)*[a-z](-?[a-z0-9])*):[a-z](-?[a-z0-9])*$",
+                    "errorMessage": "Bind reference must follow the pattern <sdk>:<plug>, where <sdk> names a non-system SDK."
                   }
                 },
                 "if": {

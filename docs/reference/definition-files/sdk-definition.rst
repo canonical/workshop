@@ -12,10 +12,13 @@ SDK definition
 
 The :file:`sdk.yaml` file is the *runtime* SDK definition:
 |ws_markup| reads it when it installs an SDK in a workshop.
-For Store SDKs, sketch SDKs, and SDKs from :command:`sdkcraft try`,
+For Store SDKs and SDKs from :command:`sdkcraft try`,
 this file is produced by |sdk_markup| from :file:`sdkcraft.yaml`
 (see :ref:`ref_sdkcraft_definition`).
-For in-project SDKs, you author :file:`sdk.yaml` directly.
+For sketch SDKs and in-project SDKs,
+you author :file:`sdk.yaml` directly:
+sketch SDKs through :command:`workshop sketch-sdk`,
+in-project SDKs by hand under :file:`.workshop/`.
 
 
 Filename and location
@@ -23,7 +26,7 @@ Filename and location
 
 .. @artefact SDK definition file
 
-- Store, try, and sketch SDKs ship :file:`sdk.yaml`
+- Store SDKs and SDKs from :command:`sdkcraft try` ship :file:`sdk.yaml`
   inside their packed contents at :file:`meta/sdk.yaml`.
 
 - In-project SDKs use
