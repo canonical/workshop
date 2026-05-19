@@ -222,7 +222,8 @@ Each item in :samp:`connections` links a plug to a slot of the same interface:
    * - :samp:`plug` (required)
      - string
      - Plug reference, in the form :samp:`<SDK>:<PLUG>`.
-       The :samp:`<SDK>` part may be omitted to mean :samp:`system`.
+       The :samp:`<SDK>` part may be empty (for example, :samp:`:ssh-agent`)
+       to refer to the system SDK.
        The referenced SDK must appear in :samp:`sdks` or be implicit
        (:samp:`system`, :samp:`sketch`).
 
