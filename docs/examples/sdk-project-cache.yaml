@@ -5,7 +5,6 @@ description: |
   Project-specific SDK that exposes a mount target
   for sharing the Go module cache with other SDKs.
 architecture: all
-sdkcraft-started-at: "2026-04-12T08:30:00Z"
 plugs:
   data:
     interface: mount
