@@ -137,9 +137,14 @@ gives you two distinct YAML mechanisms for shaping the topology:
 - A top-level :samp:`connections:` list,
   written at workshop scope,
   pairs a specific plug with a specific slot.
-  Use it whenever the autowiring would be ambiguous
-  or when you want to lock down a particular pairing
-  even though the defaults happen to land on the right one today.
+  Use it to override the default auto-connect target,
+  for example to wire a mount plug to a regular SDK's slot
+  rather than the system SDK's.
+  The pair still has to satisfy the interface's auto-connection policy,
+  so interfaces that block auto-connection outright
+  (such as :samp:`ssh-agent`)
+  cannot be wired this way
+  and must be connected with :command:`workshop connect`.
 
 
 The two mechanisms are mutually exclusive for a given plug:
@@ -149,9 +154,16 @@ cannot also appear in a top-level :samp:`connections:` entry.
 |ws_markup| also exposes runtime-only commands,
 :command:`workshop connect` and :command:`workshop disconnect`,
 that change the wiring of a running workshop.
-Those commands do not modify the workshop definition on disk,
-so any change they make is lost the next time you rebuild the workshop.
-For a persistent decision,
+These commands do not edit the workshop definition on disk,
+but their effect carries over across :command:`workshop refresh`:
+a plug disconnected with :command:`workshop disconnect`
+stays disconnected until you reconnect it explicitly,
+or until :command:`workshop disconnect --forget`
+clears the mark and makes the plug eligible
+for auto-connection again on the next refresh.
+A subsequent :command:`workshop remove` clears these runtime overrides;
+for a decision that travels with the project
+and survives a full rebuild,
 edit the workshop definition.
 
 

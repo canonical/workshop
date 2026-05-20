@@ -123,13 +123,17 @@ The :samp:`manual` note in the :samp:`Notes` column flags that the connection
 came from a CLI invocation rather than the workshop definition
 or the auto-connection mechanism.
 
-The change is runtime-only:
-the workshop definition on disk is unchanged,
-and the next :command:`workshop launch` or :command:`workshop refresh`
-will revert to whatever the definition specifies
-or the auto-connection mechanism resolves.
+The workshop definition on disk is unchanged,
+but the runtime mark carries over across :command:`workshop refresh`:
+:samp:`consumer:feed` stays connected to :samp:`provider-a:data`
+until you rewire it again,
+or until :command:`workshop disconnect --forget`
+clears the mark and lets auto-connection apply.
+A :command:`workshop remove` discards these runtime overrides,
+so a subsequent :command:`workshop launch` starts from the definition.
 
-For a decision you want to keep,
+For a decision that travels with the project
+and survives :command:`workshop remove`,
 edit the workshop definition instead.
 
 
