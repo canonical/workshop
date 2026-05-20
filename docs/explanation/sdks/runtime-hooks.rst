@@ -39,50 +39,51 @@ each one answering a different question about the SDK's relationship
 to the workshop.
 
 - :samp:`setup-base`:
-  Runs once per workshop change (launch or refresh)
-  after the workshop process is up
-  but before the project directory is mounted
-  and before plugs and slots are connected.
-  This is where an SDK does the system-wide preparation
-  it needs before it can serve plugs:
-  installing :file:`/etc/profile.d/` snippets,
-  wiring shell completions,
-  registering alternatives,
-  or anything else that requires root and that the workshop's other SDKs
-  may want to rely on.
+  System-level preparation for the SDK,
+  run as :samp:`root`
+  inside the workshop container
+  before the project directory is mounted
+  and before any plug or slot is connected.
+  It runs once when the SDK is first installed
+  and again when its revision changes;
+  a refresh that leaves the SDK intact reuses the post-:samp:`setup-base`
+  snapshot rather than running the hook again.
 
 - :samp:`setup-project`:
-  Runs after the project directory is mounted
-  and after auto-connect has finished,
-  but before the workshop is set to *Ready*.
-  This is per-project initialization
-  from the perspective of the workshop user:
-  touching files in the user's home,
-  priming a project-local cache,
-  creating a project-relative workspace
-  from data that the SDK provides.
+  Per-project preparation,
+  run as the :samp:`workshop` user
+  after the project directory is mounted
+  and after auto-connect has finished.
+  This is the SDK's chance to do setup
+  that depends on the project directory,
+  the :samp:`workshop` user's home directory,
+  or the slot resources the SDK now has access to.
 
 - :samp:`check-health`:
-  Gives the SDK a chance to report
-  whether it is functioning inside this particular workshop.
-  It is intended to be fast,
-  and the workshop only waits for it briefly
-  before deciding the SDK has not reported back.
-  See :ref:`exp_workshopctl_health` below
-  for how the result feeds into the workshop status.
+  The SDK's report on whether it can operate in this workshop.
+  It runs after :samp:`setup-project`
+  (and, on a refresh, after :samp:`restore-state`),
+  reports its result through :command:`workshopctl set-health`,
+  and controls whether the SDK becomes *Ready*.
+  See :ref:`exp_workshopctl_health` below.
 
-- :samp:`save-state`
+- :samp:`save-state`:
   Runs during a refresh,
-  before the old SDK revision is taken down.
-  It exists because some SDK state
-  does not live behind a connectable plug
-  and would otherwise be lost when the workshop swaps revisions.
+  on the *old* SDK revision,
+  before the workshop is stopped and rebuilt.
+  A refresh discards the workshop's writable filesystem,
+  so anything the SDK keeps there
+  (caches, generated configuration, state
+  that the new revision expects to find)
+  needs to be explicitly copied under :envvar:`$SDK_STATE_DIR`
+  to survive.
 
 - :samp:`restore-state`:
-  Runs during the same refresh,
-  after the new SDK revision has set up its project,
-  and reads back what the old revision saved.
-  See :ref:`exp_sdk_state` for the persistence model.
+  Runs during the same refresh as :samp:`save-state`,
+  but on the *new* SDK revision,
+  after every SDK's :samp:`setup-project` has finished,
+  and reads back from :envvar:`$SDK_STATE_DIR`.
+  See :ref:`exp_sdk_state` below for the persistence model.
 
 
 Execution contract
@@ -187,18 +188,19 @@ which sets the SDK's health to :samp:`okay`, :samp:`waiting`, or :samp:`error`.
 The workshop's overall :ref:`status <exp_workshop_status>`
 is derived from the union of these results:
 
-- The hook sets health to :samp:`okay` and exits with code zero:
+- The hook reports :samp:`okay` and exits with code zero:
   the SDK is *Ready*.
 
-- The hook sets health to :samp:`waiting`:
-  |ws_markup| retries :samp:`check-health` once per second.
-  After ten consecutive retries,
-  or if five seconds pass without :samp:`set-health` being invoked at all,
+- The hook reports :samp:`waiting`:
+  |ws_markup| sleeps for one second and runs :samp:`check-health` again.
+  After ten consecutive :samp:`waiting` results,
   the SDK is moved to *Error*.
 
-- The hook exits with a non-zero code,
-  or sets health to :samp:`error` explicitly:
-  the SDK is *Error*.
+- The hook reports :samp:`error`,
+  exits with a non-zero code,
+  exits without reporting a status,
+  or fails to return within five seconds:
+  the SDK is moved to *Error*.
 
 
 .. _exp_sdk_state:
