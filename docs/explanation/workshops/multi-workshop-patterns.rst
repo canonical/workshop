@@ -70,7 +70,7 @@ Each workshop has its own base image,
 its own SDK list,
 and its own actions,
 but they all see the same project files.
-:ref:`In-project SDKs <ref_in_project_sdk>`,
+:ref:`In-project SDKs <exp_in_project_sdk>`,
 stored as subdirectories of :file:`.workshop/`,
 can be referenced by *any* workshop in the project
 and provide a clean way to share custom tooling.
@@ -254,6 +254,7 @@ See also
 
 Explanation:
 
+- :ref:`exp_in_project_sdk`
 - :ref:`exp_projects`
 - :ref:`exp_tunnel_interface`
 - :ref:`exp_workshop_concepts`
@@ -267,7 +268,6 @@ How-to guides:
 
 Reference:
 
-- :ref:`ref_in_project_sdk`
 - :ref:`ref_workshop_definition`
 - :ref:`ref_workshop_launch`
 - :ref:`ref_workshop_list`
