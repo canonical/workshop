@@ -75,7 +75,9 @@ provided that:
 
 - The slot is declared in a regular SDK
 
-- The plug listens on :samp:`localhost` or a Unix domain socket
+- The plug listens on a loopback address
+  (for example, :samp:`localhost`, :samp:`127.0.0.1`, or :samp:`::1`)
+  or a Unix domain socket
 
 - The plug can be matched to the slot by its name,
   or via a :samp:`connections` entry in the :ref:`definition <exp_workshop_definition>`,
