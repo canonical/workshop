@@ -155,8 +155,6 @@ Interfaces
 A plug or slot value is an inline definition:
 a mapping that specifies the :samp:`interface`
 and any interface-specific attributes.
-The implicit shorthand :samp:`<NAME>:` or :samp:`<NAME>: <INTERFACE>`
-expands to :samp:`<NAME>: {interface: <INTERFACE>}`.
 
 .. include:: _interfaces/camera.rst
 

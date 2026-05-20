@@ -8,9 +8,10 @@ GPU interface
 
 .. @artefact GPU interface
 
-The GPU interface exposes host GPU devices via LXD's CDI extension.
+The GPU interface exposes host GPU devices.
 
 - Plug attributes: none.
 - Plug name: must be :samp:`gpu`.
 - Plug owner: any regular SDK; not the system SDK.
-- Slot: the system SDK provides a single :samp:`system:gpu` slot. Other SDKs cannot declare GPU slots.
+- Slot: the system SDK provides a single :samp:`system:gpu` slot.
+  Other SDKs cannot declare GPU slots.
