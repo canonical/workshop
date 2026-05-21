@@ -93,17 +93,11 @@ using the `--classic <https://snapcraft.io/docs/install-modes/>`_ option:
 
 .. code-block:: console
 
-   $ sudo snap login
    $ sudo snap install --classic workshop
 
 
 To get the newest features, install from the edge channel:
 :command:`sudo snap install --classic --edge workshop`.
-
-.. warning::
-
-   If this command fails, you may need an invitation;
-   contact Dmitry Lyfar (dmitry.lyfar@canonical.com, @dlyfar on Mattermost).
 
 
 .. _tut_define_launch:
