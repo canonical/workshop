@@ -112,10 +112,6 @@ Auto-connect behavior varies by interface:
 When more than one slot is policy-eligible for the same plug,
 |ws_markup| attempts a connection for each of them
 in an order it does not guarantee.
-That can land you with multiple connections,
-or with a runtime conflict
-when the slots collide on a shared resource
-(two mount slots targeting overlapping paths, for example).
 The right way to express a specific topology
 is to write it down in the workshop definition's
 :ref:`connections list <exp_workshop_definition_connections>`
