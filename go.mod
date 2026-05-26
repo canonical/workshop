@@ -3,15 +3,15 @@ module github.com/canonical/workshop
 go 1.26.2
 
 require (
-	github.com/adrg/xdg v0.4.0
+	github.com/adrg/xdg v0.5.3
 	github.com/canonical/gencodo v0.2.1
 	github.com/canonical/lxd v0.0.0-20260521084752-704f941eaeb2
 	github.com/canonical/x-go v0.0.0-20230522092633-7947a7587f5b
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/websocket v1.5.1
-	github.com/jessevdk/go-flags v1.5.0
+	github.com/gorilla/websocket v1.5.3
+	github.com/jessevdk/go-flags v1.6.1
 	github.com/juju/clock v1.1.1
 	github.com/juju/retry v1.0.1
 	github.com/pkg/sftp v1.13.10
