@@ -28,6 +28,19 @@ or install them directly into a workshop.
    Parts <parts>
 
 
+SDK lifecycle
+-------------
+
+An SDK rarely springs into existence ready to publish;
+it moves through stages,
+from a quick local hack to a consumable artifact on the SDK Store:
+
+.. toctree::
+   :maxdepth: 1
+
+   lifecycle
+
+
 SDK design
 ----------
 
