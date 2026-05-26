@@ -32,7 +32,7 @@ Notes:
 
 - The subcommand is a shorthand for "workshop exec";
   it launches the login shell for "workshop",
-  the default nonprivileged user in a workshop.
+  the default non-privileged user in a workshop.
 
 
 .. rubric:: Examples

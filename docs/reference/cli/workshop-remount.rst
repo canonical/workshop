@@ -25,7 +25,7 @@ of the specified mount interface plug, qualified by the SDK name.
 Specifically, it does the following:
 
 - Attempts the mount operation atomically;
-  this normally succeeds if the new source is either a nonexisting directory
+  this normally succeeds if the new source is either a non-existing directory
   or an empty directory on the same file system as the current source.
 
 - Otherwise, performs the mount operation only if the workshop is 'Stopped'
@@ -41,7 +41,7 @@ Notes:
 - "workshop refresh" mounts the last source set by "workshop remount", if any.
 
 - During "workshop remove",
-  nondefault sources set by "workshop remount" aren't removed.
+  non-default sources set by "workshop remount" aren't removed.
 
 
 .. rubric:: Examples

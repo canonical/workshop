@@ -50,6 +50,9 @@ and also has a number of global flags:
 .. include:: workshop-info.rst
 
 
+.. include:: workshop-init.rst
+
+
 .. include:: workshop-launch.rst
 
 
