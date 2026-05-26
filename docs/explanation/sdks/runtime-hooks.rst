@@ -89,7 +89,7 @@ to the workshop.
 Execution contract
 ------------------
 
-Every hook runs as a :program:`bash` script
+Every hook runs in a non-interactive :program:`bash` login session
 with the :samp:`errexit` and :samp:`pipefail` options set,
 which means a non-zero exit code
 from any command,
@@ -126,8 +126,7 @@ not no environment at all):
    * - :samp:`setup-project`
      - :file:`/project/`
      - The :samp:`workshop` user
-     - :envvar:`$HOME`, :envvar:`$XDG_RUNTIME_DIR`,
-       :envvar:`$DBUS_SESSION_BUS_ADDRESS`
+     - None
 
    * - :samp:`check-health`
      - The SDK's :file:`hooks/` directory
@@ -227,11 +226,9 @@ and writes whatever needs to outlive the revision into that directory.
 after the swap and after :samp:`setup-project` has run for every SDK,
 and reads from the same directory to reapply what was saved.
 
-:envvar:`$SDK_STATE_DIR` is only in scope for these two hooks;
-the :samp:`workshop` user, the SDK's own running processes,
-and the other hooks cannot see it.
-That keeps the state directory out of reach
-of anything that should not be writing to it.
+:envvar:`$SDK_STATE_DIR` is only set in the environment of
+:samp:`save-state` and :samp:`restore-state`;
+the other hooks do not see the variable.
 
 
 See also
