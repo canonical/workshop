@@ -53,7 +53,7 @@ jobs:
         run: echo "version=$(<"$DOCS_DIR/lychee-version")" >> "$GITHUB_OUTPUT"
 
       - name: Run lychee
-        uses: lycheeverse/lychee-action@faea714062690f6c2e6f7f388469ec4fa6d9c4e1 # master pre-v2.8.1: PR #330 nested-tarball fix for lychee 0.24.x
+        uses: lycheeverse/lychee-action@6da1d14f3a43098a294b7696d93d938aa8d20fc0 # master pre-v2.8.1: PR #330 nested-tarball fix for lychee 0.24.x
         with:
           workingDirectory: ./docs
           args: --config lychee.toml -vv .
@@ -212,7 +212,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linkcheck-redirect-fixes
           if-no-files-found: warn

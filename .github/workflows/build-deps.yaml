@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
       - name: Cache Workshop snap
         id: cache-workshop
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: workshop_*.snap
           key: workshop-snap-${{ github.sha }}
@@ -43,7 +43,7 @@ jobs:
           snap_file=$(ls workshop_*.snap)
           echo "snap=$snap_file" >> $GITHUB_OUTPUT
       - name: Upload Workshop
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: snap_workshop
           path: ${{ steps.cache-workshop.outputs.cache-hit == 'true' && steps.snapcraft_workshop_cached.outputs.snap || steps.snapcraft_workshop.outputs.snap }}
@@ -67,7 +67,7 @@ jobs:
         uses: canonical/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1.3.0
         id: snapcraft_workshop_arm64
       - name: Upload Workshop (arm64)
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: snap_workshop_arm64
           path: ${{ steps.snapcraft_workshop_arm64.outputs.snap }}
@@ -87,13 +87,13 @@ jobs:
           echo "sha=$spread_sha" >> $GITHUB_OUTPUT
       - name: Cache spread binary
         id: cache-spread
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: spread/spread
           key: spread-binary-${{ steps.spread-sha.outputs.sha }}
       - name: Setup Go
         if: steps.cache-spread.outputs.cache-hit != 'true'
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: "1.26"
           cache: false
@@ -107,7 +107,7 @@ jobs:
           retry 5 go build -o spread ./cmd/spread
           popd
       - name: Upload spread binary
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: spread_binary
           path: spread/spread
