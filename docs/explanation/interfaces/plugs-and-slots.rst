@@ -150,17 +150,6 @@ cannot also appear in a top-level :samp:`connections:` entry.
 |ws_markup| also exposes runtime-only commands,
 :command:`workshop connect` and :command:`workshop disconnect`,
 that change the wiring of a running workshop.
-These commands do not edit the workshop definition on disk,
-but their effect carries over across :command:`workshop refresh`:
-a plug disconnected with :command:`workshop disconnect`
-stays disconnected until you reconnect it explicitly,
-or until :command:`workshop disconnect --forget`
-clears the mark and makes the plug eligible
-for auto-connection again on the next refresh.
-A subsequent :command:`workshop remove` clears these runtime overrides;
-for a decision that travels with the project
-and survives a full rebuild,
-edit the workshop definition.
 
 
 .. _exp_plug_bindings:
