@@ -147,7 +147,7 @@ Explanation:
 
 How-to guides:
 
-- :ref:`how_bind_plug_slot_pairs_explicitly`
+- :ref:`how_connect_plug_slot_pairs_explicitly`
 - :ref:`how_resolve_plug_conflicts`
 
 

@@ -139,7 +139,7 @@ How-to guides:
 
 - :ref:`how_declare_plugs_slots`
 - :ref:`how_design_interface_layout`
-- :ref:`how_bind_plug_slot_pairs_explicitly`
+- :ref:`how_connect_plug_slot_pairs_explicitly`
 
 
 Reference:

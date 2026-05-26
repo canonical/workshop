@@ -1,12 +1,12 @@
-.. _how_bind_plug_slot_pairs_explicitly:
+.. _how_connect_plug_slot_pairs_explicitly:
 
 .. meta::
-   :description: Resolve ambiguous autowiring in a workshop by binding a plug
+   :description: Resolve ambiguous autowiring in a workshop by connecting a plug
                  to a specific slot, either persistently in the workshop
                  definition or transiently with workshop connect.
 
-How to bind plug-slot pairs explicitly
-======================================
+How to connect plug-slot pairs explicitly
+=========================================
 
 .. @artefact interface connection
 
