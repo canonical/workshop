@@ -323,6 +323,21 @@ func SdkVolumeLastUsedKey(sk string, revision sdk.Revision) string {
 	return sdk.VolumeName(sk, revision) + "_last-used"
 }
 
+func snapshotFromLastUsedRecord(change *state.Change, t taskTimeWorkshop) (*workshop.Snapshot, bool, error) {
+	snapshot, err := workshopSnapshot(change, t.Workshop, t.Age)
+	if err != nil {
+		// Completed remove changes may still contain a last-used record for
+		// the old stash after the stash metadata itself has already been removed.
+		// Such stale records should not prevent unused snapshot cleanup
+		// from reaching the existing safety checks.
+		if t.Age == OldStash {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return snapshot, true, nil
+}
+
 type taskTime struct {
 	Task string    `json:"task"`
 	Time time.Time `json:"time"`
@@ -339,9 +354,12 @@ func SnapshotLastUsed(change *state.Change, snapshot workshop.Snapshot) (string,
 	var task string
 	var latest time.Time
 	for _, t := range tasks {
-		s, err := workshopSnapshot(change, t.Workshop, t.Age)
+		s, ok, err := snapshotFromLastUsedRecord(change, t)
 		if err != nil {
 			return "", time.Time{}, err
+		}
+		if !ok {
+			continue
 		}
 		if !s.IsBasedOn(snapshot) {
 			continue

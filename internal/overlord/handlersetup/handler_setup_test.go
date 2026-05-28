@@ -18,6 +18,7 @@ import (
 	"errors"
 	"sort"
 	"testing"
+	"time"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/tomb.v2"
@@ -25,6 +26,7 @@ import (
 	"github.com/canonical/workshop/internal/overlord/conflict"
 	"github.com/canonical/workshop/internal/overlord/handlersetup"
 	"github.com/canonical/workshop/internal/overlord/state"
+	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -184,4 +186,57 @@ func (s *CommonStateFuncs) TestInjectTasksMainAborted(c *check.C) {
 	// verify that extra tasks are on hold
 	c.Assert(t01.Status(), check.Equals, state.HoldStatus)
 	c.Assert(t02.Status(), check.Equals, state.HoldStatus)
+}
+
+func (s *CommonStateFuncs) TestSnapshotLastUsedSkipsMissingOldStash(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	chg := s.state.NewChange("remove", `Remove "snapshot-check" workshop`)
+
+	base := workshop.BaseImage{
+		Name:        "ubuntu@24.04",
+		Fingerprint: "base-fingerprint",
+	}
+	format := sdk.R(1)
+	setup := sdk.Setup{
+		Name:     "snapshot-check-base",
+		Source:   sdk.ProjectSource,
+		Revision: sdk.R("x1"),
+		Sha3_384: "snapshot-check-base-sha3",
+	}
+
+	// A valid old workshop snapshot record. This simulates another last-used
+	// entry in the same change that can still be resolved.
+	chg.Set(handlersetup.WorkshopFormatKey("snapshot-check", handlersetup.OldWorkshop), format)
+	chg.Set(handlersetup.WorkshopBaseKey("snapshot-check", handlersetup.OldWorkshop), base)
+	chg.Set(handlersetup.WorkshopSdksKey("snapshot-check", handlersetup.OldWorkshop), []sdk.Setup{setup})
+
+	oldWorkshopTime := time.Now()
+	c.Assert(handlersetup.SetSnapshotLastUsed(
+		chg,
+		"snapshot-check",
+		handlersetup.OldWorkshop,
+		"1",
+		oldWorkshopTime,
+	), check.IsNil)
+
+	// A stale old-stash entry. The matching old-stash format/base/sdks keys
+	// are intentionally absent, reproducing the state seen by snapshot cleanup
+	// after a completed remove change has removed the stash metadata.
+	staleOldStashTime := oldWorkshopTime.Add(time.Second)
+	c.Assert(handlersetup.SetSnapshotLastUsed(
+		chg,
+		"snapshot-check",
+		handlersetup.OldStash,
+		"2",
+		staleOldStashTime,
+	), check.IsNil)
+
+	snapshot := workshop.SdkSnapshot(format, base, []sdk.Setup{setup})
+
+	task, lastUsed, err := handlersetup.SnapshotLastUsed(chg, snapshot)
+	c.Assert(err, check.IsNil)
+	c.Assert(task, check.Equals, "1")
+	c.Assert(lastUsed.Equal(oldWorkshopTime), check.Equals, true)
 }
