@@ -240,3 +240,26 @@ func (s *CommonStateFuncs) TestSnapshotLastUsedSkipsMissingOldStash(c *check.C) 
 	c.Assert(task, check.Equals, "1")
 	c.Assert(lastUsed.Equal(oldWorkshopTime), check.Equals, true)
 }
+
+func (s *CommonStateFuncs) TestSnapshotLastUsedByTaskSkipsMissingOldStash(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	chg := s.state.NewChange("remove", `Remove "snapshot-check" workshop`)
+	task := s.state.NewTask("remove-workshop-stash", "Remove workshop from stash")
+	chg.AddTask(task)
+
+	staleOldStashTime := time.Now()
+	c.Assert(handlersetup.SetSnapshotLastUsed(
+		chg,
+		"snapshot-check",
+		handlersetup.OldStash,
+		task.ID(),
+		staleOldStashTime,
+	), check.IsNil)
+
+	snapshot, lastUsed, err := handlersetup.SnapshotLastUsedByTask(task)
+	c.Assert(snapshot, check.IsNil)
+	c.Assert(lastUsed.IsZero(), check.Equals, true)
+	c.Assert(err, check.Equals, state.ErrNoState)
+}

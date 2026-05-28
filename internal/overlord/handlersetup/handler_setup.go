@@ -392,9 +392,12 @@ func SnapshotLastUsedByTask(task *state.Task) (*workshop.Snapshot, time.Time, er
 			continue
 		}
 
-		snapshot, err := workshopSnapshot(change, w.Workshop, w.Age)
+		snapshot, ok, err := snapshotFromLastUsedRecord(change, w)
 		if err != nil {
 			return nil, time.Time{}, err
+		}
+		if !ok {
+			continue
 		}
 
 		// Each Task deals with at most one snapshot, so we return early.
