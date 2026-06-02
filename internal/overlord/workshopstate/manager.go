@@ -17,6 +17,7 @@ package workshopstate
 import (
 	"context"
 	"fmt"
+	"os"
 	"slices"
 	"time"
 
@@ -33,9 +34,40 @@ type WorkshopManager struct {
 	firewallChecker func(string) string
 }
 
-var (
-	snapshotCooldownTime = 1 * time.Hour // Time to wait before deleting unused snapshots.
+const (
+	defaultSnapshotCooldownTime = 1 * time.Hour
+
+	testOverridesEnv               = "WORKSHOP_ENABLE_TEST_OVERRIDES"
+	testSnapshotCleanupCooldownEnv = "WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN"
 )
+
+var (
+	snapshotCooldownTime = snapshotCooldownTimeFromEnvironment()
+)
+
+func snapshotCooldownTimeFromEnvironment() time.Duration {
+	if os.Getenv(testOverridesEnv) != "1" {
+		return defaultSnapshotCooldownTime
+	}
+
+	value := os.Getenv(testSnapshotCleanupCooldownEnv)
+	if value == "" {
+		return defaultSnapshotCooldownTime
+	}
+
+	cooldown, err := time.ParseDuration(value)
+	if err != nil {
+		logger.Noticef("Ignoring invalid %s=%q: %v", testSnapshotCleanupCooldownEnv, value, err)
+		return defaultSnapshotCooldownTime
+	}
+
+	if cooldown < 0 {
+		logger.Noticef("Ignoring negative %s=%q", testSnapshotCleanupCooldownEnv, value)
+		return defaultSnapshotCooldownTime
+	}
+
+	return cooldown
+}
 
 func New(st *state.State, runner *state.TaskRunner) *WorkshopManager {
 	manager := &WorkshopManager{
