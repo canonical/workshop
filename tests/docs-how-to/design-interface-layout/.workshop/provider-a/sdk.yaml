@@ -1,0 +1,13 @@
+name: provider-a
+base: ubuntu@22.04
+summary: First synthesized provider for the ambiguity test
+description: |
+  Exposes a mount slot named "data". Combined with provider-b in the same
+  workshop, this creates ambiguous autowiring for the consumer's "feed" plug.
+
+sdkcraft-started-at: "2026-05-14T00:00:00.000000+00:00"
+
+slots:
+  data:
+    interface: mount
+    workshop-source: /home/workshop/provider-a-data

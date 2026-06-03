@@ -21,6 +21,7 @@ to connect SDKs to host resources and to each other:
    :maxdepth: 1
 
    concepts
+   plugs-and-slots
 
 
 Hardware interfaces

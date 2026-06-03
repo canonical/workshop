@@ -1,0 +1,4 @@
+#!/bin/bash
+install -d -m 0755 -o 1000 -g 1000 /home/workshop/provider-b-data
+echo "from-b" >/home/workshop/provider-b-data/marker
+chown 1000:1000 /home/workshop/provider-b-data/marker

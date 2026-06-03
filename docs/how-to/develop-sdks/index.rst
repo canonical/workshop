@@ -17,4 +17,5 @@ and publishing the result to the SDK Store.
    :maxdepth: 1
 
    Build an SDK <build-an-sdk>
+   Declare plugs and slots <declare-plugs-slots>
    Publish an SDK <publish-an-sdk>

@@ -1,0 +1,26 @@
+name: cachekit
+version: '0.1'
+summary: Synthesized SDK exercising plug and slot declaration
+description: |
+  cachekit is a synthesized example for the declare-plugs-slots how-to.
+license: GPL-3.0
+platforms:
+  ubuntu@22.04:amd64:
+  ubuntu@24.04:amd64:
+
+parts:
+  my-part:
+    plugin: nil
+
+plugs:
+  cache:
+    interface: mount
+    workshop-target: /home/workshop/.cache/cachekit
+
+slots:
+  shared:
+    interface: mount
+    workshop-source: /home/workshop/cachekit-share
+  api:
+    interface: tunnel
+    endpoint: 127.0.0.1:8080

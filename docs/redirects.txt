@@ -6,3 +6,5 @@
 # The old path must be a file that doesn"t exist in the source. The current path must be
 # a file that does exist in the source.
 
+"how-to/customize-workshops/connect-plug-slot-pairs-explicitly.rst" "how-to/customize-workshops/design-interface-layout.rst"
+

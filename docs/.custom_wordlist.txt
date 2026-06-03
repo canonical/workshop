@@ -5,6 +5,7 @@ api
 artifacts
 AUTH
 autosquash
+autowiring
 backend
 basename
 Btrfs
@@ -99,6 +100,7 @@ linters
 localhost
 l ookups
 lookups
+loopback
 lspci
 lxc
 lxd

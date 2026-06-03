@@ -1,0 +1,13 @@
+name: graft
+base: ubuntu@22.04
+sdks:
+  - name: project-provider-a
+  - name: project-plainconsumer
+    plugs:
+      feed:
+        interface: mount
+        workshop-target: /home/workshop/feed
+
+connections:
+  - plug: plainconsumer:feed
+    slot: provider-a:data
