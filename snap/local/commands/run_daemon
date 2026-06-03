@@ -6,6 +6,9 @@ export SDK_STORE_URL
 WORKSHOP_DEBUG=$(snapctl get workshop.debug)
 export WORKSHOP_DEBUG
 
+WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN=$(snapctl get workshop.test.snapshot-cleanup-cooldown)
+export WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN
+
 WORKSHOP_IMAGE_SERVER=$(snapctl get workshop.image.server.url)
 export WORKSHOP_IMAGE_SERVER
 

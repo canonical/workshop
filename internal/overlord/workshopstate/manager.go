@@ -34,21 +34,13 @@ type WorkshopManager struct {
 	firewallChecker func(string) string
 }
 
-const (
-	defaultSnapshotCooldownTime = 1 * time.Hour
-
-	testSnapshotCleanupCooldownEnv = "WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN"
-)
+const defaultSnapshotCooldownTime = 1 * time.Hour
 
 var (
 	snapshotCooldownTime = snapshotCooldownTimeFromEnvironment()
 )
 
 func snapshotCooldownTimeFromEnvironment() time.Duration {
-	if os.Getenv(testOverridesEnv) != "1" {
-		return defaultSnapshotCooldownTime
-	}
-
 	value := os.Getenv("WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN")
 	if value == "" {
 		return defaultSnapshotCooldownTime
@@ -56,12 +48,12 @@ func snapshotCooldownTimeFromEnvironment() time.Duration {
 
 	cooldown, err := time.ParseDuration(value)
 	if err != nil {
-		logger.Noticef("Ignoring invalid %s=%q: %v", testSnapshotCleanupCooldownEnv, value, err)
+		logger.Noticef("Ignoring invalid WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN=%q: %v", value, err)
 		return defaultSnapshotCooldownTime
 	}
 
 	if cooldown < 0 {
-		logger.Noticef("Ignoring negative %s=%q", testSnapshotCleanupCooldownEnv, value)
+		logger.Noticef("Ignoring negative WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN=%q", value)
 		return defaultSnapshotCooldownTime
 	}
 
