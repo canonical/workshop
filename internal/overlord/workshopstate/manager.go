@@ -37,7 +37,6 @@ type WorkshopManager struct {
 const (
 	defaultSnapshotCooldownTime = 1 * time.Hour
 
-	testOverridesEnv               = "WORKSHOP_ENABLE_TEST_OVERRIDES"
 	testSnapshotCleanupCooldownEnv = "WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN"
 )
 
@@ -50,7 +49,7 @@ func snapshotCooldownTimeFromEnvironment() time.Duration {
 		return defaultSnapshotCooldownTime
 	}
 
-	value := os.Getenv(testSnapshotCleanupCooldownEnv)
+	value := os.Getenv("WORKSHOP_TEST_SNAPSHOT_CLEANUP_COOLDOWN")
 	if value == "" {
 		return defaultSnapshotCooldownTime
 	}
