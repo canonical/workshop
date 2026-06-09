@@ -26,7 +26,12 @@ execute: |
   ACTUAL_YAML_HASH=$(sha256sum .workshop/dev.yaml | cut -d' ' -f1)
   test "$EXPECTED_YAML_HASH" = "$ACTUAL_YAML_HASH"
 
-  echo "Stage 4: graft a plug onto an SDK that ships none; launch the graft workshop; the grafted plug connects to provider-a and reads from-a."
+  echo "Stage 4: a refresh that applies updates drops the manual connection and keeps the manually disconnected pairing disconnected, so the plug ends up unconnected."
+  cp dev.reordered.yaml .workshop/dev.yaml
+  workshop_exec refresh dev
+  workshop_exec connections dev | MATCH '^mount +dev/consumer:feed +- +-'
+
+  echo "Stage 5: graft a plug onto an SDK that ships none; launch the graft workshop; the grafted plug connects to provider-a and reads from-a."
   workshop_exec launch graft
   workshop_exec connections graft | MATCH '^mount.+graft/plainconsumer:feed.+graft/provider-a:data'
   workshop_exec exec graft -- cat /home/workshop/feed/marker | MATCH '^from-a$'

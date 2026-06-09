@@ -17,7 +17,8 @@ How to design the interface layout of a workshop
 
 You can shape the topology of a workshop
 by writing explicit plug-to-slot connections in the workshop definition.
-Use it when several SDKs in the workshop expose or consume the same interface
+Use explicit connections
+when several SDKs in the workshop expose or consume the same interface
 and you want to be specific about which provider satisfies which consumer,
 when auto-connection lands a plug on a slot you did not intend,
 or when a consumer SDK ships no plug for a capability you want it to use.
@@ -61,14 +62,15 @@ stay listed but unconnected:
 regular SDK mount slots are not reached by auto-connection by default,
 even when a matching plug is in scope.
 The result is a working workshop, but probably not the one you intended.
-A regular SDK slot becomes usable
-only when a top-level :samp:`connections:` entry names the pair.
+A regular SDK slot is wired
+either by a top-level :samp:`connections:` entry in the definition
+or manually with :command:`workshop connect`.
 
 
 Wire a consumer to a specific provider
 --------------------------------------
 
-Add a top-level :samp:`connections` list to the workshop definition,
+Add a top-level :samp:`connections:` list to the workshop definition,
 pairing the plug with the slot you want it to use:
 
 .. code-block:: yaml
@@ -106,7 +108,8 @@ This decision is persistent;
 re-launching the workshop or recreating it
 applies the same pairing every time.
 To inspect the resolved mount details, run :command:`workshop info dev`,
-which lists each connected plug along with the source path the slot exposed
+which lists each connected mount plug
+along with the source path the slot exposed
 and the target path inside the workshop.
 
 
@@ -170,16 +173,22 @@ came from a CLI invocation rather than the workshop definition
 or the auto-connection mechanism.
 
 The workshop definition on disk is unchanged,
-but the runtime mark carries over across :command:`workshop refresh`:
-:samp:`consumer:feed` stays connected to :samp:`provider-a:data`
-until you rewire it again,
-or until you run :command:`workshop disconnect --forget`,
-after which the next :command:`workshop refresh` re-applies auto-connection.
-Running :command:`workshop remove` discards these runtime overrides,
+and the runtime marks are not reconciled with it:
+the next :command:`workshop refresh` that applies updates
+drops connections made with :command:`workshop connect`,
+while plugs disconnected with :command:`workshop disconnect`
+stay disconnected,
+unless the disconnection was made with :option:`!--forget`.
+In the example above,
+a refresh thus leaves :samp:`consumer:feed` unconnected:
+the manual connection to :samp:`provider-a:data` is dropped,
+and the definition's pairing with :samp:`provider-b:data` is not restored
+because the plug was manually disconnected from it.
+Running :command:`workshop remove` discards all runtime marks,
 so a subsequent :command:`workshop launch` starts from the definition.
 
-For a decision that travels with the project
-and survives :command:`workshop remove`,
+For a topology that survives refreshes
+and travels with the project,
 edit the workshop definition instead.
 
 
@@ -195,6 +204,7 @@ Explanation:
 
 How-to guides:
 
+- :ref:`how_declare_plugs_slots`
 - :ref:`how_resolve_plug_conflicts`
 
 
