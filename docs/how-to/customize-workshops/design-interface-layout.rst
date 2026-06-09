@@ -1,5 +1,4 @@
 .. _how_design_interface_layout:
-.. _how_connect_plug_slot_pairs_explicitly:
 
 .. meta::
    :description: Shape a workshop's interface topology with explicit connection
