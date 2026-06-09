@@ -169,8 +169,7 @@ func (m *workshopRefresh) TestRefreshTransactionalFailedAndAborted(c *check.C) {
 
 	err := cmd.Run(cmd.Command(), []string{"ws", "ws-1"})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `cannot refresh "ws", "ws-1": aborted
-To view details: "workshop tasks 42"`)
+	c.Assert(err, check.ErrorMatches, `cannot refresh "ws", "ws-1": no answer`)
 	c.Check(n, check.Equals, 3)
 }
 
