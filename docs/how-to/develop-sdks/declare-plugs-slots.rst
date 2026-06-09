@@ -62,7 +62,8 @@ to a matching slot,
 either auto-connecting it to the workshop's :ref:`system SDK <exp_system_sdk>`
 or to another SDK's slot
 when the workshop definition wires that pairing explicitly.
-The :samp:`mode`, :samp:`uid`, and :samp:`gid` attributes are optional.
+The :samp:`mode`, :samp:`uid`, :samp:`gid`,
+and :samp:`read-only` attributes are optional.
 
 
 Declare a mount slot
@@ -111,12 +112,13 @@ inside the workshop:
        endpoint: 127.0.0.1:8080
 
 
-Auto-connection for the tunnel interface is gated by the *plug* endpoint:
-|ws_markup| auto-connects a tunnel plug only when its endpoint
+A tunnel slot is auto-connected only when the host side
+declares a tunnel plug that matches the slot by name
+or through a :samp:`connections:` entry in the workshop definition,
+and only when that plug's endpoint
 is a loopback address or a Unix domain socket.
-Plugs that listen on other addresses
-require an explicit
-:ref:`connection in the workshop definition <exp_workshop_definition_connections>`.
+Other pairings have to be connected manually
+with :command:`workshop connect`.
 The endpoint syntax accepts shorthand forms,
 including bare port numbers and unix socket paths.
 See :ref:`ref_tunnel_interface` for the full grammar.
@@ -148,6 +150,7 @@ Explanation:
 - :ref:`exp_plugs_slots`
 - :ref:`exp_sdks`
 - :ref:`exp_tunnel_interface`
+- :ref:`exp_workshop_definition_connections`
 
 
 How-to guides:
