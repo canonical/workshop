@@ -43,11 +43,7 @@ Currently, |ws_markup| and |sdk_markup| support the following:
 - :ref:`GPU interface <exp_gpu_interface>` (auto-connected)
 - :ref:`Mount interface <exp_mount_interface>` (auto-connected)
 - :ref:`SSH interface <exp_ssh_interface>` (manually connected)
-- :ref:`Tunnel interface <exp_tunnel_interface>`
-  (auto-connected only from host to workshop,
-  between a plug and a slot of the same name,
-  and only when the plug listens on a loopback address
-  or a Unix domain socket)
+- :ref:`Tunnel interface <exp_tunnel_interface>` (conditionally auto-connected)
 
 
 Plugs and slots

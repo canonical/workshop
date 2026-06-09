@@ -8,8 +8,8 @@
 Plugs and slots
 ===============
 
-.. @artefact plug
-.. @artefact slot
+.. @artefact interface plug
+.. @artefact interface slot
 .. @artefact interface connection
 
 A workshop is a graph of capabilities.
@@ -32,7 +32,8 @@ when the defaults are not what you want.
 Slots provide capabilities
 --------------------------
 
-A slot exposes a capability that other SDKs can consume.
+A slot exposes a capability that other SDKs can consume;
+a single slot can serve connections from multiple plugs at once.
 What a slot exposes depends on its interface:
 
 - A :ref:`mount interface <exp_mount_interface>` slot
@@ -45,6 +46,7 @@ What a slot exposes depends on its interface:
   exposes a GPU device.
 
 - A :ref:`camera interface <exp_camera_interface>`,
+  :ref:`custom device interface <exp_custom_device_interface>`,
   :ref:`desktop interface <exp_desktop_interface>`,
   or :ref:`SSH interface <exp_ssh_interface>` slot
   exposes the corresponding host facility.
@@ -80,10 +82,10 @@ which means an SDK can ship optional plugs
 that only activate when a corresponding provider is also installed.
 
 
-.. _exp_interface_autowiring:
+.. _exp_interface_auto_connection:
 
-Autowiring
-----------
+Auto-connection
+---------------
 
 When a workshop launches or refreshes,
 |ws_markup| tries to connect each plug
@@ -108,15 +110,16 @@ Auto-connection behavior varies by interface:
   is a loopback address or a Unix domain socket.
   See :ref:`exp_tunnel_connection` for the full policy.
 
-- The camera, desktop, and SSH interfaces do not auto-connect.
-  They have to be wired explicitly.
+- The camera, custom device, desktop, and SSH interfaces
+  do not auto-connect.
+  They have to be connected manually with :command:`workshop connect`.
 
 
 When more than one slot is policy-eligible for the same plug,
 |ws_markup| attempts a connection for each of them
 in an order it does not guarantee.
 The right way to express a specific topology
-is to write it down in the workshop definition's :samp:`connections` list
+is to write it down in the workshop definition's :samp:`connections:` list
 instead of leaving it to auto-connection.
 
 
@@ -186,9 +189,10 @@ it cannot also define plug attributes of its own.
 The attributes come from the plug it is bound to.
 
 When you run :command:`workshop connections`,
-a bound plug is shown with a :samp:`bind.{N}` note in the :samp:`NOTES` column,
-where :samp:`{N}` is the row number, in the same output,
-of the plug it is bound to.
+both the bound plug and its target
+carry a :samp:`bind.<N>` note in the :samp:`NOTES` column,
+where :samp:`<N>` is the row number of the target plug
+in the same output.
 
 
 Top-level connections
@@ -260,6 +264,7 @@ See also
 Explanation:
 
 - :ref:`exp_camera_interface`
+- :ref:`exp_custom_device_interface`
 - :ref:`exp_desktop_interface`
 - :ref:`exp_gpu_interface`
 - :ref:`exp_interface_concepts`
@@ -272,6 +277,8 @@ Explanation:
 
 How-to guides:
 
+- :ref:`how_declare_plugs_slots`
+- :ref:`how_design_interface_layout`
 - :ref:`how_resolve_plug_conflicts`
 
 
