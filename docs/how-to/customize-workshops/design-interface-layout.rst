@@ -35,7 +35,8 @@ Survey the plugs and slots in scope
 -----------------------------------
 
 Launch the workshop once to see what |ws_markup| connects on its own.
-The examples here use three SDKs:
+The examples here use three in-project SDKs
+that live under :file:`.workshop/` next to the definition:
 :samp:`provider-a` and :samp:`provider-b`
 each expose a mount slot named :samp:`data`,
 and :samp:`consumer` declares a mount plug named :samp:`feed`.
@@ -80,9 +81,9 @@ pairing the plug with the slot you want it to use:
    name: dev
    base: ubuntu@22.04
    sdks:
-     - name: provider-a
-     - name: provider-b
-     - name: consumer
+     - name: project-provider-a
+     - name: project-provider-b
+     - name: project-consumer
 
    connections:
      - plug: consumer:feed
@@ -90,6 +91,9 @@ pairing the plug with the slot you want it to use:
 
 
 Each entry uses the :samp:`<SDK-NAME>:<NAME>` form on both sides.
+In-project SDKs take the :samp:`project-` prefix
+in the :samp:`sdks:` list only;
+:samp:`connections:` entries and CLI output use the bare name.
 After :command:`workshop refresh`,
 |ws_markup| applies the listed pairing
 regardless of what other slots could have matched it:
@@ -131,8 +135,8 @@ with :samp:`consumer-sdk`, which ships no matching plug:
    name: dev
    base: ubuntu@22.04
    sdks:
-     - name: provider-sdk
-     - name: consumer-sdk
+     - name: project-provider-sdk
+     - name: project-consumer-sdk
        plugs:
          tools:
            interface: mount
@@ -210,6 +214,7 @@ How-to guides:
 
 Reference:
 
+- :ref:`ref_in_project_sdk`
 - :ref:`ref_workshop_connect`
 - :ref:`ref_workshop_connections`
 - :ref:`ref_workshop_definition`
