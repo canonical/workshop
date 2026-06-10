@@ -25,7 +25,7 @@
     },
     "sdks": {
       "type": "array",
-      "description": "Ordered list of SDKs to install on top of the base. Each entry references an existing SDK. The system SDK is installed first implicitly and need not be listed.",
+      "description": "Ordered list of SDKs to install on top of the base. Each entry references an existing SDK; names must be unique within the list. The system SDK is installed first implicitly and need not be listed.",
       "uniqueItems": true,
       "items": {
         "type": "object",
@@ -57,7 +57,7 @@
           },
           "channel": {
             "type": "string",
-            "description": "Store channel used to retrieve the SDK at launch and refresh. Snap-like format: [<track>/]<risk>[/<branch>], or <track>, or <risk>/<branch>. Risk is one of stable, candidate, beta, edge. Track is at most 28 characters; branch is at most 128 characters. Default is latest/stable. Only applies to SDKs from the Store; ignored for try-, project-, and system SDKs.",
+            "description": "Store channel used to retrieve the SDK at launch and refresh. Snap-like format: [<TRACK>/]<RISK>[/<BRANCH>], or <TRACK>, or <RISK>/<BRANCH>. Risk is one of stable, candidate, beta, edge. Track is at most 28 characters; branch is at most 128 characters; neither may equal a risk name. Default is latest/stable. Only applies to SDKs from the Store; for try-, project-, and system SDKs the value has no effect but must still be well formed.",
             "pattern": "^(?:(?:[a-zA-Z0-9](?:[_.-]?[a-zA-Z0-9])*/)?(?:stable|candidate|beta|edge)(?:/[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9])?|[a-zA-Z0-9](?:[_.-]?[a-zA-Z0-9])*)$",
             "errorMessage": "Channel must look like [<track>/]<risk>[/<branch>] or [<track>]."
           },
@@ -67,7 +67,7 @@
             "additionalProperties": false,
             "patternProperties": {
               "^[a-z](?:-?[a-z0-9])*$": {
-                "description": "Either an inline plug definition (a mapping whose keys are interface-specific attributes such as interface, workshop-target, endpoint) or a binding to another plug declared in the same workshop. To bind, provide a single bind key whose value is the target plug reference; bound plugs cannot define other attributes and cannot also appear in connections.",
+                "description": "Either an inline plug definition (a mapping whose keys are interface-specific attributes such as interface, workshop-target, endpoint), a string naming the interface, null to use the key as the interface name, or a binding to another plug declared in the same workshop. To bind, provide a single bind key whose value is the target plug reference; bound plugs cannot define other attributes and cannot also appear in connections.",
                 "properties": {
                   "bind": {
                     "type": "string",
@@ -119,7 +119,6 @@
     "connections": {
       "type": "array",
       "description": "Explicit connections from plugs to slots, applied on top of auto-connection. Both endpoints must reference an SDK that is present in the workshop or is implicit (system, sketch), and must share the same interface. A plug that is bound elsewhere cannot also appear here.",
-      "uniqueItems": true,
       "items": {
         "type": "object",
         "properties": {
@@ -151,7 +150,7 @@
     },
     "actions": {
       "type": "object",
-      "description": "Named shell scripts available via workshop run. Action names must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them. Each script body runs under bash with errexit and pipefail set; positional parameters $@, $1, $2, ... receive the arguments passed after the workshop name.",
+      "description": "Named shell scripts available via workshop run. Action names must start with a lowercase letter and contain only lowercase letters, digits, and hyphens between them. Each script body runs under bash as a login shell with errexit and pipefail set; positional parameters $@, $1, $2, ... receive the arguments passed after the workshop name.",
       "patternProperties": {
         "^[a-z](?:-?[a-z0-9])*$": {
           "type": "string",

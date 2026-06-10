@@ -139,7 +139,8 @@ Each item in :samp:`sdks` is an object with these fields:
        with all three parts optional except that at least one must be present.
 
        Default: :samp:`latest/stable`.
-       Ignored for :samp:`try-`, :samp:`project-`, and :samp:`system` SDKs.
+       Has no effect for :samp:`try-`, :samp:`project-`, and :samp:`system` SDKs,
+       but must still be well formed.
 
        .. note::
 
