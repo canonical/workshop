@@ -25,7 +25,7 @@ A mount plug is described by these attributes:
    * - :samp:`workshop-target` (required)
      - string
      - Path inside the workshop used as the plug's target directory.
-       :file:`/project/` and :envvar:`$SDK`-based paths are accepted;
+       Must be an absolute path;
        :envvar:`$SDK` expands to the SDK's installation path in the workshop.
 
    * - :samp:`mode`
@@ -42,8 +42,11 @@ A mount plug is described by these attributes:
 
    * - :samp:`gid`
      - integer
-     - Group ID applied when creating :samp:`workshop-target` and any missing parent directories.
-       Defaults to the value of :samp:`uid`.
+     - Group ID applied when creating :samp:`workshop-target`
+       and any missing parent directories.
+       Defaults to :samp:`1000` or :samp:`0`
+       by the same path rule as :samp:`uid`,
+       even when :samp:`uid` is set explicitly.
 
    * - :samp:`read-only`
      - Boolean
@@ -68,5 +71,5 @@ A mount slot on a regular SDK is described by this attribute:
    * - :samp:`workshop-source` (required)
      - string
      - Path inside the workshop used as the slot's source directory.
-       :file:`/project/` and :envvar:`$SDK`-based paths are accepted;
+       Must be an absolute path;
        :envvar:`$SDK` expands to the SDK's installation path in the workshop.

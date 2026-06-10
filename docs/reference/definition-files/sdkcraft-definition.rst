@@ -53,7 +53,7 @@ Top-level fields
      - SDK identifier. Must contain at least one lowercase letter
        and may consist of lowercase letters, digits, and hyphens between them.
        Up to 40 characters.
-       Cannot be :samp:`system`, :samp:`sketch`,
+       Cannot be :samp:`agent`, :samp:`system`, :samp:`sketch`,
        or start with :samp:`try-` or :samp:`project-`; those names are reserved.
 
    * - :samp:`platforms` (required)

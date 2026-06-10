@@ -33,8 +33,8 @@ Filename and location
   :file:`.workshop/<NAME>/sdk.yaml` or :file:`.workshop/<NAME>/meta/sdk.yaml`,
   relative to the project directory.
 
-- Sketch SDK definitions live under
-  :file:`$XDG_DATA_HOME/workshop/<NAME>/sdk.yaml`.
+- Sketch SDK definitions live in the per-workshop data directory:
+  :file:`~/.local/share/workshop/id/<PROJECT-ID>/<WORKSHOP>/sdk/sketch/current/sdk.yaml`.
 
 
 In-project and sketch SDKs do not support |sdk_markup| build-time features
@@ -59,7 +59,7 @@ Top-level fields
      - SDK identifier. Must contain at least one lowercase letter
        and may consist of lowercase letters, digits, and hyphens between them.
        Up to 40 characters.
-       Cannot be :samp:`system`, :samp:`sketch`,
+       Cannot be :samp:`agent`, :samp:`system`, :samp:`sketch`,
        or start with :samp:`try-` or :samp:`project-`; those names are reserved.
 
    * - :samp:`architecture` (required)
