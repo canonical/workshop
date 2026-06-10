@@ -94,7 +94,7 @@
                 <td>concept</td>
                 <td></td>
                 <td></td>
-                <td><a href="explanation/interfaces/concepts.rst#L107">[concepts.rst]</a><br><a href="explanation/interfaces/concepts.rst#L199">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L302">[concepts.rst]</a></td>
+                <td><a href="explanation/interfaces/concepts.rst#L107">[concepts.rst]</a><br><a href="explanation/interfaces/concepts.rst#L208">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L302">[concepts.rst]</a></td>
                 <td></td>
                 <td>SK020</td>
             </tr><tr>
@@ -148,7 +148,7 @@
                 <td>concept</td>
                 <td><a href="tutorial/part-2-work-with-interfaces.rst#L22">[part-2-work-with-interfaces.rst]</a></td>
                 <td><a href="how-to/develop-with-workshops/run-jetbrains-gateway.rst#L45">[run-jetbrains-gateway.rst]</a></td>
-                <td><a href="explanation/sdks/concepts.rst#L207">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L521">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L208">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L520">[concepts.rst]</a></td>
                 <td></td>
                 <td>SK028<br>SK039</td>
             </tr><tr>
@@ -166,7 +166,7 @@
                 <td>concept</td>
                 <td><a href="tutorial/part-3-sketch-sdks.rst#L325">[part-3-sketch-sdks.rst]</a></td>
                 <td><a href="how-to/customize-workshops/use-multiple-workshops.rst#L204">[use-multiple-workshops.rst]</a></td>
-                <td><a href="explanation/sdks/concepts.rst#L294">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L523">[concepts.rst]</a><br><a href="explanation/workshops/multi-workshop-patterns.rst#L18">[multi-workshop-patterns.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L295">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L522">[concepts.rst]</a><br><a href="explanation/workshops/multi-workshop-patterns.rst#L18">[multi-workshop-patterns.rst]</a></td>
                 <td></td>
                 <td></td>
             </tr><tr>
@@ -220,7 +220,7 @@
                 <td>action</td>
                 <td><a href="tutorial/part-4-craft-sdks.rst#L408">[part-4-craft-sdks.rst]</a></td>
                 <td><a href="how-to/develop-sdks/build-an-sdk.rst#L21">[build-an-sdk.rst]</a></td>
-                <td><a href="explanation/sdks/best-practices.rst#L16">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L115">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L302">[sdk-vs-dockerfile.rst]</a></td>
+                <td><a href="explanation/sdks/best-practices.rst#L16">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L116">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L302">[sdk-vs-dockerfile.rst]</a></td>
                 <td><a href="reference/cli/workshopctl.rst#L32">[workshopctl.rst]</a><br><a href="reference/sdks.rst#L424">[sdks.rst]</a></td>
                 <td>SK023</td>
             </tr><tr>
@@ -229,7 +229,7 @@
                 <td></td>
                 <td><a href="tutorial/part-1-get-started.rst#L117">[part-1-get-started.rst]</a><br><a href="tutorial/part-4-craft-sdks.rst#L13">[part-4-craft-sdks.rst]</a><br><a href="tutorial/part-4-craft-sdks.rst#L457">[part-4-craft-sdks.rst]</a></td>
                 <td><a href="how-to/develop-sdks/build-an-sdk.rst#L18">[build-an-sdk.rst]</a><br><a href="how-to/develop-sdks/publish-an-sdk.rst#L15">[publish-an-sdk.rst]</a></td>
-                <td><a href="explanation/sdks/concepts.rst#L261">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L50">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L197">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/sdks/sdkcraft-cli.rst#L13">[sdkcraft-cli.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L262">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L51">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L197">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/sdks/sdkcraft-cli.rst#L13">[sdkcraft-cli.rst]</a></td>
                 <td><a href="reference/cli/index.rst#L18">[index.rst]</a><br><a href="reference/cli/sdkcraft.rst#L10">[sdkcraft.rst]</a><br><a href="reference/definition-files/sdkcraft-definition.rst#L11">[sdkcraft-definition.rst]</a><br><a href="reference/sdks.rst#L116">[sdks.rst]</a></td>
                 <td>SK026</td>
             </tr><tr>
@@ -238,7 +238,7 @@
                 <td>action</td>
                 <td><a href="tutorial/part-4-craft-sdks.rst#L370">[part-4-craft-sdks.rst]</a></td>
                 <td><a href="how-to/develop-sdks/build-an-sdk.rst#L23">[build-an-sdk.rst]</a></td>
-                <td><a href="explanation/sdks/concepts.rst#L155">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L65">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L156">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L66">[concepts.rst]</a></td>
                 <td><a href="reference/sdks.rst#L426">[sdks.rst]</a></td>
                 <td>SK012</td>
             </tr><tr>
@@ -247,7 +247,7 @@
                 <td>action</td>
                 <td><a href="tutorial/part-4-craft-sdks.rst#L371">[part-4-craft-sdks.rst]</a></td>
                 <td><a href="how-to/develop-sdks/build-an-sdk.rst#L22">[build-an-sdk.rst]</a></td>
-                <td><a href="explanation/sdks/concepts.rst#L156">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L66">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L157">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L67">[concepts.rst]</a></td>
                 <td><a href="reference/sdks.rst#L427">[sdks.rst]</a></td>
                 <td>SK012</td>
             </tr><tr>
@@ -256,7 +256,7 @@
                 <td>concept</td>
                 <td><a href="tutorial/part-1-get-started.rst#L118">[part-1-get-started.rst]</a><br><a href="tutorial/part-3-sketch-sdks.rst#L24">[part-3-sketch-sdks.rst]</a><br><a href="tutorial/part-4-craft-sdks.rst#L14">[part-4-craft-sdks.rst]</a></td>
                 <td><a href="how-to/develop-sdks/build-an-sdk.rst#L14">[build-an-sdk.rst]</a><br><a href="how-to/develop-sdks/publish-an-sdk.rst#L13">[publish-an-sdk.rst]</a><br><a href="how-to/develop-with-workshops/run-github-actions-locally.rst#L20">[run-github-actions-locally.rst]</a><br><a href="how-to/develop-with-workshops/use-workshops-with-ai-agents.rst#L146">[use-workshops-with-ai-agents.rst]</a><br><a href="how-to/index.rst#L51">[index.rst]</a></td>
-                <td><a href="explanation/index.rst#L58">[index.rst]</a><br><a href="explanation/interfaces/concepts.rst#L12">[concepts.rst]</a><br><a href="explanation/sdks/best-practices.rst#L11">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L11">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L62">[concepts.rst]</a><br><a href="explanation/sdks/index.rst#L9">[index.rst]</a><br><a href="explanation/sdks/parts.rst#L13">[parts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L12">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L162">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/workshops/concepts.rst#L225">[concepts.rst]</a></td>
+                <td><a href="explanation/index.rst#L58">[index.rst]</a><br><a href="explanation/interfaces/concepts.rst#L12">[concepts.rst]</a><br><a href="explanation/sdks/best-practices.rst#L11">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L11">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L63">[concepts.rst]</a><br><a href="explanation/sdks/index.rst#L9">[index.rst]</a><br><a href="explanation/sdks/parts.rst#L13">[parts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L12">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L162">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/workshops/concepts.rst#L225">[concepts.rst]</a></td>
                 <td><a href="reference/ai-agents.rst#L11">[ai-agents.rst]</a><br><a href="reference/definition-files/index.rst#L8">[index.rst]</a><br><a href="reference/definition-files/sdkcraft-definition.rst#L12">[sdkcraft-definition.rst]</a><br><a href="reference/index.rst#L34">[index.rst]</a><br><a href="reference/index.rst#L84">[index.rst]</a><br><a href="reference/sdks.rst#L10">[sdks.rst]</a><br><a href="reference/workshops.rst#L30">[workshops.rst]</a></td>
                 <td>SK000</td>
             </tr><tr>
@@ -301,7 +301,7 @@
                 <td>concept</td>
                 <td></td>
                 <td></td>
-                <td><a href="explanation/sdks/concepts.rst#L63">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L64">[concepts.rst]</a></td>
                 <td></td>
                 <td></td>
             </tr><tr>
@@ -310,7 +310,7 @@
                 <td>concept</td>
                 <td><a href="tutorial/part-4-craft-sdks.rst#L300">[part-4-craft-sdks.rst]</a></td>
                 <td><a href="how-to/develop-sdks/build-an-sdk.rst#L16">[build-an-sdk.rst]</a></td>
-                <td><a href="explanation/sdks/best-practices.rst#L13">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L64">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L95">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/sdks/workshopctl-cli.rst#L14">[workshopctl-cli.rst]</a></td>
+                <td><a href="explanation/sdks/best-practices.rst#L13">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L65">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L95">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/sdks/workshopctl-cli.rst#L14">[workshopctl-cli.rst]</a></td>
                 <td><a href="reference/cli/workshopctl.rst#L12">[workshopctl.rst]</a></td>
                 <td>SK000<br>SK005</td>
             </tr><tr>
@@ -337,7 +337,7 @@
                 <td>concept</td>
                 <td></td>
                 <td></td>
-                <td><a href="explanation/sdks/concepts.rst#L179">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L180">[concepts.rst]</a></td>
                 <td><a href="reference/definition-files/sdkcraft-definition.rst#L158">[sdkcraft-definition.rst]</a><br><a href="reference/sdks.rst#L27">[sdks.rst]</a></td>
                 <td></td>
             </tr><tr>
@@ -346,7 +346,7 @@
                 <td>concept</td>
                 <td><a href="tutorial/part-1-get-started.rst#L119">[part-1-get-started.rst]</a></td>
                 <td></td>
-                <td><a href="explanation/sdks/concepts.rst#L12">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L127">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L287">[sdk-vs-dockerfile.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L12">[concepts.rst]</a><br><a href="explanation/sdks/concepts.rst#L128">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L287">[sdk-vs-dockerfile.rst]</a></td>
                 <td></td>
                 <td>SK001</td>
             </tr><tr>
@@ -356,7 +356,7 @@
                 <td></td>
                 <td></td>
                 <td></td>
-                <td><a href="reference/definition-files/sdk-definition.rst#L177">[sdk-definition.rst]</a><br><a href="reference/definition-files/sdkcraft-definition.rst#L238">[sdkcraft-definition.rst]</a></td>
+                <td><a href="reference/definition-files/sdk-definition.rst#L179">[sdk-definition.rst]</a><br><a href="reference/definition-files/sdkcraft-definition.rst#L238">[sdkcraft-definition.rst]</a></td>
                 <td></td>
             </tr><tr>
                 <td>SDK state</td>
@@ -364,7 +364,7 @@
                 <td>concept</td>
                 <td></td>
                 <td></td>
-                <td><a href="explanation/sdks/concepts.rst#L157">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L158">[concepts.rst]</a></td>
                 <td><a href="reference/sdks.rst#L527">[sdks.rst]</a></td>
                 <td></td>
             </tr><tr>
@@ -382,7 +382,7 @@
                 <td>action</td>
                 <td><a href="tutorial/part-4-craft-sdks.rst#L316">[part-4-craft-sdks.rst]</a></td>
                 <td><a href="how-to/develop-sdks/build-an-sdk.rst#L19">[build-an-sdk.rst]</a></td>
-                <td><a href="explanation/sdks/best-practices.rst#L14">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L67">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/best-practices.rst#L14">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L68">[concepts.rst]</a></td>
                 <td><a href="reference/sdks.rst#L429">[sdks.rst]</a></td>
                 <td>SK005</td>
             </tr><tr>
@@ -391,7 +391,7 @@
                 <td>action</td>
                 <td><a href="tutorial/part-4-craft-sdks.rst#L317">[part-4-craft-sdks.rst]</a></td>
                 <td><a href="how-to/develop-sdks/build-an-sdk.rst#L20">[build-an-sdk.rst]</a></td>
-                <td><a href="explanation/sdks/best-practices.rst#L15">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L68">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/best-practices.rst#L15">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L69">[concepts.rst]</a></td>
                 <td><a href="reference/sdks.rst#L431">[sdks.rst]</a></td>
                 <td></td>
             </tr><tr>
@@ -400,7 +400,7 @@
                 <td>concept</td>
                 <td><a href="tutorial/part-3-sketch-sdks.rst#L164">[part-3-sketch-sdks.rst]</a></td>
                 <td></td>
-                <td><a href="explanation/sdks/concepts.rst#L232">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L522">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L233">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L521">[concepts.rst]</a></td>
                 <td></td>
                 <td>SK036</td>
             </tr><tr>
@@ -653,7 +653,7 @@
                 <td><a href="tutorial/part-1-get-started.rst#L578">[part-1-get-started.rst]</a></td>
                 <td></td>
                 <td><a href="explanation/workshops/concepts.rst#L444">[concepts.rst]</a></td>
-                <td><a href="reference/cli/workshop-actions.rst#L10">[workshop-actions.rst]</a><br><a href="reference/definition-files/workshop-definition.rst#L245">[workshop-definition.rst]</a></td>
+                <td><a href="reference/cli/workshop-actions.rst#L10">[workshop-actions.rst]</a><br><a href="reference/definition-files/workshop-definition.rst#L246">[workshop-definition.rst]</a></td>
                 <td>SK046</td>
             </tr><tr>
                 <td>workshop changes</td>
@@ -679,7 +679,7 @@
                 <td>command</td>
                 <td><a href="tutorial/part-2-work-with-interfaces.rst#L39">[part-2-work-with-interfaces.rst]</a></td>
                 <td></td>
-                <td><a href="explanation/interfaces/camera-interface.rst#L82">[camera-interface.rst]</a><br><a href="explanation/interfaces/concepts.rst#L159">[concepts.rst]</a><br><a href="explanation/interfaces/custom-device-interface.rst#L102">[custom-device-interface.rst]</a><br><a href="explanation/interfaces/desktop-interface.rst#L111">[desktop-interface.rst]</a><br><a href="explanation/interfaces/gpu-interface.rst#L75">[gpu-interface.rst]</a><br><a href="explanation/interfaces/mount-interface.rst#L120">[mount-interface.rst]</a><br><a href="explanation/interfaces/ssh-interface.rst#L84">[ssh-interface.rst]</a><br><a href="explanation/interfaces/tunnel-interface.rst#L165">[tunnel-interface.rst]</a></td>
+                <td><a href="explanation/interfaces/camera-interface.rst#L82">[camera-interface.rst]</a><br><a href="explanation/interfaces/concepts.rst#L168">[concepts.rst]</a><br><a href="explanation/interfaces/custom-device-interface.rst#L102">[custom-device-interface.rst]</a><br><a href="explanation/interfaces/desktop-interface.rst#L111">[desktop-interface.rst]</a><br><a href="explanation/interfaces/gpu-interface.rst#L75">[gpu-interface.rst]</a><br><a href="explanation/interfaces/mount-interface.rst#L120">[mount-interface.rst]</a><br><a href="explanation/interfaces/ssh-interface.rst#L84">[ssh-interface.rst]</a><br><a href="explanation/interfaces/tunnel-interface.rst#L165">[tunnel-interface.rst]</a></td>
                 <td><a href="reference/cli/workshop-connections.rst#L10">[workshop-connections.rst]</a></td>
                 <td>SK028</td>
             </tr><tr>
@@ -715,7 +715,7 @@
                 <td>command</td>
                 <td><a href="tutorial/part-1-get-started.rst#L292">[part-1-get-started.rst]</a></td>
                 <td><a href="how-to/customize-workshops/move-projects.rst#L37">[move-projects.rst]</a><br><a href="how-to/customize-workshops/use-multiple-workshops.rst#L106">[use-multiple-workshops.rst]</a><br><a href="how-to/develop-with-workshops/run-github-actions-locally.rst#L65">[run-github-actions-locally.rst]</a><br><a href="how-to/develop-with-workshops/run-workshops-in-github-actions.rst#L11">[run-workshops-in-github-actions.rst]</a><br><a href="how-to/develop-with-workshops/use-git.rst#L45">[use-git.rst]</a><br><a href="how-to/fix-workshops/debug-issues.rst#L127">[debug-issues.rst]</a></td>
-                <td><a href="explanation/interfaces/concepts.rst#L182">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L439">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/workshops/concepts.rst#L83">[concepts.rst]</a></td>
+                <td><a href="explanation/interfaces/concepts.rst#L191">[concepts.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L439">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/workshops/concepts.rst#L83">[concepts.rst]</a></td>
                 <td><a href="reference/cli/workshop-launch.rst#L10">[workshop-launch.rst]</a><br><a href="reference/workshops.rst#L81">[workshops.rst]</a></td>
                 <td>SK001<br>SK003<br>SK008<br>SK020</td>
             </tr><tr>
@@ -742,7 +742,7 @@
                 <td>command</td>
                 <td><a href="tutorial/part-1-get-started.rst#L455">[part-1-get-started.rst]</a></td>
                 <td><a href="how-to/customize-workshops/add-mounts.rst#L49">[add-mounts.rst]</a><br><a href="how-to/develop-with-workshops/run-github-actions-locally.rst#L66">[run-github-actions-locally.rst]</a><br><a href="how-to/fix-workshops/debug-issues.rst#L128">[debug-issues.rst]</a></td>
-                <td><a href="explanation/interfaces/concepts.rst#L190">[concepts.rst]</a><br><a href="explanation/interfaces/mount-interface.rst#L185">[mount-interface.rst]</a><br><a href="explanation/workshops/concepts.rst#L84">[concepts.rst]</a></td>
+                <td><a href="explanation/interfaces/concepts.rst#L199">[concepts.rst]</a><br><a href="explanation/interfaces/mount-interface.rst#L185">[mount-interface.rst]</a><br><a href="explanation/workshops/concepts.rst#L84">[concepts.rst]</a></td>
                 <td><a href="reference/cli/workshop-refresh.rst#L10">[workshop-refresh.rst]</a><br><a href="reference/workshops.rst#L124">[workshops.rst]</a></td>
                 <td>SK012<br>SK020</td>
             </tr><tr>
@@ -896,7 +896,7 @@
                 <td></td>
                 <td></td>
                 <td></td>
-                <td><a href="reference/definition-files/workshop-definition.rst#L306">[workshop-definition.rst]</a></td>
+                <td><a href="reference/definition-files/workshop-definition.rst#L307">[workshop-definition.rst]</a></td>
                 <td>SK001</td>
             </tr><tr>
                 <td>workshop state management</td>
@@ -913,7 +913,7 @@
                 <td>concept</td>
                 <td></td>
                 <td></td>
-                <td><a href="explanation/sdks/concepts.rst#L116">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L36">[concepts.rst]</a></td>
+                <td><a href="explanation/sdks/concepts.rst#L117">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L36">[concepts.rst]</a></td>
                 <td><a href="reference/sdks.rst#L425">[sdks.rst]</a><br><a href="reference/workshop-status.rst#L10">[workshop-status.rst]</a></td>
                 <td>SK003<br>SK005<br>SK007<br>SK010<br>SK012<br>SK015</td>
             </tr><tr>
@@ -922,7 +922,7 @@
                 <td>tool</td>
                 <td><a href="tutorial/part-4-craft-sdks.rst#L414">[part-4-craft-sdks.rst]</a></td>
                 <td></td>
-                <td><a href="explanation/architecture/components.rst#L106">[components.rst]</a><br><a href="explanation/architecture/components.rst#L43">[components.rst]</a><br><a href="explanation/sdks/concepts.rst#L101">[concepts.rst]</a><br><a href="explanation/sdks/workshopctl-cli.rst#L13">[workshopctl-cli.rst]</a></td>
+                <td><a href="explanation/architecture/components.rst#L106">[components.rst]</a><br><a href="explanation/architecture/components.rst#L43">[components.rst]</a><br><a href="explanation/sdks/concepts.rst#L102">[concepts.rst]</a><br><a href="explanation/sdks/workshopctl-cli.rst#L13">[workshopctl-cli.rst]</a></td>
                 <td><a href="reference/cli/index.rst#L19">[index.rst]</a><br><a href="reference/cli/workshopctl.rst#L11">[workshopctl.rst]</a><br><a href="reference/sdks.rst#L423">[sdks.rst]</a></td>
                 <td>SK023</td>
             </tr><tr>
@@ -940,7 +940,7 @@
                 <td>daemon</td>
                 <td><a href="tutorial/part-1-get-started.rst#L41">[part-1-get-started.rst]</a></td>
                 <td></td>
-                <td><a href="explanation/architecture/components.rst#L199">[components.rst]</a><br><a href="explanation/architecture/components.rst#L42">[components.rst]</a><br><a href="explanation/sdks/concepts.rst#L100">[concepts.rst]</a><br><a href="explanation/workshops/workshop-cli.rst#L14">[workshop-cli.rst]</a></td>
+                <td><a href="explanation/architecture/components.rst#L199">[components.rst]</a><br><a href="explanation/architecture/components.rst#L42">[components.rst]</a><br><a href="explanation/sdks/concepts.rst#L101">[concepts.rst]</a><br><a href="explanation/workshops/workshop-cli.rst#L14">[workshop-cli.rst]</a></td>
                 <td><a href="reference/workshops.rst#L17">[workshops.rst]</a></td>
                 <td>SK009<br>SK013</td>
             </tr>
