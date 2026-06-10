@@ -201,10 +201,6 @@ and a :samp:`subsystem` attribute:
 
 This makes host devices from the given subsystem directly available inside the workshop.
 
-.. note::
-
-   See the :ref:`explanation <exp_custom_device_interface>` for more details.
-
 
 .. _ref_desktop_interface:
 
@@ -596,6 +592,7 @@ Explanation:
 
 - :ref:`exp_base`
 - :ref:`exp_camera_interface`
+- :ref:`exp_custom_device_interface`
 - :ref:`exp_desktop_interface`
 - :ref:`exp_gpu_interface`
 - :ref:`exp_interface_concepts`

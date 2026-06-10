@@ -158,6 +158,8 @@ and any interface-specific attributes.
 
 .. include:: _interfaces/camera.rst
 
+.. include:: _interfaces/custom-device.rst
+
 .. include:: _interfaces/desktop.rst
 
 .. include:: _interfaces/gpu.rst

@@ -287,6 +287,8 @@ a workshop may graft additional plugs and slots that follow them.
 
 .. include:: _interfaces/camera.rst
 
+.. include:: _interfaces/custom-device.rst
+
 .. include:: _interfaces/desktop.rst
 
 .. include:: _interfaces/gpu.rst
