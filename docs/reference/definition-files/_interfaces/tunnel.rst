@@ -37,7 +37,8 @@ The :samp:`endpoint` value follows this grammar:
      - Format
 
    * - Endpoint
-     - :samp:`<ADDRESS>/<PROTOCOL>` for network endpoints; may be shortened to :samp:`<ADDRESS>` or :samp:`<PROTOCOL>` alone.
+     - :samp:`<ADDRESS>/<PROTOCOL>` for network endpoints;
+       may be shortened to :samp:`<ADDRESS>` or :samp:`<PROTOCOL>` alone.
 
        :samp:`<PATH>` or :samp:`@<STRING>` for Unix domain sockets.
 
@@ -63,7 +64,9 @@ The :samp:`endpoint` value follows this grammar:
    * - Path
      - Absolute path to a Unix domain socket.
 
-       :envvar:`$HOME` expands to the user's home directory and :envvar:`$XDG_RUNTIME_DIR` expands to the user runtime directory (typically :file:`/run/user/1000`).
+       :envvar:`$HOME` expands to the user's home directory
+       and :envvar:`$XDG_RUNTIME_DIR` expands to the user runtime directory
+       (typically :file:`/run/user/1000`).
 
        For security, tunnel plugs in the system SDK cannot listen on sockets outside these two directories.
 

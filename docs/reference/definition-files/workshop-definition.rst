@@ -343,9 +343,9 @@ and two connections:
 - Another that connects the :samp:`tensorflow:cuda` plug
   to the preexisting :samp:`cuda:libs`.
 
-.. code-block:: yaml
 .. literalinclude:: ../../examples/workshop-digits-cuda.yaml
    :language: yaml
+   :caption: .workshop/digits-cuda.yaml
 
 
 Workshop that pulls an SDK from the try area:
@@ -361,9 +361,9 @@ See also
 Explanation:
 
 - :ref:`exp_base`
+- :ref:`exp_in_project_sdk`
 - :ref:`exp_sdks`
 - :ref:`exp_system_sdk`
-- :ref:`exp_in_project_sdk`
 - :ref:`exp_test_try_sdk`
 - :ref:`exp_workshop_definition`
 

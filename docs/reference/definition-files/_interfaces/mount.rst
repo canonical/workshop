@@ -30,14 +30,17 @@ A mount plug is described by these attributes:
 
    * - :samp:`mode`
      - integer
-     - File permissions, in octal, applied when creating :samp:`workshop-target` and any missing parent directories.
+     - File permissions, in octal, applied when creating :samp:`workshop-target`
+       and any missing parent directories.
        Defaults to :samp:`0o775` for regular users.
        When :samp:`uid` is zero, defaults to :samp:`0o755`.
 
    * - :samp:`uid`
      - integer
-     - User ID applied when creating :samp:`workshop-target` and any missing parent directories.
-       Defaults to :samp:`1000` when :samp:`workshop-target` is under :file:`/home/workshop/`, :file:`/project/`, or :file:`/run/user/1000/`.
+     - User ID applied when creating :samp:`workshop-target`
+       and any missing parent directories.
+       Defaults to :samp:`1000` when :samp:`workshop-target` is under
+       :file:`/home/workshop/`, :file:`/project/`, or :file:`/run/user/1000/`.
        Defaults to :samp:`0` otherwise.
 
    * - :samp:`gid`
@@ -55,7 +58,10 @@ A mount plug is described by these attributes:
 
 Plug owner: any regular SDK; not the system SDK.
 
-The system SDK provides one mount slot, :samp:`system:mount`, with a dynamic :samp:`host-source` attribute that can be configured only at :ref:`remount <ref_workshop_remount>`. It is the only mount slot whose source is on the host filesystem.
+The system SDK provides one mount slot, :samp:`system:mount`,
+with a dynamic :samp:`host-source` attribute
+that can be configured only at :ref:`remount <ref_workshop_remount>`.
+It is the only mount slot whose source is on the host filesystem.
 
 A mount slot on a regular SDK is described by this attribute:
 

@@ -536,15 +536,16 @@ At every release, remember to:
 
 - Refresh the three schema files under ``docs/reference/definition-files/``.
 
-  Regenerate ``schema-sdk.json`` and ``schema-sdkcraft.json`` in a local SDKcraft repository checkout and copy the outputs over:
+  Regenerate ``schema-sdk.json`` and ``schema-sdkcraft.json``
+  in a local SDKcraft repository checkout and copy the outputs over:
 
   .. code-block:: console
 
-     $ cd <PATH_TO_SDKCRAFT_CHECKOUT>
+     $ cd <PATH-TO-SDKCRAFT-CHECKOUT>
      $ uv run python sdkcraft/models/metadata.py
      $ uv run python sdkcraft/models/project.py
      $ cp schema-sdk.json schema-sdkcraft.json \
-          <PATH_TO_WORKSHOP_CHECKOUT>/docs/reference/definition-files/
+          <PATH-TO-WORKSHOP-CHECKOUT>/docs/reference/definition-files/
 
   The workshop ``schema.json`` is hand-audited against
   ``internal/workshop/workshop_file.go``.
