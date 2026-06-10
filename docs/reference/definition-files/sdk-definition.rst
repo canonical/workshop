@@ -32,6 +32,8 @@ Filename and location
 - In-project SDKs use
   :file:`.workshop/<NAME>/sdk.yaml` or :file:`.workshop/<NAME>/meta/sdk.yaml`,
   relative to the project directory.
+  Their hook scripts live next to the definition,
+  under :file:`.workshop/<NAME>/hooks/`.
 
 - Sketch SDK definitions live in the per-workshop data directory:
   :file:`~/.local/share/workshop/id/<PROJECT-ID>/<WORKSHOP>/sdk/sketch/current/sdk.yaml`.

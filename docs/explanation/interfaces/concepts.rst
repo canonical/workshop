@@ -133,6 +133,15 @@ whereas the :ref:`camera <exp_camera_interface>`,
 :ref:`desktop <exp_desktop_interface>`, and :ref:`SSH <exp_ssh_interface>`
 interfaces require manual connection.
 
+Auto-connection also depends on where a plug or slot lives.
+Additional slots defined for the system SDK,
+for interfaces such as :samp:`tunnel` or :samp:`mount`,
+are not auto-connected at launch or refresh,
+largely for security reasons:
+the system SDK exposes sensitive host system resources.
+To the contrary, plugs added under the system SDK can be auto-connected,
+because they expose workshop internals.
+
 To know how each kind of connection is treated
 when a workshop is launched, refreshed, or restored,
 see :ref:`exp_workshop_connection_lifecycle`.
