@@ -10,7 +10,7 @@ SPHINX_OPTS      ?= -c . -d $(DEV_DIR)/.doctrees -j auto
 SPHINX_BUILD     ?= $(DOCS_VENVDIR)/bin/sphinx-build
 SPHINX_HOST      ?= 127.0.0.1
 SPHINX_PORT      ?= 8000
-SPHINX_AUTOBUILD_OPTS ?= -D=llms_txt_enabled=0
+SPHINX_AUTOBUILD_OPTS ?= -D llms_txt_enabled=0
 DOCS_VENVDIR     ?= .venv
 DOCS_VENV        ?= $(DOCS_VENVDIR)/bin/activate
 DOCS_SOURCEDIR   ?= .
@@ -21,9 +21,7 @@ VALE_DIR         ?= $(DOCS_VENVDIR)/lib/python*/site-packages/vale
 VALE_CONFIG      ?= $(DEV_DIR)/vale.ini
 PA11Y_CMD        ?= $(DEV_DIR)/node_modules/pa11y/bin/pa11y.js --config $(DEV_DIR)/pa11y.json
 CONFIRM_SUDO     ?= N
-CHECK_PATH       ?= $(filter-out $(DOCS_VENVDIR) $(DOCS_BUILDDIR) $(DEV_DIR),$(wildcard *))
-LYCHEE_CONFIG    ?= lychee.toml
-LYCHEE_VERSION   ?= $(shell cat lychee-version 2>/dev/null | tr -d '[:space:]')
+CHECK_PATH       ?= $(filter-out $(DOCS_VENVDIR) $(DOCS_BUILDDIR),$(wildcard *))
 
 # Put it first so that "make" without argument is like "make help".
 help:
@@ -34,7 +32,7 @@ help:
 	@echo "* only serve:                                make serve"
 	@echo "* clean built doc files:                     make clean-doc"
 	@echo "* clean full environment:                    make clean"
-	@echo "* check links (lychee):                      make linkcheck"
+	@echo "* check links:                               make linkcheck"
 	@echo "* check markdown:                            make lint-md"
 	@echo "* check spelling:                            make spelling"
 	@echo "* check spelling (without building again):   make spellcheck"
@@ -49,7 +47,7 @@ help:
 .PHONY: help full-help html epub pdf linkcheck spelling spellcheck woke \
         vale pa11y run serve install pa11y-install   \
         vale-install pdf-prep pdf-prep-force clean clean-doc \
-        update lint-md lychee-install
+        update lint-md
 
 full-help: $(DOCS_VENVDIR)
 	@. $(DOCS_VENV); $(SPHINX_BUILD) -M help "$(DOCS_SOURCEDIR)" "$(DOCS_BUILDDIR)" $(SPHINX_OPTS) $(O)
@@ -74,60 +72,6 @@ pa11y-install:
 			mkdir -p $(DEV_DIR)/node_modules/ ; \
 			npm install --prefix $(DEV_DIR) pa11y; \
 		}
-
-lychee-install:
-# A confined lychee snap cannot read documentation sources outside its mount namespace
-# (e.g. the workshop's /project bind mount), even in devmode, so install the unconfined
-# upstream binary when lychee is absent. Any pre-existing lychee (snap or binary) on PATH
-# is left as-is and used, so a host's lychee snap is never removed or shadowed.
-	@command -v lychee >/dev/null 2>&1 || { \
-			OS=$$(uname -s); \
-			if [ "$$OS" = "Linux" ]; then \
-				echo "Installing unconfined lychee v$(LYCHEE_VERSION) binary..."; \
-				{ \
-					ARCH=$$(uname -m); \
-					TARBALL="lychee-$$ARCH-unknown-linux-gnu.tar.gz"; \
-					wget -q "https://github.com/lycheeverse/lychee/releases/download/lychee-v$(LYCHEE_VERSION)/$$TARBALL" -O /tmp/$$TARBALL || { \
-						echo "ERROR: Failed to download lychee v$(LYCHEE_VERSION) binary."; \
-						echo "Please install manually from https://github.com/lycheeverse/lychee/releases"; \
-						exit 1; \
-					}; \
-					rm -rf /tmp/lychee-dl && mkdir -p /tmp/lychee-dl && tar -xzf /tmp/$$TARBALL -C /tmp/lychee-dl || { \
-						echo "ERROR: Failed to extract lychee archive."; \
-						exit 1; \
-					}; \
-					LYCHEE_BIN=$$(find /tmp/lychee-dl -type f -name lychee | head -1); \
-					test -n "$$LYCHEE_BIN" || { \
-						echo "ERROR: lychee binary not found in extracted archive."; \
-						exit 1; \
-					}; \
-					sudo install -m 0755 "$$LYCHEE_BIN" /usr/local/bin/lychee || { \
-						echo "ERROR: Failed to install lychee binary to /usr/local/bin."; \
-						exit 1; \
-					}; \
-					rm -rf /tmp/lychee-dl /tmp/$$TARBALL; \
-					echo "lychee v$(LYCHEE_VERSION) installed to /usr/local/bin."; \
-				}; \
-			elif [ "$$OS" = "Darwin" ]; then \
-				echo "Installing lychee via brew..."; \
-				brew install lychee || { \
-					echo "ERROR: brew install failed."; \
-					echo "Please install manually from https://github.com/lycheeverse/lychee/releases"; \
-					exit 1; \
-				}; \
-			else \
-				echo "ERROR: Unsupported OS: $$OS"; \
-				echo "Please install lychee manually from https://github.com/lycheeverse/lychee/releases"; \
-				exit 1; \
-			fi; \
-		}
-	@INSTALLED=$$(lychee --version 2>/dev/null | awk '{print $$2}'); \
-		BASELINE="$(LYCHEE_VERSION)"; \
-		echo "lychee available: v$$INSTALLED (pinned baseline v$$BASELINE)"; \
-		OLDER=$$(printf '%s\n' "$$BASELINE" "$$INSTALLED" | sort -V | head -1); \
-		if [ "$$OLDER" = "$$INSTALLED" ] && [ "$$INSTALLED" != "$$BASELINE" ]; then \
-			echo "WARNING: Installed lychee $$INSTALLED is older than pinned $$BASELINE — results may differ"; \
-		fi
 
 pymarkdownlnt-install: install
 	@. $(DOCS_VENV); test -d $(DOCS_VENVDIR)/lib/python*/site-packages/pymarkdown || pip install pymarkdownlnt==0.9.35
@@ -158,19 +102,9 @@ clean-doc:
 	git clean -fx "$(DOCS_BUILDDIR)"
 	rm -rf $(DEV_DIR)/.doctrees
 
-linkcheck: lychee-install
-	@echo "Running lychee link checker..."
-	@mkdir -p $(DOCS_BUILDDIR)
-	@lychee --config $(LYCHEE_CONFIG) -vv --format json $(DOCS_SOURCEDIR) > $(DOCS_BUILDDIR)/lychee-output.json 2> $(DOCS_BUILDDIR)/lychee-debug.log; \
-		if [ ! -s $(DOCS_BUILDDIR)/lychee-output.json ]; then \
-			echo "ERROR: lychee produced no JSON output. See $(DOCS_BUILDDIR)/lychee-debug.log"; \
-			cat $(DOCS_BUILDDIR)/lychee-debug.log; \
-			exit 1; \
-		fi; \
-		lychee --config $(LYCHEE_CONFIG) --no-progress $(DOCS_SOURCEDIR) > $(DOCS_BUILDDIR)/lychee-output.txt 2>&1; \
-		RC=$$?; \
-		cat $(DOCS_BUILDDIR)/lychee-output.txt; \
-		exit $$RC
+linkcheck: install
+	. $(DOCS_VENV) ; $(SPHINX_BUILD) -b linkcheck -q "$(DOCS_SOURCEDIR)" "$(DOCS_BUILDDIR)" $(SPHINX_OPTS) || { grep --color -F "[broken]" "$(DOCS_BUILDDIR)/output.txt"; exit 1; }
+	exit 0
 
 pa11y: pa11y-install html
 	find $(DOCS_BUILDDIR) -name *.html -print0 | xargs -n 1 -0 $(PA11Y_CMD)
@@ -185,7 +119,6 @@ lint-md: pymarkdownlnt-install
 		scan \
 			--recurse \
 			--exclude=$(DEV_DIR)/** \
-			--exclude=$(DOCS_BUILDDIR)/** \
 			--exclude=$(DOCS_VENVDIR)/** \
 			$(DOCS_SOURCEDIR); \
 	status=$$?; \
