@@ -360,6 +360,7 @@ func (c *CmdRun) complete(cmd *cobra.Command, av []string, toComplete string) ([
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
+	// Argument after a separator must be an action.
 	if args.argsLenAtDash >= 0 {
 		return completeActions(cli, project, args.av)
 	}
