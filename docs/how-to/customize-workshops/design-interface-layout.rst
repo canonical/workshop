@@ -200,6 +200,7 @@ See also
 
 Explanation:
 
+- :ref:`exp_in_project_sdk`
 - :ref:`exp_interface_concepts`
 - :ref:`exp_plug_bindings`
 - :ref:`exp_plugs_slots`
@@ -213,7 +214,6 @@ How-to guides:
 
 Reference:
 
-- :ref:`ref_in_project_sdk`
 - :ref:`ref_workshop_connect`
 - :ref:`ref_workshop_connections`
 - :ref:`ref_workshop_definition`
