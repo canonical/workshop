@@ -1,0 +1,37 @@
+summary: Test 'How to design the interface layout of a workshop' to ensure it's operational
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove dev graft || true
+execute: |
+  . "$TESTSLIB"/utils.sh
+  chown -R ubuntu:ubuntu .
+
+  echo "Stage 1: launch without connections; mount plugs do not auto-connect to regular SDK slots, so consumer:feed falls back to system:mount."
+  cp dev.yaml .workshop/dev.yaml
+  workshop_exec launch dev
+  workshop_exec connections dev | MATCH '^mount.+dev/consumer:feed.+dev/system:mount'
+
+  echo "Stage 2: add a connections entry pointing the plug at provider-b; refresh; verify the chosen slot connects and the marker is from-b."
+  cp dev.connected.yaml .workshop/dev.yaml
+  workshop_exec refresh dev
+  workshop_exec connections dev | MATCH '^mount.+dev/consumer:feed.+dev/provider-b:data'
+  workshop_exec exec dev -- cat /home/workshop/feed/marker | MATCH '^from-b$'
+
+  echo "Stage 3: disconnect then connect to provider-a at runtime; the runtime change is visible (manual) but the on-disk definition is unchanged."
+  EXPECTED_YAML_HASH=$(sha256sum .workshop/dev.yaml | cut -d' ' -f1)
+  workshop_exec disconnect dev/consumer:feed
+  workshop_exec connect dev/consumer:feed dev/provider-a:data
+  workshop_exec connections dev | MATCH '^mount.+dev/consumer:feed.+dev/provider-a:data.+manual'
+  workshop_exec exec dev -- cat /home/workshop/feed/marker | MATCH '^from-a$'
+  ACTUAL_YAML_HASH=$(sha256sum .workshop/dev.yaml | cut -d' ' -f1)
+  test "$EXPECTED_YAML_HASH" = "$ACTUAL_YAML_HASH"
+
+  echo "Stage 4: a refresh that applies updates drops the manual connection and keeps the manually disconnected pairing disconnected, so the plug ends up unconnected."
+  cp dev.reordered.yaml .workshop/dev.yaml
+  workshop_exec refresh dev
+  workshop_exec connections dev | MATCH '^mount +dev/consumer:feed +- +-'
+
+  echo "Stage 5: graft a plug onto an SDK that ships none; launch the graft workshop; the grafted plug connects to provider-a and reads from-a."
+  workshop_exec launch graft
+  workshop_exec connections graft | MATCH '^mount.+graft/plainconsumer:feed.+graft/provider-a:data'
+  workshop_exec exec graft -- cat /home/workshop/feed/marker | MATCH '^from-a$'

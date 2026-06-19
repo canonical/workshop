@@ -1,0 +1,8 @@
+name: plainconsumer
+base: ubuntu@22.04
+summary: Synthesized consumer that ships no plug, for the graft scenario
+description: |
+  Ships no mount plug. The graft workshop declares a "feed" plug inline under
+  this SDK's sdks entry to demonstrate grafting a plug the SDK did not ship.
+
+sdkcraft-started-at: "2026-05-14T00:00:00.000000+00:00"

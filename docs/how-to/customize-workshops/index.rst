@@ -15,6 +15,7 @@ workshops in parallel:
 
    Add actions to workshops <add-actions>
    Add mounts <add-mounts>
+   Design the interface layout <design-interface-layout>
    Forward ports <forward-ports>
    Move projects around <move-projects>
    Use multiple workshops <use-multiple-workshops>
