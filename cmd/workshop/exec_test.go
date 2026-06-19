@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/check.v1"
@@ -393,6 +394,135 @@ func (m *workshopExec) TestSingleWorkshopRunCompletion(c *check.C) {
 	result, compDirective = run.ValidArgsFunction(run, []string{"ws", "--", "foo"}, "")
 	c.Assert(compDirective, check.Equals, cobra.ShellCompDirectiveDefault)
 	c.Check(result, check.HasLen, 0)
+}
+
+func (m *workshopExec) TestRunCompletionUsesLocalSingleWorkshopActions(c *check.C) {
+	writeRunCompletionWorkshopFile(c, m.prjDir, "workshop.yaml", "ws")
+
+	m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+		c.Errorf("unexpected API call: %s", r.URL.Path)
+	})
+
+	cmd := &CmdRun{root: &CmdRoot{cwd: m.prjDir}}
+	run := cmd.Command()
+
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{"workshop", "__complete", "run", "--", ""}
+	result, compDirective := run.ValidArgsFunction(run, nil, "")
+	c.Assert(compDirective, check.Equals, cobra.ShellCompDirectiveNoFileComp)
+	c.Check(result, check.DeepEquals, []string{"bootstrap", "build"})
+}
+
+func (m *workshopExec) TestRunCompletionUsesLocalNamedWorkshopActions(c *check.C) {
+	c.Assert(os.Mkdir(filepath.Join(m.prjDir, workshop.Directory), 0755), check.IsNil)
+	writeRunCompletionWorkshopFile(c, filepath.Join(m.prjDir, workshop.Directory), "ws1.yaml", "ws1")
+	writeRunCompletionWorkshopFile(c, filepath.Join(m.prjDir, workshop.Directory), "ws2.yaml", "ws2")
+
+	m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+		c.Errorf("unexpected API call: %s", r.URL.Path)
+	})
+
+	cmd := &CmdRun{root: &CmdRoot{cwd: m.prjDir}}
+	run := cmd.Command()
+
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{"workshop", "__complete", "run", "ws1", "--", ""}
+	result, compDirective := run.ValidArgsFunction(run, []string{"ws1", "--"}, "")
+	c.Assert(compDirective, check.Equals, cobra.ShellCompDirectiveNoFileComp)
+	c.Check(result, check.DeepEquals, []string{"bootstrap", "build"})
+}
+
+func (m *workshopExec) TestRunCompletionFallsBackToDaemonForSingleWorkshopActions(c *check.C) {
+	n := 0
+	m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		switch n {
+		case 1:
+			c.Check(r.Method, check.Equals, "POST")
+			c.Assert(r.URL.Path, check.Equals, "/v1/projects")
+			r := fmt.Sprintf(`{"type": "sync", "result": {"id":"%s","path":"%s"}}`, m.prjId, m.prjDir)
+			fmt.Fprintln(w, r)
+		case 2:
+			c.Check(r.Method, check.Equals, "GET")
+			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
+			w.WriteHeader(200)
+			fmt.Fprintln(w, mockSingleWorkshopSpecifyStatus("Ready"))
+		case 3:
+			c.Check(r.Method, check.Equals, "GET")
+			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops/ws/actions", m.prjId))
+			w.WriteHeader(200)
+			fmt.Fprintln(w, mockWorkshopWithActions)
+		default:
+			c.Errorf("unexpected API call %d: %s", n, r.URL.Path)
+		}
+	})
+
+	cmd := &CmdRun{root: &CmdRoot{cwd: m.prjDir}}
+	run := cmd.Command()
+
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{"workshop", "__complete", "run", "--", ""}
+	result, compDirective := run.ValidArgsFunction(run, nil, "")
+	c.Assert(compDirective, check.Equals, cobra.ShellCompDirectiveNoFileComp)
+	c.Check(result, check.DeepEquals, []string{"bar", "foo"})
+	c.Check(n, check.Equals, 3)
+}
+
+func (m *workshopExec) TestRunCompletionFallsBackToDaemonForNamedWorkshopActions(c *check.C) {
+	n := 0
+	m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		switch n {
+		case 1:
+			c.Check(r.Method, check.Equals, "POST")
+			c.Assert(r.URL.Path, check.Equals, "/v1/projects")
+			r := fmt.Sprintf(`{"type": "sync", "result": {"id":"%s","path":"%s"}}`, m.prjId, m.prjDir)
+			fmt.Fprintln(w, r)
+		case 2:
+			c.Check(r.Method, check.Equals, "GET")
+			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops/ws/actions", m.prjId))
+			w.WriteHeader(200)
+			fmt.Fprintln(w, mockWorkshopWithActions)
+		default:
+			c.Errorf("unexpected API call %d: %s", n, r.URL.Path)
+		}
+	})
+
+	cmd := &CmdRun{root: &CmdRoot{cwd: m.prjDir}}
+	run := cmd.Command()
+
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{"workshop", "__complete", "run", "ws", "--", ""}
+	result, compDirective := run.ValidArgsFunction(run, []string{"ws", "--"}, "")
+	c.Assert(compDirective, check.Equals, cobra.ShellCompDirectiveNoFileComp)
+	c.Check(result, check.DeepEquals, []string{"bar", "foo"})
+	c.Check(n, check.Equals, 2)
+}
+
+func writeRunCompletionWorkshopFile(c *check.C, dir, filename, name string) {
+	path := filepath.Join(dir, filename)
+	content := fmt.Sprintf(`name: %s
+base: ubuntu@24.04
+sdks:
+  - name: go
+    channel: latest/stable
+actions:
+  bootstrap: |
+    cd /project
+    ./scripts/build.sh bootstrap "$@"
+  build: |
+    cd /project
+    ./scripts/build.sh build "$@"
+`, name)
+	c.Assert(os.WriteFile(path, []byte(content), 0644), check.IsNil)
 }
 
 func (m *workshopExec) TestMultipleWorkshopRunCompletion(c *check.C) {

@@ -340,6 +340,14 @@ func (c *CmdRun) complete(cmd *cobra.Command, av []string, toComplete string) ([
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
+	// For action completion, prefer resolving actions from local workshop files.
+	// If local resolution fails, fall back to the existing daemon-based lookup.
+	if args.argsLenAtDash >= 0 {
+		if actions, ok := completeLocalActions(c.root.project(), args.av); ok {
+			return actions, cobra.ShellCompDirectiveNoFileComp
+		}
+	}
+
 	cli, err := c.root.noRetryClient()
 	if err != nil {
 		cobra.CompDebugln(err.Error(), false)
@@ -352,7 +360,6 @@ func (c *CmdRun) complete(cmd *cobra.Command, av []string, toComplete string) ([
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	// Argument after a separator must be an action.
 	if args.argsLenAtDash >= 0 {
 		return completeActions(cli, project, args.av)
 	}
@@ -384,6 +391,10 @@ func (c *CmdRun) complete(cmd *cobra.Command, av []string, toComplete string) ([
 }
 
 func completeActions(cli *client.Client, p *client.Project, args []string) ([]string, cobra.ShellCompDirective) {
+	if actions, ok := completeLocalActions(p.Path, args); ok {
+		return actions, cobra.ShellCompDirectiveNoFileComp
+	}
+
 	actions, err := listActions(cli, p, args)
 	if err != nil {
 		cobra.CompDebugln(err.Error(), false)
@@ -396,6 +407,32 @@ func completeActions(cli *client.Client, p *client.Project, args []string) ([]st
 	slices.Sort(names)
 
 	return names, cobra.ShellCompDirectiveNoFileComp
+}
+
+func completeLocalActions(projectPath string, args []string) ([]string, bool) {
+	project := &workshop.Project{Path: projectPath}
+
+	var name string
+	if len(args) == 0 {
+		workshops, err := project.ReadWorkshops()
+		if err != nil || len(workshops) != 1 {
+			return nil, false
+		}
+
+		for workshopName := range workshops {
+			name = workshopName
+		}
+	} else {
+		name = args[0]
+	}
+
+	file, err := project.Workshop(name)
+	if err != nil {
+		return nil, false
+	}
+
+	names := slices.Sorted(maps.Keys(file.Actions))
+	return names, true
 }
 
 func commonVars(f *pflag.FlagSet, flags *ExecFlags) {
