@@ -1,0 +1,37 @@
+summary: Test 'How to run workshops in GitHub Actions' to ensure the workshop definitions and actions are operational
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove dev-jammy dev-noble || true
+  rm -rf .venv uv.lock .pytest_cache __pycache__
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  # Spread runs on a local LXD backend and cannot reach GitHub Actions, so this
+  # verifies the workshop side of the how-to. The GitHub Action layer (token,
+  # matrix, cache restore) is verified by the external demo's CI at
+  # akcano/workshop-ci-demo.
+
+
+  # Both definitions differ only by base image; launch them together.
+
+  workshop_exec launch dev-jammy dev-noble
+  workshop_exec list | MATCH '^dev-jammy +Ready'
+  workshop_exec list | MATCH '^dev-noble +Ready'
+
+
+  # The cache input documented in the how-to relies on this mount plug.
+
+  workshop_exec connections --all | MATCH 'dev-jammy/uv:cache'
+  workshop_exec connections --all | MATCH 'dev-noble/uv:cache'
+
+
+  # The unit-tests action runs uv sync (network) then pytest; retry to absorb
+  # registry flakes. A non-zero exit means pytest failed.
+
+  retry 5 workshop_exec run dev-noble unit-tests
+  retry 5 workshop_exec run dev-jammy unit-tests
+
+
+  # Clean up
+
+  workshop_exec remove dev-jammy dev-noble

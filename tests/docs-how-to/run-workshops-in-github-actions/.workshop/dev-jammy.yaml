@@ -1,0 +1,9 @@
+name: dev-jammy
+base: ubuntu@22.04
+sdks:
+  - name: uv
+actions:
+  unit-tests: |
+    cd /project
+    uv sync
+    uv run pytest -q

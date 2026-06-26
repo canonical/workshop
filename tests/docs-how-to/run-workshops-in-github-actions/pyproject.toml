@@ -1,0 +1,11 @@
+[project]
+name = "workshop-ci-demo"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["pandas>=2.2"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false

@@ -10,6 +10,7 @@ How to run workshops in GitHub Actions
 
 .. @artefact workshop launch
 .. @artefact workshop exec
+.. @tests in tests/docs-how-to/run-workshops-in-github-actions/task.yaml
 
 The `launch-workshop <https://github.com/canonical/launch-workshop>`_ action
 installs |ws_markup| on a GitHub-hosted runner
@@ -17,6 +18,9 @@ and launches an ephemeral workshop for the duration of a job.
 Use it to run your project's tests, builds, or other tasks
 inside the same workshop you use locally,
 without standing up a self-hosted runner.
+
+For a complete, runnable example,
+see the `workshop-ci-demo <https://github.com/akcano/workshop-ci-demo>`__ repository.
 
 If you'd rather run jobs on your own hardware,
 use a workshop as a self-hosted runner instead;
@@ -32,28 +36,6 @@ Before getting started, ensure you have:
 
 - A workshop definition committed to the repository,
   at :file:`workshop.yaml` or :file:`.workshop/<NAME>.yaml`
-
-- A `personal access token
-  <https://github.com/settings/tokens?type=beta>`__
-  with :samp:`Contents: read` and :samp:`Metadata: read` permissions
-  on :samp:`canonical/workshop`
-
-
-Configure the workshop token
-----------------------------
-
-The action installs |ws_markup| from :samp:`canonical/workshop`,
-which is an internal repository.
-The token granting read access to that repository
-must be stored as an Actions secret in your project repository.
-
-In your project repository on GitHub,
-navigate to
-:guilabel:`Settings` > :guilabel:`Secrets and variables` > :guilabel:`Actions`,
-select :guilabel:`New repository secret`,
-and add the token under the name :samp:`WORKSHOP_TOKEN`.
-
-The action reads this secret via the :samp:`token` input.
 
 
 Add the action to a workflow
@@ -79,10 +61,18 @@ and runs a command inside it:
 
          - uses: canonical/launch-workshop@v0
            with:
-             token: ${{ secrets.WORKSHOP_TOKEN }}
+             token: ${{ secrets.GITHUB_TOKEN }}
 
          - run: workshop exec -- pytest
 
+
+The action installs |ws_markup|
+from the public :samp:`canonical/workshop` repository,
+so the built-in :samp:`GITHUB_TOKEN` is all the :samp:`token` input needs;
+no personal access token or repository secret is required.
+To install |ws_markup| from a private mirror instead,
+supply a token with read access to that repository,
+stored as an Actions secret.
 
 If the repository contains a single :file:`workshop.yaml`
 at the project root,
@@ -117,7 +107,7 @@ parameterize the :samp:`workshop` input with a matrix:
 
          - uses: canonical/launch-workshop@v0
            with:
-             token: ${{ secrets.WORKSHOP_TOKEN }}
+             token: ${{ secrets.GITHUB_TOKEN }}
              workshop: ${{ matrix.workshop }}
 
          - run: workshop run "$WS" unit-tests
@@ -157,7 +147,7 @@ one per line:
    steps:
      - uses: canonical/launch-workshop@v0
        with:
-         token: ${{ secrets.WORKSHOP_TOKEN }}
+         token: ${{ secrets.GITHUB_TOKEN }}
          cache: |
            cargo:git
            cargo:registry
@@ -183,7 +173,9 @@ The action exposes the following inputs:
      - Description
 
    * - :samp:`token`
-     - Access token for :samp:`canonical/workshop`. Required.
+     - Token used to download |ws_markup| from :samp:`canonical/workshop`.
+       The built-in :samp:`GITHUB_TOKEN` works because that repository is public.
+       Required.
 
    * - :samp:`version`
      - |ws_markup| version or range of versions. Defaults to :samp:`latest`.
@@ -206,19 +198,18 @@ Security considerations
 
 When integrating the action into your workflows:
 
-- Store the token as an Actions secret;
-  never commit it to the repository or paste it into logs.
-
-- Prefer a fine-grained personal access token
-  scoped to :samp:`canonical/workshop`
-  with only :samp:`Contents: read` and :samp:`Metadata: read` permissions.
-
 - Pin the action to a commit SHA
   so a compromised tag cannot push unreviewed code into your workflows.
 
-- Rotate :samp:`WORKSHOP_TOKEN` immediately
-  if it ever appears in logs, chat history,
-  or any other shared transcript.
+- The built-in :samp:`GITHUB_TOKEN` is sufficient
+  for the public :samp:`canonical/workshop` repository,
+  so no long-lived personal access token is required.
+
+- If you install |ws_markup| from a private mirror,
+  store its access token as an Actions secret,
+  prefer a fine-grained token limited to read access,
+  and rotate it immediately
+  if it ever appears in logs, chat history, or any other shared transcript.
 
 
 See also

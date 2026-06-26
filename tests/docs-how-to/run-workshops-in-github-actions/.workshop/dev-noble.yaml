@@ -1,0 +1,9 @@
+name: dev-noble
+base: ubuntu@24.04
+sdks:
+  - name: uv
+actions:
+  unit-tests: |
+    cd /project
+    uv sync
+    uv run pytest -q
