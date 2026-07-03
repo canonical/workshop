@@ -51,11 +51,10 @@ parts:
     plugin: go
     source: .
     source-type: local
+    go-channel: 1.26/stable
     build-packages:
       - build-essential
       - git
-    build-snaps:
-      - go/1.26/stable
     build-environment:
       - CGO_LDFLAGS_ALLOW: ".*"
     override-build: |
