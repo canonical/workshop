@@ -3,16 +3,35 @@ Workshop
 
 **Workshops are secure, fast, and composable development environments that come agent-ready**.
 
-List your dependencies and components in YAML to define an environment. The key
-pieces of a definition are SDKs, independent but connectable units of
-functionality created by software publishers and available on the SDK Store.
-Workshop simplifies experiments with your environment layout.
+**Wrap complex, error-prone workspaces
+into reliable and reproducible definitions of languages, libraries, and tooling**.
+The key pieces of a definition are SDKs:
+independent, connectable units of functionality
+that publishers package and share on the SDK Store,
+and teams can define in their repositories.
 
-It allows you to focus on adding value to your project. With Workshop, you can
-launch a setup that previously took hours to configure in a few commands, and be
-sure that it stays operational. It assists in issue reproduction, enables
-hands-on code reviews, and turns environment updates into manageable
-transactions, reducing the need to battle with your tooling every day.
+**Workshops enable sandboxed experimentation,
+turn environment updates into manageable transactions,
+and ensure consistent, reproducible environments**.
+With Workshop, you can launch a setup
+that previously took hours to configure in a few commands
+and be sure it will work the same way every time,
+or tear it down and start from the last step without worrying about leftover state.
+
+**Agentic engineering, AI/ML, robotics, IoT, EdTech, and similar domains**
+typically use less-than-trivial project layouts
+that rely on many Ubuntu versions or container images,
+a plethora of diverse tools and frameworks,
+and a wide range of libraries and languages.
+That's where Workshop thrives.
+
+**Built for AI workflows**.
+Workshop publishes
+`LLM-readable docs <https://ubuntu.com/workshop/docs/reference/ai-agents/#llm-readable-docs>`_,
+and ships agentic skills for
+`operating workshops <https://ubuntu.com/workshop/docs/reference/ai-agents/#the-use-workshop-skill>`_
+and
+`scaffolding SDKs <https://ubuntu.com/workshop/docs/reference/ai-agents/#the-sdk-designer-skill>`_.
 
 
 Using Workshop
