@@ -556,11 +556,11 @@ who's also named :samp:`workshop`:
 .. code-block:: console
 
    $ workshop shell
-   workshop@dev-6b79e889:/project$ pwd
+   workshop@dev:/project$ pwd
 
      /project
 
-   workshop@dev-6b79e889:/project$ lsb_release -a
+   workshop@dev:/project$ lsb_release -a
 
      ...
      Distributor ID: Ubuntu
@@ -568,7 +568,7 @@ who's also named :samp:`workshop`:
      Release:        24.04
      Codename:       noble
 
-   workshop@dev-6b79e889:/project$ exit
+   workshop@dev:/project$ exit
 
 
 .. _tut_actions:

@@ -75,6 +75,41 @@ Status diagrams in the `See also`_ section below
 provide more details of valid transitions.
 
 
+.. _exp_workshop_hostname:
+
+Workshop hostname
+-----------------
+
+.. @artefact workshop hostname
+
+Every running workshop has a friendly hostname,
+part of its identity alongside its name and status.
+Hostnames follow the pattern :samp:`<WORKSHOP>.<PROJECT>.wp`,
+and workshops in the same project can reach each other
+by the short form :samp:`<WORKSHOP>` alone,
+without the project part.
+
+:command:`workshop launch` and :command:`workshop refresh`
+assign and update a workshop's hostname;
+:command:`workshop info` always shows the full form
+in its :samp:`hostname:` field,
+while the interactive shell prompt shows the shorter,
+bare workshop name instead,
+for example :samp:`workshop@<WORKSHOP>:/project$`.
+
+For the mechanics behind hostname resolution,
+see :ref:`exp_arch_network`.
+
+.. note::
+
+   When the preferred hostname can't be assigned,
+   for example because the project directory name
+   can't be a valid DNS label,
+   :command:`workshop info` shows a :samp:`hostname-fallback` note
+   and falls back to a stable, ID-based name instead.
+   Check the :program:`workshopd` log for the specific reason.
+
+
 .. _exp_workshop_lifecycle:
 
 Launch, refresh, and restore
@@ -580,6 +615,7 @@ See also
 
 Explanation:
 
+- :ref:`exp_arch_network`
 - :ref:`exp_interfaces`
 - :ref:`exp_projects`
 - :ref:`exp_sdks`
@@ -588,6 +624,7 @@ Explanation:
 How-to guides:
 
 - :ref:`how_add_actions`
+- :ref:`how_use_multiple_workshops`
 - :ref:`how_use_workshops`
 
 

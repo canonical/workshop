@@ -326,6 +326,8 @@ see :ref:`exp_interface_concepts`.
    in |ws_markup| source code for an elaborate example.
 
 
+.. _exp_arch_network:
+
 Network
 ~~~~~~~
 
@@ -333,8 +335,29 @@ Network
 through the :samp:`workshopbr0` bridge network,
 providing isolated networking for workshop containers.
 
-This bridge network includes DNS resolution
-configured with the :samp:`workshop` domain.
+:program:`workshopd` registers this bridge with :program:`systemd-resolved`
+as link-specific DNS
+and registers :samp:`wp` as a route-only search domain,
+so :ref:`workshop hostnames <exp_workshop_hostname>` resolve only through it.
+Each workshop receives a CNAME of the form :samp:`<WORKSHOP>.<PROJECT-ID>.wp`,
+plus a friendlier :samp:`<WORKSHOP>.<PROJECT>.wp` alias
+when the project directory name encodes to a valid DNS label.
+
+Resolving a hostname isn't the same as trusting what you connect to:
+DNS resolution over :samp:`workshopbr0` is unauthenticated
+and scoped to the bridge network.
+For interactive access, each host also maintains
+a per-user SSH certificate authority
+that signs a host certificate for every workshop
+and a user certificate for connecting to them,
+so tools such as :program:`ssh` and VS Code Remote-SSH
+can verify a workshop by its hostname
+without a manual first-connection prompt.
+This is a separate mechanism from the mutual TLS material
+used for external LXD image servers,
+described in the LXD backend section above;
+see the :doc:`Security policy </security>`
+for the full cryptography inventory.
 
 
 Diagrams

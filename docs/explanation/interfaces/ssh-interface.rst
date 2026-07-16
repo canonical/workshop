@@ -100,11 +100,11 @@ are available inside the workshop:
 .. code-block:: console
 
    $ workshop shell ws
-   workshop@ws-8584e571$ echo $SSH_AUTH_SOCK
+   workshop@ws:/project$ echo $SSH_AUTH_SOCK
 
      /var/lib/workshop/run/ssh-agent.sock
 
-   workshop@ws-8584e571$ ssh-add -l
+   workshop@ws:/project$ ssh-add -l
 
      4096 SHA256:cb19/bE/6irqhII1KbQqRmo1royWi58qcUD9MEn/9fE user@example.com (RSA)
 

@@ -499,6 +499,11 @@
   specs:
     - SK009
 
+"workshop hostname":
+  category: workshop (container)
+  type: concept
+  specs: []
+
 "workshop info":
   category: "workshop (CLI)"
   type: command
