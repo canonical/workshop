@@ -263,7 +263,8 @@ Name-based reachability is plain, unauthenticated DNS
 over the shared :samp:`workshopbr0` bridge.
 
 From outside the project,
-use the full :samp:`backend.<PROJECT>.wp` form instead.
+use the full hostname shown by :command:`workshop info backend`
+(usually :samp:`backend.<PROJECT>.wp`, otherwise :samp:`backend.<PROJECT-ID>.wp`).
 |ws_markup| also generates an OpenSSH configuration on the host
 that trusts workshops by their hostname.
 Include it in your host user's :file:`~/.ssh/config`,
