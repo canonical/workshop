@@ -97,6 +97,17 @@ plugs:
 `,
 }
 
+var consumerSSH = sdk.Meta{
+	Setup: consumer.Setup,
+	SdkYAML: `name: consumer
+base: ubuntu@22.04
+plugs:
+  plug:
+    interface: mock-ssh-agent
+    attribute: one
+`,
+}
+
 var consumerSelfConnect = sdk.Meta{
 	Setup: consumer.Setup,
 	SdkYAML: `name: consumer
@@ -130,6 +141,20 @@ plugs:
     attribute: four
   bound:
     interface: mock-network
+    attribute: one
+`,
+}
+
+var consumerBoundSSH = sdk.Meta{
+	Setup: consumer.Setup,
+	SdkYAML: `name: consumer
+base: ubuntu@22.04
+plugs:
+  plug:
+    interface: mock-ssh-agent
+    attribute: one
+  bound:
+    interface: mock-ssh-agent
     attribute: one
 `,
 }
@@ -257,11 +282,11 @@ type denyAutoIface struct {
 func (di denyAutoIface) Name() string                                            { return di.name }
 func (di denyAutoIface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool { return false }
 
-func (s *interfaceHandlersSuite) newAutoconnectChange() *state.Change {
+func (s *interfaceHandlersSuite) newAutoconnectChange(sk string) *state.Change {
 	chg := s.state.NewChange("sample", "...")
 	t1 := s.state.NewTask("resolve-interfaces", "...")
 	t2 := s.state.NewTask("auto-connect", "...")
-	t2.Set("sdk", "consumer")
+	t2.Set("sdk", sk)
 	t2.WaitFor(t1)
 	setWorkshopProject("ws", s.prj, t1, t2)
 	chg.Set("user", "testuser")
@@ -283,7 +308,7 @@ func (s *interfaceHandlersSuite) TestAutoconnectPlugSlotPairSuccess(c *check.C) 
 
 	// Execute
 	s.state.Lock()
-	chg := s.newAutoconnectChange()
+	chg := s.newAutoconnectChange("consumer")
 	s.state.Unlock()
 
 	s.settle(c)
@@ -330,7 +355,7 @@ func (s *interfaceHandlersSuite) TestAutoconnectBindPlugSuccess(c *check.C) {
 
 	// Execute
 	s.state.Lock()
-	chg := s.newAutoconnectChange()
+	chg := s.newAutoconnectChange("consumer")
 	s.state.Unlock()
 
 	s.settle(c)
@@ -387,7 +412,7 @@ func (s *interfaceHandlersSuite) TestAutoconnectPlugAndSlotInSameSdk(c *check.C)
 
 	// Execute
 	s.state.Lock()
-	chg := s.newAutoconnectChange()
+	chg := s.newAutoconnectChange("consumer")
 	s.state.Unlock()
 
 	s.settle(c)
@@ -444,7 +469,7 @@ func (s *interfaceHandlersSuite) TestAutoconnectBindMasterPlugNotFound(c *check.
 
 	// Execute
 	s.state.Lock()
-	chg := s.newAutoconnectChange()
+	chg := s.newAutoconnectChange("consumer")
 	s.state.Unlock()
 
 	s.settle(c)
@@ -489,7 +514,7 @@ func (s *interfaceHandlersSuite) TestAutoconnectBackendSetupFail(c *check.C) {
 
 	// Execute
 	s.state.Lock()
-	chg := s.newAutoconnectChange()
+	chg := s.newAutoconnectChange("consumer")
 	s.state.Unlock()
 
 	s.settle(c)
@@ -614,7 +639,7 @@ func (s *interfaceHandlersSuite) TestAutoconnectNoConnectionCandidates(c *check.
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 0)
 }
 
-func (s *interfaceHandlersSuite) TestAutoconnectRemountedPlugsOnRefresh(c *check.C) {
+func (s *interfaceHandlersSuite) TestAutoconnectPreservesAttributesOnRefresh(c *check.C) {
 	// Setup
 	// Create an already installed workshop with a candidate SDK/slot
 	repo := s.mgr.Repository()
@@ -627,19 +652,15 @@ func (s *interfaceHandlersSuite) TestAutoconnectRemountedPlugsOnRefresh(c *check
 
 	// Execute
 	s.state.Lock()
-	chg := s.state.NewChange("refresh", "...")
+	chg := s.newAutoconnectChange("consumer")
 	// existing remounts that should be preserved after refresh
-	chg.Set("remounts", map[string]string{
-		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": "/old/source",
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"slot-dynamic": map[string]any{"host-source": "/old/source"},
+		},
 	})
-	t1 := s.state.NewTask("resolve-interfaces", "...")
-	t2 := s.state.NewTask("auto-connect", "...")
-	t2.Set("sdk", "consumer")
-	t2.WaitFor(t1)
-	setWorkshopProject("ws", s.prj, t1, t2)
-	chg.Set("user", "testuser")
-	chg.AddTask(t1)
-	chg.AddTask(t2)
 	s.state.Unlock()
 
 	s.settle(c)
@@ -649,7 +670,6 @@ func (s *interfaceHandlersSuite) TestAutoconnectRemountedPlugsOnRefresh(c *check
 	c.Check(chg.Err(), check.IsNil)
 
 	// Validate
-	c.Assert(t1.Status(), check.Equals, state.DoneStatus)
 	var conns map[string]any
 	s.state.Get("conns", &conns)
 	c.Assert(conns, check.DeepEquals, map[string]any{
@@ -666,6 +686,471 @@ func (s *interfaceHandlersSuite) TestAutoconnectRemountedPlugsOnRefresh(c *check
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 0)
 }
 
+func (s *interfaceHandlersSuite) TestAutoconnectPreservesManualConnectionsOnRefresh(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producerSSH})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producerSSH.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumerSSH})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerSSH.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"interface":    "mock-ssh-agent",
+			"plug-dynamic": map[string]any{"test-dynamic-attr": "new-dynamic-value"},
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Assert(refs, check.HasLen, 1)
+	c.Check(refs[0].ID(), check.Equals, "42424242/ws/consumer:plug 42424242/ws-producer/producer:slot")
+
+	refs, err = repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
+	c.Assert(err, check.IsNil)
+	c.Assert(refs, check.HasLen, 1)
+	c.Check(refs[0].ID(), check.Equals, "42424242/ws/consumer:plug 42424242/ws-producer/producer:slot")
+
+	var conns map[string]any
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"interface":    "mock-ssh-agent",
+			"plug-static":  map[string]any{"attribute": "one"},
+			"plug-dynamic": map[string]any{"test-dynamic-attr": "new-dynamic-value"},
+		},
+	})
+
+	// ensure that backend profiles were set for both SDKs
+	c.Assert(s.secBackend.SetupCalls, check.HasLen, 2)
+	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 0)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectForgetsConnectionWithoutPlugOnRefresh(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", nil)
+
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	// Preserved connection but different plug interface.
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"interface": "mock-ssh-agent",
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), testutil.ErrorIs, state.ErrNoState)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectForgetsConnectionWithoutSlotOnRefresh(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws", []sdk.Meta{producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	s.launchWorkshop(c, "ws-consumer", nil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("producer")
+	// Preserved connection but different plug interface.
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws-consumer/consumer:plug 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-ssh-agent",
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "producer", "slot")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), testutil.ErrorIs, state.ErrNoState)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectForgetsRepurposedPlugOnRefresh(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producerSSH})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producerSSH.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	// Preserved connection but different plug interface.
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"interface": "mock-ssh-agent",
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	refs, err = repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), testutil.ErrorIs, state.ErrNoState)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectForgetsRepurposedSlotOnRefresh(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumerSSH})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerSSH.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	// Preserved connection but different slot interface.
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"interface": "mock-ssh-agent",
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	refs, err = repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), testutil.ErrorIs, state.ErrNoState)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectForgetsDeniedAutoconnection(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producerSSH})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producerSSH.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumerSSH})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerSSH.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":      true,
+			"interface": "mock-ssh-agent",
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	refs, err = repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), testutil.ErrorIs, state.ErrNoState)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectForgetsNewlyBoundPlug(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producerSSH})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producerSSH.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	wp := s.launchWorkshop(c, "ws", []sdk.Meta{consumerBoundSSH})
+	wp.File.Sdks[0].Plugs = map[string]workshop.PlugOrBind{
+		"bound": {Bind: &workshop.PlugRef{Sdk: "consumer", Name: "plug"}},
+	}
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerBoundSSH.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Before the refresh, "bound" was manually connected but unbound.
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:bound 42424242/ws-producer/producer:slot": map[string]any{
+			"interface":    "mock-ssh-agent",
+			"plug-dynamic": map[string]any{"custom": "value"},
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	refs, err = repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), testutil.ErrorIs, state.ErrNoState)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectPreservesReversedBinding(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	wp := s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs})
+	wp.File.Sdks[0].Plugs = map[string]workshop.PlugOrBind{
+		"bound": {Bind: &workshop.PlugRef{Sdk: "consumer", Name: "plug"}},
+	}
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Before the refresh, "plug" was bound to "bound".
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-dynamic": map[string]any{"bind": "42424242/ws/consumer:bound 42424242/ws-producer/producer:slot"},
+		},
+		"42424242/ws/consumer:bound 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-dynamic": map[string]any{"custom": "value"},
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	var conns map[string]any
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-static":  map[string]any{"attribute": "one"},
+			"plug-dynamic": map[string]any{"custom": "value"},
+		},
+		"42424242/ws/consumer:plug2 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":        true,
+			"interface":   "mock-network",
+			"plug-static": map[string]any{"attribute": "two"},
+		},
+		"42424242/ws/consumer:plug3 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":        true,
+			"interface":   "mock-network",
+			"plug-static": map[string]any{"attribute": "three"},
+		},
+		"42424242/ws/consumer:bound 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-static":  map[string]any{"attribute": "one"},
+			"plug-dynamic": map[string]any{"bind": "42424242/ws/consumer:plug 42424242/ws-producer/producer:slot"},
+		},
+	})
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectBindsIndependentPlugs(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	wp := s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs})
+	wp.File.Sdks[0].Plugs = map[string]workshop.PlugOrBind{
+		"bound": {Bind: &workshop.PlugRef{Sdk: "consumer", Name: "plug"}},
+	}
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Before the refresh both plugs were independent with their own attributes.
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"slot-dynamic": map[string]any{"host-source": "/data/plug"},
+		},
+		"42424242/ws/consumer:bound 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"slot-dynamic": map[string]any{"host-source": "/data/bound"},
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	var conns map[string]any
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-static":  map[string]any{"attribute": "one"},
+			"slot-dynamic": map[string]any{"host-source": "/data/plug"},
+		},
+		"42424242/ws/consumer:plug2 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":        true,
+			"interface":   "mock-network",
+			"plug-static": map[string]any{"attribute": "two"},
+		},
+		"42424242/ws/consumer:plug3 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":        true,
+			"interface":   "mock-network",
+			"plug-static": map[string]any{"attribute": "three"},
+		},
+		"42424242/ws/consumer:bound 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-static":  map[string]any{"attribute": "one"},
+			"plug-dynamic": map[string]any{"bind": "42424242/ws/consumer:plug 42424242/ws-producer/producer:slot"},
+		},
+	})
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectClonesNewlyUnboundPlugs(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Before the refresh, "bound" was bound to "plug".
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	chg.Set("ws_conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-dynamic": map[string]any{"custom": "value"},
+		},
+		"42424242/ws/consumer:bound 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-dynamic": map[string]any{"bind": "42424242/ws/consumer:plug 42424242/ws-producer/producer:slot"},
+		},
+	})
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	var conns map[string]any
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-static":  map[string]any{"attribute": "one"},
+			"plug-dynamic": map[string]any{"custom": "value"},
+		},
+		"42424242/ws/consumer:plug2 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":        true,
+			"interface":   "mock-network",
+			"plug-static": map[string]any{"attribute": "two"},
+		},
+		"42424242/ws/consumer:plug3 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":        true,
+			"interface":   "mock-network",
+			"plug-static": map[string]any{"attribute": "three"},
+		},
+		"42424242/ws/consumer:bound 42424242/ws-producer/producer:slot": map[string]any{
+			"auto":         true,
+			"interface":    "mock-network",
+			"plug-static":  map[string]any{"attribute": "one"},
+			"plug-dynamic": map[string]any{"custom": "value"},
+		},
+	})
+}
+
 func (s *interfaceHandlersSuite) TestUndoAutoConnect(c *check.C) {
 	// Setup
 	// Create an already installed workshop with a candidate SDK/slot
@@ -679,7 +1164,7 @@ func (s *interfaceHandlersSuite) TestUndoAutoConnect(c *check.C) {
 
 	// Execute
 	s.state.Lock()
-	chg := s.newAutoconnectChange()
+	chg := s.newAutoconnectChange("consumer")
 	terr := s.state.NewTask("error-trigger", "...")
 	terr.WaitAll(state.NewTaskSet(chg.Tasks()...))
 	chg.AddTask(terr)
@@ -711,8 +1196,8 @@ func (s *interfaceHandlersSuite) newRemountChange(newSource string) *state.Chang
 
 	t1 := s.state.NewTask("remount", "remount")
 	t1.Set("host-source", newSource)
-	t1.Set("plug", sdk.PlugRef{ProjectId: s.prj.ProjectId, Workshop: "ws-consumer", Sdk: "consumer", Name: "plug"})
-	setWorkshopProject("ws-consumer", s.prj, t1)
+	t1.Set("plug", sdk.PlugRef{ProjectId: s.prj.ProjectId, Workshop: "ws", Sdk: "consumer", Name: "plug"})
+	setWorkshopProject("ws", s.prj, t1)
 
 	chg := s.state.NewChange("sample", "...")
 	chg.Set("user", "testuser")
@@ -740,10 +1225,10 @@ slots:
     mount:
         interface: mount
 `
-	wm := s.launchWorkshop(c, "ws-consumer", []sdk.Meta{{Setup: consumer.Setup, SdkYAML: sdkYaml}})
+	wm := s.launchWorkshop(c, "ws", []sdk.Meta{{Setup: consumer.Setup, SdkYAML: sdkYaml}})
 	wm.Running = true
-	c.Assert(s.mgr.Repository().AddSdk(sdk.MockInfo(c, sdkYaml, s.prj.ProjectId, "ws-consumer")), check.IsNil)
-	c.Assert(s.mgr.Repository().AddSdk(sdk.MockInfo(c, systemYaml, s.prj.ProjectId, "ws-consumer")), check.IsNil)
+	c.Assert(s.mgr.Repository().AddSdk(sdk.MockInfo(c, sdkYaml, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(s.mgr.Repository().AddSdk(sdk.MockInfo(c, systemYaml, s.prj.ProjectId, "ws")), check.IsNil)
 
 	dynamic := map[string]any{}
 	if source != "" {
@@ -751,14 +1236,14 @@ slots:
 	}
 	s.state.Lock()
 	s.state.Set("conns", map[string]any{
-		"42424242/ws-consumer/consumer:plug 42424242/ws-consumer/system:mount": map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws/system:mount": map[string]any{
 			"interface":    "mount",
 			"auto":         true,
 			"plug-static":  map[string]any{"workshop-target": "/opt"},
 			"slot-dynamic": dynamic,
 		},
 	})
-	_, err := ifacestate.ReloadConnections(s.mgr, s.prj.ProjectId, "ws-consumer", "consumer")
+	_, err := ifacestate.ReloadConnections(s.mgr, s.prj.ProjectId, "ws", "consumer")
 	c.Assert(err, check.IsNil)
 	s.state.Unlock()
 }
@@ -783,7 +1268,7 @@ func (s *interfaceHandlersSuite) TestRemountSuccessDestExistsAndEmpty(c *check.C
 	c.Assert(change.Status(), check.Equals, state.DoneStatus)
 
 	repo := s.mgr.Repository()
-	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
 	c.Assert(ref, check.HasLen, 1)
 	c.Assert(err, check.IsNil)
 
@@ -827,7 +1312,7 @@ func (s *interfaceHandlersSuite) TestRemountSuccessIfNewSourceDoesNotExist(c *ch
 	c.Assert(change.Status(), check.Equals, state.DoneStatus)
 
 	repo := s.mgr.Repository()
-	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
 	c.Assert(ref, check.HasLen, 1)
 	c.Assert(err, check.IsNil)
 
@@ -840,7 +1325,7 @@ func (s *interfaceHandlersSuite) TestRemountSuccessIfNewSourceDoesNotExist(c *ch
 	c.Assert(oldSource, testutil.FileAbsent)
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 1)
 	c.Assert(s.secBackend.SetupCalls[0].SdkRef.Sdk, check.Equals, "consumer")
-	c.Assert(s.secBackend.SetupCalls[0].SdkRef.Workshop, check.Equals, "ws-consumer")
+	c.Assert(s.secBackend.SetupCalls[0].SdkRef.Workshop, check.Equals, "ws")
 
 	// ensure the global conns state was updated correctly
 	conns, err := ifacestate.GetConns(s.state)
@@ -875,7 +1360,7 @@ func (s *interfaceHandlersSuite) TestRemountRenameNewSourceNotEmptyFails(c *chec
 	c.Assert(change.Status(), check.Equals, state.ErrorStatus)
 
 	repo := s.mgr.Repository()
-	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
 	c.Assert(ref, check.HasLen, 1)
 	c.Assert(err, check.IsNil)
 
@@ -899,7 +1384,7 @@ func (s *interfaceHandlersSuite) TestRemountRenameNewSourceNotEmptySucceeds(c *c
 	s.launchRemountWorkshop(c, oldSource)
 
 	// the remount will be performed if the workshop is not running
-	err = s.wsbackend.StopWorkshop(s.ctx, "ws-consumer", true)
+	err = s.wsbackend.StopWorkshop(s.ctx, "ws", true)
 	c.Check(err, check.IsNil)
 	change := s.newRemountChange(newSource)
 
@@ -913,7 +1398,7 @@ func (s *interfaceHandlersSuite) TestRemountRenameNewSourceNotEmptySucceeds(c *c
 	c.Assert(change.Status(), check.Equals, state.DoneStatus)
 
 	repo := s.mgr.Repository()
-	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
 	c.Assert(ref, check.HasLen, 1)
 	c.Assert(err, check.IsNil)
 
@@ -947,7 +1432,7 @@ func (s *interfaceHandlersSuite) TestRemountRenameUnexpectedError(c *check.C) {
 	c.Assert(change.Status(), check.Equals, state.ErrorStatus)
 
 	repo := s.mgr.Repository()
-	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
 	c.Assert(ref, check.HasLen, 1)
 	c.Assert(err, check.IsNil)
 
@@ -984,7 +1469,7 @@ func (s *interfaceHandlersSuite) TestRemountInterfaceBackendSetupFails(c *check.
 	c.Assert(change.Status(), check.Equals, state.ErrorStatus)
 
 	repo := s.mgr.Repository()
-	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
 	c.Assert(ref, check.HasLen, 1)
 	c.Assert(err, check.IsNil)
 
@@ -1016,10 +1501,10 @@ func (s *interfaceHandlersSuite) TestRemountWorksIfOldSourceNotExist(c *check.C)
 
 	warnings := s.state.AllWarnings()
 	c.Check(warnings, check.HasLen, 1)
-	c.Check(warnings[0].String(), check.Matches, `cannot find source ".*/id/42424242/ws-consumer/mount/consumer/plug" for "ws-consumer/consumer:plug"; using existing directory ".*"`)
+	c.Check(warnings[0].String(), check.Matches, `cannot find source ".*/id/42424242/ws/mount/consumer/plug" for "ws/consumer:plug"; using existing directory ".*"`)
 
 	repo := s.mgr.Repository()
-	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
 	c.Assert(ref, check.HasLen, 1)
 	c.Assert(err, check.IsNil)
 
@@ -1049,10 +1534,10 @@ func (s *interfaceHandlersSuite) TestRemountWorksIfNeitherSourceExists(c *check.
 
 	warnings := s.state.AllWarnings()
 	c.Check(warnings, check.HasLen, 1)
-	c.Check(warnings[0].String(), check.Matches, `cannot find source ".*/id/42424242/ws-consumer/mount/consumer/plug" for "ws-consumer/consumer:plug"; created directory ".*"`)
+	c.Check(warnings[0].String(), check.Matches, `cannot find source ".*/id/42424242/ws/mount/consumer/plug" for "ws/consumer:plug"; created directory ".*"`)
 
 	repo := s.mgr.Repository()
-	ref, err := repo.Connected(s.prj.ProjectId, "ws-consumer", "consumer", "plug")
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
 	c.Assert(ref, check.HasLen, 1)
 	c.Assert(err, check.IsNil)
 
@@ -1068,12 +1553,8 @@ func (s *interfaceHandlersSuite) TestRemountWorksIfNeitherSourceExists(c *check.
 
 func (s *interfaceHandlersSuite) newDisconnectInterfacesChange(sdkName string) *state.Change {
 	t1 := s.state.NewTask("auto-disconnect", "...")
-	t1.Set("plug", sdk.PlugRef{
-		ProjectId: s.prj.ProjectId, Workshop: "ws-consumer", Sdk: "consumer", Name: "plug"})
-	t1.Set("slot", sdk.PlugRef{
-		ProjectId: s.prj.ProjectId, Workshop: "ws-consumer", Sdk: "producer", Name: "slot"})
 	t1.Set("sdk", sdkName)
-	setWorkshopProject("ws-consumer", s.prj, t1)
+	setWorkshopProject("ws", s.prj, t1)
 
 	chg := s.state.NewChange("sample", "...")
 	chg.Set("user", "testuser")
@@ -1085,11 +1566,11 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectSuccess(c *check.C) {
 	// Setup
 	// Create an already installed workshop with a connected plug
 	repo := s.mgr.Repository()
-	s.launchWorkshop(c, "ws-consumer", []sdk.Meta{consumer, producer})
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumer, producer})
 
 	connRef := &interfaces.ConnRef{
-		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws-consumer", Sdk: "consumer", Name: "plug"},
-		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws-consumer", Sdk: "producer", Name: "slot"},
+		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "consumer", Name: "plug"},
+		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "producer", Name: "slot"},
 	}
 
 	s.state.Lock()
@@ -1117,8 +1598,8 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectSuccess(c *check.C) {
 	c.Check(chg.Err(), check.IsNil)
 
 	// Validate
-	c.Assert(repo.Plugs(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 0)
-	c.Assert(repo.Slots(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 0)
+	c.Assert(repo.Plugs(s.prj.ProjectId, "ws", "consumer"), check.HasLen, 0)
+	c.Assert(repo.Slots(s.prj.ProjectId, "ws", "consumer"), check.HasLen, 0)
 
 	var stateConns map[string]any
 	c.Assert(s.state.Get("conns", &stateConns), check.IsNil)
@@ -1128,7 +1609,7 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectSuccess(c *check.C) {
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 1)
 }
 
-func (s *interfaceHandlersSuite) TestAutoDisconnectSavesRemounts(c *check.C) {
+func (s *interfaceHandlersSuite) TestAutoDisconnectPreservesRemounts(c *check.C) {
 	// Setup
 	// Create an already installed workshop with a connected mount plug
 	source := c.MkDir()
@@ -1150,23 +1631,31 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectSavesRemounts(c *check.C) {
 	c.Assert(s.state.Get("conns", &stateConns), check.IsNil)
 	c.Assert(stateConns, check.HasLen, 0)
 
-	var attrs map[string]any
-	c.Assert(chg.Get("remounts", &attrs), check.IsNil)
-	c.Assert(attrs, check.HasLen, 1)
-	c.Assert(attrs["42424242/ws-consumer/consumer:plug 42424242/ws-consumer/system:mount"],
-		check.DeepEquals, source)
+	var preserved map[string]any
+	c.Assert(chg.Get("ws_conns", &preserved), check.IsNil)
+	c.Assert(preserved, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws/system:mount": map[string]any{
+			"auto":         true,
+			"interface":    "mount",
+			"slot-dynamic": map[string]any{"host-source": source},
+		},
+	})
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 2)
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 1)
 }
 
-func (s *interfaceHandlersSuite) TestAutoDisconnectIgnoresAutoConnections(c *check.C) {
+func (s *interfaceHandlersSuite) TestAutoDisconnectPreservesBinding(c *check.C) {
 	// Setup
-	// Create an already installed workshop with an auto-connected mount plug
-	s.launchRemountWorkshop(c, "")
+	repo := s.mgr.Repository()
+	wp := s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs, producer})
+	wp.File.Sdks[0].Plugs = map[string]workshop.PlugOrBind{
+		"bound": {Bind: &workshop.PlugRef{Sdk: "consumer", Name: "plug"}},
+	}
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
 
-	// Execute
 	s.state.Lock()
-	chg := s.newDisconnectInterfacesChange("consumer")
+	chg := s.newAutoconnectChange("consumer")
 	s.state.Unlock()
 
 	s.settle(c)
@@ -1175,14 +1664,79 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectIgnoresAutoConnections(c *che
 	defer s.state.Unlock()
 	c.Check(chg.Err(), check.IsNil)
 
+	refs, err := repo.Connections(s.prj.ProjectId, "ws", "consumer")
+	c.Check(refs, check.HasLen, 4)
+	c.Assert(err, check.IsNil)
+
+	var conns map[string]any
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": map[string]any{
+			"interface":   "mock-network",
+			"auto":        true,
+			"plug-static": map[string]any{"attribute": "one"},
+		},
+		"42424242/ws/consumer:plug2 42424242/ws/producer:slot": map[string]any{
+			"interface":   "mock-network",
+			"auto":        true,
+			"plug-static": map[string]any{"attribute": "two"},
+		},
+		"42424242/ws/consumer:plug3 42424242/ws/producer:slot": map[string]any{
+			"interface":   "mock-network",
+			"auto":        true,
+			"plug-static": map[string]any{"attribute": "three"},
+		},
+		"42424242/ws/consumer:bound 42424242/ws/producer:slot": map[string]any{
+			"interface":    "mock-network",
+			"auto":         true,
+			"plug-static":  map[string]any{"attribute": "one"},
+			"plug-dynamic": map[string]any{"bind": "42424242/ws/consumer:plug 42424242/ws/producer:slot"},
+		},
+	})
+
+	c.Assert(s.secBackend.SetupCalls, check.HasLen, 2)
+	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 0)
+
+	// Execute
+	chg = s.newDisconnectInterfacesChange("consumer")
+
+	s.state.Unlock()
+	s.settle(c)
+	s.state.Lock()
+
+	c.Assert(chg.Err(), check.IsNil)
+
 	// Validate
+	refs, err = repo.Connections(s.prj.ProjectId, "ws", "consumer")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
 	var stateConns map[string]any
 	c.Assert(s.state.Get("conns", &stateConns), check.IsNil)
 	c.Assert(stateConns, check.HasLen, 0)
 
-	var attrs map[string]any
-	c.Assert(chg.Get("remounts", &attrs), check.NotNil)
-	c.Assert(s.secBackend.SetupCalls, check.HasLen, 2)
+	var preserved map[string]any
+	c.Assert(chg.Get("ws_conns", &preserved), check.IsNil)
+	c.Assert(preserved, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"auto":      true,
+		},
+		"42424242/ws/consumer:plug2 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"auto":      true,
+		},
+		"42424242/ws/consumer:plug3 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"auto":      true,
+		},
+		"42424242/ws/consumer:bound 42424242/ws/producer:slot": map[string]any{
+			"interface":    "mock-network",
+			"auto":         true,
+			"plug-dynamic": map[string]any{"bind": "42424242/ws/consumer:plug 42424242/ws/producer:slot"},
+		},
+	})
+	c.Assert(s.secBackend.SetupCalls, check.HasLen, 10)
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 1)
 }
 
@@ -1205,8 +1759,9 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectDisconnected(c *check.C) {
 	c.Check(chg.Err(), check.IsNil)
 
 	// Validate
-	c.Assert(repo.Plugs(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 0)
-	c.Assert(repo.Slots(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 0)
+	refs, err := repo.Connections(s.prj.ProjectId, "ws", "consumer")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
 
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 0)
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 1)
@@ -1233,8 +1788,9 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectNoSdkProfile(c *check.C) {
 	c.Check(chg.Err(), check.IsNil)
 
 	// Validate
-	c.Assert(repo.Plugs(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 0)
-	c.Assert(repo.Slots(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 0)
+	refs, err := repo.Connections(s.prj.ProjectId, "ws", "consumer")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
 
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 0)
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 1)
@@ -1252,12 +1808,12 @@ func (s *interfaceHandlersSuite) TestUndoAutoDisconnect(c *check.C) {
 	// Setup
 	repo := s.mgr.Repository()
 	s.launchWorkshop(c, "ws-consumer", []sdk.Meta{consumer, producer})
-	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws-consumer")), check.IsNil)
-	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws-consumer")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
 
 	connRef := &interfaces.ConnRef{
-		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws-consumer", Sdk: "consumer", Name: "plug"},
-		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws-consumer", Sdk: "producer", Name: "slot"},
+		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "consumer", Name: "plug"},
+		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "producer", Name: "slot"},
 	}
 
 	s.state.Lock()
@@ -1285,8 +1841,8 @@ func (s *interfaceHandlersSuite) TestUndoAutoDisconnect(c *check.C) {
 	c.Check(chg.Err(), check.NotNil)
 
 	// Validate
-	c.Assert(repo.Plugs(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 1)
-	c.Assert(repo.Slots(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 0)
+	c.Assert(repo.Plugs(s.prj.ProjectId, "ws", "consumer"), check.HasLen, 1)
+	c.Assert(repo.Slots(s.prj.ProjectId, "ws", "consumer"), check.HasLen, 0)
 
 	var stateConns map[string]any
 	c.Assert(s.state.Get("conns", &stateConns), check.IsNil)
@@ -1299,13 +1855,13 @@ func (s *interfaceHandlersSuite) TestUndoAutoDisconnect(c *check.C) {
 func (s *interfaceHandlersSuite) TestUndoAutoDisconnectManualRestored(c *check.C) {
 	// Setup
 	repo := s.mgr.Repository()
-	s.launchWorkshop(c, "ws-consumer", []sdk.Meta{consumer, producer})
-	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws-consumer")), check.IsNil)
-	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws-consumer")), check.IsNil)
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumer, producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
 
 	connRef := &interfaces.ConnRef{
-		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws-consumer", Sdk: "consumer", Name: "plug"},
-		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws-consumer", Sdk: "producer", Name: "slot"},
+		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "consumer", Name: "plug"},
+		SlotRef: sdk.SlotRef{ProjectId: "42424242", Workshop: "ws", Sdk: "producer", Name: "slot"},
 	}
 
 	s.state.Lock()
@@ -1332,8 +1888,8 @@ func (s *interfaceHandlersSuite) TestUndoAutoDisconnectManualRestored(c *check.C
 	c.Check(chg.Err(), check.NotNil)
 
 	// Validate
-	c.Assert(repo.Plugs(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 1)
-	c.Assert(repo.Slots(s.prj.ProjectId, "ws-consumer", "consumer"), check.HasLen, 0)
+	c.Assert(repo.Plugs(s.prj.ProjectId, "ws", "consumer"), check.HasLen, 1)
+	c.Assert(repo.Slots(s.prj.ProjectId, "ws", "consumer"), check.HasLen, 0)
 
 	var stateConns map[string]any
 	c.Assert(s.state.Get("conns", &stateConns), check.IsNil)

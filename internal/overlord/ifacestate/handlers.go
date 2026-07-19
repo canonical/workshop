@@ -101,62 +101,87 @@ func (m *InterfaceManager) doAutoConnect(task *state.Task, tomb *tomb.Tomb) (err
 	chg := task.Change()
 	// If auto-connect is executed during refresh, chances are, that there are
 	// SDKs that are going to be reinstalled without any changes to their
-	// mount interface plugs. In this case, their 'source' directories must be
-	// set to how it was in the previous workshop instance as some of those
-	// plugs may have been remounted with `workshop remount`. To preserve that,
-	// we store the mount interface connection's 'source' directories when the
-	// old workshop/SDK is removed (see the 'disconnect' task handler) and check
-	// if any of those are still relevant for the new workshop.
-	var remounts map[string]string
-	if err := chg.Get("remounts", &remounts); err != nil && !errors.Is(err, state.ErrNoState) {
+	// plugs. In this case, we should reconnect the manual connections that
+	// existed before the refresh, and preserve attributes for existing auto
+	// connections. In particular, the 'host-source' for mount slots must be
+	// preserved as some may have been remounted with `workshop remount`. The
+	// old connections are stored in the refresh Change when the old SDK's
+	// plugs and slots are disconnected.
+	preserved, err := handlersetup.WorkshopPreservedConns(chg, w)
+	if err != nil {
 		return err
 	}
 
-	return m.connectAuto(task, wp, info, remounts)
+	return m.connectAuto(task, wp, info, preserved)
 }
 
-// Returns mount interface connection IDs of the SDK and their corresponding
-// plug's dynamic attributes.
-func (m *InterfaceManager) remountSources(projectId, w, s string) map[string]string {
-	// [ref.ID]source
-	var candidates = make(map[string]string)
+func (m *InterfaceManager) preserveConns(st *state.State, chg *state.Change, projectId, w, s string) error {
 	refs, err := m.repo.Connections(projectId, w, s)
 	if err != nil {
+		return err
+	}
+	if len(refs) == 0 {
 		return nil
 	}
 
+	conns, err := getConns(st)
+	if err != nil {
+		return err
+	}
+
+	preserved, err := handlersetup.WorkshopPreservedConns(chg, w)
+	if err != nil {
+		return err
+	}
+	if preserved == nil {
+		preserved = make(map[string]schema.PreservedConn, len(refs))
+	}
+
+	changed := false
 	for _, cref := range refs {
-		conn, err := m.repo.Connection(cref)
-		if err != nil {
+		if _, ok := preserved[cref.ID()]; ok {
+			// Another SDK already preserved it.
 			continue
 		}
-		if conn.Interface() == "mount" {
-			attrs := conn.Slot.DynamicAttrs()
-			if attrs["host-source"] != nil {
-				candidates[cref.ID()] = attrs["host-source"].(string)
-			}
+		state := conns[cref.ID()]
+		if state == nil {
+			continue
 		}
+		preserved[cref.ID()] = schema.PreservedConn{
+			Auto:             state.Auto,
+			Interface:        state.Interface,
+			DynamicPlugAttrs: state.DynamicPlugAttrs,
+			DynamicSlotAttrs: state.DynamicSlotAttrs,
+		}
+		changed = true
 	}
-	return candidates
+
+	if changed {
+		chg.Set(handlersetup.WorkshopPreservedConnsKey(w), preserved)
+	}
+	return nil
 }
 
-func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sdk.Info, refs []*interfaces.ConnRef, plugDynamic, slotDynamic map[string]map[string]any) *state.TaskSet {
-
+func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sdk.Info, refs []*interfaces.ConnRef, attrs map[string]schema.PreservedConn) *state.TaskSet {
 	connectTs := state.NewTaskSet()
 	var affected = map[sdk.Ref]bool{}
 	for _, ref := range refs {
-		connect := m.state.NewTask("connect", fmt.Sprintf("Connect %q to %q", ref.PlugRef.ShortRef(), ref.SlotRef.ShortRef()))
+		action := "Reconnect"
+		if attrs[ref.ID()].Auto {
+			action = "Connect"
+		}
+		connect := m.state.NewTask("connect", fmt.Sprintf("%s %q to %q", action, ref.PlugRef.ShortRef(), ref.SlotRef.ShortRef()))
 
 		connect.Set("plug", ref.PlugRef)
 		connect.Set("slot", ref.SlotRef)
-		connect.Set("auto", true)
+		connect.Set("auto", attrs[ref.ID()].Auto)
 		connect.Set("delayed-setup-profile", true)
 
-		if plugDynamic != nil {
-			connect.Set("plug-dynamic", plugDynamic[ref.ID()])
+		if attrs[ref.ID()].DynamicPlugAttrs != nil {
+			connect.Set("plug-dynamic", attrs[ref.ID()].DynamicPlugAttrs)
 		}
-		if slotDynamic != nil {
-			connect.Set("slot-dynamic", slotDynamic[ref.ID()])
+		if attrs[ref.ID()].DynamicSlotAttrs != nil {
+			connect.Set("slot-dynamic", attrs[ref.ID()].DynamicSlotAttrs)
 		}
 		connectTs.AddTask(connect)
 
@@ -195,18 +220,61 @@ func workshopConns(wp *workshop.Workshop) []interfaces.ConnRef {
 	return conns
 }
 
-func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, info *sdk.Info, remounts map[string]string) error {
+func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, info *sdk.Info, preserved map[string]schema.PreservedConn) error {
 	conns, err := getConns(m.state)
 	if err != nil {
 		return err
 	}
+	wconns := workshopConns(wp)
 
-	var connectRefs = []*interfaces.ConnRef{}
-	var wconns = workshopConns(wp)
-	var plugDynamic = make(map[string]map[string]any)
-	var slotDynamic = make(map[string]map[string]any)
+	connectRefs := []*interfaces.ConnRef{}
+	connectAttrs := map[string]schema.PreservedConn{}
+
+	planConnect := func(iface string, connRef *interfaces.ConnRef, slaves []sdk.PlugRef) {
+		attrs := preserved[connRef.ID()]
+		if attrs.Interface == iface {
+			mconn, bound := attrs.DynamicPlugAttrs["bind"].(string)
+			if bound {
+				mattrs, ok := preserved[mconn]
+				if ok {
+					attrs = mattrs
+				} else {
+					logger.Noticef("On connectAuto: plug %q was bound but connection %q not preserved", connRef.PlugRef, mconn)
+					attrs = schema.PreservedConn{Auto: attrs.Auto}
+				}
+			}
+		} else {
+			attrs = schema.PreservedConn{Auto: true}
+		}
+
+		slotRef := connRef.SlotRef
+		for _, slave := range slaves {
+			slref := &interfaces.ConnRef{PlugRef: slave, SlotRef: slotRef}
+			if _, ok := conns[slref.ID()]; ok {
+				continue
+			}
+			connectRefs = append(connectRefs, slref)
+			// save associated binds as a dynamic attribute.
+			connectAttrs[slref.ID()] = schema.PreservedConn{
+				Auto:             attrs.Auto,
+				DynamicPlugAttrs: map[string]any{"bind": connRef.ID()},
+			}
+		}
+
+		if _, ok := conns[connRef.ID()]; ok {
+			// Suggested connection already exist (or has Undesired flag
+			// set) so don't clobber it. NOTE: we don't log anything here as
+			// this is a normal and common condition.
+			return
+		}
+		connectRefs = append(connectRefs, connRef)
+		connectAttrs[connRef.ID()] = attrs
+	}
 
 	for _, plug := range info.Plugs {
+		candidates := m.repo.AutoConnectCandidateSlots(info.ProjectId, info.Workshop,
+			info.Name, plug.Name, autoConnectChecker(wconns))
+
 		ref := plug.Ref()
 		master, slaves := MaybeBound(wp, ref)
 		if master != ref {
@@ -215,42 +283,9 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 			continue
 		}
 
-		candidates := m.repo.AutoConnectCandidateSlots(info.ProjectId, info.Workshop,
-			info.Name, plug.Name, autoConnectChecker(wconns))
-
 		for _, slot := range candidates {
 			connRef := interfaces.NewConnRef(plug, slot)
-			if slotDynamic[connRef.ID()] == nil {
-				slotDynamic[connRef.ID()] = make(map[string]any)
-			}
-
-			// remounts may be not nil when a previously existing mount
-			// interface connection (e.g. pre-refresh) needs to be recreated
-			// without changes to its 'source' attribute in the new workshop
-			// (given the new workshop also has an SDK with exactly the same
-			// plug; the target directory may change in the new workshop).
-			if src, ok := remounts[connRef.ID()]; ok {
-				slotDynamic[connRef.ID()]["host-source"] = src
-			}
-
-			slotRef := slot.Ref()
-			// save associated binds as a dynamic attribute
-			for _, slave := range slaves {
-				slref := &interfaces.ConnRef{PlugRef: slave, SlotRef: slotRef}
-				if _, ok := conns[slref.ID()]; !ok {
-					connectRefs = append(connectRefs, slref)
-					plugDynamic[slref.ID()] = make(map[string]any)
-					plugDynamic[slref.ID()]["bind"] = connRef.ID()
-				}
-			}
-
-			if _, ok := conns[connRef.ID()]; ok {
-				// Suggested connection already exist (or has Undesired flag
-				// set) so don't clobber it. NOTE: we don't log anything here as
-				// this is a normal and common condition.
-				continue
-			}
-			connectRefs = append(connectRefs, connRef)
+			planConnect(plug.Interface, connRef, slaves)
 		}
 	}
 
@@ -268,38 +303,46 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 			}
 
 			connRef := interfaces.NewConnRef(plug, slot)
-			if slotDynamic[connRef.ID()] == nil {
-				slotDynamic[connRef.ID()] = make(map[string]any)
-			}
-
-			// remounts may be not nil when a previously existing mount
-			// interface connection (e.g. pre-refresh) needs to be recreated
-			// without changes to its 'source' attribute in the new workshop
-			// (given the new workshop also has an SDK with exactly the same
-			// plug; the target directory may change in the new workshop).
-			if src, ok := remounts[connRef.ID()]; ok {
-				slotDynamic[connRef.ID()]["host-source"] = src
-			}
-
-			slotRef := slot.Ref()
-			// save associated binds as a dynamic attribute
-			for _, slave := range slaves {
-				slref := &interfaces.ConnRef{PlugRef: slave, SlotRef: slotRef}
-				if _, ok := conns[slref.ID()]; !ok {
-					connectRefs = append(connectRefs, slref)
-					plugDynamic[slref.ID()] = make(map[string]any)
-					plugDynamic[slref.ID()]["bind"] = connRef.ID()
-				}
-			}
-
-			if _, ok := conns[connRef.ID()]; ok {
-				// Suggested connection already exist (or has Undesired flag
-				// set) so don't clobber it. NOTE: we don't log anything here as
-				// this is a normal and common condition.
+			if _, ok := connectAttrs[connRef.ID()]; ok {
+				// Already handled above.
 				continue
 			}
-			connectRefs = append(connectRefs, connRef)
+			planConnect(plug.Interface, connRef, slaves)
 		}
+	}
+
+	for id, attrs := range preserved {
+		if _, ok := connectAttrs[id]; ok || attrs.Auto {
+			// Either already handled above, or the new policy prevents it.
+			continue
+		}
+
+		connRef, err := interfaces.ParseConnRef(id)
+		if err != nil {
+			return err
+		}
+		plugRef, slotRef := connRef.PlugRef, connRef.SlotRef
+		if plugRef.Sdk != info.Name && slotRef.Sdk != info.Name {
+			continue
+		}
+
+		plug := m.repo.Plug(plugRef.ProjectId, plugRef.Workshop, plugRef.Sdk, plugRef.Name)
+		slot := m.repo.Slot(slotRef.ProjectId, slotRef.Workshop, slotRef.Sdk, slotRef.Name)
+		if plug == nil || slot == nil || plug.Interface != attrs.Interface || slot.Interface != attrs.Interface {
+			continue
+		}
+
+		master, slaves := MaybeBound(wp, plugRef)
+		if master != plugRef {
+			// the plug is bound to, the decision to reconnect (and attributes)
+			// are taken from its master. If the master was manually connected,
+			// its connection will be setup together with all bound plugs.
+			// Otherwise, the bound plugs remain disconnected. In both cases we
+			// discard the old attributes of the bound plug (except "bind").
+			continue
+		}
+
+		planConnect(attrs.Interface, connRef, slaves)
 	}
 
 	// Sort connections by their ID to ensure deterministic order of connection tasks creation.
@@ -307,12 +350,7 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		return strings.Compare(a.ID(), b.ID())
 	})
 
-	// Remove duplicates: keep only first occurrence of each ID
-	connectRefs = slices.CompactFunc(connectRefs, func(a, b *interfaces.ConnRef) bool {
-		return a.ID() == b.ID()
-	})
-
-	ts := m.batchAutoConnectTasks(wp, info, connectRefs, plugDynamic, slotDynamic)
+	ts := m.batchAutoConnectTasks(wp, info, connectRefs, connectAttrs)
 	handlersetup.InjectTasks(task, ts)
 	m.state.EnsureBefore(0)
 	task.SetStatus(state.DoneStatus)
@@ -369,21 +407,9 @@ func (m *InterfaceManager) doDisconnectInterfaces(task *state.Task, tomb *tomb.T
 		return err
 	}
 
-	// Save 'source' attributes for the mount interface connections as some of
-	// them may have been remounted to a non-default locations, so these can be
-	// set after refresh for this SDK.
-	cattrs := m.remountSources(project.ProjectId, w, s)
-
-	if len(cattrs) > 0 {
-		chg := task.Change()
-		var remounts map[string]string
-		if err = chg.Get("remounts", &remounts); errors.Is(err, state.ErrNoState) {
-			remounts = make(map[string]string)
-		} else if err != nil {
-			return err
-		}
-		maps.Copy(remounts, cattrs)
-		chg.Set("remounts", remounts)
+	// Preserve connection state so it can be reconnected after refresh.
+	if err := m.preserveConns(st, task.Change(), project.ProjectId, w, s); err != nil {
+		return err
 	}
 
 	connections, err := m.repo.Connections(project.ProjectId, w, s)

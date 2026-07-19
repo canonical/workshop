@@ -5,19 +5,15 @@ prepare: |
 execute: |
   . "$TESTSLIB"/utils.sh
 
-  function check_original_binding() {
-    MATCH "mount      -                                          ws-bind/test-sdk-mount:jobs  -" < conns.log
-    MATCH "mount      ws-bind/test-sdk-mount:one                 ws-bind/system:mount         bind.2" < conns.log
-    MATCH "mount      ws-bind/test-sdk-mount:two                 ws-bind/system:mount         bind.5" < conns.log
-    MATCH "mount      ws-bind/test-sdk-multiple-plugs:one        ws-bind/system:mount         bind.2" < conns.log
-    MATCH "mount      ws-bind/test-sdk-multiple-plugs:two        ws-bind/system:mount         bind.5" < conns.log
-    MATCH "ssh-agent  ws-bind/test-sdk-multiple-plugs:ssh-agent  -                            bind.6" < conns.log
-    MATCH "ssh-agent  ws-bind/test-sdk-ssh-agent:ssh-agent       -                            bind.6" < conns.log
-  }
-
   echo "Check binding on launch"
   workshop_exec connections ws-bind > conns.log
-  check_original_binding
+  MATCH "mount      -                                          ws-bind/test-sdk-mount:jobs  -" < conns.log
+  MATCH "mount      ws-bind/test-sdk-mount:one                 ws-bind/system:mount         bind.2" < conns.log
+  MATCH "mount      ws-bind/test-sdk-mount:two                 ws-bind/system:mount         bind.5" < conns.log
+  MATCH "mount      ws-bind/test-sdk-multiple-plugs:one        ws-bind/system:mount         bind.2" < conns.log
+  MATCH "mount      ws-bind/test-sdk-multiple-plugs:two        ws-bind/system:mount         bind.5" < conns.log
+  MATCH "ssh-agent  ws-bind/test-sdk-multiple-plugs:ssh-agent  -                            bind.6" < conns.log
+  MATCH "ssh-agent  ws-bind/test-sdk-ssh-agent:ssh-agent       -                            bind.6" < conns.log
 
   echo "Check bound mount plugs use host directories of the plug they are bound to"
   workshop_exec info > mounts.log
@@ -47,7 +43,13 @@ execute: |
   sed -i -e "0,/stable/s/stable/edge/" workshop.yaml
   workshop_exec refresh
   workshop_exec connections ws-bind > conns.log
-  check_original_binding
+  MATCH "mount      -                                          ws-bind/test-sdk-mount:jobs  -" < conns.log
+  MATCH "mount      ws-bind/test-sdk-mount:one                 ws-bind/system:mount         bind.2" < conns.log
+  MATCH "mount      ws-bind/test-sdk-mount:two                 ws-bind/system:mount         manual,bind.5" < conns.log
+  MATCH "mount      ws-bind/test-sdk-multiple-plugs:one        ws-bind/system:mount         bind.2" < conns.log
+  MATCH "mount      ws-bind/test-sdk-multiple-plugs:two        ws-bind/system:mount         manual,bind.5" < conns.log
+  MATCH "ssh-agent  ws-bind/test-sdk-multiple-plugs:ssh-agent  -                            bind.6" < conns.log
+  MATCH "ssh-agent  ws-bind/test-sdk-ssh-agent:ssh-agent       -                            bind.6" < conns.log
 
   echo "Check a plug can be unbound"
   cat workshop.yaml | yq 'del(.sdks[2].plugs)' | sponge workshop.yaml

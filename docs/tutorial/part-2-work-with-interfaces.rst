@@ -152,13 +152,6 @@ to run Jupyter notebooks with the Ollama models:
      - name: jupyter
 
 
-.. code-block:: console
-
-   $ workshop refresh
-
-     "dev" refreshed
-
-
 .. @artefact tunnel interface
 
 Next, add the tunnel interface plug under the :samp:`system` SDK
@@ -185,27 +178,15 @@ to the host system at a port of your choice (here, :samp:`8989`):
 
 The slot we're going to connect this plug to comes from the SDK itself
 and is named :samp:`jupyter`,
-so you don't have to add it manually:
-
-.. code-block:: console
-   :emphasize-lines: 8
-
-   $ workshop connections --all
-
-     INTERFACE  PLUG                SLOT                      NOTES
-     gpu        dev/ollama:gpu      dev/system:gpu            -
-     mount      dev/jupyter:venv    dev/system:mount          -
-     mount      dev/ollama:models   dev/system:mount          -
-     tunnel     -                   dev/ollama:ollama-server  -
-     tunnel     dev/system:jupyter  dev/jupyter:jupyter       -
-
+so you don't have to add it manually.
 
 Refresh the workshop to enable the tunnel;
 |ws_markup| will auto-connect the plug to the slot by matching their names
 (the plug's name is also :samp:`jupyter`).
-Check the result using :command:`workshop info`:
+Check the result using :command:`workshop connections` or :command:`workshop info`:
 
 .. code-block:: console
+   :emphasize-lines: 24
 
    $ workshop refresh
 
@@ -222,6 +203,15 @@ Check the result using :command:`workshop info`:
              from:  127.0.0.1:8989/tcp
              to:    127.0.0.1:8888/tcp
      ...
+
+   $ workshop connections --all
+
+     INTERFACE  PLUG                SLOT                      NOTES
+     gpu        dev/ollama:gpu      dev/system:gpu            -
+     mount      dev/jupyter:venv    dev/system:mount          -
+     mount      dev/ollama:models   dev/system:mount          manual
+     tunnel     -                   dev/ollama:ollama-server  -
+     tunnel     dev/system:jupyter  dev/jupyter:jupyter       -
 
 
 Now, JupyterLab is available at the plug address:
@@ -298,7 +288,7 @@ instead of falling back to :samp:`dev/system:mount`:
      INTERFACE  PLUG                SLOT                      NOTES
      gpu        dev/ollama:gpu      dev/system:gpu            -
      mount      dev/jupyter:venv    dev/uv:venv               -
-     mount      dev/ollama:models   dev/system:mount          -
+     mount      dev/ollama:models   dev/system:mount          manual
      mount      dev/uv:cache        dev/system:mount          -
      tunnel     -                   dev/ollama:ollama-server  -
      tunnel     dev/system:jupyter  dev/jupyter:jupyter       -

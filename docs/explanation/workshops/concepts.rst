@@ -425,7 +425,7 @@ Connections across refresh and restore
 Interface connections fall into three observable categories,
 each treated differently when a workshop is refreshed or restored:
 
-- *Auto-connections* are established at launch
+- *Auto-connections* are established at launch and refresh
   from the SDK's auto-connect rules
   and from the :samp:`connections` section of the workshop definition.
 
@@ -449,32 +449,17 @@ by :command:`workshop refresh` and :command:`workshop restore`:
      - After :command:`workshop refresh`
      - After :command:`workshop restore`
 
-   * - Auto-connection still valid in the new definition
+   * - Connection still valid in the new definition
      - Re-established
      - Re-established
 
-   * - Auto-connection whose plug or slot is removed in the new definition
+   * - Connection whose plug or slot is removed in the new definition
      - Dropped
      - Not applicable; definition doesn't change
-
-   * - Manual runtime connection added with :command:`workshop connect`
-     - Dropped
-     - Dropped
 
    * - Manually disconnected auto-connection
      - Stays disconnected
      - Stays disconnected
-
-
-The practical consequence is that
-runtime use of :command:`workshop connect`
-should be reserved for short-lived experimentation:
-to make a connection that survives a refresh,
-add it to the :samp:`connections` section of the workshop definition.
-Conversely, a deliberate :command:`workshop disconnect`
-is preserved across refreshes and restores,
-so once a default auto-connection has been turned off,
-it stays off until explicitly reconnected.
 
 
 .. _exp_workshop_definition_actions:

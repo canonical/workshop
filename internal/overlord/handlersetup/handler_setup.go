@@ -27,6 +27,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/overlord/conflict"
+	"github.com/canonical/workshop/internal/overlord/ifacestate/schema"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
@@ -299,6 +300,20 @@ func workshopBaseOnly(change *state.Change, w string, age Age) (*workshop.Snapsh
 
 	snapshot := workshop.SdkSnapshot(format, image, nil)
 	return &snapshot, nil
+}
+
+func WorkshopPreservedConns(change *state.Change, w string) (map[string]schema.PreservedConn, error) {
+	var prev map[string]schema.PreservedConn
+	if err := change.Get(WorkshopPreservedConnsKey(w), &prev); errors.Is(err, state.ErrNoState) {
+		prev = nil
+	} else if err != nil {
+		return nil, fmt.Errorf("internal error: %q workshop previous connections not found (change ID: %s)", w, change.ID())
+	}
+	return prev, nil
+}
+
+func WorkshopPreservedConnsKey(w string) string {
+	return w + "_conns"
 }
 
 // SdkVolumeLastUsed returns the most recent Task of the given Change that
