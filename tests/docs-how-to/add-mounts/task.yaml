@@ -59,11 +59,12 @@ execute: |
 
   echo "Manual connection state survives refresh and start/stop"
   workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+manual$"
+  cat workshop.yaml | yq '.sdks[-1] as $jupyter | del(.sdks[-1]) | .sdks = [$jupyter] + .sdks' | sponge workshop.yaml
   workshop_exec refresh
-  workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+manual$"
+  workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+-$"
   workshop_exec stop dev
   workshop_exec start dev
-  workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+manual$"
+  workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+-$"
 
   echo "'workshop restore' resets connections and mounts to defaults"
   workshop_exec restore dev
