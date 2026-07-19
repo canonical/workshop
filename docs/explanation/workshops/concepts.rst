@@ -449,9 +449,13 @@ by :command:`workshop refresh` and :command:`workshop restore`:
      - After :command:`workshop refresh`
      - After :command:`workshop restore`
 
-   * - Connection still valid in the new definition
+   * - Auto-connection still valid in the new definition
      - Re-established
      - Re-established
+
+   * - Manual runtime connection still valid in the new definition
+     - Re-established
+     - Dropped
 
    * - Connection whose plug or slot is removed in the new definition
      - Dropped
@@ -459,7 +463,7 @@ by :command:`workshop refresh` and :command:`workshop restore`:
 
    * - Manually disconnected auto-connection
      - Stays disconnected
-     - Stays disconnected
+     - Re-established
 
 
 .. _exp_workshop_definition_actions:

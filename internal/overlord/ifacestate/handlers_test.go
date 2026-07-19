@@ -80,6 +80,18 @@ slots:
 `,
 }
 
+var producerManySlots = sdk.Meta{
+	Setup: producer.Setup,
+	SdkYAML: `name: producer
+base: ubuntu@22.04
+slots:
+  slot:
+    interface: mock-network
+  slot-ssh:
+    interface: mock-ssh-agent
+`,
+}
+
 var consumer = sdk.Meta{
 	Setup: sdk.Setup{
 		Name:      "consumer",
@@ -1243,7 +1255,8 @@ slots:
 			"slot-dynamic": dynamic,
 		},
 	})
-	_, err := ifacestate.ReloadConnections(s.mgr, s.prj.ProjectId, "ws", "consumer")
+	workshopNames := map[string][]string{"42424242": {"ws"}}
+	_, err := ifacestate.ReloadConnections(s.mgr, workshopNames, s.prj.ProjectId, "ws", "consumer")
 	c.Assert(err, check.IsNil)
 	s.state.Unlock()
 }
@@ -1567,6 +1580,8 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectSuccess(c *check.C) {
 	// Create an already installed workshop with a connected plug
 	repo := s.mgr.Repository()
 	s.launchWorkshop(c, "ws", []sdk.Meta{consumer, producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
 
 	connRef := &interfaces.ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "consumer", Name: "plug"},
@@ -1582,7 +1597,8 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectSuccess(c *check.C) {
 			"plug-dynamic": map[string]any{"test-dynamic-attr": "new-dynamic-value"},
 		},
 	})
-	_, err := ifacestate.ReloadConnections(s.mgr, "", "", "")
+	workshopNames := map[string][]string{"42424242": {"ws"}}
+	_, err := ifacestate.ReloadConnections(s.mgr, workshopNames, "", "", "")
 	c.Assert(err, check.IsNil)
 	s.state.Unlock()
 
@@ -1598,14 +1614,15 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectSuccess(c *check.C) {
 	c.Check(chg.Err(), check.IsNil)
 
 	// Validate
-	c.Assert(repo.Plugs(s.prj.ProjectId, "ws", "consumer"), check.HasLen, 0)
-	c.Assert(repo.Slots(s.prj.ProjectId, "ws", "consumer"), check.HasLen, 0)
+	refs, err := repo.Connections(s.prj.ProjectId, "ws", "consumer")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
 
 	var stateConns map[string]any
 	c.Assert(s.state.Get("conns", &stateConns), check.IsNil)
 	c.Assert(stateConns, check.HasLen, 0)
 
-	c.Assert(s.secBackend.SetupCalls, check.HasLen, 0)
+	c.Assert(s.secBackend.SetupCalls, check.HasLen, 2)
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 1)
 }
 
@@ -1642,6 +1659,32 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectPreservesRemounts(c *check.C)
 	})
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 2)
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 1)
+}
+
+func (s *interfaceHandlersSuite) TestAutoDisconnectCanForgetRemounts(c *check.C) {
+	// Setup
+	// Create an already installed workshop with a connected mount plug
+	source := c.MkDir()
+	s.launchRemountWorkshop(c, source)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newDisconnectInterfacesChange("consumer")
+	chg.Tasks()[0].Set("forget", true)
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	var stateConns map[string]any
+	c.Assert(s.state.Get("conns", &stateConns), check.IsNil)
+	c.Assert(stateConns, check.HasLen, 0)
+
+	c.Check(chg.Has("ws_conns"), check.Equals, false)
 }
 
 func (s *interfaceHandlersSuite) TestAutoDisconnectPreservesBinding(c *check.C) {
@@ -1825,7 +1868,8 @@ func (s *interfaceHandlersSuite) TestUndoAutoDisconnect(c *check.C) {
 			"plug-dynamic": map[string]any{"test-dynamic-attr": "new-dynamic-value"},
 		},
 	})
-	_, err := ifacestate.ReloadConnections(s.mgr, "", "", "")
+	workshopNames := map[string][]string{"42424242": {"ws"}}
+	_, err := ifacestate.ReloadConnections(s.mgr, workshopNames, "", "", "")
 	c.Assert(err, check.IsNil)
 	s.state.Unlock()
 
@@ -1872,7 +1916,8 @@ func (s *interfaceHandlersSuite) TestUndoAutoDisconnectManualRestored(c *check.C
 			"plug-dynamic": map[string]any{"test-dynamic-attr": "new-dynamic-value"},
 		},
 	})
-	_, err := ifacestate.ReloadConnections(s.mgr, "", "", "")
+	workshopNames := map[string][]string{"42424242": {"ws"}}
+	_, err := ifacestate.ReloadConnections(s.mgr, workshopNames, "", "", "")
 	c.Assert(err, check.IsNil)
 	s.state.Unlock()
 
@@ -2604,6 +2649,226 @@ func (s *interfaceHandlersSuite) TestUndoDiscardConnsSuccess(c *check.C) {
 			Auto:      true,
 			Interface: "mock-network",
 			Undesired: true,
+		},
+	})
+}
+
+func (s *interfaceHandlersSuite) TestRestoreConnsSuccess(c *check.C) {
+	// Setup
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs, producerManySlots})
+	repo := s.mgr.Repository()
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producerManySlots.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	s.state.Lock()
+	s.state.Set("conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:missing 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:plug 42424242/ws/producer:missing": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:plug-ssh 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:plug2 42424242/ws/producer:slot-ssh": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:plug3 42424242/ws/producer:slot": map[string]any{
+			"auto":      true,
+			"interface": "mock-network",
+		},
+		"42424242/ws/consumer:bound 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+		},
+	})
+	s.state.Unlock()
+
+	// Execute
+	s.state.Lock()
+	chg := s.state.NewChange("sample", "...")
+	t1 := s.state.NewTask("discard-conns", "...")
+	t1.Set("sdk", "consumer")
+	t2 := s.state.NewTask("restore-conns", "...")
+	t2.Set("discard-conns-task", t1.ID())
+	t2.WaitFor(t1)
+	setWorkshopProject("ws", s.prj, t1, t2)
+	chg.Set("user", "testuser")
+	chg.AddTask(t1)
+	chg.AddTask(t2)
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	var conns map[string]*schema.ConnState
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Assert(conns, check.DeepEquals, map[string]*schema.ConnState{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": {
+			Interface: "mock-network",
+			Undesired: true,
+		},
+	})
+}
+
+func (s *interfaceHandlersSuite) TestRestoreConnsNewBinding(c *check.C) {
+	// Setup
+	wp := s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs, producer})
+	wp.File.Sdks[0].Plugs = map[string]workshop.PlugOrBind{
+		"bound": {Bind: &workshop.PlugRef{Sdk: "consumer", Name: "plug"}},
+	}
+	repo := s.mgr.Repository()
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	s.state.Lock()
+	s.state.Set("conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:bound 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+		},
+	})
+	s.state.Unlock()
+
+	// Execute
+	s.state.Lock()
+	chg := s.state.NewChange("sample", "...")
+	t1 := s.state.NewTask("discard-conns", "...")
+	t1.Set("sdk", "consumer")
+	t2 := s.state.NewTask("restore-conns", "...")
+	t2.Set("discard-conns-task", t1.ID())
+	t2.WaitFor(t1)
+	setWorkshopProject("ws", s.prj, t1, t2)
+	chg.Set("user", "testuser")
+	chg.AddTask(t1)
+	chg.AddTask(t2)
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	var conns map[string]*schema.ConnState
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Assert(conns, check.DeepEquals, map[string]*schema.ConnState{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": {
+			Interface: "mock-network",
+			Undesired: true,
+		},
+		"42424242/ws/consumer:bound 42424242/ws/producer:slot": {
+			Interface: "mock-network",
+			Undesired: true,
+		},
+	})
+}
+
+func (s *interfaceHandlersSuite) TestUndoRestoreConnsSuccess(c *check.C) {
+	// Setup
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs, producerManySlots})
+	repo := s.mgr.Repository()
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producerManySlots.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	s.state.Lock()
+	s.state.Set("conns", map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:missing 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:plug 42424242/ws/producer:missing": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:plug-ssh 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:plug2 42424242/ws/producer:slot-ssh": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+		"42424242/ws/consumer:plug3 42424242/ws/producer:slot": map[string]any{
+			"auto":      true,
+			"interface": "mock-network",
+		},
+		"42424242/ws/consumer:bound 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+		},
+	})
+	s.state.Unlock()
+
+	// Execute
+	s.state.Lock()
+	chg := s.state.NewChange("sample", "...")
+	t1 := s.state.NewTask("discard-conns", "...")
+	t1.Set("sdk", "consumer")
+	t2 := s.state.NewTask("restore-conns", "...")
+	t2.Set("discard-conns-task", t1.ID())
+	t2.WaitFor(t1)
+	terr := s.state.NewTask("error-trigger", "...")
+	terr.WaitFor(t2)
+	setWorkshopProject("ws", s.prj, t1, t2, terr)
+	chg.Set("user", "testuser")
+	chg.AddTask(t1)
+	chg.AddTask(t2)
+	chg.AddTask(terr)
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.ErrorMatches, "(?s).*error-trigger task.*")
+
+	// Validate
+	var conns map[string]*schema.ConnState
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Assert(conns, check.DeepEquals, map[string]*schema.ConnState{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": {
+			Interface: "mock-network",
+			Undesired: true,
+		},
+		"42424242/ws/consumer:missing 42424242/ws/producer:slot": {
+			Interface: "mock-network",
+			Undesired: true,
+		},
+		"42424242/ws/consumer:plug 42424242/ws/producer:missing": {
+			Interface: "mock-network",
+			Undesired: true,
+		},
+		"42424242/ws/consumer:plug-ssh 42424242/ws/producer:slot": {
+			Interface: "mock-network",
+			Undesired: true,
+		},
+		"42424242/ws/consumer:plug2 42424242/ws/producer:slot-ssh": {
+			Interface: "mock-network",
+			Undesired: true,
+		},
+		"42424242/ws/consumer:plug3 42424242/ws/producer:slot": {
+			Auto:      true,
+			Interface: "mock-network",
+		},
+		"42424242/ws/consumer:bound 42424242/ws/producer:slot": {
+			Interface: "mock-network",
 		},
 	})
 }

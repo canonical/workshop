@@ -2473,7 +2473,7 @@ func (s *apiSuite) TestRefreshRemoveSdk(c *check.C) {
 	s.ensureSnapshotsAfterCooldown(c, []string{"system", "test-sdk"}, []string{"test-sdk-2"})
 }
 
-func updateSdkStoreRev(name string, rev int, meta, digest string) func() {
+func updateSdkStoreRev(name string, rev int, meta, digest string) func() { //nolint:unparam // Call sites happen to use the same args currently.
 	oldrev := apiSuiteSdks[name]
 
 	newrev := oldrev
@@ -3562,6 +3562,140 @@ func (s *apiSuite) TestRefreshRestore(c *check.C) {
 	})
 
 	s.ensureSdkVolumesAfterCooldown(c, []string{systemVolume, "test-sdk-1", "test-sdk-2-1"})
+}
+
+func (s *apiSuite) TestRefreshRestoreForgetsConnections(c *check.C) {
+	s.daemon(c)
+	s.d.Overlord().Loop()
+	defer func() { _ = s.d.Overlord().Stop() }()
+	// Setup
+	s.createWFile(c, "manysdks", manysdks)
+	defer s.store.SetDownloadCallback(storeDownload(c))()
+	defer updateSdkStoreRev("test-sdk", 2, testsdk_r2, "fa5db9e2bc81f9d102707caef2a53b3c99b2b84dbad64cfe5a4d1a95971614d7294ba7b9c6f0477408c541a07ef0b567")()
+
+	requests := []*bytes.Buffer{
+		bytes.NewBufferString(`{"names":["manysdks"],"action":"launch"}`),
+	}
+	expected := []*expectedResp{
+		{
+			Type:    ResponseTypeAsync,
+			Status:  http.StatusAccepted,
+			Kind:    "launch",
+			Summary: `Launch "manysdks" workshop`,
+		},
+	}
+	s.runActionTest(c, requests, expected)
+
+	want := []expectedWorkshop{{
+		name: "manysdks",
+		base: "ubuntu@22.04",
+		sdks: []sdk.Setup{
+			{Name: sdk.System.String(), Source: sdk.SystemSource, Revision: system.SystemSdkRevision},
+			{Name: "test-sdk", PackageID: "t5tqUClfNeHiiOpvPvT29O0HkxeaXBOq", Channel: "latest/stable", Revision: sdk.R(2)},
+			{Name: "test-sdk-2", PackageID: "iCJybjjWd2n48hKoMdjGEIWwA3i2TmX7", Channel: "latest/stable", Revision: sdk.R(1)},
+		},
+		connections: []string{
+			"b8639dea/manysdks/test-sdk-2:photos b8639dea/manysdks/system:mount",
+			"b8639dea/manysdks/test-sdk-2:gpu b8639dea/manysdks/system:gpu",
+		},
+		plugs: []string{
+			"test-sdk:desktop",
+			"test-sdk:ssh-agent",
+			"test-sdk-2:photos",
+			"test-sdk-2:gpu",
+		},
+		slots: []string{
+			"test-sdk-2:data-slot",
+			"system:camera",
+			"system:custom-device",
+			"system:desktop",
+			"system:gpu",
+			"system:mount",
+			"system:ssh-agent",
+		},
+	}}
+	s.ensureWorkshops(c, want)
+
+	cmd := apiCmd("/v1/connections")
+	body := strings.NewReader(`{
+		"action":"connect",
+		"plugs":[{"project-id":"b8639dea","workshop":"manysdks","sdk":"test-sdk","plug":"ssh-agent"}],
+		"slots":[{"project-id":"b8639dea","workshop":"manysdks","sdk":"system","slot":"ssh-agent"}]
+	}`)
+	req, err := s.createProjectsRequest("POST", cmd.Path, body)
+	c.Assert(err, check.IsNil)
+	rsp := v1PostConnections(cmd, req, nil).(*resp)
+	st := s.d.state
+	st.Lock()
+	chg := st.Change(rsp.Change)
+	st.Unlock()
+	c.Assert(chg, check.NotNil)
+	<-chg.Ready()
+
+	body = strings.NewReader(`{
+		"action":"disconnect",
+		"plugs":[{"project-id":"b8639dea","workshop":"manysdks","sdk":"test-sdk-2","plug":"gpu"}],
+		"slots":[{"project-id":"b8639dea","workshop":"manysdks","sdk":"system","slot":"gpu"}]
+	}`)
+	req, err = s.createProjectsRequest("POST", cmd.Path, body)
+	c.Assert(err, check.IsNil)
+	rsp = v1PostConnections(cmd, req, nil).(*resp)
+	st.Lock()
+	chg = st.Change(rsp.Change)
+	st.Unlock()
+	c.Assert(chg, check.NotNil)
+	<-chg.Ready()
+
+	cmd = apiCmd("/v1/projects/{id}/workshops/{name}/mounts")
+	s.vars = map[string]string{"id": "b8639dea", "name": "manysdks"}
+	body = strings.NewReader(fmt.Sprintf(`{"action":"remount","plug":{"sdk":"test-sdk-2","plug":"photos"},"host-source":%q}`, c.MkDir()))
+	req, err = s.createProjectsRequest("POST", "/v1/projects/b8639dea/workshops/manysdks/mounts", body)
+	c.Assert(err, check.IsNil)
+	rsp = v1PostWorkshopMount(cmd, req, nil).(*resp)
+	st.Lock()
+	chg = st.Change(rsp.Change)
+	st.Unlock()
+	c.Assert(chg, check.NotNil)
+	<-chg.Ready()
+
+	want[0].connections = []string{
+		"b8639dea/manysdks/test-sdk:ssh-agent b8639dea/manysdks/system:ssh-agent",
+		"b8639dea/manysdks/test-sdk-2:photos b8639dea/manysdks/system:mount",
+	}
+	s.ensureWorkshops(c, want)
+
+	connRef, err := interfaces.ParseConnRef("b8639dea/manysdks/test-sdk-2:photos b8639dea/manysdks/system:mount")
+	c.Assert(err, check.IsNil)
+	repo := s.d.overlord.InterfaceManager().Repository()
+	conn, err := repo.Connection(connRef)
+	c.Assert(err, check.IsNil)
+	_, ok := conn.Slot.Lookup("host-source")
+	c.Check(ok, check.Equals, true)
+
+	requests = []*bytes.Buffer{
+		bytes.NewBufferString(`{"names":["manysdks"],"action":"refresh","options":{"mode":"transactional","refresh-option":"restore"}}`),
+	}
+	expected = []*expectedResp{
+		{
+			Type:    ResponseTypeAsync,
+			Status:  http.StatusAccepted,
+			Kind:    "refresh",
+			Summary: `Refresh "manysdks" workshop`,
+		},
+	}
+
+	s.runActionTest(c, requests, expected)
+
+	want[0].connections = []string{
+		"b8639dea/manysdks/test-sdk-2:photos b8639dea/manysdks/system:mount",
+		"b8639dea/manysdks/test-sdk-2:gpu b8639dea/manysdks/system:gpu",
+	}
+	s.ensureWorkshops(c, want)
+
+	conn, err = repo.Connection(connRef)
+	c.Assert(err, check.IsNil)
+	_, ok = conn.Slot.Lookup("host-source")
+	c.Check(ok, check.Equals, false)
 }
 
 func (s *apiSuite) TestRefreshBaseChange(c *check.C) {

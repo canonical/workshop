@@ -68,4 +68,4 @@ execute: |
 
   echo "'workshop restore' resets connections and mounts to defaults"
   workshop_exec restore dev
-  workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+manual$"
+  workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+-$"

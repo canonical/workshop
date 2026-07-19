@@ -407,9 +407,17 @@ func (m *InterfaceManager) doDisconnectInterfaces(task *state.Task, tomb *tomb.T
 		return err
 	}
 
-	// Preserve connection state so it can be reconnected after refresh.
-	if err := m.preserveConns(st, task.Change(), project.ProjectId, w, s); err != nil {
+	// Preserve connection state for refresh (but not restore or remove).
+	var forget bool
+	if err := task.Get("forget", &forget); errors.Is(err, state.ErrNoState) {
+		forget = false
+	} else if err != nil {
 		return err
+	}
+	if !forget {
+		if err := m.preserveConns(st, task.Change(), project.ProjectId, w, s); err != nil {
+			return err
+		}
 	}
 
 	connections, err := m.repo.Connections(project.ProjectId, w, s)
@@ -853,8 +861,10 @@ func (m *InterfaceManager) doDiscard(task *state.Task, tomb *tomb.Tomb) error {
 			delete(conns, id)
 		}
 	}
-	task.Set("removed", removed)
-	setConns(st, conns)
+	if len(removed) > 0 {
+		task.Set("removed", removed)
+		setConns(st, conns)
+	}
 
 	return nil
 }
@@ -865,9 +875,11 @@ func (m *InterfaceManager) undoDiscard(task *state.Task, tomb *tomb.Tomb) error 
 	defer st.Unlock()
 
 	var removed map[string]*schema.ConnState
-	err := task.Get("removed", &removed)
-	if err != nil && !errors.Is(err, state.ErrNoState) {
+	if err := task.Get("removed", &removed); err != nil && !errors.Is(err, state.ErrNoState) {
 		return err
+	}
+	if len(removed) == 0 {
+		return nil
 	}
 
 	conns, err := getConns(st)
@@ -880,6 +892,83 @@ func (m *InterfaceManager) undoDiscard(task *state.Task, tomb *tomb.Tomb) error 
 	}
 	setConns(st, conns)
 	task.Set("removed", nil)
+	return nil
+}
+
+// doRestoreConns restores previously discarded connections to the state,
+// provided that the plugs and slots still exist.
+func (m *InterfaceManager) doRestoreConns(task *state.Task, tomb *tomb.Tomb) error {
+	user, project, w, err := handlersetup.UserProjectWorkshop(task)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := handlersetup.BackendContext(tomb, user, project.ProjectId)
+	defer cancel()
+
+	wp, err := m.backend.Workshop(ctx, w)
+	if err != nil {
+		return err
+	}
+
+	st := task.State()
+	st.Lock()
+	defer st.Unlock()
+
+	var discardId string
+	if err := task.Get("discard-conns-task", &discardId); err != nil {
+		return err
+	}
+	discard := st.Task(discardId)
+	if discard == nil {
+		return errors.New("internal error: no corresponding discard-conns task found")
+	}
+
+	var removed map[string]*schema.ConnState
+	if err := discard.Get("removed", &removed); err != nil && !errors.Is(err, state.ErrNoState) {
+		return err
+	}
+
+	conns, err := getConns(st)
+	if err != nil {
+		return err
+	}
+
+	changed := false
+	for id, connState := range removed {
+		if !connState.Undesired {
+			continue
+		}
+
+		connRef, err := interfaces.ParseConnRef(id)
+		if err != nil {
+			continue
+		}
+		plugRef, slotRef := connRef.PlugRef, connRef.SlotRef
+
+		plug := m.repo.Plug(plugRef.ProjectId, plugRef.Workshop, plugRef.Sdk, plugRef.Name)
+		slot := m.repo.Slot(slotRef.ProjectId, slotRef.Workshop, slotRef.Sdk, slotRef.Name)
+		if plug == nil || slot == nil || plug.Interface != connState.Interface || slot.Interface != connState.Interface {
+			continue
+		}
+
+		master, slaves := MaybeBound(wp, plugRef)
+		if master != plugRef {
+			// the plug is bound to, the decision to remain disconnected is
+			// taken from its master.
+			continue
+		}
+
+		conns[id] = connState
+		for _, slave := range slaves {
+			slref := interfaces.ConnRef{PlugRef: slave, SlotRef: slotRef}
+			conns[slref.ID()] = connState
+		}
+		changed = true
+	}
+	if changed {
+		setConns(st, conns)
+	}
 	return nil
 }
 
