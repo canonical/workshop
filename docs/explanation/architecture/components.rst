@@ -337,27 +337,33 @@ providing isolated networking for workshop containers.
 
 :program:`workshopd` registers this bridge with :program:`systemd-resolved`
 as link-specific DNS
-and registers :samp:`wp` as a route-only search domain,
-so :ref:`workshop hostnames <exp_workshop_hostname>` resolve only through it.
-Each workshop receives a CNAME of the form :samp:`<WORKSHOP>.<PROJECT-ID>.wp`,
-plus a friendlier :samp:`<WORKSHOP>.<PROJECT>.wp` alias
-when the project directory name encodes to a valid DNS label.
+and registers :samp:`wp` as a routing-only domain,
+so :samp:`*.wp` lookups are directed to the bridge.
+Each running workshop registers a canonical name
+of the form :samp:`<WORKSHOP>-<PROJECT-ID>.wp`,
+and :program:`workshopd` adds two aliases that point to it:
+:samp:`<WORKSHOP>.<PROJECT-ID>.wp`,
+which also serves :samp:`<PROJECT-ID>.wp` as a search domain inside workshops
+so a bare :samp:`<WORKSHOP>` resolves,
+and a friendlier :samp:`<WORKSHOP>.<PROJECT>.wp`
+when the project directory name encodes to a valid, unused DNS label.
+Otherwise the workshop keeps the ID-based forms;
+see :ref:`exp_workshop_hostname` for the fallback behavior.
 
 Resolving a hostname isn't the same as trusting what you connect to:
 DNS resolution over :samp:`workshopbr0` is unauthenticated
 and scoped to the bridge network.
-For interactive access, each host also maintains
+For interactive access, |ws_markup| also maintains
 a per-user SSH certificate authority
 that signs a host certificate for every workshop
-and a user certificate for connecting to them,
+and a user certificate for connecting to them.
+Clients trust any :samp:`*.wp` host key signed by this authority,
 so tools such as :program:`ssh` and VS Code Remote-SSH
-can verify a workshop by its hostname
-without a manual first-connection prompt.
-This is a separate mechanism from the mutual TLS material
-used for external LXD image servers,
-described in the LXD backend section above;
-see the :doc:`Security policy </security>`
-for the full cryptography inventory.
+connect without a first-connection host-key prompt;
+the trust covers the :samp:`*.wp` namespace as a whole
+rather than binding to an individual hostname.
+See the :doc:`Security policy </security>`
+for the SSH trust model in full.
 
 
 Diagrams

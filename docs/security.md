@@ -116,8 +116,10 @@ User‑exposed crypto and providers
 - SSH agent interface: forwards the host's `ssh-agent` into the workshop via an LXD proxy device, 
 allowing tools inside the container to authenticate without copying private keys.
 - SSH host trust: a per-user Ed25519 certificate authority signs a host certificate for every
-workshop and a user certificate for connecting to it, so SSH clients trust a workshop's `*.wp`
-hostname without a manual host-key prompt.
+workshop and a user certificate for connecting to them, so SSH clients trust any CA-signed `*.wp`
+host key without a manual host-key prompt (the trust covers the `*.wp` namespace, not an
+individual hostname). Private keys are stored with owner-only permissions (`0600`), the CA key
+owned by the daemon and the user key by the target host user.
 - Algorithms: follow host OpenSSH (commonly Ed25519, ECDSA P‑256/P‑384/P‑521, RSA 2048/3072/4096).
 - Providers: Go standard library (`crypto/tls`, `crypto/x509`, `crypto/rand`), 
 Canonical LXD Go client (TLS handling), system CA store,

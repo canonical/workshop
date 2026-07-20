@@ -257,28 +257,27 @@ reach it directly from frontend:
 
 .. code-block:: console
 
-   $ workshop exec frontend -- curl backend:8080
+   $ workshop exec frontend -- curl http://backend:8080
 
-Name-based reachability is plain, unauthenticated DNS
-over the shared :samp:`workshopbr0` bridge.
+.. note::
+
+   Direct access works only if the service listens on all interfaces
+   (for example, :samp:`0.0.0.0:8080`) rather than only on loopback.
+   Any device that can reach the :samp:`workshopbr0` bridge
+   and knows the workshop's IP address can then connect too,
+   so restrict such a service with a firewall if it isn't meant to be shared.
 
 From outside the project,
-use the full hostname shown by :command:`workshop info backend`
+use the full hostname shown by :command:`workshop info backend`
 (usually :samp:`backend.<PROJECT>.wp`, otherwise :samp:`backend.<PROJECT-ID>.wp`).
+For SSH-based tools,
 |ws_markup| also generates an OpenSSH configuration on the host
-that trusts workshops by their hostname.
-Include it in your host user's :file:`~/.ssh/config`,
-replacing :samp:`<UID>` with your host user ID
-(find it with :command:`id -u`):
-
-.. code-block:: text
-   :caption: ~/.ssh/config
-
-   Include /var/snap/workshop/current/ssh/<UID>/config
-
-
-With that in place, SSH-based tools can connect to a workshop by its hostname
-without a manual host-key prompt.
+that trusts workshop host keys signed by its per-user authority
+and authorizes your user to connect,
+so tools such as :program:`ssh` and VS Code Remote-SSH
+reach a workshop by its hostname
+without a host-key or password prompt.
+See :ref:`how_vscode_connect_remote` for a worked example.
 
 Use hostname-based access for anything TCP or HTTP
 between workshops in the *same* project;

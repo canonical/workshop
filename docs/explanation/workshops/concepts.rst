@@ -89,9 +89,9 @@ and workshops in the same project can reach each other
 by the short form :samp:`<WORKSHOP>` alone,
 without the project part.
 
-:command:`workshop launch` and :command:`workshop refresh`
-assign and update a workshop's hostname;
-:command:`workshop info` always shows the full form
+A workshop's hostname is assigned when it starts,
+including as part of :command:`workshop launch` and :command:`workshop refresh`;
+:command:`workshop info` shows the full form for a running workshop
 in its :samp:`hostname:` field,
 while the interactive shell prompt shows the shorter,
 bare workshop name instead,
