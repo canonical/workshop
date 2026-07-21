@@ -249,8 +249,47 @@ Cross-workshop networking
 
 .. @artefact tunnel interface
 
+Workshops in the same project can reach each other directly by hostname.
+For instance, given a running :samp:`backend` workshop,
+the :samp:`frontend` counterpart can reach it by the short form :samp:`backend`.
+If backend exposes an API on port 8080,
+reach it directly from frontend:
+
+.. code-block:: console
+
+   $ workshop exec frontend -- curl http://backend:8080
+
+.. note::
+
+   Direct access works only if the service listens on all interfaces
+   (for example, :samp:`0.0.0.0:8080`) rather than only on loopback.
+   Any device that can reach the :samp:`workshopbr0` bridge
+   can resolve the workshop's :samp:`*.wp` hostname through it and connect too,
+   so restrict such a service with a firewall if it isn't meant to be shared.
+
+From outside the project,
+use the full hostname shown by :command:`workshop info backend`
+(usually :samp:`backend.<PROJECT>.wp`, otherwise :samp:`backend.<PROJECT-ID>.wp`).
+For SSH-based tools,
+|ws_markup| also generates an OpenSSH configuration on the host
+that trusts workshop host keys signed by its per-user authority
+and authorizes your user to connect,
+so tools such as :program:`ssh` and VS Code Remote-SSH
+reach a workshop by its hostname
+without a host-key or password prompt.
+See :ref:`how_vscode_connect_remote` for a worked example.
+
+Use hostname-based access for anything TCP or HTTP
+between workshops in the *same* project;
+it needs no setup.
+Use the tunnel interface instead
+to expose a service to the host itself,
+to reach a workshop in a *different* project,
+or when you need :command:`workshop connect`-level control
+over who can reach the port.
+
 You cannot connect a plug in one workshop to a slot in another;
-:command:`workshop connect` rejects such attempts.
+:command:`workshop connect` rejects such attempts.
 However, all workshops on the same machine share a common host,
 and the tunnel interface can bridge through it.
 
@@ -347,11 +386,13 @@ See also
 
 Explanation:
 
+- :ref:`exp_arch_network`
 - :ref:`exp_in_project_sdk`
 - :ref:`exp_multi_workshop_patterns`
 - :ref:`exp_projects`
 - :ref:`exp_tunnel_interface`
 - :ref:`exp_workshop_definition`
+- :ref:`exp_workshop_hostname`
 
 How-to guides:
 
@@ -359,6 +400,7 @@ How-to guides:
 - :ref:`how_forward_ports`
 - :ref:`how_git_workshops`
 - :ref:`how_move_projects`
+- :ref:`how_vscode_connect_remote`
 
 Reference:
 

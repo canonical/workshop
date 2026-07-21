@@ -126,14 +126,14 @@ This means the host's display socket (Wayland, X11 or both) is available inside 
 .. code-block:: console
 
    $ workshop shell ws
-   workshop@ws-8584e571$ ls $XDG_RUNTIME_DIR | grep wayland
+   workshop@ws:/project$ ls $XDG_RUNTIME_DIR | grep wayland
 
      wayland-1
 
 .. code-block:: console
 
    $ workshop shell ws
-   workshop@ws-8584e571$ ls /tmp/.X11-unix
+   workshop@ws:/project$ ls /tmp/.X11-unix
 
      X0
 

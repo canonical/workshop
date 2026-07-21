@@ -24,6 +24,7 @@ exclude = [
     # Local references — not reachable from the link checker
     "^http://localhost",
     "^http://127\\.0\\.0\\.1",
+    "^http://backend:",  # example workshop hostname in the cross-workshop networking how-to
     "^file://",
 
     # Templated URLs in code samples — `$VAR`, `${VAR}`, or URL-encoded `$%7BVAR%7D`

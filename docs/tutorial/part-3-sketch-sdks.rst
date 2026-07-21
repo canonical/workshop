@@ -187,8 +187,8 @@ and using the :program:`jupyter console` command enabled by the sketch SDK:
 .. code-block:: console
 
    $ workshop shell
-   workshop@dev-6b79e889:/project$ source /var/lib/workshop/sdk/jupyter/venv/bin/activate
-   (jupyter-venv) workshop@dev-6b79e889:/project$ jupyter console
+   workshop@dev:/project$ source /var/lib/workshop/sdk/jupyter/venv/bin/activate
+   (jupyter-venv) workshop@dev:/project$ jupyter console
 
      Jupyter console 6.6.3
      ...

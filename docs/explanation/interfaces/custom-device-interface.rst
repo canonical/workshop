@@ -143,7 +143,7 @@ are available inside the workshop:
 .. code-block:: console
 
    $ workshop shell ws
-   workshop@ws-8584e571$ ls /dev/input/
+   workshop@ws:/project$ ls /dev/input/
 
      event0  event1  mice
 

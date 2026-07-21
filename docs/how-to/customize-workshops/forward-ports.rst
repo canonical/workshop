@@ -55,7 +55,9 @@ or the tunnel will fail to activate.
 
 .. note::
 
-   |ws_markup| doesn't resolve hostnames, but supports the aliases
+   Tunnel endpoints don't resolve hostnames,
+   including workshop :samp:`*.wp` hostnames,
+   but support the aliases
    :samp:`localhost`, :samp:`ip6-localhost`, and :samp:`ip6-loopback`.
 
 
