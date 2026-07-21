@@ -80,8 +80,6 @@ func (m *InterfaceManager) Repository() *interfaces.Repository {
 type ConnectionState struct {
 	// Auto indicates whether the connection was established automatically
 	Auto bool
-	// ByGadget indicates whether the connection was triggered by the gadget
-	ByGadget bool
 	// Interface name of the connection
 	Interface string
 	// Undesired indicates whether the connection, otherwise established
