@@ -357,7 +357,7 @@ For interactive access, |ws_markup| also maintains
 a per-user SSH certificate authority
 that signs a host certificate for every workshop
 and a user certificate for connecting to them.
-Clients trust any :samp:`*.wp` host key signed by this authority,
+Clients trust any host key signed by this authority,
 so tools such as :program:`ssh` and VS Code Remote-SSH
 connect without a first-connection host-key prompt;
 the trust covers the :samp:`*.wp` namespace as a whole
