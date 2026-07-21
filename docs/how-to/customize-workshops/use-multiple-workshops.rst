@@ -264,7 +264,7 @@ reach it directly from frontend:
    Direct access works only if the service listens on all interfaces
    (for example, :samp:`0.0.0.0:8080`) rather than only on loopback.
    Any device that can reach the :samp:`workshopbr0` bridge
-   and knows the workshop's IP address can then connect too,
+   can resolve the workshop's :samp:`*.wp` hostname through it and connect too,
    so restrict such a service with a firewall if it isn't meant to be shared.
 
 From outside the project,
