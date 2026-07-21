@@ -116,7 +116,7 @@ User‑exposed crypto and providers
 - SSH agent interface: forwards the host's `ssh-agent` into the workshop via an LXD proxy device, 
 allowing tools inside the container to authenticate without copying private keys.
 - SSH host trust: a per-user Ed25519 certificate authority signs a host certificate for every
-workshop and a user certificate for connecting to them, so SSH clients trust any CA-signed `*.wp`
+workshop and a user certificate for connecting to them, so SSH clients trust any CA-signed
 host key without a manual host-key prompt (the trust covers the `*.wp` namespace, not an
 individual hostname). Private keys are stored with owner-only permissions (`0600`), the CA key
 owned by the daemon and the user key by the target host user.
