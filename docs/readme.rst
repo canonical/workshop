@@ -51,8 +51,8 @@ This writes ``.workshop/dev.yaml``, which you can extend with named actions:
      - name: go
        channel: 1.26/stable
    actions:                # add your own
-     lint: |
-       golangci-lint run
+     analyzer: |
+       go vet ./...
 
 
 Launch the workshop, then work inside it:
