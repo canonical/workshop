@@ -10,6 +10,7 @@ into reproducible definitions of languages, libraries, and tooling.
   functionality that publishers share on the SDK Store.
 - **Transactional**: environment updates apply as changes you can inspect and restore.
 - **Sandboxed**: experiment freely and tear down without leftover state.
+- **System container**: Unlike an app container, it behaves like a small Ubuntu system with users, packages, networking, and systemd services. Ideal for a devenv.
 
 
 Installation
