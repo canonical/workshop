@@ -2250,9 +2250,13 @@ func (s *interfaceHandlersSuite) TestUndoDisconnectSetupFailure(c *check.C) {
 	c.Assert(prods, check.HasLen, 0)
 
 	var conns map[string]any
-	err = s.state.Get("conns", &conns)
-	c.Assert(err, check.IsNil)
-	c.Assert(conns, check.HasLen, 0)
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug 42424242/ws/producer:slot": map[string]any{
+			"interface": "mock-network",
+			"undesired": true,
+		},
+	})
 
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 3)
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 0)

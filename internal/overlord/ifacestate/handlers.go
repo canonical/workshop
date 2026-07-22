@@ -724,18 +724,15 @@ func (m *InterfaceManager) doDisconnect(task *state.Task, tomb *tomb.Tomb) (err 
 		}
 	})
 
-	switch {
-	case forget:
+	if forget {
 		delete(conns, cref.ID())
-	case conn.Auto:
+	} else {
 		conn.Undesired = true
 		conn.DynamicPlugAttrs = nil
 		conn.DynamicSlotAttrs = nil
 		conn.StaticPlugAttrs = nil
 		conn.StaticSlotAttrs = nil
 		conns[cref.ID()] = conn
-	default:
-		delete(conns, cref.ID())
 	}
 	setConns(st, conns)
 
