@@ -16,7 +16,7 @@ into reproducible definitions of languages, libraries, and tooling.
 Installation
 ------------
 
-Workshop runs on Ubuntu and other ``snap``-enabled Linux distributions,
+Workshop runs on Ubuntu or WSL
 and requires `LXD 6.8+ <https://canonical.com/lxd>`_:
 
 .. code-block:: console
