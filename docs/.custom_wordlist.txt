@@ -35,6 +35,7 @@ deliverables
 dependabot
 deterministically
 dev
+devenv
 distributions
 dmitry
 Dockerfile
