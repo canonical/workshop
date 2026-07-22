@@ -195,27 +195,22 @@ func (m *InterfaceManager) ensureBackendInit() error {
 			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 			workshops, err := m.backend.ProjectWorkshops(pctx)
 			if err != nil {
-				logger.Noticef("Cannot load workshops from %q: %v", project.Path, err)
-				continue
+				return fmt.Errorf("cannot load workshops from %q: %v", project.Path, err)
 			}
 			for _, workshop := range workshops {
-				// recreate the socket device for every workshop to ensure
-				// workshopctl can function (if the daemon was stopped the
-				// socket will render /deleted)
+				// Recreate the workshopctl mount for every workshop.
 				if err := m.recreateInternalMounts(pctx, workshop.Name); err != nil {
-					logger.Noticef("Cannot create internal mounts for %q workshop: %v", workshop.Name, err)
+					return fmt.Errorf("cannot create internal mounts for %q workshop: %v", workshop.Name, err)
 				}
 
 				infos, err := workshop.SdkInfosByInstallOrder(pctx)
 				if err != nil {
-					logger.Noticef("Cannot obtain the installed SDKs for %q workshop: %v", workshop.Name, err)
-					continue
+					return fmt.Errorf("cannot obtain the installed SDKs for %q workshop: %v", workshop.Name, err)
 				}
 
 				for _, info := range infos {
 					if err = m.repo.AddSdk(info); err != nil {
-						logger.Noticef("Cannot register %q SDK interfaces: %v", info.Name, err)
-						continue
+						return fmt.Errorf("cannot register %q SDK interfaces: %v", info.Name, err)
 					}
 				}
 			}
