@@ -10,11 +10,6 @@ into reproducible definitions of languages, libraries, and tooling.
   functionality that publishers share on the SDK Store.
 - **Transactional**: environment updates apply as changes you can inspect and restore.
 - **Sandboxed**: experiment freely and tear down without leftover state.
-- **Built for AI workflows**: ships
-  `LLM-readable docs <https://ubuntu.com/workshop/docs/reference/ai-agents/#llm-readable-docs>`_
-  and agentic skills for
-  `operating workshops <https://ubuntu.com/workshop/docs/reference/ai-agents/#the-use-workshop-skill>`_
-  and `scaffolding SDKs <https://ubuntu.com/workshop/docs/reference/ai-agents/#the-sdk-designer-skill>`_.
 
 
 Installation
