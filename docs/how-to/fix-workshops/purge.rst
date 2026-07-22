@@ -24,7 +24,7 @@ Before starting, ensure you have these requirements satisfied:
 
 - Identified the workshop and project you intend to purge.
 
-- Tried :command:`workshop remove <WORKSHOP>`
+- Tried :command:`workshop remove <WORKSHOP>`
   or confirmed that the standard removal flow cannot be used.
 
 - Backed up any workshop data you need to keep;
@@ -69,25 +69,103 @@ You may need manual intervention if:
   after a remove attempt.
 
 - The workshop's project directory had been deleted
-  before you attempted to remove the workshop,
-  potentially orphaning LXD resources.
+  before the workshop was removed,
+  leaving the workshop orphaned.
 
 - The workshop is in an unrecoverable error state.
 
 - The workshop's container is still running or in an error state,
-  preventing standard.
+  preventing the standard removal flow from completing.
 
 
-If the standard procedure is ineffective for any of the above reasons,
-you will need to manually clean up the workshop's resources.
-For this, you interact directly with LXD and the workshop's snap data.
+For an orphaned workshop,
+first try :ref:`recreating its project directory <how_purge_orphaned>`,
+which restores the standard removal flow without touching LXD.
+In other cases, or if that fails,
+manually clean up the workshop's resources,
+interacting directly with LXD and the workshop's snap data;
+start by :ref:`finding the LXD project <how_purge_manual>`.
 
+
+.. _how_purge_orphaned:
+
+Remove an orphaned workshop
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If a project directory is deleted before its workshops are removed,
+the workshops become orphaned:
+their containers and stored state remain on the host,
+and the daemon reports them in the *Error* state
+with a :samp:`missing-project` note:
+
+.. code-block:: console
+
+   $ workshop list --global
+
+     PROJECT            WORKSHOP  STATUS  NOTES
+     ~/projects/nimble  nimble    Error   missing-project
+
+
+Commands that resolve the project by its pathname,
+including :command:`workshop remove` with the :option:`!--project` option,
+no longer work for orphaned workshops:
+
+.. code-block:: console
+
+   $ workshop remove --project ~/projects/nimble nimble
+
+     error: cannot create or load project at "/home/user/projects/nimble": lstat /home/user/projects/nimble: no such file or directory
+
+
+However, the daemon keeps tracking the project's original location,
+so you can restore the standard removal flow
+by recreating the directory:
+
+#. Recreate the directory at the same absolute path;
+   it can remain empty:
+
+   .. code-block:: console
+
+      $ mkdir -p ~/projects/nimble
+
+
+#. Remove the workshop,
+   pointing at the recreated directory:
+
+   .. code-block:: console
+
+      $ workshop remove --project ~/projects/nimble nimble
+
+
+#. Verify the removal and delete the recreated directory:
+
+   .. code-block:: console
+
+      $ workshop list --global
+      $ rm -r ~/projects/nimble
+
+
+.. note::
+
+   Removal isn't the only option:
+   running any workshop command against the recreated directory
+   re-associates it with the original project,
+   restoring the hidden :file:`.workshop.lock` file.
+   To recover the workshop instead,
+   restore the project's content (e.g. from a repository)
+   and continue using it.
+
+
+.. _how_purge_manual:
 
 Find LXD project
 ~~~~~~~~~~~~~~~~
 
 Workshop creates LXD projects named :samp:`workshop.<USERNAME>`,
 where :samp:`<USERNAME>` is your system username.
+If the username can't be used in an LXD project name
+(e.g. if it contains special characters such as :samp:`@`),
+your numeric user ID is used instead (:command:`id -u`).
 You'll also need your username for some paths.
 
 
@@ -166,9 +244,28 @@ its profiles might remain.
 
 
 - To delete an orphaned profile, check the :samp:`USED BY` column
-  in the output of the :command:`lxc profile list` command.
+  in the output of the :command:`lxc profile list` command.
   If the count is zero,
   the profile is not used by any containers and can be safely removed.
+
+
+Remove leftover host directories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deleting containers with :command:`lxc` doesn't remove the state
+that |ws_markup| stores for them on the host.
+This state is keyed by project ID,
+which is the final dash-separated segment of the container name;
+for example, :samp:`ec275767` for a container named :samp:`nimble-ec275767`.
+
+Check these locations for leftover directories,
+removing them if present:
+
+.. code-block:: console
+
+   $ rm -rf ~/.local/share/workshop/id/<PROJECT-ID>
+   $ sudo rm -rf /var/snap/workshop/current/id/<PROJECT-ID>
+   $ sudo rm -rf /var/snap/workshop/common/workshop/cache/id/<PROJECT-ID>
 
 
 Aggressive cleanup
@@ -219,6 +316,11 @@ or reporting a bug with detailed logs and steps taken:
 
 See also
 --------
+
+Explanation:
+
+- :ref:`exp_projects`
+
 
 How-to guides:
 

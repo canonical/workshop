@@ -451,8 +451,9 @@ before proceeding to the other parts of the tutorial.
 .. warning::
 
    Don't delete the project directory without first removing the workshop.
-   Otherwise, you'll need to manually delete the orphaned workshops;
-   for help, see this how-to guide section: :ref:`how_troubleshoot_lxc`.
+   Otherwise, the workshop becomes orphaned;
+   to recover or remove it,
+   see this how-to guide section: :ref:`how_purge_orphaned`.
 
 
 Next steps
