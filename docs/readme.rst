@@ -62,7 +62,7 @@ Launch the workshop, then work inside it:
    workshop launch       # download and install the SDKs
    workshop shell        # open an interactive session
    workshop run -- lint  # run a named action
-   workshop refresh      # apply edits to the definition
+   workshop refresh      # apply edits to the definition, update SDKs
 
 
 SDKs
