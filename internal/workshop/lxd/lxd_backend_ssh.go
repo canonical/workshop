@@ -26,6 +26,8 @@ import (
 	"syscall"
 	"text/template"
 
+	"github.com/canonical/x-go/strutil/shlex"
+
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/osutil/sys"
@@ -53,7 +55,7 @@ func sshConfig(usr *user.User, hostname string) (map[string]string, error) {
 		return nil, err
 	}
 
-	cert, err := authority.SignHostKey(*pub)
+	cert, err := authority.SignHostKey(*pub, []string{hostname})
 	if err != nil {
 		return nil, err
 	}
@@ -72,17 +74,38 @@ func ensureConfigFile() error {
 		return nil
 	}
 
+	// We use KnownHostsCommand because OpenSSH might try to modify the
+	// UserKnownHostsFile, and GlobalKnownHostsFile doesn't support per-user
+	// tokens like %i for the UID. KnownHostsCommand supports tokens, but only
+	// for the arguments and not the command itself. The command should exit
+	// with code 0 if possible, otherwise it's fatal for the OpenSSH client.
+	knownHostsTemplate := `
+#!/bin/sh -e
+
+if IFS= read -r key 2>/dev/null <"$1/id_ed25519_ca.pub"; then
+	printf '@cert-authority %s %s\n' {{printf "*.%s" .Domain | shquote}} "$key"
+fi
+`[1:]
+
 	configTemplate := `
 Host "*.{{sshescape .Domain}}"
+	CanonicalizeHostname yes
+	CanonicalizeMaxDots 2
+	CanonicalizePermittedCNAMEs "*.{{sshescape .Domain}}:*.{{sshescape .Domain}}"
+	CASignatureAlgorithms ssh-ed25519
+	HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com
+	KnownHostsCommand "{{sshescape .Path}}/known-hosts" "{{sshescape .Path}}/%i"
+	StrictHostKeyChecking yes
+
 	CertificateFile "{{sshescape .Path}}/%i/id_ed25519-cert.pub"
 	IdentitiesOnly yes
 	IdentityFile "{{sshescape .Path}}/%i/id_ed25519"
 	User "{{sshescape .User}}"
-	UserKnownHostsFile "{{sshescape .Path}}/%i/known_hosts"
 `[1:]
 
-	var config bytes.Buffer
+	var knownHostsCommand, config bytes.Buffer
 	funcs := map[string]any{
+		"shquote":   shlex.Quote,
 		"sshescape": sshEscape,
 	}
 	dot := struct {
@@ -94,11 +117,18 @@ Host "*.{{sshescape .Domain}}"
 		Path:   dirs.WorkshopSSHDir,
 		User:   workshop.User.Username,
 	}
-	t := template.Must(template.New("ssh_config").Funcs(funcs).Parse(configTemplate))
+	t := template.Must(template.New("known-hosts").Funcs(funcs).Parse(knownHostsTemplate))
+	if err := t.Execute(&knownHostsCommand, dot); err != nil {
+		return err
+	}
+	t = template.Must(template.New("ssh_config").Funcs(funcs).Parse(configTemplate))
 	if err := t.Execute(&config, dot); err != nil {
 		return err
 	}
 
+	if err := osutil.AtomicWrite(filepath.Join(dirs.WorkshopSSHDir, "known-hosts"), &knownHostsCommand, 0755, 0); err != nil {
+		return err
+	}
 	return osutil.AtomicWrite(path, &config, 0644, 0)
 }
 
@@ -220,8 +250,6 @@ func writeCAKeys(usr *user.User, temp string) error {
 		return err
 	}
 
-	knownHosts := fmt.Sprintf("@cert-authority *.%s %s\n", networkDomain, identity)
-
 	if err := writePublicKey(filepath.Join(temp, "id_ed25519_ca.pub"), *identity, osutil.NoChown, osutil.NoChown); err != nil {
 		return err
 	}
@@ -234,10 +262,7 @@ func writeCAKeys(usr *user.User, temp string) error {
 	if err := writePrivateKey(filepath.Join(temp, "id_ed25519"), *priv, uid, gid); err != nil {
 		return err
 	}
-	if err := writePublicKey(filepath.Join(temp, "id_ed25519-cert.pub"), *cert, uid, gid); err != nil {
-		return err
-	}
-	return writeFileSync(filepath.Join(temp, "known_hosts"), []byte(knownHosts), 0644, uid, gid)
+	return writePublicKey(filepath.Join(temp, "id_ed25519-cert.pub"), *cert, uid, gid)
 }
 
 func writePublicKey(name string, key sshutil.PublicKey, uid sys.UserID, gid sys.GroupID) error {
