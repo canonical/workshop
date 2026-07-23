@@ -292,15 +292,19 @@ to the auto-allocated directory under :file:`~/.local/share/workshop/`.
 
 Note that :command:`workshop connections` now lists the plug as :samp:`manual`
 in the :samp:`NOTES` column.
-That state is sticky:
-it survives :command:`workshop refresh`
-and :command:`workshop stop` plus :command:`workshop start` cycles,
-so the share stays in place across normal lifecycle operations.
+That state survives :command:`workshop stop` plus :command:`workshop start` cycles
+but not :command:`workshop refresh`:
+a refresh drops manual connections
+and returns the workshop to its definition's auto-connect defaults.
+For this plug, the default is the same :samp:`system:mount` pairing,
+so the share stays in place
+and the :samp:`manual` note clears.
 
 To revert connections and mounts wholesale,
 use :command:`workshop restore`.
 For a single plug, run :command:`workshop disconnect`
-with :option:`!--forget` to disconnect it and forget its manual state.
+with :option:`!--forget`, then :command:`workshop refresh`;
+the refresh reconnects the plug to its default slot.
 
 
 See also
@@ -311,6 +315,7 @@ Explanation:
 - :ref:`exp_best_dependencies`
 - :ref:`exp_mount_interface`
 - :ref:`exp_system_sdk`
+- :ref:`exp_workshop_connection_lifecycle`
 
 
 How-to guides:

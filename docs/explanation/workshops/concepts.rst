@@ -466,6 +466,26 @@ by :command:`workshop refresh` and :command:`workshop restore`:
      - Re-established
 
 
+The distinction is that a refresh carries
+the workshop's runtime connection state forward,
+whereas a restore discards it.
+A refresh preserves a connection you added with :command:`workshop connect`,
+and it equally preserves a disconnect
+you made with :command:`workshop disconnect`,
+so a default auto-connection that you turned off stays off.
+A restore keeps neither:
+it returns the workshop to exactly the connections its definition establishes,
+dropping manual connections
+and reconnecting the pairings you had disconnected.
+
+To make a connection that survives both operations,
+add it to the :samp:`connections` section of the workshop definition.
+To turn a default auto-connection off only temporarily,
+disconnect it with :option:`!--forget`;
+this records no veto,
+so the pairing is re-established the next time auto-connect runs.
+
+
 .. _exp_workshop_definition_actions:
 
 Actions
