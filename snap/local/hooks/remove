@@ -12,6 +12,8 @@ fi
 # shellcheck source=snap/local/lib/completion
 . "$lib/completion"
 
+rm -f /etc/ssh/ssh_config.d/70-workshop-cert-authority.conf
+
 if command -v systemctl &>/dev/null; then
     systemctl disable snap.workshop.configure-dns.service || true
     rm -f /etc/systemd/system/snap.workshop.configure-dns.service

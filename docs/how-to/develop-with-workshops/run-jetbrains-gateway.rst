@@ -30,18 +30,26 @@ Before starting, ensure you have these requirements satisfied:
 Configure SSH access
 --------------------
 
-|ws_markup| generates an OpenSSH configuration
-for connecting to launched workshops.
-When using the Workshop snap,
-include that generated configuration in your host user's
-:file:`~/.ssh/config` file.
-Replace :samp:`<UID>` with your host user ID,
-which you can find with :command:`id -u`:
+On most distributions,
+|ws_markup| configures OpenSSH automatically.
+To check the configuration, run:
+
+.. code-block:: console
+
+   $ ssh -G workshop.wp | grep -i '^User\>'
+
+   user workshop
+
+
+If it displays a different user from :samp:`workshop`,
+then OpenSSH is not configured correctly.
+To fix it, add this line to your host user's
+:file:`~/.ssh/config` file:
 
 .. code-block:: text
    :caption: ~/.ssh/config
 
-   Include /var/snap/workshop/current/ssh/<UID>/config
+   Include /var/snap/workshop/common/workshop/ssh/config
 
 
 Launch the workshop

@@ -15,6 +15,7 @@
 package lxdbackend
 
 import (
+	"bytes"
 	"cmp"
 	"errors"
 	"fmt"
@@ -23,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"text/template"
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/osutil"
@@ -33,6 +35,10 @@ import (
 )
 
 func sshConfig(usr *user.User, hostname string) (map[string]string, error) {
+	if err := ensureConfigFile(); err != nil {
+		return nil, err
+	}
+
 	identity, authority, err := createOrLoadCAKeys(usr)
 	if err != nil {
 		return nil, err
@@ -58,6 +64,51 @@ func sshConfig(usr *user.User, hostname string) (map[string]string, error) {
 		"user.ed25519-key.certificate": cert.String(),
 		"user.ed25519-key.workshop-ca": identity.String(),
 	}, nil
+}
+
+func ensureConfigFile() error {
+	path := filepath.Join(dirs.WorkshopSSHDir, "config")
+	if osutil.FileExists(path) {
+		return nil
+	}
+
+	configTemplate := `
+Host "*.{{sshescape .Domain}}"
+	CertificateFile "{{sshescape .Path}}/%i/id_ed25519-cert.pub"
+	IdentitiesOnly yes
+	IdentityFile "{{sshescape .Path}}/%i/id_ed25519"
+	User "{{sshescape .User}}"
+	UserKnownHostsFile "{{sshescape .Path}}/%i/known_hosts"
+`[1:]
+
+	var config bytes.Buffer
+	funcs := map[string]any{
+		"sshescape": sshEscape,
+	}
+	dot := struct {
+		Domain string
+		Path   string
+		User   string
+	}{
+		Domain: networkDomain,
+		Path:   dirs.WorkshopSSHDir,
+		User:   workshop.User.Username,
+	}
+	t := template.Must(template.New("ssh_config").Funcs(funcs).Parse(configTemplate))
+	if err := t.Execute(&config, dot); err != nil {
+		return err
+	}
+
+	return osutil.AtomicWrite(path, &config, 0644, 0)
+}
+
+var sshEscaper = strings.NewReplacer("%", "%%", "\\", "\\\\", "\"", "\\\"")
+
+func sshEscape(text string) (string, error) {
+	if strings.Contains(text, "${") || strings.Contains(text, "\n") || strings.Contains(text, "\x00") {
+		return "", fmt.Errorf("unrepresentable SSH config value: %q", text)
+	}
+	return sshEscaper.Replace(text), nil
 }
 
 func createOrLoadCAKeys(usr *user.User) (*sshutil.PublicKey, *sshutil.PrivateKey, error) {
@@ -123,8 +174,7 @@ func ensureCAKeys(usr *user.User) error {
 		return err
 	}
 
-	target := filepath.Join(dirs.WorkshopSSHDir, usr.Uid)
-	if err := writeCAKeys(usr, temp, target); err != nil {
+	if err := writeCAKeys(usr, temp); err != nil {
 		return err
 	}
 
@@ -136,6 +186,7 @@ func ensureCAKeys(usr *user.User) error {
 	}
 	closeDir.Success()
 
+	target := filepath.Join(dirs.WorkshopSSHDir, usr.Uid)
 	// One error comes from Go's pre-existence check, the other from syscall.Rename.
 	if err := os.Rename(temp, target); errors.Is(err, os.ErrExist) || errors.Is(err, syscall.ENOTEMPTY) {
 		// Someone else beat us to it, discard the keys and temp dir.
@@ -148,7 +199,7 @@ func ensureCAKeys(usr *user.User) error {
 	return nil
 }
 
-func writeCAKeys(usr *user.User, temp, target string) error {
+func writeCAKeys(usr *user.User, temp string) error {
 	identity, authority, err := sshutil.GenerateKey("Workshop-CA")
 	if err != nil {
 		return err
@@ -169,23 +220,7 @@ func writeCAKeys(usr *user.User, temp, target string) error {
 		return err
 	}
 
-	certPath, err1 := escapeSSHPath(target, "id_ed25519-cert.pub")
-	privPath, err2 := escapeSSHPath(target, "id_ed25519")
-	knownHostsPath, err3 := escapeSSHPath(target, "known_hosts")
-	if err := cmp.Or(err1, err2, err3); err != nil {
-		return err
-	}
-
 	knownHosts := fmt.Sprintf("@cert-authority *.%s %s\n", networkDomain, identity)
-	configTemplate := `
-Host *.%s
-	CertificateFile %s
-	IdentitiesOnly yes
-	IdentityFile %s
-	User %s
-	UserKnownHostsFile %s
-`[1:]
-	config := fmt.Sprintf(configTemplate, networkDomain, certPath, privPath, workshop.User.Username, knownHostsPath)
 
 	if err := writePublicKey(filepath.Join(temp, "id_ed25519_ca.pub"), *identity, osutil.NoChown, osutil.NoChown); err != nil {
 		return err
@@ -202,22 +237,7 @@ Host *.%s
 	if err := writePublicKey(filepath.Join(temp, "id_ed25519-cert.pub"), *cert, uid, gid); err != nil {
 		return err
 	}
-	if err := writeFileSync(filepath.Join(temp, "known_hosts"), []byte(knownHosts), 0644, uid, gid); err != nil {
-		return err
-	}
-	return writeFileSync(filepath.Join(temp, "config"), []byte(config), 0644, uid, gid)
-}
-
-func escapeSSHPath(elem ...string) (string, error) {
-	path := filepath.Join(elem...)
-	if strings.Contains(path, "${") || strings.Contains(path, "\n") {
-		return "", fmt.Errorf("unrepresentable SSH config value: %q", path)
-	}
-
-	path = strings.ReplaceAll(path, "%", "%%")
-	path = strings.ReplaceAll(path, "\\", "\\\\")
-	path = strings.ReplaceAll(path, "\"", "\\\"")
-	return "\"" + path + "\"", nil
+	return writeFileSync(filepath.Join(temp, "known_hosts"), []byte(knownHosts), 0644, uid, gid)
 }
 
 func writePublicKey(name string, key sshutil.PublicKey, uid sys.UserID, gid sys.GroupID) error {
