@@ -63,7 +63,6 @@ var _ = check.Suite(&wsOps{})
 
 func (f *wsOps) SetUpSuite(c *check.C) {
 	dirs.SetRootDir(c.MkDir())
-	dirs.SetCacheDir(c.MkDir())
 	c.Assert(dirs.CreateDirs(), check.IsNil)
 
 	var err error

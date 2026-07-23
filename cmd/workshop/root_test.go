@@ -30,7 +30,6 @@ import (
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/client"
-	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/testutil"
 )
 
@@ -43,9 +42,7 @@ type BaseWorkshopSuite struct {
 
 func Test(t *testing.T) { check.TestingT(t) }
 
-func (s *BaseWorkshopSuite) SetUpTest(c *check.C) {
-	dirs.SetRootDir(c.MkDir())
-
+func (s *BaseWorkshopSuite) SetUpTest(*check.C) {
 	path := os.Getenv("PATH")
 	s.AddCleanup(func() {
 		os.Setenv("PATH", path)

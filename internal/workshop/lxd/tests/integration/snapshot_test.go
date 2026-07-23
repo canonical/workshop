@@ -77,9 +77,8 @@ func (s *snapshotSuite) SetUpSuite(c *check.C) {
 	s.restoreImageServer = lxdbackend.FakeImageServer(helper.MinimalImageServer)
 
 	dirs.SetRootDir(c.MkDir())
-	dirs.SetCacheDir(c.MkDir())
 	dirs.WorkshopCtlPath = filepath.Join(c.MkDir(), "workshopctl")
-	dirs.SocketPath = filepath.Join(dirs.BaseDir, "workshop.socket")
+	dirs.SocketPath = filepath.Join(dirs.DataDir, "workshop.socket")
 	c.Assert(dirs.CreateDirs(), check.IsNil)
 
 	var err error

@@ -81,7 +81,6 @@ func setWorkshopProject(w string, p workshop.Project, tasks ...*state.Task) {
 
 func (s *hookSuite) SetUpTest(c *check.C) {
 	dirs.SetRootDir(c.MkDir())
-	dirs.SetCacheDir(c.MkDir())
 	c.Assert(dirs.CreateDirs(), check.IsNil)
 
 	var err error

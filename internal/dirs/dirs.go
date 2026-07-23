@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	// defaultBaseDir is the Workshop directory used if $WORKSHOP is not set. It is
-	// created by the daemon ("workshopd run") if it doesn't exist, and also used by
-	// the workshop client.
-	defaultBaseDir = "/var/lib/workshop"
+	// defaultDataDir is the Workshop directory used if $WORKSHOP is not set.
+	// It is created by the daemon ("workshopd run") if it doesn't exist, and
+	// also used by the workshop client.
+	defaultDataDir = "/var/lib/workshop"
 
 	// defaultCacheDir is the Workshop directory used if $WORKSHOP_CACHE is not
 	// set. It is created by the daemon ("workshopd run") if it doesn't exist.
@@ -34,7 +34,7 @@ const (
 // Variables for paths inside a workshop
 var (
 	// base directory inside a workshop
-	WorkshopBaseDir = defaultBaseDir
+	WorkshopBaseDir = defaultDataDir
 
 	// Directory for mounted binaries (i.e. workshopctl)
 	WorkshopGuestBinDir = filepath.Join(WorkshopBaseDir, "bin")
@@ -63,8 +63,8 @@ var (
 
 // Variables for workshopd (host paths)
 var (
-	// Base directory for workshopd
-	BaseDir string
+	// Directory for data tied to the current daemon installation.
+	DataDir string
 	// Cache directory for workshopd
 	CacheDir string
 	// Path for workshopctl executable
@@ -89,10 +89,10 @@ var (
 	WorkshopTlsDir string
 )
 
-func getEnvPaths() (workshopdDir, cacheDir, socketPath string) {
-	workshopdDir = os.Getenv("WORKSHOP")
-	if workshopdDir == "" {
-		workshopdDir = defaultBaseDir
+func getEnvPaths() (dataDir, cacheDir, socketPath string) {
+	dataDir = os.Getenv("WORKSHOP")
+	if dataDir == "" {
+		dataDir = defaultDataDir
 	}
 	cacheDir = os.Getenv("WORKSHOP_CACHE")
 	if cacheDir == "" {
@@ -100,9 +100,9 @@ func getEnvPaths() (workshopdDir, cacheDir, socketPath string) {
 	}
 	socketPath = os.Getenv("WORKSHOP_SOCKET")
 	if socketPath == "" {
-		socketPath = filepath.Join(workshopdDir, "workshop.socket")
+		socketPath = filepath.Join(dataDir, "workshop.socket")
 	}
-	return workshopdDir, cacheDir, socketPath
+	return dataDir, cacheDir, socketPath
 }
 
 func getWorkshopCtlPath() string {
@@ -125,26 +125,32 @@ func getWorkshopCtlPath() string {
 
 func init() {
 	XdgRuntimeDirBase = "/run/user"
-	BaseDir, CacheDir, SocketPath = getEnvPaths()
-	SetRootDir(BaseDir)
-	SetCacheDir(CacheDir)
+	DataDir, CacheDir, SocketPath = getEnvPaths()
+	setDataDir(DataDir)
+	setCacheDir(CacheDir)
 	WorkshopCtlPath = getWorkshopCtlPath()
 }
 
-func SetRootDir(rootdir string) {
-	if !filepath.IsAbs(rootdir) {
-		panic(fmt.Sprintf("cannot set root dir: path %q is not absolute", rootdir))
-	}
-	BaseDir = rootdir
+// SetRootDir is used by tests to set all host directories in one go.
+func SetRootDir(baseDir string) {
+	setDataDir(filepath.Join(baseDir, "data"))
+	setCacheDir(filepath.Join(baseDir, "cache"))
+}
 
-	WorkshopStateLockFile = filepath.Join(BaseDir, "state.lock")
-	WorkshopSSHDir = filepath.Join(BaseDir, "ssh")
-	WorkshopTlsDir = filepath.Join(BaseDir, "tls")
-	WorkshopdRunDir = filepath.Join(BaseDir, "/run/workshopd")
+func setDataDir(dataDir string) {
+	if !filepath.IsAbs(dataDir) {
+		panic(fmt.Sprintf("cannot set data dir: path %q is not absolute", dataDir))
+	}
+	DataDir = dataDir
+
+	WorkshopStateLockFile = filepath.Join(DataDir, "state.lock")
+	WorkshopSSHDir = filepath.Join(DataDir, "ssh")
+	WorkshopTlsDir = filepath.Join(DataDir, "tls")
+	WorkshopdRunDir = filepath.Join(DataDir, "run", "workshopd")
 	WorkshopdLocksDir = filepath.Join(WorkshopdRunDir, "locks")
 }
 
-func SetCacheDir(cachedir string) {
+func setCacheDir(cachedir string) {
 	if !filepath.IsAbs(cachedir) {
 		panic(fmt.Sprintf("cannot set cache dir: path %q is not absolute", cachedir))
 	}
@@ -155,7 +161,7 @@ func SetCacheDir(cachedir string) {
 }
 
 func CreateDirs() error {
-	if err := os.MkdirAll(BaseDir, 0755); err != nil {
+	if err := os.MkdirAll(DataDir, 0755); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(CacheDir, 0755); err != nil {

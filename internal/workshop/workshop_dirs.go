@@ -74,7 +74,7 @@ func TrySdkDir(userDataDir, sdk string) string {
 }
 
 func ProjectDataDir(pid string) string {
-	return filepath.Join(dirs.BaseDir, "id", pid)
+	return filepath.Join(dirs.DataDir, "id", pid)
 }
 
 func DataDir(pid, w string) string {

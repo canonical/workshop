@@ -20,7 +20,6 @@ package ctlcmd_test
 import (
 	"gopkg.in/check.v1"
 
-	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/overlord/healthstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
@@ -40,7 +39,6 @@ var _ = check.Suite(&healthSuite{})
 
 func (s *healthSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	dirs.SetRootDir(c.MkDir())
 
 	s.mockHandler = hooktest.NewMockHandler()
 
