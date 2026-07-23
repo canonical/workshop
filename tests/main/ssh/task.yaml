@@ -1,0 +1,31 @@
+summary: OpenSSH is configured for automatic access to workshops
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec launch ws-ssh
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove ws-ssh
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  ssh_exec() {
+    sudo -u ubuntu -- ssh -o BatchMode=yes -o ConnectTimeout=5 "$@"
+  }
+
+  pid="$(< .workshop.lock)"
+  hostname="ws-ssh-$pid.wp"
+  friendly="ws-ssh.$pid.wp"
+  friendlier="ws-ssh.ssh.wp"
+
+  echo "Check config is scoped to *.wp hosts"
+  sudo -u ubuntu -- ssh -G "$friendly" | MATCH '^user workshop$'
+  sudo -u ubuntu -- ssh -G example.invalid | MATCH '^user ubuntu$'
+
+  echo "Check we can connect automatically"
+  ssh_exec "$hostname" -- hostname | MATCH '^ws-ssh$'
+  ssh_exec "$friendly" -- id -un | MATCH '^workshop$'
+  ssh_exec "$friendlier" -- true
+
+  echo "Check certificates are scoped to single principal"
+  ! ssh_exec -o HostKeyAlias=example.invalid "$friendly" -- true || false
+  ! ssh_exec "ubuntu@$hostname" -- true || false
