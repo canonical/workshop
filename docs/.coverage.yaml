@@ -4,7 +4,7 @@
   specs:
     - SK039
 
-"$WORKSHOP":
+"$WORKSHOP_DATA":
   category: "workshopd"
   type: envvar
   specs: []

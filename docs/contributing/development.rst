@@ -130,7 +130,7 @@ This builds :file:`./cmd/...`
 into a temporary session directory under :file:`try_sessions/`,
 starts :program:`workshopd` against it,
 and drops you into a subshell
-with :envvar:`WORKSHOP`, :envvar:`WORKSHOP_CACHE`,
+with :envvar:`WORKSHOP_DATA`, :envvar:`WORKSHOP_CACHE`,
 :envvar:`WORKSHOP_SOCKET`, and :envvar:`PATH` pre-configured.
 Exit the shell to tear the session down.
 Pass :option:`!--keep` to retain the session directory for inspection.
@@ -142,7 +142,7 @@ To run :program:`workshopd` directly:
 .. code-block:: console
 
    $ go install ./cmd/...
-   $ export WORKSHOP=~/workshop
+   $ export WORKSHOP_DATA=~/workshop
    $ export WORKSHOP_CACHE=~/workshop-cache
    $ export WORKSHOP_DEBUG=1
    $ workshopd run --create-dirs
@@ -151,7 +151,7 @@ The client can connect using the daemon's Unix domain socket:
 
 .. code-block:: console
 
-   $ export WORKSHOP=~/workshop
+   $ export WORKSHOP_DATA=~/workshop
    $ workshop list
 
 

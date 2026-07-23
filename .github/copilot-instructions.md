@@ -59,7 +59,7 @@ See [`docs/coding-style-guide.md`](../docs/coding-style-guide.md) for detailed s
 
 ### Running Locally
 - Quick path: `go tool try` — builds, starts `workshopd` against a temporary session, and drops into a pre-configured subshell. Exit to tear down; `--keep` retains the session.
-- Manual: `go install ./cmd/...` then `workshopd run --create-dirs` (requires `WORKSHOP` and `WORKSHOP_CACHE` env vars set).
+- Manual: `go install ./cmd/...` then `workshopd run --create-dirs` (requires `WORKSHOP_DATA` and `WORKSHOP_CACHE` env vars set).
 
 ## Available Resources
 
