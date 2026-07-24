@@ -352,13 +352,24 @@ func logit(handler http.Handler) http.Handler {
 			(strings.HasPrefix(r.URL.Path, "/v1/changes/") && strings.Count(r.URL.Path, "/") == 3 ||
 				r.URL.Path == "/v1/system-info" ||
 				r.URL.Path == "/v1/health")
-		if !skipLog {
-			if strings.HasSuffix(r.RemoteAddr, ";") {
-				logger.Debugf("%s %s %s %s %d", r.RemoteAddr, r.Method, r.URL, t, ww.status())
-				logger.Noticef("%s %s %s %d", r.Method, r.URL, t, ww.status())
-			} else {
-				logger.Noticef("%s %s %s %s %d", r.RemoteAddr, r.Method, r.URL, t, ww.status())
-			}
+		if skipLog {
+			return
+		}
+
+		logAttrs := []string{}
+		if mID := r.Header.Get("workshop-machine-id"); mID != "" {
+			logAttrs = append(logAttrs, "machine-id="+mID)
+		}
+
+		if strings.HasSuffix(r.RemoteAddr, ";") {
+			logger.Debugf(
+				"%s %s %s %s %d %s",
+				r.RemoteAddr, r.Method, r.URL, t, ww.status(),
+				strings.Join(logAttrs, ","),
+			)
+			logger.Noticef("%s %s %s %d", r.Method, r.URL, t, ww.status())
+		} else {
+			logger.Noticef("%s %s %s %s %d", r.RemoteAddr, r.Method, r.URL, t, ww.status())
 		}
 	})
 }
