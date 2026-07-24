@@ -273,11 +273,7 @@ func New() (*Backend, error) {
 // ensureBackendReady creates the LXD storage pool and network the backend
 // relies on, it is idempotent.
 func ensureBackendReady() error {
-	// TODO: run this logic for a specific user. The code below implies the
-	// default project activated for the connection. As we have seen, every user
-	// has to create its own storage pool to avoid issues with id mapping of a
-	// volume with the same name (e.g. both users have system-1 volume for the
-	// system SDK that cannot be successfully mounted for another user).
+	// TODO: consider separating the storage pool or network for different users.
 	conn, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
 		return ErrorLxdBackend(err)

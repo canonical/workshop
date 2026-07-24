@@ -463,15 +463,9 @@ func (s *Backend) resolveSnapshotConflict(snapshotConn lxd.InstanceServer, snaps
 }
 
 func IsInstanceOperation(op api.Operation, lxdProject, name string) (bool, error) {
-	// TODO: use api.MetadataEntityURL constant.
-	// See https://github.com/canonical/lxd/pull/18033.
-	entityUrl, ok := op.Metadata["entity_url"].(string)
+	entityUrl, ok := op.Metadata[api.MetadataEntityURL].(string)
 	if !ok {
-		// TODO: return false, nil here when we bump LXD to 6.8+.
-		if op.Description != "Updating instance" || len(op.Resources["instance"]) != 1 {
-			return false, nil
-		}
-		entityUrl = op.Resources["instance"][0]
+		return false, nil
 	}
 
 	u, err := url.Parse(entityUrl)
