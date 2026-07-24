@@ -108,6 +108,9 @@ type Config struct {
 	// values disable retries.
 	RetryInterval time.Duration
 
+	// RoundTripperWrapper decorates the HTTP transport used for requests.
+	RoundTripperWrapper RoundTripperWrapper
+
 	// Timeout is the time to spend retrying the request.
 	Timeout time.Duration
 }
@@ -165,8 +168,13 @@ func New(config *Config) (*Client, error) {
 		client = &Client{baseURL: *baseURL}
 	}
 
+	var roundTripper http.RoundTripper = transport
+	if config.RoundTripperWrapper != nil {
+		roundTripper = config.RoundTripperWrapper(roundTripper)
+	}
+
 	client.doer = &http.Client{
-		Transport: transport,
+		Transport: roundTripper,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
