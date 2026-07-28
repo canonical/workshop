@@ -213,12 +213,15 @@ type Confinement int
 
 const (
 	ConfinementContainer Confinement = iota
+	ConfinementVirtualMachine
 )
 
 func (c Confinement) MarshalText() ([]byte, error) {
 	switch c {
 	case ConfinementContainer:
 		return []byte("container"), nil
+	case ConfinementVirtualMachine:
+		return []byte("virtual-machine"), nil
 	default:
 		return nil, fmt.Errorf("invalid confinement: %v", int(c))
 	}
@@ -228,6 +231,8 @@ func (c *Confinement) UnmarshalText(text []byte) error {
 	switch string(text) {
 	case "container":
 		*c = ConfinementContainer
+	case "virtual-machine":
+		*c = ConfinementVirtualMachine
 	default:
 		return fmt.Errorf("invalid confinement: %q", string(text))
 	}
@@ -297,6 +302,14 @@ func ValidateFile(file *File) error {
 
 	if !slices.Contains(SupportedBases, file.Base) {
 		return fmt.Errorf("base %q not supported", file.Base)
+	}
+
+	if file.Confinement != ConfinementContainer {
+		confinement, err := file.Confinement.MarshalText()
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("confinement %q not supported", confinement)
 	}
 
 	if err := validateSdks(file.Sdks); err != nil {
