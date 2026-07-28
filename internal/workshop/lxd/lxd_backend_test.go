@@ -100,6 +100,7 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 
 	// Validate
 	c.Assert(err, check.IsNil)
+	c.Assert(cfg["cloud-init.user-data"], check.Not(testutil.Contains), "GRUB_CMDLINE_LINUX")
 	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1001 1000\ngid 1001 1000")
 	c.Assert(cfg["raw.lxc"], check.Equals, "lxc.mount.entry = tmpfs tmp tmpfs defaults")
 	c.Assert(cfg["security.nesting"], check.Equals, "true")
@@ -135,6 +136,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 
 	// Validate
 	c.Assert(err, check.IsNil)
+	c.Assert(cfg["cloud-init.user-data"], testutil.Contains, "GRUB_CMDLINE_LINUX")
 	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1002 1000\ngid 1002 1000")
 	_, ok := cfg["raw.lxc"]
 	c.Assert(ok, check.Equals, false)
@@ -150,7 +152,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "c206e07955d476a4fc4dff89bab80923e8d638ea8e7c878236d22ed025f6021d790ef783cc9881f692563d1be261a3d6")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "61105295d9eefbbc942ee4cdc81d52cc78c6dc588c10df3ae227cabaf669c798273d2b9da22911bec77d32117dacd403")
 }
 
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
