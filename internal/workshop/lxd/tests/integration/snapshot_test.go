@@ -26,19 +26,19 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/canonical/lxd/shared/api"
+	"golang.org/x/sys/unix"
 	"gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/osutil"
+	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
@@ -51,9 +51,8 @@ type snapshotSuite struct {
 	project workshop.Project
 	ctx     context.Context
 
-	restoreLookupUsr   func()
-	restoreUserEnv     func()
-	restoreImageServer func()
+	restoreLookupUsr func()
+	restoreUserEnv   func()
 
 	bd *lxdbackend.Backend
 }
@@ -74,7 +73,6 @@ func (s *snapshotSuite) SetUpSuite(c *check.C) {
 	s.restoreUserEnv = osutil.FakeUserEnvironment(func(user *user.User) (map[string]string, error) {
 		return nil, nil
 	})
-	s.restoreImageServer = lxdbackend.FakeImageServer(helper.MinimalImageServer)
 
 	dirs.SetRootDir(c.MkDir())
 	dirs.SocketPath = filepath.Join(dirs.DataDir, "workshop.socket")
@@ -99,7 +97,6 @@ func (s *snapshotSuite) TearDownSuite(c *check.C) {
 
 	s.restoreLookupUsr()
 	s.restoreUserEnv()
-	s.restoreImageServer()
 }
 
 // This suite deliberately doesn't override the default devices, so the test
@@ -320,193 +317,185 @@ func (s *snapshotSuite) TestLxdBackendSnapshotDiff(c *check.C) {
 		c.Skip("requires root to mount and compare workshop filesystems")
 	}
 
-	for _, base := range workshop.SupportedBases {
-		c.Logf("Testing snapshot integrity for base %q", base)
-		s.snapshotDiff(c, base)
+	for _, confinement := range []workshop.Confinement{workshop.ConfinementContainer, workshop.ConfinementVirtualMachine} {
+		kind, err := confinement.MarshalText()
+		c.Assert(err, check.IsNil)
+		for _, base := range workshop.SupportedBases {
+			c.Logf("Testing snapshot integrity for %s %ss", base, kind)
+			s.snapshotDiff(c, base, confinement)
+		}
 	}
 }
 
-func (s *snapshotSuite) snapshotDiff(c *check.C, base string) {
+func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement workshop.Confinement) {
 	// Download base image.
-	image, err := s.bd.GetBase(s.ctx, base, workshop.ConfinementContainer)
+	image, err := s.bd.GetBase(s.ctx, base, confinement)
 	c.Assert(err, check.IsNil)
 	err = s.bd.DownloadBase(s.ctx, image, nil)
 	c.Assert(err, check.IsNil)
 
-	// Launch first workshop.
-	wf1 := &workshop.File{
-		Name: "test1",
-		Base: base,
+	// Launch original workshop.
+	originFile := &workshop.File{
+		Name:        "origin",
+		Base:        base,
+		Confinement: confinement,
 	}
-	baseOnly := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, workshop.ConfinementContainer, image.Fingerprint)
-	remove := s.launchWorkshop(c, wf1, baseOnly)
+	baseOnly := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, confinement, image.Fingerprint)
+	remove := s.launchWorkshop(c, originFile, baseOnly)
 	defer remove()
 
-	// Start first workshop to take snapshot.
-	err = s.bd.StartWorkshop(s.ctx, "test1")
+	// Start original workshop and take a snapshot.
+	err = s.bd.StartWorkshop(s.ctx, "origin")
 	c.Assert(err, check.IsNil)
-	snapshot := baseOnly
-	snapshot.Sdks = []sdk.ContentID{{
+	originSnapshot := baseOnly
+	originSnapshot.Sdks = []sdk.ContentID{{
 		Name:     "system",
 		Sha3_384: "6b499970ebf370d4dbc4e9a005c042dee003c19a9420a78944bcbf32653d257f80f7c56bad55b4c967dca68a1ea92be7",
 		IsVolume: true,
 	}}
-	err1 := s.bd.TakeSnapshot(s.ctx, "test1", snapshot)
-	mount1, err2 := s.rootfsMount("test1")
-	err3 := s.bd.StopWorkshop(s.ctx, "test1", true)
+	err1 := s.bd.TakeSnapshot(s.ctx, "origin", originSnapshot)
+	originRootFS, err2 := s.workshopRootFS("origin", confinement)
+	err3 := s.bd.StopWorkshop(s.ctx, "origin", true)
 	c.Assert(cmp.Or(err1, err2, err3), check.IsNil)
 
-	// Launch second workshop.
-	wf2 := &workshop.File{
-		Name: "test2",
-		Base: base,
+	// Launch a completely independent workshop.
+	siblingFile := &workshop.File{
+		Name:        "sibling",
+		Base:        base,
+		Confinement: confinement,
 	}
-	remove = s.launchWorkshop(c, wf2, baseOnly)
+	remove = s.launchWorkshop(c, siblingFile, baseOnly)
 	defer remove()
 
-	// Start second workshop to run cloud-init.
-	err = s.bd.StartWorkshop(s.ctx, "test2")
+	// Start independent workshop to run cloud-init.
+	err = s.bd.StartWorkshop(s.ctx, "sibling")
 	c.Assert(err, check.IsNil)
-	mount2, err1 := s.rootfsMount("test2")
-	err2 = s.bd.StopWorkshop(s.ctx, "test2", true)
+	siblingRootFS, err1 := s.workshopRootFS("sibling", confinement)
+	err2 = s.bd.StopWorkshop(s.ctx, "sibling", true)
 	c.Assert(cmp.Or(err1, err2), check.IsNil)
 
-	// Launch third workshop from snapshot.
-	wf3 := &workshop.File{
-		Name: "test3",
-		Base: base,
+	// Launch clone of the first workshop.
+	cloneFile := &workshop.File{
+		Name:        "clone",
+		Base:        base,
+		Confinement: confinement,
 	}
-	remove = s.launchWorkshop(c, wf3, snapshot)
+	remove = s.launchWorkshop(c, cloneFile, originSnapshot)
 	defer remove()
 
-	// Start third workshop to run cloud-init (again).
-	err = s.bd.StartWorkshop(s.ctx, "test3")
+	// Start cloned workshop and take another snapshot.
+	err = s.bd.StartWorkshop(s.ctx, "clone")
 	c.Assert(err, check.IsNil)
-	snapshot2 := snapshot
-	snapshot2.Sdks = append(snapshot2.Sdks, sdk.ContentID{
+	cloneSnapshot := originSnapshot
+	cloneSnapshot.Sdks = append(cloneSnapshot.Sdks, sdk.ContentID{
 		Name:     "test-sdk",
 		Sha3_384: "d024fbe91c6b99d0064306d52006c17a5d0406822ff253fbbe6a934ca9be50d3ff9a6ec3bac3be8396006029a1ff453a",
 		IsVolume: false,
 	})
-	err1 = s.bd.TakeSnapshot(s.ctx, "test3", snapshot2)
-	mount3, err2 := s.rootfsMount("test3")
-	err3 = s.bd.StopWorkshop(s.ctx, "test3", true)
+	err1 = s.bd.TakeSnapshot(s.ctx, "clone", cloneSnapshot)
+	cloneRootFS, err2 := s.workshopRootFS("clone", confinement)
+	err3 = s.bd.StopWorkshop(s.ctx, "clone", true)
 	c.Assert(cmp.Or(err1, err2, err3), check.IsNil)
 
-	// Mount each rootfs for comparison
-	workdir := c.MkDir()
-	for i := range 3 {
-		err := os.Mkdir(filepath.Join(workdir, fmt.Sprint(i)), os.ModePerm)
-		c.Assert(err, check.IsNil)
+	// Launch another independent workshop.
+	wf := &workshop.File{
+		Name:        "test",
+		Base:        base,
+		Confinement: confinement,
 	}
-	var roots []string
-	var files []uniqueFiles
-	for i, m := range []mount{mount1, mount2, mount3} {
-		if m.Fstype != "zfs" {
-			c.Skip("workshop storage pool is not using ZFS")
+	remove = s.launchWorkshop(c, wf, baseOnly)
+	defer remove()
+	err = s.bd.StartWorkshop(s.ctx, "test")
+	c.Assert(err, check.IsNil)
+	defer func() {
+		err1 := s.bd.StopWorkshop(s.ctx, "test", true)
+		c.Check(err1, check.IsNil)
+	}()
+
+	// Mount the other workshops inside the new one.
+	unmountOrigin := s.mountRootFS(c, originRootFS, "test", "/mnt/origin")
+	defer unmountOrigin.Fail()
+	unmountSibling := s.mountRootFS(c, siblingRootFS, "test", "/mnt/sibling")
+	defer unmountSibling.Fail()
+	unmountClone := s.mountRootFS(c, cloneRootFS, "test", "/mnt/clone")
+	defer unmountClone.Fail()
+
+	// Ensure ID files are unique, while most others are identical.
+	originFiles := s.extractUniqueFiles(c, "test", "/mnt/origin")
+	siblingFiles := s.extractUniqueFiles(c, "test", "/mnt/sibling")
+	cloneFiles := s.extractUniqueFiles(c, "test", "/mnt/clone")
+
+	c.Check(originFiles.hostname, check.Not(check.Equals), siblingFiles.hostname)
+	c.Check(originFiles.machineID, check.Not(check.Equals), siblingFiles.machineID)
+	c.Check(originFiles.networkCfg, check.Not(check.Equals), siblingFiles.networkCfg)
+	c.Check(originFiles.sshKey, check.Not(check.Equals), siblingFiles.sshKey)
+
+	c.Check(originFiles.hostname, check.Not(check.Equals), cloneFiles.hostname)
+	if confinement == workshop.ConfinementContainer {
+		c.Check(originFiles.machineID, check.Not(check.Equals), cloneFiles.machineID)
+	} else {
+		// TODO: fix /etc/machine-id in VMs.
+		c.Check(originFiles.machineID, check.Equals, cloneFiles.machineID)
+	}
+	c.Check(originFiles.networkCfg, check.Not(check.Equals), cloneFiles.networkCfg)
+	c.Check(originFiles.sshKey, check.Not(check.Equals), cloneFiles.sshKey)
+
+	s.execDiff(c, "test", "/mnt/origin", "/mnt/sibling")
+	s.execDiff(c, "test", "/mnt/origin", "/mnt/clone")
+
+	names := []string{"origin", "clone"}
+	for i, snapshot := range []workshop.Snapshot{originSnapshot, cloneSnapshot} {
+		c.Logf("Restoring snapshot of %q workshop", names[i])
+
+		// Restore original workshop from snapshot.
+		clone := unmountOrigin.Clone()
+		unmountOrigin.Success()
+		clone.Fail()
+		_ = s.launchWorkshop(c, originFile, snapshot)
+
+		// Restart it to give services a chance to run.
+		err = s.bd.StartWorkshop(s.ctx, "origin")
+		c.Assert(err, check.IsNil)
+		originRootFS, err1 := s.workshopRootFS("origin", confinement)
+		err2 = s.bd.StopWorkshop(s.ctx, "origin", true)
+		c.Assert(cmp.Or(err1, err2), check.IsNil)
+
+		// Remount the rootfs into the "test" workshop.
+		unmountOrigin = s.mountRootFS(c, originRootFS, "test", "/mnt/origin")
+		defer unmountOrigin.Fail()
+
+		// Check ID files, and most others, are preserved.
+		restoredFiles := s.extractUniqueFiles(c, "test", "/mnt/origin")
+
+		c.Check(restoredFiles.hostname, check.Equals, originFiles.hostname)
+		if confinement == workshop.ConfinementContainer || i == 0 {
+			c.Check(restoredFiles.machineID, check.Equals, originFiles.machineID)
+		} else {
+			// TODO: fix /etc/machine-id in VMs.
+			c.Check(restoredFiles.machineID, check.Equals, cloneFiles.machineID)
 		}
-		target := filepath.Join(workdir, fmt.Sprint(i))
-		err := syscall.Mount(m.Source, target, m.Fstype, 0, "")
-		c.Assert(err, check.IsNil)
-		defer func() {
-			err1 := syscall.Unmount(target, 0)
-			c.Check(err1, check.IsNil)
-		}()
+		c.Check(restoredFiles.networkCfg, check.Equals, originFiles.networkCfg)
+		c.Check(restoredFiles.sshKey, check.Equals, originFiles.sshKey)
 
-		root := filepath.Join(target, m.Fsroot)
-		roots = append(roots, root)
-		files = append(files, extractUniqueFiles(c, root))
+		s.execDiff(c, "test", "/mnt/sibling", "/mnt/origin")
 	}
-
-	// Ensure certain files are unique.
-	c.Check(files[0].hostname, check.Not(check.Equals), files[1].hostname)
-	c.Check(files[0].machineID, check.Not(check.Equals), files[1].machineID)
-	c.Check(files[0].networkCfg, check.Not(check.Equals), files[1].networkCfg)
-	c.Check(files[0].sshKey, check.Not(check.Equals), files[1].sshKey)
-
-	c.Check(files[0].hostname, check.Not(check.Equals), files[2].hostname)
-	c.Check(files[0].machineID, check.Not(check.Equals), files[2].machineID)
-	c.Check(files[0].networkCfg, check.Not(check.Equals), files[2].networkCfg)
-	c.Check(files[0].sshKey, check.Not(check.Equals), files[2].sshKey)
-
-	// Check for unexpected differences.
-	output, err := exec.Command("diff", "--brief", "--no-dereference", "--recursive", roots[0], roots[1]).CombinedOutput()
-	c.Check(err, check.IsNil, check.Commentf("%s", output))
-
-	output, err = exec.Command("diff", "--brief", "--no-dereference", "--recursive", roots[0], roots[2]).CombinedOutput()
-	c.Check(err, check.IsNil, check.Commentf("%s", output))
-
-	// Restore first workshop from its own snapshot.
-	err = syscall.Unmount(filepath.Join(workdir, "0"), 0)
-	c.Assert(err, check.IsNil)
-	_ = s.launchWorkshop(c, wf1, snapshot)
-
-	// Restart it to give cloud-init a chance to run.
-	err = s.bd.StartWorkshop(s.ctx, "test1")
-	c.Assert(err, check.IsNil)
-	mount1, err1 = s.rootfsMount("test1")
-	err2 = s.bd.StopWorkshop(s.ctx, "test1", true)
-	c.Assert(cmp.Or(err1, err2), check.IsNil)
-
-	// Remount the rootfs.
-	if mount1.Fstype != "zfs" {
-		c.Skip("workshop storage pool is not using ZFS")
-	}
-	err = syscall.Mount(mount1.Source, filepath.Join(workdir, "0"), mount1.Fstype, 0, "")
-	c.Assert(err, check.IsNil)
-	restored := extractUniqueFiles(c, roots[0])
-
-	// Check that only Workshop-managed attributes are preserved.
-	c.Check(files[0].hostname, check.Equals, restored.hostname)
-	c.Check(files[0].machineID, check.Equals, restored.machineID)
-	c.Check(files[0].networkCfg, check.Equals, restored.networkCfg)
-	c.Check(files[0].sshKey, check.Equals, restored.sshKey)
-
-	// Check for unexpected differences.
-	output, err = exec.Command("diff", "--brief", "--no-dereference", "--recursive", roots[1], roots[0]).CombinedOutput()
-	c.Check(err, check.IsNil, check.Commentf("%s", output))
-
-	// Refresh first workshop from a snapshot of third workshop.
-	err = syscall.Unmount(filepath.Join(workdir, "0"), 0)
-	c.Assert(err, check.IsNil)
-	_ = s.launchWorkshop(c, wf1, snapshot2)
-
-	// Restart first workshop to run cloud-init.
-	err = s.bd.StartWorkshop(s.ctx, "test1")
-	c.Assert(err, check.IsNil)
-	mount1, err1 = s.rootfsMount("test1")
-
-	err2 = s.bd.StopWorkshop(s.ctx, "test1", true)
-	c.Assert(cmp.Or(err1, err2), check.IsNil)
-
-	// Remount the rootfs.
-	if mount1.Fstype != "zfs" {
-		c.Skip("workshop storage pool is not using ZFS")
-	}
-	err = syscall.Mount(mount1.Source, filepath.Join(workdir, "0"), mount1.Fstype, 0, "")
-	c.Assert(err, check.IsNil)
-	refreshed := extractUniqueFiles(c, roots[0])
-
-	// Check that only Workshop-managed attributes are preserved.
-	c.Check(files[0].hostname, check.Equals, refreshed.hostname)
-	c.Check(files[0].machineID, check.Equals, refreshed.machineID)
-	c.Check(files[0].networkCfg, check.Equals, refreshed.networkCfg)
-	c.Check(files[0].sshKey, check.Equals, refreshed.sshKey)
-
-	// Check for unexpected differences.
-	output, err = exec.Command("diff", "--brief", "--no-dereference", "--recursive", roots[2], roots[0]).CombinedOutput()
-	c.Check(err, check.IsNil, check.Commentf("%s", output))
 }
 
-type mount struct {
+type filesystem struct {
+	name        string
+	confinement workshop.Confinement
+
 	Fstype string `json:"fstype"`
 	Source string `json:"source"`
 	Fsroot string `json:"fsroot"`
 }
 
-// rootfsMount returns the source ZFS dataset, and subdirectory within that, of
-// the given container's rootfs.
-func (s *snapshotSuite) rootfsMount(name string) (mount, error) {
+// workshopRootFS performs operations while the workshop is running to make it
+// easy to mount its rootfs elsewhere once it has stopped. For containers, it
+// returns the source ZFS dataset, and the subdirectory of the rootfs within
+// that. For VMs, it relabels the filesystem to make it easier to locate when
+// mounting the parent block device in another VM.
+func (s *snapshotSuite) workshopRootFS(name string, confinement workshop.Confinement) (filesystem, error) {
 	args := workshop.ExecArgs{
 		Command: []string{"findmnt", "--json", "--mountpoint=/", "--nofsroot", "--output=fsroot,fstype,source"},
 		WorkDir: "/",
@@ -514,20 +503,203 @@ func (s *snapshotSuite) rootfsMount(name string) (mount, error) {
 	}
 	output, err := helper.ExecOutput(s.ctx, s.bd, name, args)
 	if err != nil {
-		return mount{}, err
+		return filesystem{}, err
 	}
 
-	var result struct {
-		Filesystems []mount `json:"filesystems"`
+	var filesystems struct {
+		Filesystems []filesystem `json:"filesystems"`
 	}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		return mount{}, err
+	if err := json.Unmarshal([]byte(output), &filesystems); err != nil {
+		return filesystem{}, err
 	}
-	if len(result.Filesystems) != 1 {
-		return mount{}, fmt.Errorf("expected 1 filesystem, found:\n%s", output)
+	if len(filesystems.Filesystems) != 1 {
+		return filesystem{}, fmt.Errorf("expected 1 filesystem, found:\n%s", output)
 	}
 
-	return result.Filesystems[0], nil
+	rootfs := filesystems.Filesystems[0]
+	rootfs.name = name
+	rootfs.confinement = confinement
+	if confinement == workshop.ConfinementContainer {
+		return rootfs, nil
+	}
+
+	if rootfs.Fstype != "ext4" {
+		return filesystem{}, fmt.Errorf("unexpected rootfs type %q", rootfs.Fstype)
+	}
+	args.Command = []string{"e2label", "/dev/disk/by-label/cloudimg-rootfs", "workshop-" + name}
+	_, err = helper.ExecOutput(s.ctx, s.bd, name, args)
+	if err != nil {
+		return filesystem{}, err
+	}
+
+	rootfs.Source = "/dev/disk/by-label/workshop-" + name
+	return rootfs, nil
+}
+
+func (s *snapshotSuite) mountRootFS(c *check.C, source filesystem, name, path string) *revert.Reverter {
+	if source.confinement == workshop.ConfinementContainer {
+		return s.mountContainerRootFS(c, source, name, path)
+	}
+	return s.mountVMRootFS(c, source, name, path)
+}
+
+// mountContainerRootFS mounts the rootfs of one container inside another
+// container. LXD doesn't support this directly, so we first mount the rootfs
+// on the host and then bind-mount the mountpoint into the other workshop. The
+// host mount is ID-mapped so the container can modify the files.
+func (s *snapshotSuite) mountContainerRootFS(c *check.C, source filesystem, name, path string) *revert.Reverter {
+	c.Assert(source.Fstype, check.Equals, "zfs")
+
+	userns := s.workshopUserNS(c, name)
+	defer userns.Close()
+
+	rev := revert.New()
+	defer rev.Fail()
+
+	mountpoint := c.MkDir()
+	s.idmappedMount(c, source, mountpoint, userns)
+	rev.Add(func() {
+		err1 := unix.Unmount(mountpoint, 0)
+		c.Check(err1, check.IsNil)
+	})
+
+	mount := workshop.Mount{
+		Name:      "root_" + source.name,
+		Type:      workshop.HostWorkshop,
+		What:      filepath.Join(mountpoint, source.Fsroot),
+		Where:     path,
+		MakeWhere: true,
+	}
+	err := s.bd.AddWorkshopMount(s.ctx, name, mount)
+	c.Assert(err, check.IsNil)
+	rev.Add(func() {
+		err1 := s.bd.RemoveWorkshopMount(s.ctx, name, mount.Name)
+		c.Check(err1, check.IsNil)
+	})
+
+	clone := rev.Clone()
+	rev.Success()
+	return clone
+}
+
+func (s *snapshotSuite) workshopUserNS(c *check.C, name string) *os.File {
+	conn, err := s.bd.LxdClient(s.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	state, _, err := conn.GetInstanceState(lxdbackend.InstanceName(name, s.project.ProjectId))
+	c.Assert(err, check.IsNil)
+	c.Assert(state.Pid > 0, check.Equals, true)
+
+	userns, err := os.Open(filepath.Join("/proc", fmt.Sprint(state.Pid), "ns", "user"))
+	c.Assert(err, check.IsNil)
+	return userns
+}
+
+func (s *snapshotSuite) idmappedMount(c *check.C, source filesystem, target string, userns *os.File) {
+	fsfd, err := unix.Fsopen(source.Fstype, unix.FSOPEN_CLOEXEC)
+	c.Assert(err, check.IsNil)
+	defer unix.Close(fsfd)
+
+	err = unix.FsconfigSetString(fsfd, "source", source.Source)
+	c.Assert(err, check.IsNil)
+	err = unix.FsconfigCreate(fsfd)
+	c.Assert(err, check.IsNil)
+
+	tree, err := unix.Fsmount(fsfd, unix.FSMOUNT_CLOEXEC, 0)
+	c.Assert(err, check.IsNil)
+	defer unix.Close(tree)
+
+	attr := &unix.MountAttr{
+		Attr_set:  unix.MOUNT_ATTR_IDMAP,
+		Userns_fd: uint64(userns.Fd()),
+	}
+	err = unix.MountSetattr(tree, "", unix.AT_EMPTY_PATH, attr)
+	c.Assert(err, check.IsNil)
+
+	err = unix.MoveMount(tree, "", unix.AT_FDCWD, target, unix.MOVE_MOUNT_F_EMPTY_PATH)
+	c.Assert(err, check.IsNil)
+}
+
+// mountVMRootFS mounts the rootfs of one VM inside another VM. LXD supports
+// this directly, but only creates the block device without mounting it.
+// Luckily we already relabeled the rootfs, so we can use that to mount it
+// after udev has created the appropriate symlinks.
+func (s *snapshotSuite) mountVMRootFS(c *check.C, source filesystem, name, path string) *revert.Reverter {
+	conn, err := s.bd.LxdClient(s.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	inst, etag1, err := conn.GetInstance(lxdbackend.InstanceName(name, s.project.ProjectId))
+	c.Assert(err, check.IsNil)
+
+	vol, etag2, err := conn.GetStoragePoolVolume(inst.Devices["root"]["pool"], inst.Type, lxdbackend.InstanceName(source.name, s.project.ProjectId))
+	c.Assert(err, check.IsNil)
+	vol.Config["security.shared"] = "true"
+	op, err := conn.UpdateStoragePoolVolume(vol.Pool, vol.Type, vol.Name, vol.Writable(), etag2)
+	c.Assert(err, check.IsNil)
+	c.Assert(op.WaitContext(s.ctx), check.IsNil)
+
+	rev := revert.New()
+	defer rev.Fail()
+
+	inst.Devices["root_"+source.name] = map[string]string{
+		"type":        "disk",
+		"pool":        vol.Pool,
+		"source":      vol.Name,
+		"source.type": vol.Type,
+	}
+	op, err = conn.UpdateInstance(inst.Name, inst.Writable(), etag1)
+	c.Assert(err, check.IsNil)
+	c.Assert(op.WaitContext(s.ctx), check.IsNil)
+
+	rev.Add(func() {
+		inst1, etag3, err1 := conn.GetInstance(inst.Name)
+		if c.Check(err1, check.IsNil) {
+			delete(inst1.Devices, "root_"+source.name)
+
+			op1, err1 := conn.UpdateInstance(inst1.Name, inst1.Writable(), etag3)
+			if c.Check(err1, check.IsNil) {
+				c.Check(op1.WaitContext(s.ctx), check.IsNil)
+			}
+		}
+	})
+
+	args := workshop.ExecArgs{
+		Command: []string{"udevadm", "settle"},
+		WorkDir: "/",
+		Timeout: time.Second,
+	}
+	_, err = helper.ExecOutput(s.ctx, s.bd, name, args)
+	c.Assert(err, check.IsNil)
+
+	// Check filesystem integrity; nonzero exit codes can indicate the rootfs
+	// was repaired successfully, but could be a sign that the filesystem
+	// wasn't properly frozen or the workshop wasn't stopped cleanly.
+	args.Command = []string{"fsck.ext4", "-fy", source.Source}
+	out, err := helper.ExecOutput(s.ctx, s.bd, name, args)
+	c.Check(err, check.IsNil, check.Commentf("%s", out))
+
+	args.Command = []string{"mkdir", "-p", path}
+	_, err = helper.ExecOutput(s.ctx, s.bd, name, args)
+	c.Assert(err, check.IsNil)
+
+	args.Command = []string{"mount", source.Source, path}
+	_, err = helper.ExecOutput(s.ctx, s.bd, name, args)
+	c.Assert(err, check.IsNil)
+	rev.Add(func() {
+		args1 := workshop.ExecArgs{
+			Command: []string{"umount", path},
+			WorkDir: "/",
+			Timeout: time.Second,
+		}
+		_, err1 := helper.ExecOutput(s.ctx, s.bd, name, args1)
+		c.Check(err1, check.IsNil)
+	})
+
+	clone := rev.Clone()
+	rev.Success()
+	return clone
 }
 
 type uniqueFiles struct {
@@ -540,14 +712,18 @@ type uniqueFiles struct {
 // extractUniqueFiles prepares a rootfs for diff comparison. It removes files
 // that are likely be different (most of which are inconsequential) and returns
 // the contents of the files that really ought to be different.
-func extractUniqueFiles(c *check.C, path string) uniqueFiles {
-	hostname, err := os.ReadFile(filepath.Join(path, "etc", "hostname"))
+func (s *snapshotSuite) extractUniqueFiles(c *check.C, name, path string) uniqueFiles {
+	fs, err := s.bd.WorkshopFs(s.ctx, name)
 	c.Assert(err, check.IsNil)
-	machineID, err := os.ReadFile(filepath.Join(path, "etc", "machine-id"))
+	defer fs.Close()
+
+	hostname, err := fs.ReadFile(filepath.Join(path, "etc", "hostname"))
 	c.Assert(err, check.IsNil)
-	networkCfg, err := os.ReadFile(filepath.Join(path, "etc", "systemd", "network", "10-cloud-init-eth0.network.d", "workshop.conf"))
+	machineID, err := fs.ReadFile(filepath.Join(path, "etc", "machine-id"))
 	c.Assert(err, check.IsNil)
-	sshKey, err := os.ReadFile(filepath.Join(path, "etc", "ssh", "ssh_host_ed25519_key.pub"))
+	networkCfg, err := fs.ReadFile(filepath.Join(path, "etc", "systemd", "network", "10-cloud-init-eth0.network.d", "workshop.conf"))
+	c.Assert(err, check.IsNil)
+	sshKey, err := fs.ReadFile(filepath.Join(path, "etc", "ssh", "ssh_host_ed25519_key.pub"))
 	c.Assert(err, check.IsNil)
 
 	files := []string{
@@ -559,34 +735,34 @@ func extractUniqueFiles(c *check.C, path string) uniqueFiles {
 		"etc/sudoers.d/90-cloud-init-users",
 		"etc/systemd/network/10-cloud-init-eth0.network.d/workshop.conf",
 		"var/cache/ldconfig/aux-cache",
+		"var/lib/systemd/random-seed",
 		"var/lib/workshop/run/workshop.socket.untrusted",
-		"var/log/cloud-init.log",
-		"var/log/cloud-init-output.log",
-		"var/log/unattended-upgrades/unattended-upgrades-shutdown.log",
-		"var/log/wtmp",
 	}
 	for _, file := range files {
 		local, err := filepath.Localize(file)
 		c.Assert(err, check.IsNil)
 
-		err = os.Remove(filepath.Join(path, local))
+		err = fs.Remove(filepath.Join(path, local))
 		if !errors.Is(err, os.ErrNotExist) {
 			c.Assert(err, check.IsNil)
 		}
 	}
 
 	dirs := []string{
+		"tmp",
+		"var/cache/apparmor",
 		"var/cache/snapd",
 		"var/lib/cloud",
 		"var/lib/snapd",
-		"var/log/journal",
+		"var/log",
+		"var/snap/lxd/common",
 		"var/tmp",
 	}
 	for _, dir := range dirs {
 		local, err := filepath.Localize(dir)
 		c.Assert(err, check.IsNil)
 
-		err = os.RemoveAll(filepath.Join(path, local))
+		err = fs.RemoveAll(filepath.Join(path, local))
 		c.Assert(err, check.IsNil)
 	}
 
@@ -596,4 +772,14 @@ func extractUniqueFiles(c *check.C, path string) uniqueFiles {
 		networkCfg: string(networkCfg),
 		sshKey:     string(sshKey),
 	}
+}
+
+func (s *snapshotSuite) execDiff(c *check.C, name, a, b string) {
+	args := workshop.ExecArgs{
+		Command: []string{"diff", "--brief", "--no-dereference", "--recursive", a, b},
+		WorkDir: "/",
+		Timeout: time.Second,
+	}
+	out, err := helper.ExecOutput(s.ctx, s.bd, name, args)
+	c.Check(err, check.IsNil, check.Commentf("diff %s %s:\n%s", a, b, out))
 }

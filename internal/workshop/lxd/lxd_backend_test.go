@@ -15,17 +15,23 @@
 package lxdbackend_test
 
 import (
+	"crypto/sha3"
+	"encoding/hex"
+	"path/filepath"
 	"testing"
 
 	"gopkg.in/check.v1"
+	"gopkg.in/yaml.v3"
 
+	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 	lxdbackend "github.com/canonical/workshop/internal/workshop/lxd"
 )
 
 type LxdBeTests struct {
-	project workshop.Project
+	project         workshop.Project
+	workshopCtlPath string
 }
 
 var _ = check.Suite(&LxdBeTests{})
@@ -35,6 +41,15 @@ func TestLxdBackendSuite(t *testing.T) { check.TestingT(t) }
 func (s *LxdBeTests) SetUpTest(c *check.C) {
 	dir := c.MkDir()
 	s.project = workshop.Project{ProjectId: "42ws42ws", Path: dir}
+
+	// These tests don't require workshopctl, but the snapshot tests do, and
+	// the basename of the test binary appears in cloud-init.user-data.
+	s.workshopCtlPath = dirs.WorkshopCtlPath
+	dirs.WorkshopCtlPath = filepath.Join(dir, "integration.test")
+}
+
+func (s *LxdBeTests) TearDownTest(c *check.C) {
+	dirs.WorkshopCtlPath = s.workshopCtlPath
 }
 
 func (f *LxdBeTests) TestReadProjectsSuccess(c *check.C) {
@@ -64,7 +79,7 @@ func (f *LxdBeTests) TestReadProjectsSuccess(c *check.C) {
 	c.Assert(projects, check.HasLen, 0)
 }
 
-var marshalledWorkshop = `name: test
+var containerFile = `name: test
 base: ubuntu@22.04
 sdks:
     - name: one
@@ -78,7 +93,7 @@ sdks:
       channel: latest/edge
 `
 
-func (f *LxdBeTests) TestDefaultWorkshopConfig(c *check.C) {
+func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	// Setup
 	b := &lxdbackend.Backend{}
 	file := &workshop.File{
@@ -99,11 +114,58 @@ func (f *LxdBeTests) TestDefaultWorkshopConfig(c *check.C) {
 	// Validate
 	c.Assert(err, check.IsNil)
 	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1001 1000\ngid 1001 1000")
+	c.Assert(cfg["raw.lxc"], check.Equals, "lxc.mount.entry = tmpfs tmp tmpfs defaults")
 	c.Assert(cfg["security.nesting"], check.Equals, "true")
 	c.Assert(cfg["user.workshop.project-id"], check.Equals, f.project.ProjectId)
-	c.Assert(cfg["user.workshop.file"], check.Equals, marshalledWorkshop)
+	c.Assert(cfg["user.workshop.file"], check.Equals, containerFile)
 	c.Assert(cfg["user.workshop.format-revision"], check.Equals, b.FormatRevision().String())
 	c.Assert(cfg["user.workshop.base-fingerprint"], check.Equals, "fakeimage12345")
+
+	// Check hash here so it's easier to update snapshot-format.yaml.
+	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "8cb63e0464ae87dca0a4b43e73fa6420b8b81e758a313b166732c886113af229acbaf83af34ce8b5fc1006772aae84f4")
+	// Check for syntax errors (e.g. whitespace).
+	var config map[string]any
+	err = yaml.Unmarshal([]byte(cfg["cloud-init.user-data"]), &config)
+	c.Assert(err, check.IsNil)
+}
+
+var vmFile = `name: test
+base: ubuntu@22.04
+confinement: virtual-machine
+`
+
+func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
+	// Setup
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name:        "test",
+		Base:        "ubuntu@22.04",
+		Confinement: workshop.ConfinementVirtualMachine,
+	}
+
+	// Execute
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1002", "1002", file, b.FormatRevision(), "fakeimage12345")
+
+	// Validate
+	c.Assert(err, check.IsNil)
+	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1002 1000\ngid 1002 1000")
+	_, ok := cfg["raw.lxc"]
+	c.Assert(ok, check.Equals, false)
+	_, ok = cfg["security.nesting"]
+	c.Assert(ok, check.Equals, false)
+	c.Assert(cfg["user.workshop.project-id"], check.Equals, f.project.ProjectId)
+	c.Assert(cfg["user.workshop.file"], check.Equals, vmFile)
+	c.Assert(cfg["user.workshop.format-revision"], check.Equals, b.FormatRevision().String())
+	c.Assert(cfg["user.workshop.base-fingerprint"], check.Equals, "fakeimage12345")
+
+	// Check hash here so it's easier to update snapshot-format.yaml.
+	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "7e2a89d65435671a015502795a945615ebf4ddb261d24274937a916e0ef27923723867ca07e5a6b6359dbc7cdba3faaf")
+	// Check for syntax errors (e.g. whitespace).
+	var config map[string]any
+	err = yaml.Unmarshal([]byte(cfg["cloud-init.user-data"]), &config)
+	c.Assert(err, check.IsNil)
 }
 
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
