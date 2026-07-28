@@ -1172,7 +1172,7 @@ func (s *Backend) ProjectWorkshops(ctx context.Context) ([]*workshop.Workshop, e
 
 	// Get all the running workshops for this project.
 	args := lxd.GetInstancesArgs{
-		InstanceType: api.InstanceTypeContainer,
+		InstanceType: api.InstanceTypeAny,
 		Filters:      []string{"config.user.workshop.project-id=" + p.ProjectId},
 	}
 	instances, err := conn.GetInstances(args)
