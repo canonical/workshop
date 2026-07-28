@@ -113,6 +113,7 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 
 	// Validate
 	c.Assert(err, check.IsNil)
+	c.Assert(cfg["cloud-init.user-data"], check.Not(testutil.Contains), "GRUB_CMDLINE_LINUX")
 	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1001 1000\ngid 1001 1000")
 	c.Assert(cfg["raw.lxc"], check.Equals, "lxc.mount.entry = tmpfs tmp tmpfs defaults")
 	c.Assert(cfg["security.nesting"], check.Equals, "true")
@@ -149,6 +150,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 
 	// Validate
 	c.Assert(err, check.IsNil)
+	c.Assert(cfg["cloud-init.user-data"], testutil.Contains, "GRUB_CMDLINE_LINUX")
 	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1002 1000\ngid 1002 1000")
 	_, ok := cfg["raw.lxc"]
 	c.Assert(ok, check.Equals, false)
@@ -161,7 +163,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 
 	// Check hash here so it's easier to update snapshot-format.yaml.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "7e2a89d65435671a015502795a945615ebf4ddb261d24274937a916e0ef27923723867ca07e5a6b6359dbc7cdba3faaf")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "b2197fbcdb2a08fbb712f3f2a525dac06c50e025793b652ea7f4bc5d8456775cc69bcbc73a12d91e07d18baa5cba0c12")
 	// Check for syntax errors (e.g. whitespace).
 	var config map[string]any
 	err = yaml.Unmarshal([]byte(cfg["cloud-init.user-data"]), &config)
