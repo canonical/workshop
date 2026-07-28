@@ -3,9 +3,7 @@
 # snapshotSuite.TestLxdBackendSnapshotFormat test. It records the writable
 # parts of workshops and snapshots at each step from launch to snapshot.
 # Changes to this file may or may not influence the snapshot format. For
-# instance cloud-init.user-data is likely to modify files and therefore change
-# the snapshot format. Other options like boot.autostart are omitted from
-# snapshots and have no effect.
+# instance boot.autostart is omitted from snapshots and has no side effects.
 launched:
   architecture: ''
   config:
@@ -15,7 +13,6 @@ launched:
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: 'b2a2ea09a7e8433b710b86768b90e96e0040cfc47aa8d0a8bf50544c208faa970657e6c0c8fa92f2c051e85962b54b98'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -55,7 +52,6 @@ started:
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: 'b2a2ea09a7e8433b710b86768b90e96e0040cfc47aa8d0a8bf50544c208faa970657e6c0c8fa92f2c051e85962b54b98'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -95,7 +91,6 @@ sdk-attached:
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: 'b2a2ea09a7e8433b710b86768b90e96e0040cfc47aa8d0a8bf50544c208faa970657e6c0c8fa92f2c051e85962b54b98'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -147,7 +142,6 @@ sdk-mounted:
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: 'b2a2ea09a7e8433b710b86768b90e96e0040cfc47aa8d0a8bf50544c208faa970657e6c0c8fa92f2c051e85962b54b98'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''

@@ -180,7 +180,7 @@ func (s *Backend) Snapshot(ctx context.Context, snapshot workshop.Snapshot) (*wo
 	workshops := map[string][]string{}
 
 	usedBy, err := conn.GetInstances(lxd.GetInstancesArgs{
-		InstanceType: api.InstanceTypeContainer,
+		InstanceType: instanceType(snapshot.Image.Confinement),
 		Filters:      []string{fmt.Sprintf("config.user.workshop.snapshot-%v=%s", len(snapshot.Sdks), name)},
 	})
 	if err != nil {
@@ -194,7 +194,7 @@ func (s *Backend) Snapshot(ctx context.Context, snapshot workshop.Snapshot) (*wo
 
 	// Check for stashed workshops as well.
 	usedBy, err = snapshotConn.GetInstances(lxd.GetInstancesArgs{
-		InstanceType: api.InstanceTypeContainer,
+		InstanceType: instanceType(snapshot.Image.Confinement),
 		Filters:      []string{fmt.Sprintf("config.user.workshop.snapshot-%v=%s", len(snapshot.Sdks), name)},
 	})
 	if err != nil {
@@ -228,6 +228,11 @@ func identifySnapshot(inst *api.Instance) (*workshop.Snapshot, error) {
 		return nil, err
 	}
 
+	confinement := workshop.ConfinementContainer
+	if inst.Type == string(api.InstanceTypeVM) {
+		confinement = workshop.ConfinementVirtualMachine
+	}
+
 	sdks := make([]sdk.ContentID, len(inst.Devices))
 	length := 0
 	maxInstallOrder := 0
@@ -259,7 +264,7 @@ func identifySnapshot(inst *api.Instance) (*workshop.Snapshot, error) {
 		Format: format,
 		Image: workshop.BaseImage{
 			Name:        inst.Config[workshop.ConfigWorkshopBase],
-			Confinement: workshop.ConfinementContainer,
+			Confinement: confinement,
 			Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 		},
 		Sdks: sdks[:length],
@@ -959,8 +964,13 @@ func (s *Backend) HashSnapshot(snapshot workshop.Snapshot) (string, error) {
 		return "", err
 	}
 
+	confinement, err := snapshot.Image.Confinement.MarshalText()
+	if err != nil {
+		return "", err
+	}
+
 	hash := sha3.New384()
-	if _, err := fmt.Fprintf(hash, "%s %s\x00%s", snapshot.Format, snapshot.Image.Name, digest); err != nil {
+	if _, err := fmt.Fprintf(hash, "%s %s %s\x00%s", snapshot.Format, snapshot.Image.Name, confinement, digest); err != nil {
 		return "", err
 	}
 

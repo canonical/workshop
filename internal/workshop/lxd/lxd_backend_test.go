@@ -15,6 +15,8 @@
 package lxdbackend_test
 
 import (
+	"crypto/sha3"
+	"encoding/hex"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -25,7 +27,8 @@ import (
 )
 
 type LxdBeTests struct {
-	project workshop.Project
+	project         workshop.Project
+	workshopCtlPath string
 }
 
 var _ = check.Suite(&LxdBeTests{})
@@ -64,7 +67,7 @@ func (f *LxdBeTests) TestReadProjectsSuccess(c *check.C) {
 	c.Assert(projects, check.HasLen, 0)
 }
 
-var marshalledWorkshop = `name: test
+var containerFile = `name: test
 base: ubuntu@22.04
 sdks:
     - name: one
@@ -78,7 +81,7 @@ sdks:
       channel: latest/edge
 `
 
-func (f *LxdBeTests) TestDefaultWorkshopConfig(c *check.C) {
+func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	// Setup
 	b := &lxdbackend.Backend{}
 	file := &workshop.File{
@@ -99,11 +102,56 @@ func (f *LxdBeTests) TestDefaultWorkshopConfig(c *check.C) {
 	// Validate
 	c.Assert(err, check.IsNil)
 	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1001 1000\ngid 1001 1000")
+	c.Assert(cfg["raw.lxc"], check.Equals, "lxc.mount.entry = tmpfs tmp tmpfs defaults")
 	c.Assert(cfg["security.nesting"], check.Equals, "true")
 	c.Assert(cfg["user.workshop.project-id"], check.Equals, f.project.ProjectId)
-	c.Assert(cfg["user.workshop.file"], check.Equals, marshalledWorkshop)
+	c.Assert(cfg["user.workshop.file"], check.Equals, containerFile)
 	c.Assert(cfg["user.workshop.format-revision"], check.Equals, b.FormatRevision().String())
 	c.Assert(cfg["user.workshop.base-fingerprint"], check.Equals, "fakeimage12345")
+
+	// When updating this hash, please carefully consider whether the snapshot
+	// format revision number needs to be bumped. If it isn't bumped, the
+	// cloud-config changes won't apply to new workshops until the user
+	// downloads a new base image or system SDK.
+	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "d4e457bb4b93ff978a83502932f49f8460b465af9f260d2e34bc68099b91d8155d95e7431de5853397069a4b606bd0a9")
+}
+
+var vmFile = `name: test
+base: ubuntu@22.04
+confinement: virtual-machine
+`
+
+func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
+	// Setup
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name:        "test",
+		Base:        "ubuntu@22.04",
+		Confinement: workshop.ConfinementVirtualMachine,
+	}
+
+	// Execute
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1002", "1002", file, b.FormatRevision(), "fakeimage12345")
+
+	// Validate
+	c.Assert(err, check.IsNil)
+	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1002 1000\ngid 1002 1000")
+	_, ok := cfg["raw.lxc"]
+	c.Assert(ok, check.Equals, false)
+	_, ok = cfg["security.nesting"]
+	c.Assert(ok, check.Equals, false)
+	c.Assert(cfg["user.workshop.project-id"], check.Equals, f.project.ProjectId)
+	c.Assert(cfg["user.workshop.file"], check.Equals, vmFile)
+	c.Assert(cfg["user.workshop.format-revision"], check.Equals, b.FormatRevision().String())
+	c.Assert(cfg["user.workshop.base-fingerprint"], check.Equals, "fakeimage12345")
+
+	// When updating this hash, please carefully consider whether the snapshot
+	// format revision number needs to be bumped. If it isn't bumped, the
+	// cloud-config changes won't apply to new workshops until the user
+	// downloads a new base image or system SDK.
+	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "13f2cb785d5d1fda37f388b8b9a03e00967f00934a64b9aff86da17070cbd05a13abacb3d748fca71fcecc7d122c7131")
 }
 
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {

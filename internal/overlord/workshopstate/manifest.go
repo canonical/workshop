@@ -266,7 +266,9 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
-		sdks = slices.Insert(sdks, 0, systemMeta.Setup)
+		if file.Confinement == workshop.ConfinementContainer {
+			sdks = slices.Insert(sdks, 0, systemMeta.Setup)
+		}
 		storeSdks = append(storeSdks, sdks)
 	}
 
@@ -285,6 +287,16 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 			if err != nil {
 				return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 			}
+
+			if cur.File.Confinement != files[i].Confinement {
+				c1, err1 := cur.File.Confinement.MarshalText()
+				c2, err2 := files[i].Confinement.MarshalText()
+				if err := cmp.Or(err1, err2); err != nil {
+					return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
+				}
+				return nil, nil, fmt.Errorf("cannot %s %q: confinement changed from %q to %q", action, name, c1, c2)
+			}
+
 			current = append(current, *cur)
 		} else if err := a.checkNotLaunched(ctx, a.project.ProjectId, name); err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
@@ -298,6 +310,9 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		format := a.backend.FormatRevision()
 		installOrder := sdkInstallOrder(files[i])
 		sdks := ordered(installOrder, storeSdks[i], localSdks)
+		if files[i].Confinement != workshop.ConfinementContainer && len(sdks) > 0 {
+			return nil, nil, fmt.Errorf("cannot %s %q: SDKs are currently unavailable for virtual machines", action, name)
+		}
 		latest = append(latest, Manifest{File: files[i], Format: format, Image: images[i], Sdks: sdks})
 	}
 
