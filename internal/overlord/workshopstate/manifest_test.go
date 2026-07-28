@@ -217,7 +217,7 @@ func (s *manifestSuite) createWFile(c *check.C, ws, base string, sdks []workshop
 
 func (s *manifestSuite) launchWorkshopWithSDKs(c *check.C, ws, base string, sdks []workshop.SdkRecord) *workshop.Workshop {
 	wf := s.createWFile(c, ws, base, sdks)
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -250,7 +250,7 @@ func (s *manifestSuite) TestLaunchOK(c *check.C) {
 		Sdks: sdks,
 	})
 
-	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: "fakeimage123"})
+	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	c.Check(manifests[1].Image, check.Equals, manifests[0].Image)
 
 	systemSdk, err := system.SystemSdkMeta()
@@ -308,7 +308,7 @@ func (s *manifestSuite) TestRefreshOK(c *check.C) {
 	c.Check(latest[0].File, check.DeepEquals, current[0].File)
 	c.Check(current[0].Format, check.Equals, sdk.R(1))
 	c.Check(latest[0].Format, check.Equals, sdk.R(2))
-	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: "fakeimage123"})
+	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	c.Check(latest[0].Image, check.Equals, current[0].Image)
 
 	// Check base was updated for test-2.
@@ -325,7 +325,7 @@ func (s *manifestSuite) TestRefreshOK(c *check.C) {
 	c.Check(current[1].Format, check.Equals, sdk.R(1))
 	c.Check(latest[1].Format, check.Equals, sdk.R(2))
 	c.Check(current[1].Image, check.Equals, current[0].Image)
-	c.Check(latest[1].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"})
+	c.Check(latest[1].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 
 	// Check current SDKs are loaded from running workshop.
 	c.Check(current[0].Sdks, check.DeepEquals, []sdk.Setup{oldSdk.Setup})
@@ -376,7 +376,7 @@ func (s *manifestSuite) TestRefreshRestoreOK(c *check.C) {
 		Base: "ubuntu@20.04",
 		Sdks: sdks,
 	})
-	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: "fakeimage123"})
+	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	c.Check(current[0].Sdks, check.DeepEquals, []sdk.Setup{oldSdk.Setup})
 }
 
@@ -504,7 +504,7 @@ func (s *manifestSuite) TestLaunchRequiresBase(c *check.C) {
 
 	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", nil)
 
-	restoreBase := testutil.FakeFunc(func(ctx context.Context, base string) (workshop.BaseImage, error) {
+	restoreBase := testutil.FakeFunc(func(ctx context.Context, base string, confinement workshop.Confinement) (workshop.BaseImage, error) {
 		return workshop.BaseImage{}, errors.New("contrived error")
 	}, &s.backend.GetBaseCallback)
 	defer restoreBase()
@@ -564,7 +564,7 @@ func (s *manifestSuite) TestLaunchValidRequest(c *check.C) {
 		Base: "ubuntu@20.04",
 		Sdks: sdks,
 	})
-	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: "fakeimage123"})
+	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 
 	systemSdk, err := system.SystemSdkMeta()
 	c.Assert(err, check.IsNil)

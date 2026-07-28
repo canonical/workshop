@@ -256,7 +256,7 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		}
 		files = append(files, file)
 
-		image, err := a.backend.GetBase(ctx, file.Base)
+		image, err := a.backend.GetBase(ctx, file.Base, file.Confinement)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
