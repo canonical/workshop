@@ -58,7 +58,7 @@ func CleanupLxdProject(c *check.C, client lxd.InstanceServer, project string) {
 		}
 	}
 
-	args := lxd.GetInstancesArgs{InstanceType: api.InstanceTypeContainer}
+	args := lxd.GetInstancesArgs{InstanceType: api.InstanceTypeAny}
 	instances, err := cli.GetInstances(args)
 	c.Check(err, check.IsNil)
 	for _, i := range instances {
