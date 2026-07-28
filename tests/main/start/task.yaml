@@ -14,28 +14,6 @@ execute: |
     workshop_exec exec -- test -d /run/user/1000
   }
 
-  # TODO: remove this when `workshop start` begins to rely on LXD events.
-  function check_lxd_ready() {
-    echo "Check LXD itself reports the instance as Ready"
-    filter="name=ws-start-$(< .workshop.lock)"
-
-    for _ in {1..50}; do
-      if lxc list --format csv --columns s --project workshop.ubuntu "$filter" | grep -Fqx READY; then
-        return 0
-      fi
-      sleep 0.1
-    done
-
-    echo "Timed out waiting for LXD to report instance as READY" >&2
-    workshop_exec exec -- systemctl status workshop-waitready.service || true
-    workshop_exec exec -- journalctl -u workshop-waitready.service || true
-    workshop_exec exec -- systemctl || true
-    workshop_exec exec -- systemctl status || true
-    workshop_exec exec -- journalctl -b || true
-    lxc info --show-log --project workshop.ubuntu "ws-start-$(< .workshop.lock)"
-    exit 1
-  }
-
   check_linger
   workshop_exec stop
 
@@ -48,7 +26,6 @@ execute: |
   echo "Check the workshop is in Ready state"
   workshop_exec list | MATCH "^ws-start[[:space:]]+Ready[[:space:]]+-$"
 
-  check_lxd_ready
   check_linger
 
   echo "Check the workshop also becomes Ready when systemd boots degraded"
@@ -57,5 +34,4 @@ execute: |
   workshop_exec stop
   workshop_exec start
   workshop_exec list | MATCH "^ws-start[[:space:]]+Ready[[:space:]]+-$"
-  check_lxd_ready
   workshop_exec exec -- systemctl is-system-running | MATCH '^degraded$'

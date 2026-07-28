@@ -42,6 +42,7 @@ import (
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/syscheck"
 	"github.com/canonical/workshop/internal/testutil"
+	"github.com/canonical/workshop/internal/waitready"
 	"github.com/canonical/workshop/internal/workshop"
 	lxdbackend "github.com/canonical/workshop/internal/workshop/lxd"
 	"github.com/canonical/workshop/internal/workshop/lxd/tests/helper"
@@ -77,7 +78,7 @@ func (f *wsOps) SetUpSuite(c *check.C) {
 	c.Assert(os.Mkdir(f.project.Path, os.ModePerm), check.IsNil)
 	f.ctx = helper.CreateTestContext(f.usr.Username, "42424242")
 
-	f.restoreDevices = workshop.FakeDefaultDevices(helper.DefaultTestDevices)
+	f.restoreDevices = workshop.FakeDefaultDevices(helper.TestDevices)
 	f.restoreImageServer = lxdbackend.FakeImageServer(helper.MinimalImageServer)
 	f.restoreUserLookup = osutil.FakeUserLookup(func(name string) (*user.User, error) {
 		return f.usr, nil
@@ -791,13 +792,18 @@ func (f *wsOps) TestLxdBackendWorkshopStartFailed(c *check.C) {
 	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
 	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
 
-	err := f.bd.StopWorkshop(f.ctx, "test", true)
+	// Disable the waitready service, so start will time out.
+	fs, err := f.bd.WorkshopFs(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	err = fs.Remove("/etc/systemd/system/multi-user.target.wants/workshop-waitready.service")
+	c.Assert(fs.Close(), check.IsNil)
+	c.Assert(err, check.IsNil)
+
+	err = f.bd.StopWorkshop(f.ctx, "test", true)
 	c.Check(err, check.IsNil)
 
-	// Leaves the workshop instance in a started state with a failed start
-	// command. The StartWorkshop API must clean up its previous progress, i.e.
-	// set the workshop to the Stopped state.
-	defer lxdbackend.FakeStartCommand("exit 1")()
+	// Speed up the test.
+	defer testutil.FakeFunc(time.Second, &waitready.Timeout)()
 
 	err = f.bd.StartWorkshop(f.ctx, "test")
 	c.Check(err, check.NotNil)
