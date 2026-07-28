@@ -4,7 +4,7 @@ prepare: |
 restore: |
   . "$TESTSLIB"/utils.sh
   timedatectl set-timezone Etc/UTC
-  workshop_exec remove ws-20 ws-22 ws-24
+  workshop_exec remove ws-20 ws-22 ws-24 ws-26 vm-20 vm-22 vm-24 vm-26
 execute: |
   . "$TESTSLIB"/utils.sh
 
@@ -28,7 +28,9 @@ execute: |
     stat --format='%u %g' build-artifact | MATCH '^1001001 1001001$'
 
     # ensure the workshop has a socket for workshopctl
-    workshop_exec exec "$1" test -S /var/lib/workshop/run/workshop.socket.untrusted
+    if [[ "$1" == ws-* ]]; then
+      workshop_exec exec "$1" test -S /var/lib/workshop/run/workshop.socket.untrusted
+    fi
 
     # ensure the apt cache is mounted
     workshop_exec exec "$1" mountpoint /var/cache/apt/archives
@@ -59,8 +61,13 @@ execute: |
   launch_and_validate ws-20
   launch_and_validate ws-22
   launch_and_validate ws-24
+  launch_and_validate ws-26
+  launch_and_validate vm-20
+  launch_and_validate vm-22
+  launch_and_validate vm-24
+  launch_and_validate vm-26
 
   # ensure workshops can resolve each other by name
   mkdir -p srv/qwertyuiop
   workshop_exec exec ws-22 -- systemd-run --user --working-directory=/project/srv -- python3 -m http.server 8877
-  workshop_exec exec ws-24 -- curl http://ws-22:8877 | MATCH qwertyuiop
+  workshop_exec exec vm-24 -- curl http://ws-22:8877 | MATCH qwertyuiop

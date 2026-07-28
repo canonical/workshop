@@ -442,6 +442,21 @@ func (s *manifestSuite) TestRefreshRequiresStatusReady(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `cannot refresh "test-2": not running`)
 }
 
+func (s *manifestSuite) TestRefreshRequiresContainer(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	s.launchWorkshopWithSDKs(c, "test", "ubuntu@20.04", nil)
+	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "test"), os.O_APPEND|os.O_WRONLY, 0644)
+	c.Assert(err, check.IsNil)
+	_, err = f.WriteString("confinement: virtual-machine\n")
+	c.Assert(f.Close(), check.IsNil)
+	c.Assert(err, check.IsNil)
+
+	_, _, err = s.manager.RefreshManifests(s.ctx, s.project, []string{"test"}, conflict.RefreshUpdate)
+	c.Check(err, check.ErrorMatches, `cannot refresh "test": confinement changed from "container" to "virtual-machine"`)
+}
+
 func (s *manifestSuite) TestRestoreRequiresCurrentFormat(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
@@ -1101,4 +1116,26 @@ func (s *manifestSuite) TestRefreshSortsSdks(c *check.C) {
 		"sketch: sketch",
 	}
 	c.Check(sorted, check.DeepEquals, expected)
+}
+
+func (s *manifestSuite) TestLaunchRejectsVMsWithSDKs(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	sdks := []workshop.SdkRecord{{Name: "test", Channel: "latest/edge"}}
+	s.createWFile(c, "test", "ubuntu@20.04", sdks)
+	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "test"), os.O_APPEND|os.O_WRONLY, 0644)
+	c.Assert(err, check.IsNil)
+	_, err = f.WriteString("confinement: virtual-machine\n")
+	c.Assert(f.Close(), check.IsNil)
+	c.Assert(err, check.IsNil)
+
+	os.Setenv("WORKSHOP_EXPERIMENTAL_VMS", "1")
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
+	c.Check(err, check.ErrorMatches, `cannot launch "test": SDKs are currently unavailable for virtual machines`)
+
+	os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS")
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
+	c.Check(err, check.ErrorMatches, `cannot launch "test": confinement "virtual-machine" is experimental
+To opt in: "snap set workshop workshop.experimental-vms=1"`)
 }

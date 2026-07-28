@@ -268,6 +268,12 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		}
 		if file.Confinement == workshop.ConfinementContainer {
 			sdks = slices.Insert(sdks, 0, systemMeta.Setup)
+		} else if !refresh && !osutil.GetenvBool("WORKSHOP_EXPERIMENTAL_VMS") {
+			confinement, err := file.Confinement.MarshalText()
+			if err == nil {
+				err = fmt.Errorf("confinement %q is experimental\nTo opt in: %q", confinement, "snap set workshop workshop.experimental-vms=1")
+			}
+			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
 		storeSdks = append(storeSdks, sdks)
 	}
