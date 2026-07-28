@@ -1,0 +1,12 @@
+name: vm-20
+base: ubuntu@20.04
+confinement: virtual-machine
+actions:
+  check-apt: |
+    dry_run() {
+      sudo apt-get -o 'Debug::NoLocking=true' -o 'APT::Get::Assume-Yes=0' --assume-no "$@" install gnome
+    }
+
+    [ -f /etc/apt/apt.conf.d/94cloud-init-config ]
+    sudo apt-get update
+    diff <(dry_run --no-install-recommends --no-install-suggests) <(dry_run)
