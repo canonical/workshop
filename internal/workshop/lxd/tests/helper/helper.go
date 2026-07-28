@@ -22,13 +22,17 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
+	"testing"
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/waitready"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -43,8 +47,35 @@ actions:
 
 var MinimalImageServer = "simplestreams:https://cloud-images.ubuntu.com/minimal/releases"
 
-func DefaultTestDevices(pid, w string) ([]workshop.Mount, []workshop.ProxyEntry) {
-	return nil, nil
+var defaultDevices = workshop.DefaultDevices
+
+// RunTestsOrWorkshopCtl is intended to be called from TestMain; it allows test
+// binaries to mount themselves into workshops in place of workshopctl. When
+// run via a symlink with the right name, they behave the same as workshopctl.
+func RunTestsOrWorkshopCtl(m *testing.M) int {
+	if waitready.IsWaitreadyInvocation() {
+		if err := waitready.WaitReady(); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\n", err)
+			return 1
+		}
+		return 0
+	}
+
+	executable, err := os.Executable()
+	if err != nil {
+		panic(fmt.Errorf("cannot get executable path: %w", err))
+	}
+	dirs.WorkshopCtlPath = executable
+
+	return m.Run()
+}
+
+func TestDevices(pid, w string) ([]workshop.Mount, []workshop.ProxyEntry) {
+	mounts, _ := defaultDevices(pid, w)
+	mounts = slices.DeleteFunc(mounts, func(m workshop.Mount) bool {
+		return m.Name != "workshop.bin"
+	})
+	return mounts, nil
 }
 
 func CleanupLxdProject(c *check.C, client lxd.InstanceServer, project string) {

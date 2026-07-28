@@ -36,6 +36,10 @@ import (
 	"github.com/canonical/workshop/internal/workshop/lxd/tests/helper"
 )
 
+func TestMain(m *testing.M) {
+	os.Exit(helper.RunTestsOrWorkshopCtl(m))
+}
+
 type wsProject struct {
 	ctx      context.Context
 	client   lxd.InstanceServer
