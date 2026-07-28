@@ -189,7 +189,7 @@ func ExecOutput(ctx context.Context, bd workshop.Backend, name string, args work
 		return "", err
 	}
 	if err := exectx.WaitExecution(ctx); err != nil {
-		return "", fmt.Errorf("%w\n%s", err, stderr.String())
+		return stdout.String(), fmt.Errorf("%w\n%s", err, stderr.String())
 	}
 	return stdout.String(), err
 }
