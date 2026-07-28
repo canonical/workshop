@@ -1316,7 +1316,7 @@ var snapshotFormat []byte
 // Attempt to specify the filesystem layout of a workshop. Changes to this may
 // invalidate snapshots of existing workshops, so the snapshot format revision
 // number should be bumped to force a full refresh. LXD-specific format is
-// covered by `snapshotSuite.TestLxdBackendSnapshotFormat`. Currently checks
+// covered by `snapshotSuite.TestLxdBackendSnapshotFormat*`. Currently checks
 // all known factors which can influence a snapshot. Unknown factors are tested
 // below by `apiSuite.TestSnapshotIngredients`.
 func (s *apiSuite) TestSnapshotFormat(c *check.C) {
