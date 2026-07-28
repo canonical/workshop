@@ -150,15 +150,25 @@ jobs:
         env:
           SUITE_PATHS: ${{ matrix.suite.paths }}
           LXD_CHANNEL: ${{ inputs.lxd_channel || '6/stable' }}
+          ARTIFACTS: ${{ github.workspace }}.cover
+          ARTIFACT: ${{ github.workspace }}/code-coverage-${{ matrix.suite.name }}.zip
         run: |
-          mkdir ${{ github.workspace }}.cover
+          mkdir "$ARTIFACTS"
           read -r -a suite_paths <<< "$SUITE_PATHS"
-          spread -artifacts=${{ github.workspace }}.cover "${suite_paths[@]}"
+          spread -artifacts="$ARTIFACTS" "${suite_paths[@]}"
+
+          # Workaround https://github.com/actions/upload-artifact/issues/546
+          cd "$ARTIFACTS/lxd:ubuntu-24.04:tests" || exit 0
+          shopt -s dotglob nullglob
+          entries=(*)
+          [ "${#entries[@]}" -gt 0 ] || exit 0
+          rm -f "$ARTIFACT"
+          zip -r "$ARTIFACT" "${entries[@]}"
       - name: Upload Coverage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: code-coverage-${{ matrix.suite.name }}
-          path: ${{ github.workspace }}.cover/lxd:ubuntu-24.04:tests/
+          path: code-coverage-${{ matrix.suite.name }}.zip
+          archive: false
           if-no-files-found: ignore
   publish:
     needs: [build-deps, snap-tests]
