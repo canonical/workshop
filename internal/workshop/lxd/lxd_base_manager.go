@@ -46,7 +46,7 @@ var (
 	currentDownloads = map[string]*downloadOp{}
 )
 
-func (b *Backend) GetBase(ctx context.Context, base string) (workshop.BaseImage, error) {
+func (b *Backend) GetBase(ctx context.Context, base string, confinement workshop.Confinement) (workshop.BaseImage, error) {
 	source, err := baseImageSource(base)
 	if err != nil {
 		return workshop.BaseImage{}, err
@@ -63,7 +63,7 @@ func (b *Backend) GetBase(ctx context.Context, base string) (workshop.BaseImage,
 		return workshop.BaseImage{}, fmt.Errorf("base %q not found: %w", base, err)
 	}
 
-	return workshop.BaseImage{Name: base, Fingerprint: alias.Target}, nil
+	return workshop.BaseImage{Name: base, Confinement: confinement, Fingerprint: alias.Target}, nil
 }
 
 func (b *Backend) DownloadBase(ctx context.Context, image workshop.BaseImage, report *progress.Reporter) error {

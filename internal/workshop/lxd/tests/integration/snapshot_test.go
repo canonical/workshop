@@ -134,7 +134,7 @@ func (s *snapshotSuite) TestLxdBackendSnapshotFormat(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	// Launch workshop.
-	image, err := s.bd.GetBase(s.ctx, "ubuntu@24.04")
+	image, err := s.bd.GetBase(s.ctx, "ubuntu@24.04", workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	err = s.bd.DownloadBase(s.ctx, image, nil)
 	c.Assert(err, check.IsNil)
@@ -146,7 +146,7 @@ func (s *snapshotSuite) TestLxdBackendSnapshotFormat(c *check.C) {
 			{Name: "local-sdk", Source: sdk.ProjectSource},
 		},
 	}
-	snapshot := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, image.Fingerprint)
+	snapshot := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, workshop.ConfinementContainer, image.Fingerprint)
 
 	remove := s.launchWorkshop(c, wf, snapshot)
 	defer remove()
@@ -328,7 +328,7 @@ func (s *snapshotSuite) TestLxdBackendSnapshotDiff(c *check.C) {
 
 func (s *snapshotSuite) snapshotDiff(c *check.C, base string) {
 	// Download base image.
-	image, err := s.bd.GetBase(s.ctx, base)
+	image, err := s.bd.GetBase(s.ctx, base, workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	err = s.bd.DownloadBase(s.ctx, image, nil)
 	c.Assert(err, check.IsNil)
@@ -338,7 +338,7 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string) {
 		Name: "test1",
 		Base: base,
 	}
-	baseOnly := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, image.Fingerprint)
+	baseOnly := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, workshop.ConfinementContainer, image.Fingerprint)
 	remove := s.launchWorkshop(c, wf1, baseOnly)
 	defer remove()
 

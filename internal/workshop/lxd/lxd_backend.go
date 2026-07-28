@@ -1076,6 +1076,7 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, p wo
 
 	image := workshop.BaseImage{
 		Name:        f.Base,
+		Confinement: f.Confinement,
 		Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 	}
 

@@ -259,6 +259,7 @@ func identifySnapshot(inst *api.Instance) (*workshop.Snapshot, error) {
 		Format: format,
 		Image: workshop.BaseImage{
 			Name:        inst.Config[workshop.ConfigWorkshopBase],
+			Confinement: workshop.ConfinementContainer,
 			Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 		},
 		Sdks: sdks[:length],
@@ -272,6 +273,14 @@ func compareSnapshots(name string, actual, expected workshop.Snapshot) error {
 	}
 	if actual.Image.Name != expected.Image.Name {
 		return fmt.Errorf("%q snapshot has %q base; required: %q", name, actual.Image.Name, expected.Image.Name)
+	}
+	if actual.Image.Confinement != expected.Image.Confinement {
+		c1, err1 := actual.Image.Confinement.MarshalText()
+		c2, err2 := expected.Image.Confinement.MarshalText()
+		if err := cmp.Or(err1, err2); err != nil {
+			return fmt.Errorf("%q snapshot: %w", name, err)
+		}
+		return fmt.Errorf("%q snapshot has %q confinement; required: %q", name, c1, c2)
 	}
 	if actual.Image.Fingerprint != expected.Image.Fingerprint {
 		return fmt.Errorf("%q snapshot has %q base fingerprint; required: %q", name, actual.Image.Fingerprint, expected.Image.Fingerprint)
