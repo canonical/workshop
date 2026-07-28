@@ -132,7 +132,7 @@ func CreateTestContext(username, projectId string) context.Context {
 }
 
 func LaunchTestWorkshop(c *check.C, ctx context.Context, bd workshop.Backend, dir string) {
-	image, err := bd.GetBase(ctx, "ubuntu@24.04")
+	image, err := bd.GetBase(ctx, "ubuntu@24.04", workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	err = bd.DownloadBase(ctx, image, nil)
 	c.Assert(err, check.IsNil)
@@ -161,7 +161,7 @@ printf '%s\n' "$@"
 	_, _, err = bd.CreateOrLoadProject(ctx, dir)
 	c.Assert(err, check.IsNil)
 
-	snapshot := workshop.BaseOnly(bd.FormatRevision(), image.Name, image.Fingerprint)
+	snapshot := workshop.BaseOnly(bd.FormatRevision(), image.Name, workshop.ConfinementContainer, image.Fingerprint)
 	err = bd.LaunchOrRebuildWorkshop(ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
