@@ -430,12 +430,7 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement worksh
 	c.Check(originFiles.sshKey, check.Not(check.Equals), siblingFiles.sshKey)
 
 	c.Check(originFiles.hostname, check.Not(check.Equals), cloneFiles.hostname)
-	if confinement == workshop.ConfinementContainer {
-		c.Check(originFiles.machineID, check.Not(check.Equals), cloneFiles.machineID)
-	} else {
-		// TODO: fix /etc/machine-id in VMs.
-		c.Check(originFiles.machineID, check.Equals, cloneFiles.machineID)
-	}
+	c.Check(originFiles.machineID, check.Not(check.Equals), cloneFiles.machineID)
 	c.Check(originFiles.networkCfg, check.Not(check.Equals), cloneFiles.networkCfg)
 	c.Check(originFiles.sshKey, check.Not(check.Equals), cloneFiles.sshKey)
 
@@ -467,12 +462,7 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement worksh
 		restoredFiles := s.extractUniqueFiles(c, "test", "/mnt/origin")
 
 		c.Check(restoredFiles.hostname, check.Equals, originFiles.hostname)
-		if confinement == workshop.ConfinementContainer || i == 0 {
-			c.Check(restoredFiles.machineID, check.Equals, originFiles.machineID)
-		} else {
-			// TODO: fix /etc/machine-id in VMs.
-			c.Check(restoredFiles.machineID, check.Equals, cloneFiles.machineID)
-		}
+		c.Check(restoredFiles.machineID, check.Equals, originFiles.machineID)
 		c.Check(restoredFiles.networkCfg, check.Equals, originFiles.networkCfg)
 		c.Check(restoredFiles.sshKey, check.Equals, originFiles.sshKey)
 
