@@ -15,8 +15,6 @@
 package lxdbackend
 
 import (
-	"bufio"
-	"bytes"
 	"cmp"
 	"context"
 	"embed"
@@ -59,6 +57,11 @@ const (
 	storagePool           = "workshop"
 	storagePoolMinimalGiB = 5
 
+	// ZFS is workshop's preferred storage driver; Btrfs is the fallback used
+	// on hosts where LXD reports ZFS as unavailable.
+	storageDriverZFS   = "zfs"
+	storageDriverBtrfs = "btrfs"
+
 	networkName = "workshopbr0"
 	networkType = "bridge"
 
@@ -74,102 +77,12 @@ const (
 
 var (
 	startCommandTimeout = 1 * time.Minute
-	storagePoolDriver   = "zfs"
 )
 
 //go:embed start_command.sh
 var startCommand string
 
-// isWSL checks if we're running on Windows Subsystem for Linux
-func isWSL() bool {
-	var utsname unix.Utsname
-	if err := unix.Uname(&utsname); err != nil {
-		return false
-	}
-	data := utsname.Release[:]
-	if idx := bytes.IndexByte(data, 0); idx >= 0 {
-		data = data[:idx]
-	}
-	version := strings.ToLower(string(data))
-	return strings.Contains(version, "microsoft") || strings.Contains(version, "wsl2")
-}
-
-// Locations consulted by ZFS module detection.
-var (
-	zfsLoadedModulePath = "/sys/module/zfs"
-	zfsControlDevice    = "/dev/zfs"
-	kernelModulesDir    = "/lib/modules"
-)
-
-// zfsUsable reports whether the host can back LXD's zfs storage driver, i.e.
-// the zfs kernel module is loaded or loadable for the running kernel. Checking
-// the module directly, rather than the distribution name, makes the btrfs
-// fallback apply to any host without ZFS (e.g. Debian, SUSE, Fedora, WSL) while
-// still using ZFS where available.
-func zfsUsable() bool {
-	return zfsModuleLoaded() || zfsModuleLoadable()
-}
-
-// zfsModuleLoaded reports whether the zfs kernel module is currently loaded,
-// signalled by the module's sysfs directory AND its control device.
-func zfsModuleLoaded() bool {
-	var modulepath, controlDevice bool
-	if _, err := os.Stat(zfsControlDevice); err == nil {
-		controlDevice = true
-	}
-	if _, err := os.Stat(zfsLoadedModulePath); err == nil {
-		modulepath = true
-	}
-	return modulepath && controlDevice
-}
-
-// zfsModuleLoadable reports whether the zfs kernel module can be loaded for the
-// running kernel, by consulting the same module databases modprobe relies on:
-// loadable modules are listed in modules.dep and built-in ones in
-// modules.builtin.
-func zfsModuleLoadable() bool {
-	modulesDir := filepath.Join(kernelModulesDir, osutil.KernelVersion())
-
-	return moduleListed(filepath.Join(modulesDir, "modules.dep"), "zfs") ||
-		moduleListed(filepath.Join(modulesDir, "modules.builtin"), "zfs")
-}
-
-// moduleListed reports whether the given kernel module is referenced in the
-// module database at dbPath. Entries are module file paths such as
-// "kernel/zfs/zfs.ko.zst" or "updates/dkms/zfs.ko" (in modules.dep the first
-// token carries a trailing colon), so the match is done on the file name after
-// stripping any compression suffix.
-func moduleListed(dbPath, module string) bool {
-	f, err := os.Open(dbPath)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-
-	target := module + ".ko"
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		for _, field := range strings.Fields(scanner.Text()) {
-			name := filepath.Base(strings.TrimSuffix(field, ":"))
-			if ext := filepath.Ext(name); ext != ".ko" {
-				name = strings.TrimSuffix(name, ext)
-			}
-			if name == target {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func init() {
-	// ZFS is the preferred driver, but many hosts can't provide it (e.g. WSL,
-	// Debian and other distributions that don't ship the ZFS kernel module).
-	// Fall back to btrfs whenever a usable ZFS module isn't available.
-	if isWSL() || !zfsUsable() {
-		storagePoolDriver = "btrfs"
-	}
-
 	// Order matters: capabilities (version and storage) must be validated
 	// before ensureBackendReady attempts to create the storage pool and
 	// network. Registering it as a check also lets the daemon recover after
@@ -251,19 +164,56 @@ func checkVersion(version string) error {
 	return nil
 }
 
-func checkStorageDriver(drivers []api.ServerStorageDriverInfo) error {
-	hasDriver := func(driver api.ServerStorageDriverInfo) bool {
-		return driver.Name == storagePoolDriver
+// driverSupported reports whether LXD lists the named storage driver as
+// supported. LXD builds this list by attempting to load each driver's kernel
+// module (e.g. modprobe zfs), so it reflects what the host can actually back.
+func driverSupported(supported []api.ServerStorageDriverInfo, name string) bool {
+	return slices.ContainsFunc(supported, func(d api.ServerStorageDriverInfo) bool {
+		return d.Name == name
+	})
+}
+
+// preferredDriver picks the driver for a new workshop pool: ZFS when LXD
+// reports it as supported, otherwise Btrfs.
+func preferredDriver(supported []api.ServerStorageDriverInfo) string {
+	if driverSupported(supported, storageDriverZFS) {
+		return storageDriverZFS
 	}
-	if slices.ContainsFunc(drivers, hasDriver) {
+	return storageDriverBtrfs
+}
+
+// poolUsesZFS reports whether the workshop storage pool is backed by ZFS. The
+// driver is read from the pool itself, since it is fixed when the pool is
+// created and can differ from what the host would pick today.
+func poolUsesZFS(conn lxd.InstanceServer) (bool, error) {
+	pool, _, err := conn.GetStoragePool(storagePool)
+	if err != nil {
+		return false, err
+	}
+	return pool.Driver == storageDriverZFS, nil
+}
+
+// checkStoragePool verifies the workshop storage pool is usable. When the pool
+// exists but cannot be loaded, most likely because its storage driver's kernel
+// module is gone (e.g. a ZFS pool after booting a kernel without the ZFS
+// module), it returns an actionable error that puts the daemon into degraded
+// mode. When the pool does not exist yet, it ensures a supported driver is
+// available to create it with.
+func checkStoragePool(conn lxd.InstanceServer, supported []api.ServerStorageDriverInfo) error {
+	_, _, err := conn.GetStoragePool(storagePool)
+	if err == nil {
 		return nil
 	}
+	if !api.StatusErrorCheck(err, http.StatusNotFound) {
+		return fmt.Errorf(`cannot use the %q storage pool, its storage driver may be unavailable (for example a ZFS pool after booting a kernel without the ZFS module): %w
+Boot into a kernel that provides the pool's storage driver, or reinstall Workshop to recreate the pool on an available driver`, storagePool, err)
+	}
 
-	// The LXD error message when creating a pool is:
-	//  Error: Error loading "zfs" module: Failed to run: modprobe -b zfs:
-	//  exit status 1 (modprobe: FATAL: Module zfs not found ...)
-	// We keep the first part for consistency, the rest doesn't add much.
-	return fmt.Errorf(`suitable storage backend not found: error loading %q module`, storagePoolDriver)
+	// The pool doesn't exist yet; make sure it can be created.
+	if !driverSupported(supported, preferredDriver(supported)) {
+		return fmt.Errorf(`suitable storage backend not found: neither %q nor %q is available`, storageDriverZFS, storageDriverBtrfs)
+	}
+	return nil
 }
 
 // checkStorageSpace puts the daemon into degraded mode when the workshop
@@ -325,7 +275,7 @@ func checkServerCapabilities() error {
 		return err
 	}
 
-	return checkStorageDriver(info.Environment.StorageSupportedDrivers)
+	return checkStoragePool(conn, info.Environment.StorageSupportedDrivers)
 }
 
 // New constructs the LXD backend and attempts to prepare the required LXD
@@ -356,15 +306,22 @@ func ensureBackendReady() error {
 	}
 	defer conn.Disconnect()
 
-	// Create LXD storage pool if it doesn't exist.
-	pools, err := conn.GetStoragePools()
+	// Create LXD storage pool if it doesn't exist. GetStoragePoolNames avoids
+	// loading each pool's driver, so an existing but currently-unloadable pool
+	// (e.g. a ZFS pool whose module is gone) is reported by checkStoragePool
+	// rather than failing here.
+	names, err := conn.GetStoragePoolNames()
 	if err != nil {
 		return err
 	}
-	if idx := slices.IndexFunc(pools, func(p api.StoragePool) bool { return p.Name == storagePool }); idx < 0 {
+	if !slices.Contains(names, storagePool) {
+		info, _, err := conn.GetServer()
+		if err != nil {
+			return err
+		}
 		req := api.StoragePoolsPost{
 			Name:   storagePool,
-			Driver: storagePoolDriver,
+			Driver: preferredDriver(info.Environment.StorageSupportedDrivers),
 		}
 		op, err := conn.CreateStoragePool(req)
 		if err != nil {
@@ -403,8 +360,6 @@ func ensureBackendReady() error {
 
 			logger.Noticef("On ensureBackendReady: set storage pool to the minimal size: %dGiB", storagePoolMinimalGiB)
 		}
-	} else if pools[idx].Driver != storagePoolDriver {
-		return fmt.Errorf("storage pool %q already exists with a different driver: %q (expected %q)", storagePool, pools[idx].Driver, storagePoolDriver)
 	}
 
 	network, etag, err := conn.GetNetwork(networkName)

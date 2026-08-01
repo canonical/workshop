@@ -14,8 +14,6 @@
 
 package lxdbackend
 
-import "github.com/canonical/workshop/internal/osutil"
-
 type CNAME = cname
 
 var (
@@ -25,25 +23,9 @@ var (
 	HandleImageUpdate  = handleImageUpdate
 	CheckServerVersion = checkVersion
 	GenerateCNAME      = generateCNAME
-	ZFSUsable          = zfsUsable
+	PreferredDriver    = preferredDriver
+	DriverSupported    = driverSupported
 )
-
-// MockZFSDetection redirects the paths and kernel release consulted by ZFS
-// module detection so tests can exercise it against a fixture tree instead of
-// the running host.
-func MockZFSDetection(loadedModulePath, controlDevice, modulesDir, release string) (restore func()) {
-	oldLoaded, oldDevice, oldDir := zfsLoadedModulePath, zfsControlDevice, kernelModulesDir
-	zfsLoadedModulePath = loadedModulePath
-	zfsControlDevice = controlDevice
-	kernelModulesDir = modulesDir
-	restoreKernel := osutil.MockKernelVersion(release)
-	return func() {
-		zfsLoadedModulePath = oldLoaded
-		zfsControlDevice = oldDevice
-		kernelModulesDir = oldDir
-		restoreKernel()
-	}
-}
 
 func MockFirewallChecker(f func(string) string) func() {
 	old := firewallChecker

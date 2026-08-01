@@ -346,7 +346,11 @@ func (s *Backend) TakeSnapshot(ctx context.Context, name string, snapshot worksh
 	if inst.Devices == nil {
 		inst.Devices = map[string]map[string]string{}
 	}
-	if err := mergeDevices(inst.Devices, snapshot.Sdks, name); err != nil {
+	usesZFS, err := poolUsesZFS(conn)
+	if err != nil {
+		return err
+	}
+	if err := mergeDevices(inst.Devices, snapshot.Sdks, name, usesZFS); err != nil {
 		return err
 	}
 
@@ -604,12 +608,12 @@ func mergeConfig(source, target, config map[string]string) {
 	maps.Copy(source, config)
 }
 
-func mergeDevices(source map[string]map[string]string, sdks []sdk.ContentID, w string) error {
+func mergeDevices(source map[string]map[string]string, sdks []sdk.ContentID, w string, usesZFS bool) error {
 	maps.DeleteFunc(source, func(k string, v map[string]string) bool {
 		return k != "root"
 	})
 
-	if storagePoolDriver == "zfs" {
+	if usesZFS {
 		root := maps.Clone(source["root"])
 		if source == nil || root == nil {
 			return fmt.Errorf("internal error: %q workshop has no rootfs", w)
@@ -740,7 +744,11 @@ func (s *Backend) copyInstance(src, dst lxd.InstanceServer, srcName, dstName str
 
 	req := *srcInst
 
-	if storagePoolDriver == "zfs" {
+	usesZFS, err := poolUsesZFS(dst)
+	if err != nil {
+		return err
+	}
+	if usesZFS {
 		req.Devices = maps.Clone(req.Devices)
 		root := maps.Clone(req.Devices["root"])
 		if req.Devices == nil || root == nil {
