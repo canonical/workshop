@@ -10,7 +10,7 @@ launched:
   architecture: ''
   config:
     boot.autostart: 'false'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
@@ -50,7 +50,7 @@ started:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
@@ -90,7 +90,7 @@ sdk-attached:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
@@ -142,7 +142,7 @@ sdk-mounted:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults

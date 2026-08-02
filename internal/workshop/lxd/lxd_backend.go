@@ -42,6 +42,7 @@ import (
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/fsutil"
+	"github.com/canonical/workshop/internal/idmap"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/revert"
@@ -1522,15 +1523,20 @@ runcmd:
 
 	f, err := yaml.Marshal(file)
 	if err != nil {
-		return map[string]string{}, err
+		return nil, err
+	}
+
+	idmapSet, err := workshopIdmap(file.Confinement, userid, groupid)
+	if err != nil {
+		return nil, err
 	}
 
 	// Include all options we might change, even those with default values,
 	// so that workshops can be rebuilt.
 	cfg := map[string]string{
 		"boot.autostart":                 "false",
-		"raw.idmap":                      fmt.Sprintf("uid %s %s\ngid %s %s", userid, workshop.User.Uid, groupid, workshop.User.Gid),
 		"cloud-init.user-data":           cloudConfig.String(),
+		"raw.idmap":                      formatIdmap(idmapSet),
 		"user.workshop.format-revision":  format.String(),
 		"user.workshop.project-id":       projectId,
 		"user.workshop.name":             file.Name,
@@ -1552,4 +1558,83 @@ runcmd:
 	}
 
 	return cfg, nil
+}
+
+func workshopIdmap(confinement workshop.Confinement, userid, groupid string) (*idmap.IdmapSet, error) {
+	hostUid, err1 := strconv.ParseInt(userid, 10, 64)
+	nsUid, err2 := strconv.ParseInt(workshop.User.Uid, 10, 64)
+	hostGid, err3 := strconv.ParseInt(groupid, 10, 64)
+	nsGid, err4 := strconv.ParseInt(workshop.User.Gid, 10, 64)
+	if err := cmp.Or(err1, err2, err3, err4); err != nil {
+		return nil, fmt.Errorf("invalid user or group ID: %w", err)
+	}
+	entries := []idmap.IdmapEntry{
+		{Isuid: true, Hostid: hostUid, Nsid: nsUid, Maprange: 1},
+		{Isgid: true, Hostid: hostGid, Nsid: nsGid, Maprange: 1},
+	}
+
+	idmapSet := &idmap.IdmapSet{}
+	if confinement != workshop.ConfinementContainer {
+		// TODO: query LXD for the default idmap somehow. The current
+		// implementation only works because the LXD snap runs in a mount
+		// namespace where /etc/ is a tmpfs, so it effectively ignores
+		// /etc/subuid and /etc/subgid. It would be more correct to call
+		// DefaultIdmapSet("/proc/<lxd>/root", "root"), but traversing
+		// /proc/<lxd>/root is a privileged operation.
+		var err error
+		idmapSet, err = idmap.KernelDefaultMap()
+		if err != nil {
+			return nil, err
+		}
+		if idmapSet.Len() == 0 {
+			return nil, errors.New("no available uid/gid map could be found")
+		}
+		if err := idmapSet.Usable(); err != nil {
+			return nil, err
+		}
+	}
+
+	for _, entry := range entries {
+		if err := idmapSet.AddSafe(entry); err != nil {
+			singleton := &idmap.IdmapSet{Idmap: []idmap.IdmapEntry{entry}}
+			return nil, fmt.Errorf("raw.idmap %q: %w", strings.TrimSpace(formatIdmap(singleton)), err)
+		}
+	}
+
+	return idmapSet, nil
+}
+
+func formatIdmap(idmapSet *idmap.IdmapSet) string {
+	var entries strings.Builder
+	for _, ent := range idmapSet.Idmap {
+		switch {
+		case ent.Maprange <= 0, !ent.Isuid && !ent.Isgid:
+			continue
+		case ent.Isuid && !ent.Isgid:
+			entries.WriteString("uid")
+		case !ent.Isuid && ent.Isgid:
+			entries.WriteString("gid")
+		case ent.Isuid && ent.Isgid:
+			entries.WriteString("both")
+		}
+
+		entries.WriteByte(' ')
+
+		entries.WriteString(strconv.FormatInt(ent.Hostid, 10))
+		if ent.Maprange > 1 {
+			entries.WriteByte('-')
+			entries.WriteString(strconv.FormatInt(ent.Hostid+ent.Maprange-1, 10))
+		}
+
+		entries.WriteByte(' ')
+
+		entries.WriteString(strconv.FormatInt(ent.Nsid, 10))
+		if ent.Maprange > 1 {
+			entries.WriteByte('-')
+			entries.WriteString(strconv.FormatInt(ent.Nsid+ent.Maprange-1, 10))
+		}
+
+		entries.WriteByte('\n')
+	}
+	return entries.String()
 }
