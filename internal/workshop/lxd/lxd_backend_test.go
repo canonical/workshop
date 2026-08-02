@@ -102,7 +102,7 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	// Validate
 	c.Assert(err, check.IsNil)
 	c.Assert(cfg["cloud-init.user-data"], check.Not(testutil.Contains), "GRUB_CMDLINE_LINUX")
-	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1001 1000\ngid 1001 1000")
+	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1001 1000\ngid 1001 1000\n")
 	c.Assert(cfg["raw.lxc"], check.Equals, "lxc.mount.entry = tmpfs tmp tmpfs defaults")
 	c.Assert(cfg["security.nesting"], check.Equals, "true")
 	c.Assert(cfg["user.workshop.project-id"], check.Equals, f.project.ProjectId)
@@ -138,7 +138,8 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// Validate
 	c.Assert(err, check.IsNil)
 	c.Assert(cfg["cloud-init.user-data"], testutil.Contains, "GRUB_CMDLINE_LINUX")
-	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1002 1000\ngid 1002 1000")
+	c.Assert(cfg["raw.idmap"], testutil.Contains, "uid 1002 1000\n")
+	c.Assert(cfg["raw.idmap"], testutil.Contains, "gid 1002 1000\n")
 	_, ok := cfg["raw.lxc"]
 	c.Assert(ok, check.Equals, false)
 	_, ok = cfg["security.nesting"]
