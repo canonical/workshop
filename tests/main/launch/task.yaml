@@ -17,18 +17,32 @@ execute: |
   function launch_and_validate() {
     workshop_exec launch "$1"
     workshop_exec list | MATCH "$1[[:space:]]*Ready[[:space:]]*-"
+
+    # ensure user idmap is applied
+    rm -f build-artifact
+    workshop_exec exec "$1" touch build-artifact
+    stat --format='%U %G' build-artifact | MATCH '^ubuntu ubuntu$'
+    workshop_exec exec "$1" sudo chown 0:0 build-artifact
+    stat --format='%u %g' build-artifact | MATCH '^1000000 1000000$'
+    workshop_exec exec "$1" sudo chown 1001:1001 build-artifact
+    stat --format='%u %g' build-artifact | MATCH '^1001001 1001001$'
+
     # ensure the workshop has a socket for workshopctl
     workshop_exec exec "$1" test -S /var/lib/workshop/run/workshop.socket.untrusted
+
     # ensure the apt cache is mounted
     workshop_exec exec "$1" mountpoint /var/cache/apt/archives
     workshop_exec exec "$1" stat --format='%A %U %G' /var/cache/apt/archives | MATCH '^drwxr-xr-x workshop workshop$'
+
     # ensure apt is configured to exclude suggested and recommended packages
     workshop_exec run "$1" check-apt
+
     # ensure systemd-resolved is configured for the workshopbr0 network
     resolvectl domain workshopbr0 | MATCH '^Link [0-9]+ \(workshopbr0\): ~wp$'
     resolvectl query "$1-$(< .workshop.lock).wp" | MATCH 'link: workshopbr0'
     resolvectl query --type=CNAME "${1}.$(< .workshop.lock).wp" | MATCH "IN CNAME $1-$(< .workshop.lock).wp"
     resolvectl query --type=CNAME "${1}.launch.wp" | MATCH "IN CNAME $1-$(< .workshop.lock).wp"
+
     # ensure systemd-networkd is configured not to release DHCP on stop
     # just skip if `networkctl cat` is missing, since old bases have been manually tested
     sd_ver="$(workshop_exec exec "$1" networkctl --version | awk 'FNR == 1 {print $2}')"
@@ -37,6 +51,7 @@ execute: |
       extract_section DHCPv4 < eth0.log | MATCH '^SendRelease=false$'
       extract_section DHCPv6 < eth0.log | MATCH '^SendRelease=false$'
     fi
+
     # ensure timezone is inherited from host
     workshop_exec exec "$1" timedatectl show | MATCH '^Timezone=Pacific/Auckland$'
   }
