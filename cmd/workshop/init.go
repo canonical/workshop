@@ -19,6 +19,7 @@ type CmdInit struct {
 	root *CmdRoot
 	sdks []string
 	base string
+	vm   bool
 }
 
 func (c *CmdInit) Command() *cobra.Command {
@@ -53,6 +54,7 @@ $ workshop init dev --base ubuntu@22.04 --sdks go`,
 
 	cmd.Flags().StringSliceVar(&c.sdks, "sdks", nil, `Comma-separated list of SDKs (e.g., "go,uv/latest/stable").`)
 	cmd.Flags().StringVar(&c.base, "base", defaultBase, "Base image for the workshop.")
+	cmd.Flags().BoolVar(&c.vm, "vm", false, "Use a virtual machine instead of a container.")
 
 	return cmd
 }
@@ -66,10 +68,16 @@ func (c *CmdInit) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	confinement := workshop.ConfinementContainer
+	if c.vm {
+		confinement = workshop.ConfinementVirtualMachine
+	}
+
 	wfile := &workshop.File{
-		Name: name,
-		Base: c.base,
-		Sdks: sdks,
+		Name:        name,
+		Base:        c.base,
+		Confinement: confinement,
+		Sdks:        sdks,
 	}
 
 	if err := workshop.ValidateFile(wfile); err != nil {
