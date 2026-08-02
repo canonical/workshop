@@ -9,9 +9,13 @@ launched:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'false'
-    raw.idmap: |-
+    raw.idmap: |
+      uid 1000000-1000999 0-999
       uid 1000 1000
+      uid 1001001-1000999999 1001-999999999
+      gid 1000000-1000999 0-999
       gid 1000 1000
+      gid 1001001-1000999999 1001-999999999
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -40,9 +44,13 @@ started:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
+      uid 1000000-1000999 0-999
       uid 1000 1000
+      uid 1001001-1000999999 1001-999999999
+      gid 1000000-1000999 0-999
       gid 1000 1000
+      gid 1001001-1000999999 1001-999999999
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -71,9 +79,13 @@ sdk-attached:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
+      uid 1000000-1000999 0-999
       uid 1000 1000
+      uid 1001001-1000999999 1001-999999999
+      gid 1000000-1000999 0-999
       gid 1000 1000
+      gid 1001001-1000999999 1001-999999999
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -114,9 +126,13 @@ sdk-mounted:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
+      uid 1000000-1000999 0-999
       uid 1000 1000
+      uid 1001001-1000999999 1001-999999999
+      gid 1000000-1000999 0-999
       gid 1000 1000
+      gid 1001001-1000999999 1001-999999999
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
