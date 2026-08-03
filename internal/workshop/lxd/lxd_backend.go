@@ -667,20 +667,9 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 		return err
 	}
 
-	for i := range 2 {
-		// Workshop started, enable autostart.
-		if err := s.setAutoStart(conn, ctx, name, true); err != nil {
-			if i == 0 && api.StatusErrorCheck(err, http.StatusPreconditionFailed) && strings.HasPrefix(err.Error(), "ETag does not match: ") {
-				// TODO: remove the loop after modifying the logic to wait for
-				// LXD's instance ready event. Currently, the instance may or
-				// may not set itself to Ready, so we can't rely on it. When it
-				// does so, LXD sets volatile.last_state.ready, which can
-				// invalidates the ETag; a single retry is enough to fix it.
-				continue
-			}
-			return err
-		}
-		break
+	// Workshop started, enable autostart.
+	if err := s.setAutoStart(conn, ctx, name, true); err != nil {
+		return err
 	}
 
 	var stderr strings.Builder
@@ -765,14 +754,14 @@ func (s *Backend) setAutoStart(conn lxd.InstanceServer, ctx context.Context, nam
 		return fmt.Errorf("context key project-id not found")
 	}
 
-	inst, etag, err := conn.GetInstance(InstanceName(name, projectId))
-	if err != nil {
-		return err
+	// TODO: switch back to PUT instead of PATCH. We have to use PATCH for now
+	// because there's a race where LXD validates the ETag, then DevLXD updates
+	// the instance state before LXD finishes the PUT. Once we start waiting
+	// for the ready event, we can just use PUT after that.
+	req := api.InstancePut{
+		Config: map[string]string{"boot.autostart": strconv.FormatBool(autostart)},
 	}
-
-	inst.Config["boot.autostart"] = strconv.FormatBool(autostart)
-
-	op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
+	op, _, err := conn.RawOperation(http.MethodPatch, "/instances/"+InstanceName(name, projectId), req, "")
 	if err != nil {
 		return err
 	}
