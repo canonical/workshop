@@ -654,8 +654,19 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 	rev := revert.New()
 	defer rev.Fail()
 
+	// Enable autostart first so it doesn't race with workshop-waitready.service.
+	// See https://github.com/canonical/lxd/issues/18833.
+	if err := s.setAutoStart(conn, ctx, name, true); err != nil {
+		return err
+	}
+
 	cleanupCtx := context.WithoutCancel(ctx)
 	rev.Add(func() {
+		// TODO: if this becomes a long-term thing, consider adding a timeout.
+		if e := s.setAutoStart(conn, cleanupCtx, name, false); e != nil {
+			logger.Noticef("On StartWorkshop: cannot reset %q workshop boot.autostart: %v", name, e)
+		}
+
 		// Stop workshop's timeout is handled by LXD API, so no need to have
 		// a context with a timeout.
 		if e := s.stopWorkshop(conn, cleanupCtx, name, true); e != nil {
@@ -665,22 +676,6 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 
 	if err := s.updateInstanceState(conn, ctx, name, "start", 60); err != nil {
 		return err
-	}
-
-	for i := range 2 {
-		// Workshop started, enable autostart.
-		if err := s.setAutoStart(conn, ctx, name, true); err != nil {
-			if i == 0 && api.StatusErrorCheck(err, http.StatusPreconditionFailed) && strings.HasPrefix(err.Error(), "ETag does not match: ") {
-				// TODO: remove the loop after modifying the logic to wait for
-				// LXD's instance ready event. Currently, the instance may or
-				// may not set itself to Ready, so we can't rely on it. When it
-				// does so, LXD sets volatile.last_state.ready, which can
-				// invalidates the ETag; a single retry is enough to fix it.
-				continue
-			}
-			return err
-		}
-		break
 	}
 
 	var stderr strings.Builder
