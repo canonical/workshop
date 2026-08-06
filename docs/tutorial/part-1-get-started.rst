@@ -54,7 +54,7 @@ where it uses Btrfs instead of ZFS for storage.
 `LXD 6.8+ <https://canonical.com/lxd>`_
 for low-level operation
 and uses its
-`REST API <https://documentation.ubuntu.com/lxd/latest/restapi_landing/>`_
+`REST API <https://canonical.com/lxd/docs/latest/restapi_landing/>`_
 to handle individual *workshops*.
 
 To install it from scratch with :program:`snap`:
@@ -76,11 +76,11 @@ To refresh an existing :program:`snap` installation:
    If you prefer another installation method,
    see the available installation options in
    `LXD documentation
-   <https://documentation.ubuntu.com/lxd/latest/installing/>`__;
+   <https://canonical.com/lxd/docs/latest/installing/>`__;
    after installation,
    make sure the
    `LXD daemon
-   <https://documentation.ubuntu.com/lxd/latest/explanation/lxd_lxc/#lxd-daemon>`__
+   <https://canonical.com/lxd/docs/latest/explanation/lxd_lxc/#lxd-daemon>`__
    is enabled and running.
    If in doubt, refer to LXD documentation
    and your distribution's manuals for guidance.

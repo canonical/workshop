@@ -485,7 +485,7 @@ func exec(root *CmdRoot, flags *ExecFlags, args *ExecArgs) error {
 		// Obtain an exec session as close to a real login shell as possible.
 		// This is required as an lxd exec call is a simple namespace exec, and LXD
 		// ignores the instance configuration by design:
-		// https://documentation.ubuntu.com/lxd/en/latest/instance-exec/#user-groups-and-working-directory
+		// https://canonical.com/lxd/docs/latest/instance-exec/#user-groups-and-working-directory
 		commandPrefix = []string{
 			"sudo",
 			"-u",
