@@ -25,29 +25,16 @@ Before starting, ensure you have these requirements satisfied:
   installed in VS Code.
 
 
-Configure SSH access
---------------------
+SSH access
+----------
 
-On most distributions,
-|ws_markup| configures OpenSSH automatically.
-To check the configuration, run:
-
-.. code-block:: console
-
-   $ ssh -G workshop.wp | grep -i '^User\>'
-
-   user workshop
-
-
-If it displays a different user from :samp:`workshop`,
-then OpenSSH is not configured correctly.
-To fix it, add this line to your host user's
-:file:`~/.ssh/config` file:
-
-.. code-block:: text
-   :caption: ~/.ssh/config
-
-   Include /var/snap/workshop/common/workshop/ssh/config
+|ws_markup| sets up SSH access to workshops on its own.
+It configures the OpenSSH client on the host
+and maintains a per-user certificate authority
+that signs a host certificate for every workshop
+and a user certificate for the :samp:`workshop` user.
+Connecting to a workshop by its hostname
+needs no key management, passwords, or host-key prompts.
 
 
 Add the SDK (optional)
@@ -117,6 +104,7 @@ See also
 
 Explanation:
 
+- :ref:`exp_arch_network`
 - :ref:`exp_workshop_definition`
 
 
