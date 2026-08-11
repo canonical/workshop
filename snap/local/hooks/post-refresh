@@ -1,3 +1,4 @@
 #!/bin/bash -e
 
+# TODO: remove a one-off data -> common migration cleanup
 rm -rf "${SNAP_DATA}/ssh"
