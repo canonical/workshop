@@ -1,6 +1,8 @@
 summary: Run tutorial part 2 commands to ensure it's operational
 restore: |
-  rm -rf ~/ollama-python-project ~/.ollama
+  . "$TESTSLIB"/utils.sh
+  (cd ollama-python-project && workshop_exec remove) || true
+  rm -rf ollama-python-project ~/.ollama
 execute: |
   . "$TESTSLIB"/utils.sh
 
@@ -19,12 +21,18 @@ execute: |
 
   ## Manage connections
 
-  workshop_exec connections
+  workshop_exec connections > conns.log
+  MATCH '^gpu[[:space:]]+dev/ollama:gpu[[:space:]]+dev/system:gpu[[:space:]]+-$' < conns.log
+  MATCH '^mount[[:space:]]+dev/ollama:models[[:space:]]+dev/system:mount[[:space:]]+-$' < conns.log
 
   workshop_exec disconnect dev/ollama:models
-  workshop_exec connections
+  workshop_exec connections > conns.log
+  MATCH '^gpu[[:space:]]+dev/ollama:gpu[[:space:]]+dev/system:gpu[[:space:]]+-$' < conns.log
+  NOMATCH 'dev/ollama:models' < conns.log
+
   workshop_exec connect dev/ollama:models :mount
-  workshop_exec connections
+  workshop_exec connections > conns.log
+  MATCH '^mount[[:space:]]+dev/ollama:models[[:space:]]+dev/system:mount[[:space:]]+manual$' < conns.log
 
   mkdir -p ~/.ollama/models
   workshop_exec remount dev/ollama:models ~/.ollama/models
@@ -41,9 +49,15 @@ execute: |
           interface: tunnel
           endpoint: 127.0.0.1:8989
   EOF
-  workshop_exec connections --all
   workshop_exec refresh
   workshop_exec info
+
+  # The manual connection made above has to survive the refresh.
+  workshop_exec connections --all > conns.log
+  MATCH '^mount[[:space:]]+dev/jupyter:venv[[:space:]]+dev/system:mount[[:space:]]+-$' < conns.log
+  MATCH '^mount[[:space:]]+dev/ollama:models[[:space:]]+dev/system:mount[[:space:]]+manual$' < conns.log
+  MATCH '^tunnel[[:space:]]+dev/system:jupyter[[:space:]]+dev/jupyter:jupyter[[:space:]]+-$' < conns.log
+
   retry 5 curl -w '\n' http://127.0.0.1:8989/api
 
 
@@ -69,7 +83,9 @@ execute: |
 
   # Apply the new definition.
   workshop_exec refresh
-  workshop_exec connections --all | MATCH 'dev/jupyter:venv\s+dev/uv:venv'
+  workshop_exec connections --all > conns.log
+  MATCH '^mount[[:space:]]+dev/jupyter:venv[[:space:]]+dev/uv:venv[[:space:]]+-$' < conns.log
+  MATCH '^mount[[:space:]]+dev/ollama:models[[:space:]]+dev/system:mount[[:space:]]+manual$' < conns.log
 
   # Smoke-test uv from inside the workshop.
   workshop_exec exec dev -- uv --version

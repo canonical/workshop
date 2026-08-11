@@ -281,7 +281,7 @@ Apply the new definition by refreshing the workshop:
 instead of falling back to :samp:`dev/system:mount`:
 
 .. code-block:: console
-   :emphasize-lines: 6
+   :emphasize-lines: 5
 
    $ workshop connections --all
 
