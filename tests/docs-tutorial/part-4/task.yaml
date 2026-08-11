@@ -1,6 +1,6 @@
 summary: Run tutorial part 4 commands to ensure it's operational
 restore: |
-  rm -rf ~/ollama
+  rm -rf ollama
 execute: |
   . "$TESTSLIB"/utils.sh
   lxc storage set default size=32GB

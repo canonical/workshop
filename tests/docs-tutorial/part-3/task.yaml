@@ -1,6 +1,6 @@
 summary: Run tutorial part 3 commands to ensure it's operational
 restore: |
-  rm -rf ~/ollama-python-project ~/.ollama
+  rm -rf ollama-python-project ~/.ollama
 execute: |
   . "$TESTSLIB"/utils.sh
 

@@ -60,6 +60,7 @@ func New(s *state.State, r *state.TaskRunner) *InterfaceManager {
 	r.AddHandler("disconnect", OnDo(m.doDisconnect), OnUndo(m.undoDisconnect))
 
 	r.AddHandler("discard-conns", m.doDiscard, OnUndo(m.undoDiscard))
+	r.AddHandler("restore-conns", OnDo(m.doRestoreConns), OnUndo(m.doDiscard))
 
 	r.AddHandler("setup-profiles", OnDo(m.doSetupProfiles), OnUndo(m.undoSetupProfiles))
 	r.AddHandler("remove-profiles", OnDo(m.doRemoveProfiles), nil)
@@ -80,8 +81,6 @@ func (m *InterfaceManager) Repository() *interfaces.Repository {
 type ConnectionState struct {
 	// Auto indicates whether the connection was established automatically
 	Auto bool
-	// ByGadget indicates whether the connection was triggered by the gadget
-	ByGadget bool
 	// Interface name of the connection
 	Interface string
 	// Undesired indicates whether the connection, otherwise established
@@ -190,6 +189,7 @@ func (m *InterfaceManager) ensureBackendInit() error {
 		return fmt.Errorf("interface manager not ready: %w", err)
 	}
 
+	workshopNames := make(map[string][]string)
 	for user, projects := range allprojects {
 
 		ctx := context.WithValue(context.Background(), workshop.ContextUser, user)
@@ -197,27 +197,24 @@ func (m *InterfaceManager) ensureBackendInit() error {
 			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 			workshops, err := m.backend.ProjectWorkshops(pctx)
 			if err != nil {
-				logger.Noticef("Cannot load workshops from %q: %v", project.Path, err)
-				continue
+				return fmt.Errorf("cannot load workshops from %q: %v", project.Path, err)
 			}
 			for _, workshop := range workshops {
-				// recreate the socket device for every workshop to ensure
-				// workshopctl can function (if the daemon was stopped the
-				// socket will render /deleted)
+				workshopNames[project.ProjectId] = append(workshopNames[project.ProjectId], workshop.Name)
+
+				// Recreate the workshopctl mount for every workshop.
 				if err := m.recreateInternalMounts(pctx, workshop.Name); err != nil {
-					logger.Noticef("Cannot create internal mounts for %q workshop: %v", workshop.Name, err)
+					return fmt.Errorf("cannot create internal mounts for %q workshop: %v", workshop.Name, err)
 				}
 
 				infos, err := workshop.SdkInfosByInstallOrder(pctx)
 				if err != nil {
-					logger.Noticef("Cannot obtain the installed SDKs for %q workshop: %v", workshop.Name, err)
-					continue
+					return fmt.Errorf("cannot obtain the installed SDKs for %q workshop: %v", workshop.Name, err)
 				}
 
 				for _, info := range infos {
 					if err = m.repo.AddSdk(info); err != nil {
-						logger.Noticef("Cannot register %q SDK interfaces: %v", info.Name, err)
-						continue
+						return fmt.Errorf("cannot register %q SDK interfaces: %v", info.Name, err)
 					}
 				}
 			}
@@ -232,7 +229,7 @@ func (m *InterfaceManager) ensureBackendInit() error {
 			logger.Noticef("cannot copy Xauthority file for user %q, X11 applications may not work: %v", user, err)
 		}
 	}
-	_, err = m.reloadConnections("", "", "")
+	_, err = m.reloadConnections(workshopNames, "", "", "")
 	if err != nil {
 		return err
 	}
@@ -387,7 +384,7 @@ func (m *InterfaceManager) Ensure() error {
 // affecting a given sdk.
 //
 // The return value is the list of affected sdk names.
-func (m *InterfaceManager) reloadConnections(projectId, workshop, sdkName string) (map[sdk.Ref]bool, error) {
+func (m *InterfaceManager) reloadConnections(workshopNames map[string][]string, projectId, workshop, sdkName string) (map[sdk.Ref]bool, error) {
 	conns, err := getConns(m.state)
 	if err != nil {
 		return nil, err
@@ -395,11 +392,6 @@ func (m *InterfaceManager) reloadConnections(projectId, workshop, sdkName string
 	connStateChanged := false
 	affected := make(map[sdk.Ref]bool)
 	for connId, connState := range conns {
-		// Skip entries that just mark a connection as undesired. Those don't
-		// carry attributes that can go stale.
-		if connState.Undesired {
-			continue
-		}
 		connRef, err := interfaces.ParseConnRef(connId)
 		if err != nil {
 			return nil, err
@@ -419,20 +411,23 @@ func (m *InterfaceManager) reloadConnections(projectId, workshop, sdkName string
 			}
 		}
 
+		// Remove connections involving nonexistent workshops.
+		if !slices.Contains(workshopNames[connRef.PlugRef.ProjectId], connRef.PlugRef.Workshop) || !slices.Contains(workshopNames[connRef.SlotRef.ProjectId], connRef.SlotRef.Workshop) {
+			delete(conns, connId)
+			connStateChanged = true
+			continue
+		}
+
+		// No need to restore anything.
+		if connState.Undesired {
+			continue
+		}
+
 		plugInfo := m.repo.Plug(connRef.PlugRef.ProjectId, connRef.PlugRef.Workshop, connRef.PlugRef.Sdk, connRef.PlugRef.Name)
 		slotInfo := m.repo.Slot(connRef.SlotRef.ProjectId, connRef.SlotRef.Workshop, connRef.SlotRef.Sdk, connRef.SlotRef.Name)
-
-		// The connection refers to a plug or slot that doesn't exist anymore, e.g. because of a refresh
-		// to a new sdk revision that doesn't have the given plug/slot.
+		// The connection refers to a plug or slot that doesn't exist anymore.
+		// Keep it in the state in case we're in the middle of a Change.
 		if plugInfo == nil || slotInfo == nil {
-			// automatic connection can simply be removed (it will be re-created automatically if needed)
-			// as long as it wasn't disconnected manually; note that undesired flag is taken care of at
-			// the beginning of the loop.
-			if connState.Auto {
-				delete(conns, connId)
-				connStateChanged = true
-			}
-			// otherwise keep it and silently ignore, e.g. in case of a revert.
 			continue
 		}
 

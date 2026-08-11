@@ -1,6 +1,6 @@
 summary: Test 'How to manage Python environments with the uv SDK' to ensure it's operational
 restore: |
-  rm -rf ~/pyproj
+  rm -rf pyproj
 execute: |
   . "$TESTSLIB"/utils.sh
 

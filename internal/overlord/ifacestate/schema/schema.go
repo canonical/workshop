@@ -32,3 +32,11 @@ type ConnState struct {
 	StaticSlotAttrs  map[string]any `json:"slot-static,omitempty" yaml:"slot-static,omitempty"`
 	DynamicSlotAttrs map[string]any `json:"slot-dynamic,omitempty" yaml:"slot-dynamic,omitempty"`
 }
+
+// PreservedConn holds properties of a connection that are preserved by refreshes.
+type PreservedConn struct {
+	Auto             bool           `json:"auto,omitempty" yaml:"auto"`
+	Interface        string         `json:"interface,omitempty" yaml:"interface"`
+	DynamicPlugAttrs map[string]any `json:"plug-dynamic,omitempty" yaml:"plug-dynamic,omitempty"`
+	DynamicSlotAttrs map[string]any `json:"slot-dynamic,omitempty" yaml:"slot-dynamic,omitempty"`
+}
