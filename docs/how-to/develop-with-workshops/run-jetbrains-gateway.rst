@@ -31,10 +31,10 @@ SSH access
 ----------
 
 |ws_markup| sets up SSH access to workshops on its own.
-It configures the OpenSSH client on the host
-and maintains a per-user certificate authority
-that signs a host certificate for every workshop
-and a user certificate for the :samp:`workshop` user.
+It configures the OpenSSH client on your local machine
+and maintains a certificate authority
+that signs an SSH *host* certificate for every workshop's SSH server
+and a *user* certificate authenticating you as the :samp:`workshop` user.
 Connecting to a workshop by its hostname
 needs no key management, passwords, or host-key prompts.
 
