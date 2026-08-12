@@ -17,21 +17,95 @@ jobs:
     secrets:
       SDKCRAFT_STORE_CREDENTIALS: ${{ secrets.SDKCRAFT_STORE_CREDENTIALS }}
   snap-tests:
+    name: snap tests / ${{ matrix.suite.label }}
     needs: [build-deps]
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04-64]
         suite:
-          [
-            main/,
-            docs-how-to/,
-            docs-tutorial/part-1,
-            docs-tutorial/part-2,
-            docs-tutorial/part-3,
-            docs-tutorial/part-4,
-            integration/,
-          ]
+          # Core workshop scenarios.
+          - name: main-launch
+            label: main / launch
+            paths: >-
+              tests/main/autostart
+              tests/main/compatible-backend
+              tests/main/firewall-docker
+              tests/main/launch
+              tests/main/launch-abort
+              tests/main/launch-continue
+              tests/main/launch-multiple
+              tests/main/launch-sdk
+          - name: main-lifecycle
+            label: main / lifecycle
+            paths: >-
+              tests/main/refresh
+              tests/main/refresh-abort
+              tests/main/refresh-conflict
+              tests/main/refresh-continue
+              tests/main/remount
+              tests/main/remove
+              tests/main/remove-snap
+              tests/main/restart-connections
+              tests/main/restore
+              tests/main/start
+              tests/main/start-conflict
+              tests/main/stop
+              tests/main/stop-conflict
+          - name: main-interfaces
+            label: main / interfaces
+            paths: >-
+              tests/main/connect
+              tests/main/connections
+              tests/main/disconnect
+              tests/main/exec
+              tests/main/interface-camera
+              tests/main/interface-custom-device
+              tests/main/interface-desktop
+              tests/main/interface-gpu
+              tests/main/interface-mount
+              tests/main/interface-plug-binding
+              tests/main/interface-ssh-agent
+              tests/main/interface-tunnel
+              tests/main/shell
+              tests/main/ssh
+              tests/main/workshop-connections
+          - name: main-status-sdk
+            label: main / status and SDKs
+            paths: >-
+              tests/main/changes
+              tests/main/check-health
+              tests/main/completion
+              tests/main/info-sdk-health
+              tests/main/integrity-checks
+              tests/main/list
+              tests/main/list-global
+              tests/main/project-sdks
+              tests/main/sdk-find
+              tests/main/sdk-info
+              tests/main/sdk-multi-user-mount
+              tests/main/sketch-sdk
+              tests/main/try-sdks
+          # Documentation scenarios.
+          - name: docs-how-to
+            label: docs / how-to
+            paths: tests/docs-how-to/
+          - name: docs-tutorial-part-1
+            label: docs / tutorial part 1
+            paths: tests/docs-tutorial/part-1
+          - name: docs-tutorial-part-2
+            label: docs / tutorial part 2
+            paths: tests/docs-tutorial/part-2
+          - name: docs-tutorial-part-3
+            label: docs / tutorial part 3
+            paths: tests/docs-tutorial/part-3
+          - name: docs-tutorial-part-4
+            label: docs / tutorial part 4
+            paths: tests/docs-tutorial/part-4
+          # Lower-level LXD integration scenarios.
+          - name: integration
+            label: integration
+            paths: tests/integration/
     runs-on: [self-hosted, linux, jammy, x64, xlarge]
     steps:
       - name: Install LXD
@@ -68,19 +142,16 @@ jobs:
         run: |
           lxc storage set default volume.size=32GB
       - name: Run spread
+        env:
+          SUITE_PATHS: ${{ matrix.suite.paths }}
         run: |
           mkdir ${{ github.workspace }}.cover
-          spread -artifacts=${{ github.workspace }}.cover tests/${{matrix.suite}}
-      - name: Trim trailing slash from matrix.suite
-        id: sanitize
-        env:
-          SUITE_NAME: ${{ matrix.suite }}
-        run: |
-          echo "sanitized_name=${SUITE_NAME%/}" >> "$GITHUB_OUTPUT"
+          read -r -a suite_paths <<< "$SUITE_PATHS"
+          spread -artifacts=${{ github.workspace }}.cover "${suite_paths[@]}"
       - name: Upload Coverage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: code-coverage-${{ steps.sanitize.outputs.sanitized_name }}
+          name: code-coverage-${{ matrix.suite.name }}
           path: ${{ github.workspace }}.cover/lxd:ubuntu-24.04:tests/
           if-no-files-found: ignore
   publish:
