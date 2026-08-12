@@ -159,6 +159,45 @@ func (cs *clientSuite) TestClientIntegration(c *C) {
 	c.Check(si.Version, Equals, "1")
 }
 
+// TestClientRoundTripperWrapper verifies that [client.Config] applies the
+// configured HTTP transport wrapper.
+func (cs *clientSuite) TestClientRoundTripperWrapper(c *C) {
+	const wrapperHeader = "X-Test-Round-Tripper-Wrapper"
+
+	server := httptest.NewServer(http.HandlerFunc(func(
+		w http.ResponseWriter,
+		req *http.Request,
+	) {
+		c.Check(req.Header.Get(wrapperHeader), Equals, "applied")
+		_, err := fmt.Fprintln(
+			w,
+			`{"type":"sync", "result":{"version":"1"}}`,
+		)
+		c.Check(err, IsNil)
+	}))
+	defer server.Close()
+
+	wrapper := client.RoundTripperWrapper(func(
+		next http.RoundTripper,
+	) http.RoundTripper {
+		return client.RoundTripperFunc(func(
+			req *http.Request,
+		) (*http.Response, error) {
+			req.Header.Set(wrapperHeader, "applied")
+			return next.RoundTrip(req)
+		})
+	})
+	cli, err := client.New(&client.Config{
+		BaseURL:             server.URL,
+		RoundTripperWrapper: wrapper,
+	})
+	c.Assert(err, IsNil)
+
+	_, err = cli.SysInfo()
+
+	c.Check(err, IsNil)
+}
+
 func (cs *clientSuite) TestClientReportsOpError(c *C) {
 	cs.rsp = `{"type": "error", "status": "potatoes"}`
 	_, err := cs.cli.SysInfo()
