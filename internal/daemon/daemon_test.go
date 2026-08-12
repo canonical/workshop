@@ -57,8 +57,9 @@ type daemonSuite struct {
 var _ = check.Suite(&daemonSuite{})
 
 func (s *daemonSuite) SetUpTest(c *check.C) {
-	s.workshopDir = c.MkDir()
-	dirs.SetRootDir(s.workshopDir)
+	s.workshopDir = filepath.Join(c.MkDir(), "data")
+	dirs.SetRootDir(filepath.Dir(s.workshopDir))
+	c.Assert(dirs.CreateDirs(), check.IsNil)
 	s.statePath = filepath.Join(s.workshopDir, "state.json")
 
 	systemdSdNotify = func(notif string) error {

@@ -30,26 +30,15 @@ import (
 	"github.com/canonical/workshop/internal/testutil"
 )
 
-type systemSdk struct {
-	oldRoot  string
-	oldCache string
-}
+type systemSdk struct{}
 
 var _ = check.Suite(&systemSdk{})
 
 func Test(t *testing.T) { check.TestingT(t) }
 
 func (f *systemSdk) SetUpSuite(c *check.C) {
-	f.oldRoot = dirs.BaseDir
-	f.oldCache = dirs.CacheDir
 	dirs.SetRootDir(c.MkDir())
-	dirs.SetCacheDir(c.MkDir())
 	c.Assert(dirs.CreateDirs(), check.IsNil)
-}
-
-func (f *systemSdk) TearDownSuite(c *check.C) {
-	dirs.SetCacheDir(f.oldRoot)
-	dirs.SetRootDir(f.oldRoot)
 }
 
 func (s *systemSdk) TestRetrieveSystemSdkSuccess(c *check.C) {

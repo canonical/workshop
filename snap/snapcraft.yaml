@@ -26,9 +26,9 @@ apps:
   workshopd:
     environment:
       PATH: ${SNAP}/bin:${PATH}
-      WORKSHOP: ${SNAP_DATA}
+      WORKSHOP_DATA: $SNAP_DATA
+      WORKSHOP_COMMON: $SNAP_COMMON/workshop
       WORKSHOP_CACHE: $SNAP_COMMON/workshop/cache
-      WORKSHOP_SOCKET: $SNAP_COMMON/workshop/workshop.socket
     command: commands/run_daemon
     daemon: notify
     restart-condition: on-failure

@@ -25,7 +25,6 @@ import (
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/client"
-	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/testutil"
 )
 
@@ -41,7 +40,6 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 func (s *sdkSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	dirs.SetRootDir(c.MkDir())
 
 	Stdout = &s.stdout
 	Stderr = &s.stderr

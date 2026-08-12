@@ -1,19 +1,10 @@
 summary: Run LXD integration tests for workshop exec
 
-environment:
-  WORKSHOP: /tmp/workshop_test_lxd_backend_exec_check_login_cwd
-
-prepare: |
-  sudo -u ubuntu -- mkdir -p "${WORKSHOP}"
-
-restore: |
-  rm -rf "${WORKSHOP}"
-
 execute: |
   rm -rf cover
   mkdir -m 777 cover
 
-  sudo --preserve-env=WORKSHOP -u ubuntu 2>&1 -- go test -cover "$SPREAD_PATH"/internal/workshop/lxd/tests/integration -timeout=30m -tags=integration -check.v -check.f wsExec -coverpkg=github.com/canonical/workshop/internal/workshop/lxd -args -test.gocoverdir="$PWD"/cover
+  sudo -u ubuntu 2>&1 -- go test -cover "$SPREAD_PATH"/internal/workshop/lxd/tests/integration -timeout=30m -tags=integration -check.v -check.f wsExec -coverpkg=github.com/canonical/workshop/internal/workshop/lxd -args -test.gocoverdir="$PWD"/cover
 
 artifacts:
   - cover

@@ -70,7 +70,6 @@ func execTestDevices(projectDir string) func(pid, w string) ([]workshop.Mount, [
 
 func (f *wsExec) SetUpSuite(c *check.C) {
 	dirs.SetRootDir(c.MkDir())
-	dirs.SetCacheDir(c.MkDir())
 	c.Assert(dirs.CreateDirs(), check.IsNil)
 
 	f.restoreImageServer = lxdbackend.FakeImageServer(helper.MinimalImageServer)

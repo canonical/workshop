@@ -16,8 +16,8 @@
 // freshly built copy of the workshop binaries. Each invocation creates
 // a session directory under ./try_sessions/, builds ./cmd/... into
 // <session>/bin, starts workshopd against <session>, and drops the
-// caller into a subshell with WORKSHOP, WORKSHOP_DEBUG and PATH set
-// for the session. When the subshell exits, workshopd is terminated
+// caller into a subshell with WORKSHOP_DATA, WORKSHOP_DEBUG and PATH
+// set for the session. When the subshell exits, workshopd is terminated
 // and the session directory is removed (unless --keep is given).
 //
 // When invoked from inside an existing try session (detected via
@@ -42,7 +42,7 @@ import (
 const (
 	envDevName        = "WORKSHOP_DEV_ENV"
 	envDevTmp         = "WORKSHOP_DEV_TMP"
-	envWorkshop       = "WORKSHOP"
+	envWorkshopData   = "WORKSHOP_DATA"
 	envWorkshopCache  = "WORKSHOP_CACHE"
 	envWorkshopDebug  = "WORKSHOP_DEBUG"
 	envWorkshopSocket = "WORKSHOP_SOCKET"
@@ -294,14 +294,14 @@ func runFreshSession(keep bool) error {
 	return shellErr
 }
 
-// runShell launches the chosen shell with WORKSHOP, WORKSHOP_DEBUG,
+// runShell launches the chosen shell with WORKSHOP_DATA, WORKSHOP_DEBUG,
 // PATH, WORKSHOP_DEV_ENV and WORKSHOP_DEV_TMP configured for the
 // session, and waits for it to exit. A non-zero exit from the shell
 // itself is reported but not propagated as an error from runShell.
 func runShell(shell, tmp, bin, name string) error {
 	env := append(
 		os.Environ(),
-		envWorkshop+"="+tmp,
+		envWorkshopData+"="+tmp,
 		envWorkshopCache+"="+filepath.Join(tmp, "cache"),
 		envWorkshopSocket+"="+socketPath(tmp),
 		envWorkshopDebug+"=1",
@@ -348,8 +348,8 @@ func socketPath(tmp string) string {
 // /bin/sh wrapper using `exec`, so the shell opens the file, dup2s
 // onto its own fds, and then replaces itself with workshopd in place,
 // preserving cmd.Process.Pid as workshopd's PID. The child runs with
-// WORKSHOP, WORKSHOP_CACHE, WORKSHOP_SOCKET and WORKSHOP_DEBUG set so
-// all of its state lives within or alongside the session directory.
+// WORKSHOP_DATA, WORKSHOP_CACHE, WORKSHOP_SOCKET and WORKSHOP_DEBUG set
+// so all of its state lives within or alongside the session directory.
 // The PID is recorded in workshopd.pid; callers use stopWorkshopd to
 // terminate the daemon.
 func startWorkshopd(tmp string) error {
@@ -386,7 +386,7 @@ func startWorkshopd(tmp string) error {
 	cmd := exec.Command("/bin/sh", "-c", shellCmd)
 	cmd.Env = append(
 		os.Environ(),
-		envWorkshop+"="+tmp,
+		envWorkshopData+"="+tmp,
 		envWorkshopCache+"="+filepath.Join(tmp, "cache"),
 		envWorkshopSocket+"="+sock,
 		envWorkshopDebug+"=1",

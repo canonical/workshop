@@ -25,25 +25,20 @@ Before starting, ensure you have these requirements satisfied:
   installed in VS Code.
 
 
-Configure SSH access
---------------------
+SSH access
+----------
 
-|ws_markup| generates an OpenSSH configuration
-for connecting to launched workshops.
-When using the Workshop snap,
-include that generated configuration in your host user's
-:file:`~/.ssh/config` file.
-Replace :samp:`<UID>` with your host user ID,
-which you can find with :command:`id -u`:
-
-.. code-block:: text
-   :caption: ~/.ssh/config
-
-   Include /var/snap/workshop/current/ssh/<UID>/config
+|ws_markup| sets up SSH access to workshops on its own.
+It configures the OpenSSH client on your local machine
+and maintains a certificate authority
+that signs an SSH *host* certificate for every workshop's SSH server
+and a *user* certificate authenticating you as the :samp:`workshop` user.
+Connecting to a workshop by its hostname
+needs no key management, passwords, or host-key prompts.
 
 
-Add the SDK
------------
+Add the SDK (optional)
+----------------------
 
 Add the :samp:`vscode-remote` SDK to your workshop definition:
 
@@ -55,6 +50,10 @@ Add the :samp:`vscode-remote` SDK to your workshop definition:
    base: ubuntu@24.04
    sdks:
      - name: vscode-remote
+
+
+This preserves the files installed by VS Code
+when you use :command:`workshop refresh`.
 
 
 Launch the workshop
@@ -89,9 +88,8 @@ Connect with VS Code
 In VS Code, press :guilabel:`F1` to open the command palette,
 start typing :guilabel:`Connect to Host`,
 then choose the :guilabel:`Remote-SSH` option.
-Enter :samp:`workshop@dev.my-project.wp`,
-replacing :samp:`dev.my-project.wp`
-with the hostname from :command:`workshop info`.
+Enter the hostname from :command:`workshop info`,
+e.g. :samp:`dev.my-project.wp`.
 In the terminal prompt, you'll see that the IDE is running inside your workshop.
 
 .. note::
@@ -106,6 +104,7 @@ See also
 
 Explanation:
 
+- :ref:`exp_arch_network`
 - :ref:`exp_workshop_definition`
 
 
