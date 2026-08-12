@@ -152,8 +152,6 @@ func setDataDir(dataDir string) {
 	DataDir = dataDir
 
 	WorkshopStateLockFile = filepath.Join(DataDir, "state.lock")
-	WorkshopdRunDir = filepath.Join(DataDir, "run", "workshopd")
-	WorkshopdLocksDir = filepath.Join(WorkshopdRunDir, "locks")
 }
 
 func setCommonDir(commonDir string) {
@@ -164,6 +162,11 @@ func setCommonDir(commonDir string) {
 
 	WorkshopSSHDir = filepath.Join(CommonDir, "ssh")
 	WorkshopTlsDir = filepath.Join(CommonDir, "tls")
+
+	// Runtime data (X cookies, SDK locks) is used as an LXD mount source, so it
+	// must live on a revision-independent path to survive snap refreshes.
+	WorkshopdRunDir = filepath.Join(CommonDir, "run", "workshopd")
+	WorkshopdLocksDir = filepath.Join(WorkshopdRunDir, "locks")
 }
 
 func setCacheDir(cachedir string) {
