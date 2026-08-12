@@ -24,26 +24,27 @@ import (
 	"github.com/canonical/workshop/internal/osutil"
 )
 
-// machineIDRoundTripperSuite tests machine-ID HTTP transport wrappers.
-type machineIDRoundTripperSuite struct{}
+// workshopInstanceIDRoundTripperSuite tests Workshop instance-ID HTTP
+// transport wrappers.
+type workshopInstanceIDRoundTripperSuite struct{}
 
-var _ = check.Suite(&machineIDRoundTripperSuite{})
+var _ = check.Suite(&workshopInstanceIDRoundTripperSuite{})
 
-// TestAddsMachineIDHeader verifies that a valid machine ID is sent to the next
-// transport without changing the request.
-func (machineIDRoundTripperSuite) TestAddsMachineIDHeader(
+// TestAddsInstanceIDHeader verifies that a valid instance ID is sent to the
+// next transport without changing the request.
+func (workshopInstanceIDRoundTripperSuite) TestAddsInstanceIDHeader(
 	c *check.C,
 ) {
-	machineID := "0123456789abcdef0123456789abcdef"
-	wrapper := newMachineIDRoundTripper(func() (string, error) {
-		return machineID, nil
+	instanceID := "0123456789abcdef0123456789abcdef"
+	wrapper := newWorkshopInstanceIDRoundTripper(func() (string, error) {
+		return instanceID, nil
 	}, nil)
 
 	nextCalls := 0
 	response := &http.Response{Body: http.NoBody, StatusCode: http.StatusOK}
 	next := RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		nextCalls++
-		c.Check(req.Header.Get(workshopMachineIDHeader), check.Equals, machineID)
+		c.Check(req.Header.Get(workshopInstanceIDHeader), check.Equals, instanceID)
 		return response, nil
 	})
 	req, err := http.NewRequest(http.MethodGet, "http://workshop.test", nil)
@@ -55,24 +56,24 @@ func (machineIDRoundTripperSuite) TestAddsMachineIDHeader(
 	c.Check(actual, check.Equals, response)
 	c.Check(nextCalls, check.Equals, 1)
 	// The wrapper must not modify the original request.
-	c.Check(req.Header.Get(workshopMachineIDHeader), check.Equals, "")
+	c.Check(req.Header.Get(workshopInstanceIDHeader), check.Equals, "")
 }
 
-// TestContinuesWhenMachineIDIsNotFound verifies that a missing machine ID
+// TestContinuesWhenInstanceIDIsNotFound verifies that a missing instance ID
 // emits a warning and leaves requests unchanged.
-func (machineIDRoundTripperSuite) TestContinuesWhenMachineIDIsNotFound(
+func (workshopInstanceIDRoundTripperSuite) TestContinuesWhenInstanceIDIsNotFound(
 	c *check.C,
 ) {
 	var warnings bytes.Buffer
-	wrapper := newMachineIDRoundTripper(func() (string, error) {
-		return "", osutil.ErrorMachineIDNotFound
+	wrapper := newWorkshopInstanceIDRoundTripper(func() (string, error) {
+		return "", osutil.ErrorWorkshopInstanceIDNotFound
 	}, &warnings)
 
 	nextCalls := 0
 	response := &http.Response{Body: http.NoBody, StatusCode: http.StatusOK}
 	next := RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		nextCalls++
-		c.Check(req.Header.Get(workshopMachineIDHeader), check.Equals, "")
+		c.Check(req.Header.Get(workshopInstanceIDHeader), check.Equals, "")
 		return response, nil
 	})
 	req, err := http.NewRequest(http.MethodGet, "http://workshop.test", nil)
@@ -86,17 +87,17 @@ func (machineIDRoundTripperSuite) TestContinuesWhenMachineIDIsNotFound(
 	c.Check(
 		warnings.String(),
 		check.Equals,
-		"warning: cannot read workshop machine ID: machine ID not found; ",
+		"warning: cannot read workshop instance ID: workshop instance ID not found; ",
 	)
 }
 
-// TestReturnsReadErrors verifies that an unexpected machine-ID read error
+// TestReturnsReadErrors verifies that an unexpected instance-ID read error
 // prevents the request from reaching the next transport.
-func (machineIDRoundTripperSuite) TestReturnsReadErrors(
+func (workshopInstanceIDRoundTripperSuite) TestReturnsReadErrors(
 	c *check.C,
 ) {
 	readError := errors.New("permission denied")
-	wrapper := newMachineIDRoundTripper(func() (string, error) {
+	wrapper := newWorkshopInstanceIDRoundTripper(func() (string, error) {
 		return "", readError
 	}, nil)
 
@@ -110,7 +111,7 @@ func (machineIDRoundTripperSuite) TestReturnsReadErrors(
 
 	_, err = wrapper(next).RoundTrip(req)
 
-	c.Check(err, check.ErrorMatches, "cannot read machine ID: permission denied")
+	c.Check(err, check.ErrorMatches, "cannot read workshop instance ID: permission denied")
 	c.Check(errors.Is(err, readError), check.Equals, true)
 	c.Check(nextCalls, check.Equals, 0)
 }
