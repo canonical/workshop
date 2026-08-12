@@ -46,7 +46,7 @@ Prerequisites
 `LXD 6.8+ <https://canonical.com/lxd>`_
 for low-level operation,
 using its
-`REST API <https://documentation.ubuntu.com/lxd/latest/restapi_landing/>`_
+`REST API <https://canonical.com/lxd/docs/latest/restapi_landing/>`_
 to craft the SDKs.
 
 If the :command:`snap install` command reports an issue with LXD,
@@ -71,10 +71,10 @@ To refresh an existing installation:
    For other ways to install LXD,
    see the available installation options in
    `LXD documentation
-   <https://documentation.ubuntu.com/lxd/latest/installing/>`_.
+   <https://canonical.com/lxd/docs/latest/installing/>`_.
    Also, you need to ensure the
    `LXD daemon
-   <https://documentation.ubuntu.com/lxd/latest/explanation/lxd_lxc/#lxd-daemon>`_
+   <https://canonical.com/lxd/docs/latest/explanation/lxd_lxc/#lxd-daemon>`_
    is enabled and running.
    Again, refer to LXD documentation
    and your distribution's manuals for guidance.

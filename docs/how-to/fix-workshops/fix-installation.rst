@@ -50,7 +50,7 @@ You may need to add yourself to the :samp:`lxd` group to access its resources:
    $ sudo usermod -a -G lxd $USER
 
 As a final step, see the
-`troubleshooting guides <https://documentation.ubuntu.com/lxd/latest/howto/troubleshoot/>`_
+`troubleshooting guides <https://canonical.com/lxd/docs/latest/howto/troubleshoot/>`_
 in LXD documentation.
 
 

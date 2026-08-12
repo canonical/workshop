@@ -1,5 +1,5 @@
 :slug: home-page
-:relatedlinks: [Workshop](https://github.com/canonical/workshop/), [SDKcraft](https://github.com/canonical/sdkcraft/), [LXD](https://documentation.ubuntu.com/lxd/default/), [Snap](https://snapcraft.io/docs/)
+:relatedlinks: [Workshop](https://github.com/canonical/workshop/), [SDKcraft](https://github.com/canonical/sdkcraft/), [LXD](https://canonical.com/lxd/docs/default/), [Snap](https://snapcraft.io/docs/)
 
 .. _home:
 

@@ -159,7 +159,7 @@ func (s *Specification) AddMountEntry(dev workshop.Mount) error {
 // Tunnel, SSH Agent and Desktop are all of the lxc 'proxy' type
 // These are network protocol proxy devices that open a port on the host or in a workhop.
 // 'listen', 'connect' are the source and destination addresses (paths in the case of unix sockets),
-// see https://documentation.ubuntu.com/lxd/en/latest/reference/devices_proxy/#device-proxy-device-conf:bind
+// see https://canonical.com/lxd/docs/latest/reference/devices_proxy/#device-proxy-device-conf:bind
 // bind denotes where the port is open (can be: instance, host)
 
 func (s *Specification) AddTunnelEntry(tunnel workshop.Tunnel) error {

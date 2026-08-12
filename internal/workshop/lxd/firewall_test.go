@@ -120,13 +120,13 @@ func (s *FirewallTests) TestAnalyzeNftJSONNoForwardChain(c *check.C) {
 func (s *FirewallTests) TestBridgeBlockedWarningDocker(c *check.C) {
 	msg := bridgeBlockedWarning("workshopbr0", causeDocker)
 	c.Check(msg, check.Matches, ".*Docker.*nft.*DOCKER-USER.*workshopbr0.*")
-	c.Check(msg, check.Matches, ".*documentation.ubuntu.com.*")
+	c.Check(msg, check.Matches, ".*canonical.com/lxd/docs.*")
 }
 
 func (s *FirewallTests) TestBridgeBlockedWarningUFW(c *check.C) {
 	msg := bridgeBlockedWarning("workshopbr0", causeUFW)
 	c.Check(msg, check.Matches, ".*UFW.*ufw allow.*workshopbr0.*")
-	c.Check(msg, check.Matches, ".*documentation.ubuntu.com.*")
+	c.Check(msg, check.Matches, ".*canonical.com/lxd/docs.*")
 }
 
 func (s *FirewallTests) TestBridgeBlockedWarningUnknown(c *check.C) {
@@ -134,5 +134,5 @@ func (s *FirewallTests) TestBridgeBlockedWarningUnknown(c *check.C) {
 	c.Check(msg, check.Not(check.Matches), ".*Docker.*")
 	c.Check(msg, check.Not(check.Matches), ".*UFW.*")
 	c.Check(msg, check.Matches, ".*workshopbr0.*")
-	c.Check(msg, check.Matches, ".*documentation.ubuntu.com.*")
+	c.Check(msg, check.Matches, ".*canonical.com/lxd/docs.*")
 }

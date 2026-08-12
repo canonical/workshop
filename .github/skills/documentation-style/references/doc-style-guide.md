@@ -529,7 +529,7 @@ Common external links are defined in `docs/reuse/links.txt` for consistent refer
 ```restructuredtext
 .. _Canonical website: https://canonical.com/
 .. _GitHub: https://github.com/canonical/workshop/
-.. _LXD: https://documentation.ubuntu.com/lxd/latest/
+.. _LXD: https://canonical.com/lxd/docs/latest/
 .. _SDKcraft: https://github.com/canonical/sdkcraft/
 .. _Releases: https://github.com/canonical/workshop/releases/
 ```
@@ -1071,7 +1071,7 @@ For all other internal documentation links, prefer `:ref:` with semantic anchor 
 Inline:
 
 ```restructuredtext
-`LXD documentation <https://documentation.ubuntu.com/lxd/latest/>`_
+`LXD documentation <https://canonical.com/lxd/docs/latest/>`_
 ```
 
 Anonymous:
