@@ -15,7 +15,7 @@ Customize a workshop.
 
 .. code-block:: console
 
-   $ workshop sketch-sdk [--stash|--restore|--eject|--remove] [<WORKSHOP>] [flags]
+   $ workshop sketch-sdk [<WORKSHOP>] [flags]
 
 .. rubric:: Description
 
