@@ -55,6 +55,7 @@ This command disconnects a plug from its slot, or a slot from all its plugs.
 - After an auto-connected plug is thus disconnected,
   it is reconnected during "workshop refresh"
   only if the "--forget" option was used with "workshop disconnect".
+  Either way, "workshop restore" reconnects it.
 `,
 		Example: `
 Disconnect the "mod-cache" mount interface plug of the "go" SDK
