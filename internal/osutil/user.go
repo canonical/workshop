@@ -15,6 +15,7 @@
 package osutil
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,6 +24,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/osutil/sys"
@@ -238,7 +241,67 @@ func userEnvironment(user *user.User) (map[string]string, error) {
 
 	// TODO: use --output=json once systemd >= 250.
 	rawEnv := strings.FieldsFunc(string(out), func(r rune) bool { return r == '\n' })
-	return parseSystemctlEnvironment(rawEnv)
+	userEnv, err := parseSystemctlEnvironment(rawEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	// Work around microsoft/WSL#12436: the systemd --user manager on WSL
+	// lacks the WSLg display variables, so fill them in here.
+	supplementWSLgDisplayEnv(user, userEnv)
+
+	return userEnv, nil
+}
+
+// wslgMountDir is where WSLg exposes the display sockets and PulseAudio
+// server. Its presence is the signal that WSLg's DISPLAY/WAYLAND_DISPLAY
+// sockets are actually available on this WSL instance.
+var wslgMountDir = "/mnt/wslg"
+
+// IsWSL reports whether the host is running under Windows Subsystem for Linux.
+func IsWSL() bool {
+	var utsname unix.Utsname
+	if err := unix.Uname(&utsname); err != nil {
+		return false
+	}
+	data := utsname.Release[:]
+	if idx := bytes.IndexByte(data, 0); idx >= 0 {
+		data = data[:idx]
+	}
+	version := strings.ToLower(string(data))
+	return strings.Contains(version, "microsoft") || strings.Contains(version, "wsl2")
+}
+
+// onWSLg reports whether the host is a WSL instance with WSLg available.
+var onWSLg = func() bool {
+	if !IsWSL() {
+		return false
+	}
+	_, err := os.Stat(wslgMountDir)
+	return err == nil
+}
+
+// supplementWSLgDisplayEnv works around microsoft/WSL#12436. On WSL, WSLg
+// injects DISPLAY, WAYLAND_DISPLAY and friends only into login shells (via
+// /etc/profile.d) and never into the systemd --user manager. As a result
+// `systemctl --user show-environment` omits them, and the desktop interface
+// reports "neither DISPLAY nor WAYLAND_DISPLAY are set" even though the host
+// compositor is reachable. When WSLg is available we fill in its well-known,
+// stable socket values for any variable the user manager did not provide.
+func supplementWSLgDisplayEnv(user *user.User, env map[string]string) {
+	if !onWSLg() {
+		return
+	}
+	defaults := map[string]string{
+		"DISPLAY":         ":0",
+		"WAYLAND_DISPLAY": "wayland-0",
+		"XDG_RUNTIME_DIR": filepath.Join(dirs.XdgRuntimeDirBase, user.Uid),
+	}
+	for key, value := range defaults {
+		if env[key] == "" {
+			env[key] = value
+		}
+	}
 }
 
 func timezone() (string, error) {

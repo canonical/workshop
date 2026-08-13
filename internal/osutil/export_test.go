@@ -31,7 +31,15 @@ var (
 	ParseRawEnvironment       = parseRawEnvironment
 	ParseSystemctlEnvironment = parseSystemctlEnvironment
 	DoCopyFile                = doCopyFile
+	SupplementWSLgDisplayEnv  = supplementWSLgDisplayEnv
 )
+
+// MockWSLg overrides WSLg detection for tests and returns a restore function.
+func MockWSLg(available bool) (restore func()) {
+	old := onWSLg
+	onWSLg = func() bool { return available }
+	return func() { onWSLg = old }
+}
 
 // ParseRawExpandableEnv returns a new expandable environment parsed from key=value strings.
 func ParseRawExpandableEnv(entries []string) (ExpandableEnv, error) {

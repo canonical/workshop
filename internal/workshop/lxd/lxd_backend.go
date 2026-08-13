@@ -15,7 +15,6 @@
 package lxdbackend
 
 import (
-	"bytes"
 	"cmp"
 	"context"
 	"embed"
@@ -76,22 +75,8 @@ var (
 //go:embed start_command.sh
 var startCommand string
 
-// isWSL checks if we're running on Windows Subsystem for Linux
-func isWSL() bool {
-	var utsname unix.Utsname
-	if err := unix.Uname(&utsname); err != nil {
-		return false
-	}
-	data := utsname.Release[:]
-	if idx := bytes.IndexByte(data, 0); idx >= 0 {
-		data = data[:idx]
-	}
-	version := strings.ToLower(string(data))
-	return strings.Contains(version, "microsoft") || strings.Contains(version, "wsl2")
-}
-
 func init() {
-	if isWSL() {
+	if osutil.IsWSL() {
 		storagePoolDriver = "btrfs"
 	}
 
