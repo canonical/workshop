@@ -76,8 +76,13 @@ so you can continue working without interruption.
 If the project is deleted by external means
 without first removing its workshops,
 any workshops that reference it
-enter the *Error* state;
-the only command applicable to them is :command:`workshop remove`.
+become orphaned:
+their containers and stored state remain on the host,
+and :command:`workshop list --global` reports them
+in the *Error* state with a :samp:`missing-project` note.
+Commands that resolve the project by its pathname,
+including :command:`workshop remove`,
+no longer work for such workshops.
 
 .. note::
 
@@ -98,6 +103,7 @@ Explanation:
 How-to guides:
 
 - :ref:`how_move_projects`
+- :ref:`how_purge_orphaned`
 
 
 Reference:
