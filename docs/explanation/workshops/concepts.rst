@@ -154,7 +154,7 @@ and what it does to the workshop and to its interface connections:
      - Reuses snapshots for SDKs whose configuration is unchanged;
        reinstalls the rest from scratch.
      - Re-evaluates auto-connect against the new definition;
-       **any connections established manually after launch are dropped**.
+       **connections established manually after launch are preserved**.
 
    * - :command:`workshop restore`
      - You want to discard runtime drift in the workshop
@@ -162,7 +162,7 @@ and what it does to the workshop and to its interface connections:
      - Rolls the workshop filesystem back
        to the snapshot taken at the last successful launch or refresh.
      - Re-evaluates auto-connect against the unchanged definition;
-       **any connections established manually since the snapshot are dropped**.
+       **manual connects and disconnects alike are discarded**.
 
 
 .. _exp_workshop_launch:

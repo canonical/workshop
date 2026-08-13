@@ -292,19 +292,22 @@ to the auto-allocated directory under :file:`~/.local/share/workshop/`.
 
 Note that :command:`workshop connections` now lists the plug as :samp:`manual`
 in the :samp:`NOTES` column.
-That state survives :command:`workshop stop` plus :command:`workshop start` cycles
-but not :command:`workshop refresh`:
-a refresh drops manual connections
-and returns the workshop to its definition's auto-connect defaults.
-For this plug, the default is the same :samp:`system:mount` pairing,
-so the share stays in place
-and the :samp:`manual` note clears.
+This manual connection persists across :command:`workshop refresh`
+and :command:`workshop stop` plus :command:`workshop start` cycles,
+but :command:`workshop restore` drops it
+and returns the plug to its definition's auto-connect default.
+
+.. note::
+
+   For how manual connections behave across these operations,
+   see :ref:`exp_workshop_connection_lifecycle`.
+
 
 To revert connections and mounts wholesale,
-use :command:`workshop restore`.
-For a single plug, run :command:`workshop disconnect`
-with :option:`!--forget`, then :command:`workshop refresh`;
-the refresh reconnects the plug to its default slot.
+use :command:`workshop restore`;
+it also resets any source set with :command:`workshop remount`.
+For a single plug, disconnect it with :option:`!--forget`
+and connect it again, as shown above.
 
 
 See also
