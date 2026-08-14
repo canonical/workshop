@@ -37,16 +37,19 @@ Dependencies
 
 The documentation build requires Python 3.11 or later.
 
-Documentation dependencies are managed using :program:`uv`:
+Dependencies come from two files:
 
 - :file:`docs/requirements.in`
   contains dependencies specific to |ws_markup| documentation.
 
 - :file:`docs/requirements.txt`
-  is the final, resolved dependency file.
+  is the assembled file that the build installs.
 
 The :file:`.github/workflows/update-sphinx-stack.yaml` workflow
-generates the final file.
+generates :file:`docs/requirements.txt`
+by appending :file:`docs/requirements.in`
+to the Sphinx Stack's own requirements.
+Keep constraints loose, matching the Sphinx Stack convention.
 For more information about the workflow,
 see :ref:`contributing_cicd`.
 
