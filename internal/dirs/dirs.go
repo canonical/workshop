@@ -54,6 +54,10 @@ var (
 	// socket name (which varies, e.g. under "go tool try").
 	WorkshopSocketPath = filepath.Join(WorkshopRunDir, "workshop.socket")
 
+	// Path to the unix socket inside a workshop that systemd units connect
+	// to for secret resolution (via LoadCredential).
+	WorkshopSecretSocketPath = filepath.Join(WorkshopRunDir, "workshop.socket.secret")
+
 	// Directory for actions inside workshop
 	WorkshopActionsDir = filepath.Join(WorkshopRunDir, "actions")
 

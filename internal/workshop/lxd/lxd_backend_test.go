@@ -106,6 +106,27 @@ func (f *LxdBeTests) TestDefaultWorkshopConfig(c *check.C) {
 	c.Assert(cfg["user.workshop.base-fingerprint"], check.Equals, "fakeimage12345")
 }
 
+// The cloud-init user-data must install and enable the systemd socket unit
+// that SDK units connect to for LoadCredential secret resolution, along with
+// its associated service unit.
+func (f *LxdBeTests) TestWorkshopConfigSecretSocketUnits(c *check.C) {
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name: "test",
+		Base: "ubuntu@22.04",
+	}
+
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1001", "1001", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+
+	userData := cfg["cloud-init.user-data"]
+	c.Check(userData, check.Matches, `(?s).*path: /etc/systemd/system/workshop-secret\.socket.*`)
+	c.Check(userData, check.Matches, `(?s).*ListenStream=/var/lib/workshop/run/workshop\.socket\.secret.*`)
+	c.Check(userData, check.Matches, `(?s).*path: /etc/systemd/system/workshop-secret\.service.*`)
+	c.Check(userData, check.Matches, `(?s).*ExecStart=/var/lib/workshop/bin/workshopctl get-secret --systemd.*`)
+	c.Check(userData, check.Matches, `(?s).*systemctl enable --now workshop-secret\.socket.*`)
+}
+
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
 	err := lxdbackend.CheckServerVersion("6.8")
 	c.Assert(err, check.IsNil)

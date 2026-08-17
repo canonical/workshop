@@ -28,16 +28,13 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
-	"github.com/canonical/x-go/strutil/shlex"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 
@@ -1239,113 +1236,20 @@ func proxyToLxdDevice(usr *user.User, proxy workshop.ProxyEntry) map[string]stri
 	return device
 }
 
-func (s *Backend) workshopConfig(projectId string, userid, groupid string, file *workshop.File, format sdk.Revision, baseFingerprint string) (map[string]string, error) {
-	cloudConfigTemplate := `
-#cloud-config
-users:
-  - default
-  - name: workshop
-    primary_group: workshop
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    create_groups: false
-    groups:
-    - 'adm'
-    - 'cdrom'
-    - 'sudo'
-    - 'dip'
-    - 'plugdev'
-    - 'audio'
-    - 'netdev'
-    - 'lxd'
-    - 'video'
-    - 'render'
-    # Compatibility GIDs for various host systems:
-    - '108' # netdev on 26.04
-    - '111' # netdev on 24.04
-    - '118' # netdev on 20.04
-    - '119' # netdev on 22.04
-    - '109' # render on 20.04
-    - '110' # render on 22.04
-    - '990' # render on 26.04
-    - '992' # render on 24.04
-bootcmd:
-- |
-  set -e
-  maybe_groupadd() {
-      # Ignore GID not unique (exit code 4) or group name not unique (exit code 9)
-      groupadd -g "$1" -r "$2" || case $? in 4|9) ;; *) return $? ;; esac
-  }
-  maybe_groupadd 1000 workshop
-  maybe_groupadd 108 netdev-compat-108
-  maybe_groupadd 111 netdev-compat-111
-  maybe_groupadd 118 netdev-compat-118
-  maybe_groupadd 119 netdev-compat-119
-  maybe_groupadd 109 render-compat-109
-  maybe_groupadd 110 render-compat-110
-  maybe_groupadd 990 render-compat-990
-  maybe_groupadd 992 render-compat-992
-- chmod 0600 /etc/ssh/ssh_host_ed25519_key
-apt:
-  conf: |
-    # Installed by workshop
-
-    # Don't automatically install recommended packages
-    APT::Install-Recommends "0";
-
-    # Don't automatically install suggested packages
-    APT::Install-Suggests "0";
-
-    # Bypass confirmation prompts
-    APT::Get::Assume-Yes "1";
-grub_dpkg:
-  enabled: false
-ssh_deletekeys: false
-ssh_genkeytypes: [ed25519]
-write_files:
-  - path: /etc/cloud/cloud-init.disabled
-    defer: true
-  - path: /etc/ssh/sshd_config.d/90-workshop.conf
-    content: |
-      HostCertificate /etc/ssh/ssh_host_ed25519_key-cert.pub
-      TrustedUserCAKeys /etc/ssh/ssh_ca_ed25519_key.pub
-  - path: /etc/systemd/system/workshop-waitready.service
-    content: |
-      [Unit]
-      Description=Signal workshop readiness to LXD
-
-      [Service]
-      Type=notify
-      ExecStart=/usr/local/lib/workshop/waitready
-
-      [Install]
-      WantedBy=multi-user.target
-runcmd:
-  # Project directory is required for 'workshop exec'.
-  - install --directory --mode=755 /project /usr/local/bin /usr/local/lib/workshop {{shquote .WorkshopStateDir}}
-  # Create XDG base directories so SDKs don't need an extra mode=700 step.
-  - install --directory --mode=700 --owner=workshop --group=workshop /home/workshop/.cache /home/workshop/.config /home/workshop/.local
-  # Create ~/.local/bin so SDKs don't need to source ~/.profile to add it to the PATH.
-  - install --directory --mode=755 --owner=workshop --group=workshop /home/workshop/.local/bin
-  # Put workshopctl on the PATH.
-  - ln -sf {{shquote .WorkshopCtlPath}} /usr/local/bin/workshopctl
-  - ln -sf ../../bin/workshopctl /usr/local/lib/workshop/waitready
-  - systemctl enable --now workshop-waitready.service
-`[1:]
+func (s *Backend) workshopConfig(
+	projectId string,
+	userid, groupid string,
+	file *workshop.File,
+	format sdk.Revision,
+	baseFingerprint string,
+) (map[string]string, error) {
+	t, err := cloudConfigTemplate()
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse cloud-config template: %w", err)
+	}
 
 	var cloudConfig strings.Builder
-	funcs := map[string]any{
-		"shquote": shlex.Quote,
-	}
-	dot := struct {
-		WorkshopCtlPath  string
-		WorkshopStateDir string
-	}{
-		WorkshopCtlPath:  filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
-		WorkshopStateDir: dirs.WorkshopStateDir,
-	}
-	t := template.Must(template.New("cloud-config").Funcs(funcs).Parse(cloudConfigTemplate))
-	if err := t.Execute(&cloudConfig, dot); err != nil {
+	if err := t.Execute(&cloudConfig, makeCloudConfigVars()); err != nil {
 		return nil, err
 	}
 
