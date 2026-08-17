@@ -179,28 +179,17 @@ The template's :file:`.github/workflows/upload.yml`
 feeds that variable from a repository secret.
 Create that secret once.
 
-First, log in locally,
-if you haven't already,
-so the credentials are stored in your keyring:
+Export a set of credentials to a file with :option:`!--export`.
+This logs in without touching the local keyring
+and writes the credentials to the named file:
 
 .. code-block:: console
 
-   $ sdkcraft login
+   $ sdkcraft login --export credentials.txt
 
 
-Install the :samp:`libsecret-tools` package,
-which provides :command:`secret-tool`:
-
-.. code-block:: console
-
-   $ sudo apt install libsecret-tools
-
-
-Read the stored credentials back out of the keyring:
-
-.. code-block:: console
-
-   $ secret-tool search --all service sdkcraft
+The contents of :file:`credentials.txt`
+are the value to store as the repository secret.
 
 
 In your SDK repository on GitHub,
