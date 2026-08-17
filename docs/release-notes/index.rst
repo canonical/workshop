@@ -24,6 +24,7 @@ Releases
 .. toctree::
    :hidden:
 
+   Workshop and SDKcraft 0.9.5 <v0.9.5>
    Workshop and SDKcraft 0.9.4 <v0.9.4>
    Workshop and SDKcraft 0.9.3 <v0.9.3>
    Workshop and SDKcraft 0.9.2 <v0.9.2>
