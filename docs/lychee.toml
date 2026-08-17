@@ -55,5 +55,6 @@ exclude = [
     "^https://github\\.com/canonical/reference-workshops",
     "^https://github\\.com/canonical/reference-sdks",
     "^https://github\\.com/canonical/launch-workshop",
+    "^https://github\\.com/canonical/vscode-workshop",
     "^https://github\\.com/canonical/.*-sdk(-ng)?$",
 ]
