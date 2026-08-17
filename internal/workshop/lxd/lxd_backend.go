@@ -86,6 +86,7 @@ func init() {
 	// LXD is installed or refreshed, without a restart.
 	syscheck.RegisterCheck(checkServerCapabilities)
 	syscheck.RegisterCheck(ensureBackendReady)
+	syscheck.RegisterCheck(checkWorkshopFormats)
 	syscheck.RegisterCheck(checkStorageSpace)
 }
 
@@ -236,6 +237,32 @@ func checkServerCapabilities() error {
 	}
 
 	return checkStorageDriver(info.Environment.StorageSupportedDrivers)
+}
+
+func checkWorkshopFormats() error {
+	backend := Backend{}
+	allprojects, err := backend.Projects(context.Background())
+	if err != nil {
+		return fmt.Errorf("interface manager not ready: %w", err)
+	}
+
+	for user, projects := range allprojects {
+		ctx := context.WithValue(context.Background(), workshop.ContextUser, user)
+		for _, project := range projects {
+			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
+			workshops, err := backend.ProjectWorkshops(pctx)
+			if err != nil {
+				return fmt.Errorf("cannot load workshops from %q: %v", project.Path, err)
+			}
+			for _, workshop := range workshops {
+				if workshop.Format.N > backend.FormatRevision().N {
+					return fmt.Errorf("cannot load %q workshop from %q: upgrade Workshop and remove all workshops before downgrading again", workshop.Name, project.Path)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // New constructs the LXD backend and attempts to prepare the required LXD
