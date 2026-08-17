@@ -15,7 +15,7 @@ Create a new workshop definition in the project directory.
 
 .. code-block:: console
 
-   $ workshop init <NAME> --sdks <SDKs> [--base <BASE>] [flags]
+   $ workshop init <NAME> [flags]
 
 .. rubric:: Description
 
@@ -26,8 +26,10 @@ The NAME argument sets the workshop name. The command creates a named
 workshop file at .workshop/<NAME>.yaml. This fails if a workshop with
 the same name already exists.
 
+The supported bases are ubuntu@20.04, ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
+
 SDKs are specified as a comma-separated list. Each SDK entry can optionally
-include a channel using the <name>/<channel> syntax (e.g., "go/1.26/stable").
+include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.26/stable").
 
 
 .. rubric:: Examples
@@ -51,7 +53,7 @@ Create a workshop using a specific base:
 
 .. code-block:: console
 
-   $ workshop init dev --sdks go --base ubuntu@22.04
+   $ workshop init dev --base ubuntu@22.04 --sdks go
 
 
 

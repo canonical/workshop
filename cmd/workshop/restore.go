@@ -40,8 +40,11 @@ then resets the interface connections to default settings:
 - Connections added at runtime with "workshop connect" are dropped,
   and the workshop returns to its definition's auto-connect defaults.
 
-- A connection removed with "workshop disconnect" without "--forget"
-  stays disconnected after restore.
+- A connection removed with "workshop disconnect" is re-established,
+  whether or not "--forget" was used.
+
+- A mount source set with "workshop remount" is reset
+  to its default location.
 
 Notes:
 

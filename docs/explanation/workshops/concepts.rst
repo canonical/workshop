@@ -154,7 +154,7 @@ and what it does to the workshop and to its interface connections:
      - Reuses snapshots for SDKs whose configuration is unchanged;
        reinstalls the rest from scratch.
      - Re-evaluates auto-connect against the new definition;
-       **any connections established manually after launch are dropped**.
+       **connections established manually after launch are preserved**.
 
    * - :command:`workshop restore`
      - You want to discard runtime drift in the workshop
@@ -162,7 +162,7 @@ and what it does to the workshop and to its interface connections:
      - Rolls the workshop filesystem back
        to the snapshot taken at the last successful launch or refresh.
      - Re-evaluates auto-connect against the unchanged definition;
-       **any connections established manually since the snapshot are dropped**.
+       **manual connects and disconnects alike are discarded**.
 
 
 .. _exp_workshop_launch:
@@ -355,10 +355,10 @@ These plugs and slots can be defined in two ways:
   reducing the need for manual post-launch configuration.
 
 
-The :samp:`connections` section of the definition can explicitly link
-any plugs and slots available within the workshop,
-on top of what the :ref:`auto-connection mechanism <exp_interface_connections>`
-in |ws_markup| provides:
+The :samp:`connections` section of the definition
+offers extra plug and slot pairings to |ws_markup|'s
+:ref:`auto-connection mechanism <exp_interface_auto_connection>`,
+which still applies the interface's own policy to each of them:
 eventually, all interface connections are
 :ref:`resolved, validated, and established <exp_interfaces_validation>`
 in a single task *after* all the SDK layers have been created,
@@ -426,8 +426,9 @@ Interface connections fall into three observable categories,
 each treated differently when a workshop is refreshed or restored:
 
 - *Auto-connections* are established at launch and refresh
-  from the SDK's auto-connect rules
-  and from the :samp:`connections` section of the workshop definition.
+  by the interface policy,
+  from the candidates that the SDKs
+  and the :samp:`connections` section of the workshop definition offer.
 
 - *Manual runtime connections* are added with :command:`workshop connect`
   after the workshop has been launched
@@ -464,6 +465,37 @@ by :command:`workshop refresh` and :command:`workshop restore`:
    * - Manually disconnected auto-connection
      - Stays disconnected
      - Re-established
+
+
+The distinction is that a refresh carries
+the workshop's runtime connection state forward,
+whereas a restore discards it.
+A refresh preserves a connection you added with :command:`workshop connect`,
+and it equally preserves a disconnect
+you made with :command:`workshop disconnect`,
+so a default auto-connection that you turned off stays off.
+A restore keeps neither:
+it returns the workshop to exactly the connections its definition establishes,
+dropping manual connections
+and reconnecting the pairings you had disconnected.
+
+Listing a pairing in the :samp:`connections` section
+of the workshop definition doesn't change this.
+That section proposes pairings
+to :ref:`auto-connection <exp_interface_auto_connection>`;
+the interface's policy still decides whether each one may be connected,
+and a definition cannot overrule it.
+For an interface that denies auto-connection outright,
+such as :samp:`ssh-agent`,
+the entry yields no connection at all,
+and the pairing you then make with :command:`workshop connect`
+is a manual connection like any other:
+a refresh preserves it, and a restore drops it.
+
+To turn a default auto-connection off only temporarily,
+disconnect it with :option:`!--forget`.
+The workshop then keeps no record of the disconnection,
+so auto-connect re-establishes the pairing at the next refresh.
 
 
 .. _exp_workshop_definition_actions:
