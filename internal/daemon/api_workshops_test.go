@@ -4330,8 +4330,8 @@ func (s *apiSuite) TestValidateIncorrectActionModeInputs(c *check.C) {
 		}, {
 			cmd: "remove",
 			result: map[string]string{
-				"":              `cannot remove "basic": workshop not launched`,
-				"transactional": `cannot remove "basic": workshop not launched`,
+				"":              `cannot remove "basic": workshop already removed`,
+				"transactional": `cannot remove "basic": workshop already removed`,
 				"wait-on-error": `cannot remove: mode "wait-on-error" is not valid with the "remove" command`,
 				"continue":      `cannot remove: mode "continue" is not valid with the "remove" command`,
 				"abort":         `cannot remove: mode "abort" is not valid with the "remove" command`,
@@ -4352,6 +4352,9 @@ func (s *apiSuite) TestValidateIncorrectActionModeInputs(c *check.C) {
 				Type:    ResponseTypeError,
 				Status:  http.StatusBadRequest,
 				Message: experr,
+			}
+			if strings.HasSuffix(experr, "workshop not launched") || strings.HasSuffix(experr, "workshop already removed") {
+				exp.Status = http.StatusNotFound
 			}
 
 			// Execute
@@ -5418,8 +5421,8 @@ func (s *apiSuite) TestRemoveWorkshopNotFound(c *check.C) {
 	expected := []*expectedResp{
 		{
 			Type:    ResponseTypeError,
-			Status:  http.StatusBadRequest,
-			Message: `cannot remove "workshopconns": workshop not launched`,
+			Status:  http.StatusNotFound,
+			Message: `cannot remove "workshopconns": workshop already removed`,
 		},
 	}
 	s.runActionTest(c, requests, expected)
