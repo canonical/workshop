@@ -189,6 +189,17 @@ func (m *InterfaceManager) ensureBackendInit() error {
 		return fmt.Errorf("interface manager not ready: %w", err)
 	}
 
+	defer func() {
+		if m.backendReady {
+			return
+		}
+		for _, s := range m.repo.AllSdks() {
+			if reverr := m.repo.RemoveSdk(s.ProjectId, s.Workshop, s.Sdk); reverr != nil {
+				logger.Noticef("Cannot unregister %q SDK interfaces: %v", s.Sdk, reverr)
+			}
+		}
+	}()
+
 	workshopNames := make(map[string][]string)
 	for user, projects := range allprojects {
 

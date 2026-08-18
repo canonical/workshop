@@ -40,3 +40,19 @@ func CheckSystem() error {
 
 	return nil
 }
+
+// MockChecks replaces the registered checks with an empty list and returns a
+// function restoring the previous ones. For testing.
+func MockChecks() (restore func()) {
+	m.Lock()
+	defer m.Unlock()
+
+	old := checks
+	checks = nil
+
+	return func() {
+		m.Lock()
+		defer m.Unlock()
+		checks = old
+	}
+}
