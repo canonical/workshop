@@ -45,11 +45,3 @@ func (client *Client) SetGetWebsocket(f getWebsocketFunc) {
 }
 
 type ClientWebsocket = clientWebsocket
-
-func MockStdinReadLimit(new int64) (restore func()) {
-	oldStdinReadLimit := stdinReadLimit
-	stdinReadLimit = new
-	return func() {
-		stdinReadLimit = oldStdinReadLimit
-	}
-}

@@ -48,11 +48,17 @@ type workshopctlOutput struct {
 	Stderr string `json:"stderr"`
 }
 
-// protect against too much data via stdin
-var stdinReadLimit = int64(4 * 1000 * 1000)
+// stdinReadLimit is the maximum number of bytes read from stdin when
+// forwarding it to the daemon. Larger input is rejected to bound the size
+// of the request body, as stdin is currently buffered in full rather than
+// streamed.
+const stdinReadLimit = 4_000_000
 
 // RunWorkshopctl requests a workshopctl run for the given options.
-func (client *Client) RunWorkshopctl(options *WorkshopCtlOptions, stdin io.Reader) (stdout, stderr []byte, err error) {
+func (client *Client) RunWorkshopctl(
+	options *WorkshopCtlOptions,
+	stdin io.Reader,
+) (stdout, stderr []byte, err error) {
 	// TODO: instead of reading all of stdin here we need to forward it to
 	//       the daemon eventually
 	var stdinData []byte

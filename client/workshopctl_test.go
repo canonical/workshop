@@ -79,17 +79,14 @@ func (cs *clientSuite) TestClientRunWorkshoctlReadLimitOneTooMuch(c *check.C) {
 		}
 	}`
 
-	restore := client.MockStdinReadLimit(10)
-	defer restore()
-
-	mockStdin := bytes.NewBufferString("12345678901")
+	mockStdin := bytes.NewReader(make([]byte, 4_000_000+1))
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
 	}
 
 	_, _, err := cs.cli.RunWorkshopctl(options, mockStdin)
-	c.Check(err, check.ErrorMatches, "cannot read more than 10 bytes of data from stdin")
+	c.Check(err, check.ErrorMatches, "cannot read more than 4000000 bytes of data from stdin")
 }
 
 func (cs *clientSuite) TestClientRunWorkshoctlReadLimitExact(c *check.C) {
@@ -100,10 +97,7 @@ func (cs *clientSuite) TestClientRunWorkshoctlReadLimitExact(c *check.C) {
 		}
 	}`
 
-	restore := client.MockStdinReadLimit(10)
-	defer restore()
-
-	mockStdin := bytes.NewBufferString("1234567890")
+	mockStdin := bytes.NewReader(make([]byte, 4_000_000))
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
