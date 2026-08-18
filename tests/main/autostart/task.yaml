@@ -23,18 +23,20 @@ execute: |
     REBOOT
   fi
   if [ $SPREAD_REBOOT = 1 ]; then
+    lxd waitready
     workshop_exec list | MATCH 'Ready'
     retry 3 check_dns
   fi
 
   echo "Make sure a workshop can start independently of the workshop daemon"
   if [ $SPREAD_REBOOT = 1 ]; then
-    snap stop --disable workshop
     REBOOT
   fi
   if [ $SPREAD_REBOOT = 2 ]; then
-    snap start --enable workshop
-    workshop_exec list | MATCH 'Ready'
+    lxd waitready
+    filter="name=ws-autostart-$(< .workshop.lock)"
+    lxc list --format csv --columns s --project workshop.ubuntu "$filter" | MATCH '^RUNNING|READY$'
+    ! systemctl is-active snap.workshop.workshopd.service || false
     retry 3 check_dns
   fi
 
