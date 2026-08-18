@@ -21,9 +21,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -35,7 +38,6 @@ func TestT(t *testing.T) { check.TestingT(t) }
 
 type workshopctlSuite struct {
 	server            *httptest.Server
-	oldArgs           []string
 	expectedContextID string
 	expectedArgs      []string
 	expectedStdin     []byte
@@ -68,8 +70,6 @@ func (s *workshopctlSuite) SetUpTest(c *check.C) {
 		n++
 	}))
 	clientConfig.BaseURL = s.server.URL
-	s.oldArgs = os.Args
-	os.Args = []string{"workshopctl"}
 	s.expectedContextID = "workshop-context-test"
 	s.expectedArgs = []string{}
 }
@@ -78,41 +78,94 @@ func (s *workshopctlSuite) TearDownTest(c *check.C) {
 	c.Assert(os.Unsetenv("WORKSHOP_COOKIE"), check.IsNil)
 	clientConfig.BaseURL = ""
 	s.server.Close()
-	os.Args = s.oldArgs
 }
 
 func (s *workshopctlSuite) TestWorkshopctl(c *check.C) {
-	stdout, stderr, err := run(nil)
-	c.Check(err, check.IsNil)
-	c.Check(string(stdout), check.Equals, "test stdout")
-	c.Check(string(stderr), check.Equals, "test stderr")
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{}, nil, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals, "test stderr")
 }
 
 func (s *workshopctlSuite) TestWorkshopctlWithArgs(c *check.C) {
-	os.Args = []string{"workshopctl", "foo", "--bar"}
-
 	s.expectedArgs = []string{"foo", "--bar"}
-	stdout, stderr, err := run(nil)
-	c.Check(err, check.IsNil)
-	c.Check(string(stdout), check.Equals, "test stdout")
-	c.Check(string(stderr), check.Equals, "test stderr")
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{"foo", "--bar"}, nil, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals, "test stderr")
 }
 
 func (s *workshopctlSuite) TestWorkshopctlHelp(c *check.C) {
 	os.Unsetenv("WORKSHOP_COOKIE")
 	s.expectedContextID = ""
-
-	os.Args = []string{"workshopctl", "-h"}
 	s.expectedArgs = []string{"-h"}
 
-	_, _, err := run(nil)
-	c.Check(err, check.IsNil)
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{"-h"}, nil, &stdout, &stderr), check.Equals, 0)
 }
 
-func (s *workshopctlSuite) TestWorkshopctlWithStdin(c *check.C) {
-	s.expectedStdin = []byte("hello")
-	mockStdin := bytes.NewBuffer(s.expectedStdin)
+// TestWorkshopctlStdinNotForwarded checks that stdin is not forwarded to
+// the daemon by default; interceptors must opt in to forwarding it.
+func (s *workshopctlSuite) TestWorkshopctlStdinNotForwarded(c *check.C) {
+	s.expectedStdin = nil
+	mockStdin := &fakeFdReader{Reader: bytes.NewReader([]byte("hello"))}
 
-	_, _, err := run(mockStdin)
-	c.Check(err, check.IsNil)
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{}, mockStdin, &stdout, &stderr), check.Equals, 0)
+}
+
+// fakeFdReader is an fdReader backed by an in-memory reader, for tests that
+// do not exercise the file descriptor.
+type fakeFdReader struct {
+	io.Reader
+}
+
+func (f *fakeFdReader) Fd() uintptr {
+	return 0
+}
+
+// TestWorkshopctlGetSecretSystemd checks that get-secret --systemd decodes
+// the request from the stdin connection and forwards it to the daemon as a
+// regular get-secret invocation.
+func (s *workshopctlSuite) TestWorkshopctlGetSecretSystemd(c *check.C) {
+	addr := "\x00" + fmt.Sprintf("%d-main", os.Getpid()) + "/unit/ollama.service/ollama.ollama-api-key"
+	name := filepath.Join(c.MkDir(), "conn")
+
+	server, err := net.ListenUnix("unix", &net.UnixAddr{Name: name})
+	c.Assert(err, check.IsNil)
+	defer server.Close()
+
+	type acceptResult struct {
+		conn *net.UnixConn
+		err  error
+	}
+	accepted := make(chan acceptResult, 1)
+	go func() {
+		conn, err := server.AcceptUnix()
+		accepted <- acceptResult{conn: conn, err: err}
+	}()
+
+	clientConn, err := net.DialUnix("unix",
+		&net.UnixAddr{Name: addr},
+		&net.UnixAddr{Name: name},
+	)
+	c.Assert(err, check.IsNil)
+	defer clientConn.Close()
+
+	result := <-accepted
+	c.Assert(result.err, check.IsNil)
+	defer result.conn.Close()
+
+	f, err := result.conn.File()
+	c.Assert(err, check.IsNil)
+	defer f.Close()
+
+	s.expectedArgs = []string{"get-secret", "ollama.ollama-api-key"}
+
+	var stdout, stderr bytes.Buffer
+	args := []string{"get-secret", "--systemd"}
+	c.Check(run(args, f, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals,
+		"processed systemd load credential request for unit \"ollama.service\", sdk \"ollama\" and secret \"ollama-api-key\"")
 }

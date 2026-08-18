@@ -39,10 +39,25 @@ type ChangeConflictError struct {
 // equality, so each ConstError message must be unique.
 type ConstError string
 
-// ErrorNoWaitingChange signals that an abort or continue request could not be
-// applied because no change is in progress to resume for the workshop. Match
-// it with [errors.Is].
-const ErrorNoWaitingChange = ConstError("no waiting change in progress")
+const (
+	// ErrorNoWaitingChange signals that an abort or continue request could
+	// not be applied because no change is in progress to resume for the
+	// workshop. Match it with [errors.Is].
+	ErrorNoWaitingChange = ConstError("no waiting change in progress")
+
+	// ErrorPlugNotConnected signals that the requested plug has no
+	// connection and therefore has no value to supply. Match it with
+	// [errors.Is].
+	ErrorPlugNotConnected = ConstError("plug not connected")
+
+	// ErrorSecretNotFound signals that a requested secret does not exist or
+	// matches no entries in the secret provider. Match it with [errors.Is].
+	ErrorSecretNotFound = ConstError("secret not found")
+
+	// ErrorSecretProviderLocked signals that a secret cannot be accessed
+	// because the secret provider is locked. Match it with [errors.Is].
+	ErrorSecretProviderLocked = ConstError("secret provider locked")
+)
 
 // As maps generic API errors into richer client-side error types.
 func (e *Error) As(target any) bool {

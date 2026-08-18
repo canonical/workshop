@@ -32,7 +32,7 @@ func (cs *clientSuite) TestClientRunWorkshopCtlCallsEndpoint(c *check.C) {
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
 	}
-	cs.cli.RunWorkshopctl(options, nil)
+	cs.cli.RunWorkshopctl(options)
 	c.Check(cs.req.Method, check.Equals, "POST")
 	c.Check(cs.req.URL.Path, check.Equals, "/v1/workshopctl")
 }
@@ -51,9 +51,10 @@ func (cs *clientSuite) TestClientRunWorkshoctl(c *check.C) {
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
+		Stdin:     mockStdin,
 	}
 
-	stdout, stderr, err := cs.cli.RunWorkshopctl(options, mockStdin)
+	stdout, stderr, err := cs.cli.RunWorkshopctl(options)
 	c.Assert(err, check.IsNil)
 	c.Check(string(stdout), check.Equals, "test stdout")
 	c.Check(string(stderr), check.Equals, "test stderr")
@@ -83,9 +84,10 @@ func (cs *clientSuite) TestClientRunWorkshoctlReadLimitOneTooMuch(c *check.C) {
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
+		Stdin:     mockStdin,
 	}
 
-	_, _, err := cs.cli.RunWorkshopctl(options, mockStdin)
+	_, _, err := cs.cli.RunWorkshopctl(options)
 	c.Check(err, check.ErrorMatches, "cannot read more than 4000000 bytes of data from stdin")
 }
 
@@ -101,8 +103,9 @@ func (cs *clientSuite) TestClientRunWorkshoctlReadLimitExact(c *check.C) {
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
+		Stdin:     mockStdin,
 	}
 
-	_, _, err := cs.cli.RunWorkshopctl(options, mockStdin)
+	_, _, err := cs.cli.RunWorkshopctl(options)
 	c.Check(err, check.IsNil)
 }
