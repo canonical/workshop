@@ -137,7 +137,7 @@ func (f ForbiddenCommandError) Error() string {
 
 // nonRootAllowed lists the commands that can be performed even when workshopctl
 // is invoked not by root.
-var nonRootAllowed = []string{"set-health"}
+var nonRootAllowed = []string{"get-secret", "set-health"}
 
 // Run runs the requested command.
 func Run(context *hookstate.Context, args []string, uid uint32) (stdout, stderr []byte, err error) {
