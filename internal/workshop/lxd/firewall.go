@@ -181,7 +181,7 @@ func bridgeBlockedWarning(bridgeName string, cause firewallCause) string {
 	case causeDocker:
 		return base + ". " +
 			"This is likely caused by Docker. To resolve, run: " +
-			"sudo nft insert rule ip filter DOCKER-USER iifname " + bridgeName + " accept \\; " +
+			"sudo nft insert rule ip filter DOCKER-USER iifname " + bridgeName + " accept; " +
 			"sudo nft insert rule ip filter DOCKER-USER oifname " + bridgeName +
 			" ct state related,established accept" +
 			" (see " + firewallDocLink + ")"
