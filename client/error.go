@@ -15,7 +15,6 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -34,10 +33,16 @@ type ChangeConflictError struct {
 	Workshop string
 }
 
+// ConstError is a string-based error type for declaring sentinel errors as
+// constants. Unlike sentinels created with [errors.New], a ConstError
+// cannot be reassigned and is matched by [errors.Is] through string
+// equality, so each ConstError message must be unique.
+type ConstError string
+
 // ErrorNoWaitingChange signals that an abort or continue request could not be
 // applied because no change is in progress to resume for the workshop. Match
 // it with [errors.Is].
-var ErrorNoWaitingChange = errors.New("no waiting change in progress")
+const ErrorNoWaitingChange = ConstError("no waiting change in progress")
 
 // As maps generic API errors into richer client-side error types.
 func (e *Error) As(target any) bool {
@@ -53,14 +58,9 @@ func (e *Error) As(target any) bool {
 	}
 }
 
-// Is reports whether the error matches a sentinel for the error's kind.
-func (e *Error) Is(target error) bool {
-	switch target {
-	case ErrorNoWaitingChange:
-		return e.Kind == ErrorKindNoWaitingChange
-	default:
-		return false
-	}
+// Error returns the error message, implementing the error interface.
+func (c ConstError) Error() string {
+	return string(c)
 }
 
 // Error returns a human-readable description of the blocking change.
@@ -73,6 +73,16 @@ func (e ChangeConflictError) Error() string {
 		)
 	}
 	return fmt.Sprintf("workshop %q has changes in progress", e.Workshop)
+}
+
+// Is reports whether the error matches a sentinel for the error's kind.
+func (e *Error) Is(target error) bool {
+	switch target {
+	case ErrorNoWaitingChange:
+		return e.Kind == ErrorKindNoWaitingChange
+	default:
+		return false
+	}
 }
 
 // toChangeConflictError extracts change-conflict details from a generic API
