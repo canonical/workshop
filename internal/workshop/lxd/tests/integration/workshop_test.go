@@ -824,6 +824,71 @@ func (f *wsOps) TestLxdBackendWorkshopStartStopIdempotent(c *check.C) {
 	c.Check(err, check.IsNil)
 }
 
+func (f *wsOps) TestLxdBackendWorkshopMount(c *check.C) {
+	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	mount := workshop.Mount{
+		Name:  "test-mount",
+		Type:  workshop.HostWorkshop,
+		What:  filepath.Join(c.MkDir(), "mnt"),
+		Where: "/mnt",
+	}
+
+	err := os.MkdirAll(filepath.Join(mount.What, "test-dir"), 0755)
+	c.Assert(err, check.IsNil)
+
+	err = f.bd.AddWorkshopMount(f.ctx, "test", mount)
+	c.Assert(err, check.IsNil)
+
+	entries := f.lsMnt(c)
+	c.Assert(entries, check.HasLen, 1)
+	c.Check(entries[0].Name(), check.Equals, "test-dir")
+
+	err = f.bd.AddWorkshopMount(f.ctx, "test", mount)
+	c.Assert(err, check.IsNil)
+
+	entries = f.lsMnt(c)
+	c.Assert(entries, check.HasLen, 1)
+	c.Check(entries[0].Name(), check.Equals, "test-dir")
+
+	mount.What = filepath.Join(c.MkDir(), "mnt")
+	err = os.MkdirAll(filepath.Join(mount.What, "test-dir2"), 0755)
+	c.Assert(err, check.IsNil)
+
+	err = f.bd.AddWorkshopMount(f.ctx, "test", mount)
+	c.Assert(err, check.IsNil)
+
+	entries = f.lsMnt(c)
+	c.Assert(entries, check.HasLen, 1)
+	c.Check(entries[0].Name(), check.Equals, "test-dir2")
+
+	err = f.bd.RemoveWorkshopMount(f.ctx, "test", mount.Name)
+	c.Assert(err, check.IsNil)
+
+	entries = f.lsMnt(c)
+	c.Check(entries, check.HasLen, 0)
+
+	err = f.bd.RemoveWorkshopMount(f.ctx, "test", mount.Name)
+	c.Check(err, check.IsNil)
+
+	entries = f.lsMnt(c)
+	c.Check(entries, check.HasLen, 0)
+}
+
+func (f *wsOps) lsMnt(c *check.C) []os.FileInfo {
+	fs, err := f.bd.WorkshopFs(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	defer func() {
+		c.Check(fs.Close(), check.IsNil)
+	}()
+
+	entries, err := fs.ReadDir("/mnt")
+	c.Assert(err, check.IsNil)
+
+	return entries
+}
+
 func (f *wsOps) TestLxdBackendWorkshopLaunch(c *check.C) {
 	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04")
 	c.Assert(err, check.IsNil)

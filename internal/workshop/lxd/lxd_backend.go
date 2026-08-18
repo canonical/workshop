@@ -773,7 +773,11 @@ func (s *Backend) AddWorkshopMount(ctx context.Context, name string, mount works
 		return err
 	}
 
-	inst.Devices[mount.Name] = mountToLxdDisk(mount)
+	disk := mountToLxdDisk(mount)
+	if maps.Equal(inst.Devices[mount.Name], disk) {
+		return nil
+	}
+	inst.Devices[mount.Name] = disk
 
 	op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
 	if err != nil {
@@ -813,7 +817,11 @@ func (s *Backend) RemoveWorkshopMount(ctx context.Context, name, mount string) e
 		return err
 	}
 
+	if _, ok := inst.Devices[mount]; !ok {
+		return nil
+	}
 	delete(inst.Devices, mount)
+
 	op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
 	if err != nil {
 		return err

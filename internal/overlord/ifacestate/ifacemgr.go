@@ -358,8 +358,6 @@ func (m *InterfaceManager) recreateInternalMounts(pctx context.Context, w string
 		ReadOnly: true,
 	}
 
-	_ = m.backend.RemoveWorkshopMount(pctx, w, mount.Name)
-
 	if err := m.backend.AddWorkshopMount(pctx, w, mount); err != nil {
 		return err
 	}
