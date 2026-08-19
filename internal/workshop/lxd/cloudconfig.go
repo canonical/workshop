@@ -143,17 +143,20 @@ write_files:
       [Socket]
       ListenStream={{.WorkshopSecretSocketPath}}
       SocketMode=0660
-      Accept=no
+      Accept=yes
 
       [Install]
       WantedBy=sockets.target
-  - path: /etc/systemd/system/workshop-secret.service
+  - path: /etc/systemd/system/workshop-secret@.service
     content: |
       [Unit]
       Description=Workshop systemd load credential socket resolver
 
       [Service]
       ExecStart={{.WorkshopCtlPath}} get-secret --systemd
+      StandardError=journal
+      StandardInput=socket
+      StandardOutput=socket
 runcmd:
   # Project directory is required for 'workshop exec'.
   - install --directory --mode=755 /project /usr/local/bin /usr/local/lib/workshop {{shquote .WorkshopStateDir}}

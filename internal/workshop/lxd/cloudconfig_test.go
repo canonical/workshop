@@ -56,7 +56,11 @@ func (s *cloudConfigSuite) TestCloudConfigTemplateRendersVars(c *check.C) {
 
 	out := buf.String()
 	c.Check(out, check.Matches, `(?s).*ListenStream=/wsp/run/workshop\.socket\.secret.*`)
+	c.Check(out, check.Matches, `(?s).*Accept=yes.*`)
+	c.Check(out, check.Matches, `(?s).*path: /etc/systemd/system/workshop-secret@\.service.*`)
 	c.Check(out, check.Matches, `(?s).*ExecStart=/wsp/bin/workshopctl get-secret --systemd.*`)
+	c.Check(out, check.Matches, `(?s).*StandardInput=socket.*`)
+	c.Check(out, check.Matches, `(?s).*StandardOutput=socket.*`)
 	c.Check(out, check.Matches, `(?s).*- ln -sf /wsp/bin/workshopctl /usr/local/bin/workshopctl.*`)
 	c.Check(out, check.Matches, `(?s).*- install --directory --mode=755 /project /usr/local/bin /usr/local/lib/workshop /wsp/state.*`)
 }

@@ -122,8 +122,11 @@ func (f *LxdBeTests) TestWorkshopConfigSecretSocketUnits(c *check.C) {
 	userData := cfg["cloud-init.user-data"]
 	c.Check(userData, check.Matches, `(?s).*path: /etc/systemd/system/workshop-secret\.socket.*`)
 	c.Check(userData, check.Matches, `(?s).*ListenStream=/var/lib/workshop/run/workshop\.socket\.secret.*`)
-	c.Check(userData, check.Matches, `(?s).*path: /etc/systemd/system/workshop-secret\.service.*`)
+	c.Check(userData, check.Matches, `(?s).*Accept=yes.*`)
+	c.Check(userData, check.Matches, `(?s).*path: /etc/systemd/system/workshop-secret@\.service.*`)
 	c.Check(userData, check.Matches, `(?s).*ExecStart=/var/lib/workshop/bin/workshopctl get-secret --systemd.*`)
+	c.Check(userData, check.Matches, `(?s).*StandardInput=socket.*`)
+	c.Check(userData, check.Matches, `(?s).*StandardOutput=socket.*`)
 	c.Check(userData, check.Matches, `(?s).*systemctl enable --now workshop-secret\.socket.*`)
 }
 
