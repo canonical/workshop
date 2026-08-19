@@ -1,6 +1,9 @@
 summary: Ensure that workshop autostart behavior performs correctly
 debug: |
   resolvectl status workshopbr0 || true
+  systemctl status sys-subsystem-net-devices-workshopbr0.device || true
+  systemctl status snap.workshop.configure-dns.service || true
+  journalctl -xeu snap.workshop.configure-dns.service || true
 prepare: |
   . "$TESTSLIB"/utils.sh
   workshop_exec launch
