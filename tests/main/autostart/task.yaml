@@ -1,10 +1,6 @@
 summary: Ensure that workshop autostart behavior performs correctly
 debug: |
-  . "$TESTSLIB"/utils.sh
-  workshop_exec list --global || true
-  lxc list --project workshop.ubuntu || true
   resolvectl status workshopbr0 || true
-  journalctl -xeu snap.workshop.workshopd.service || true
 prepare: |
   . "$TESTSLIB"/utils.sh
   workshop_exec launch
