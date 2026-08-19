@@ -70,6 +70,8 @@ const (
 var (
 	startCommandTimeout = 1 * time.Minute
 	storagePoolDriver   = "zfs"
+
+	workshopFormatsChecked = false
 )
 
 //go:embed start_command.sh
@@ -240,6 +242,10 @@ func checkServerCapabilities() error {
 }
 
 func checkWorkshopFormats() error {
+	if workshopFormatsChecked {
+		return nil
+	}
+
 	backend := Backend{}
 	allprojects, err := backend.Projects(context.Background())
 	if err != nil {
@@ -262,6 +268,7 @@ func checkWorkshopFormats() error {
 		}
 	}
 
+	workshopFormatsChecked = true
 	return nil
 }
 
