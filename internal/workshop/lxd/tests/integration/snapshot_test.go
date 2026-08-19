@@ -560,6 +560,7 @@ func extractUniqueFiles(c *check.C, path string) uniqueFiles {
 		"etc/sudoers.d/90-cloud-init-users",
 		"etc/systemd/network/10-cloud-init-eth0.network.d/workshop.conf",
 		"var/cache/ldconfig/aux-cache",
+		"var/lib/workshop/run/workshop.socket.secret",
 		"var/lib/workshop/run/workshop.socket.untrusted",
 		"var/log/cloud-init.log",
 		"var/log/cloud-init-output.log",
