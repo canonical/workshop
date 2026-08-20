@@ -97,11 +97,11 @@ This means the host's cameras are available inside the workshop:
 .. code-block:: console
 
    $ workshop shell ws
-   workshop@ws-8584e571$ ls /dev/video*
+   workshop@ws:/project$ ls /dev/video*
 
      /dev/video0  /dev/video1
 
-   workshop@ws-8584e571$ ls /dev/media*
+   workshop@ws:/project$ ls /dev/media*
 
      /dev/media0
 

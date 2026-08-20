@@ -90,11 +90,11 @@ This means the host's GPUs are directly available inside the workshop:
 .. code-block:: console
 
    $ workshop shell ws
-   workshop@ws-8584e571$ ls -h /dev/dri/
+   workshop@ws:/project$ ls -h /dev/dri/
 
      card0  renderD128
 
-   workshop@ws-8584e571$ nvidia-smi
+   workshop@ws:/project$ nvidia-smi
 
 
 See also

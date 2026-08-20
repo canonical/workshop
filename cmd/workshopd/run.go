@@ -132,7 +132,7 @@ func runDaemon(rcmd *cmdRun, ch chan os.Signal, ready chan<- func()) error {
 		}
 	}
 	dopts := daemon.Options{
-		Dir:        dirs.BaseDir,
+		Dir:        dirs.DataDir,
 		SocketPath: dirs.SocketPath,
 	}
 

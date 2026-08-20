@@ -27,21 +27,16 @@ Before starting, ensure you have these requirements satisfied:
   installed on your host system.
 
 
-Configure SSH access
---------------------
+SSH access
+----------
 
-|ws_markup| generates an OpenSSH configuration
-for connecting to launched workshops.
-When using the Workshop snap,
-include that generated configuration in your host user's
-:file:`~/.ssh/config` file.
-Replace :samp:`<UID>` with your host user ID,
-which you can find with :command:`id -u`:
-
-.. code-block:: text
-   :caption: ~/.ssh/config
-
-   Include /var/snap/workshop/current/ssh/<UID>/config
+|ws_markup| sets up SSH access to workshops on its own.
+It configures the OpenSSH client on your local machine
+and maintains a certificate authority
+that signs an SSH *host* certificate for every workshop's SSH server
+and a *user* certificate authenticating you as the :samp:`workshop` user.
+Connecting to a workshop by its hostname
+needs no key management, passwords, or host-key prompts.
 
 
 Launch the workshop
@@ -110,6 +105,7 @@ See also
 
 Explanation:
 
+- :ref:`exp_arch_network`
 - :ref:`exp_workshop_definition`
 
 

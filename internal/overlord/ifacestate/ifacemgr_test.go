@@ -279,7 +279,7 @@ slots:
 	c.Assert(mgr.Repository().Interfaces().Connections, check.HasLen, 0)
 }
 
-func (s *interfaceManagerSuite) TestManagerRemovesNonexistingAutoConnectionss(c *check.C) {
+func (s *interfaceManagerSuite) TestManagerRemovesNonexistingWorkshopConnections(c *check.C) {
 	var consumerYaml = `
 name: consumer
 base: ubuntu@22.04
@@ -305,13 +305,14 @@ slots:
 	})
 
 	s.state.Lock()
-	key := fmt.Sprintf("%s/ws/consumer:plug-1 %s/core/producer:slot-1", s.prj.ProjectId, s.prj.ProjectId)
+	missingPlug := fmt.Sprintf("%s/ws-missing/consumer:plug %s/ws/producer:slot", s.prj.ProjectId, s.prj.ProjectId)
+	missingSlot := fmt.Sprintf("%s/ws/consumer:plug %s/ws-missing/producer:slot", s.prj.ProjectId, s.prj.ProjectId)
+	stalePlugSlot := fmt.Sprintf("%s/ws/consumer:plug-1 %s/ws/producer:slot-1", s.prj.ProjectId, s.prj.ProjectId)
 
 	s.state.Set("conns", map[string]any{
-		key: map[string]any{
-			"interface": "test",
-			"auto":      true,
-		},
+		missingPlug:   map[string]any{"interface": "test", "auto": true},
+		missingSlot:   map[string]any{"interface": "test"},
+		stalePlugSlot: map[string]any{"interface": "test", "auto": true},
 	})
 	s.state.Unlock()
 
@@ -320,6 +321,17 @@ slots:
 	c.Assert(err, check.IsNil)
 
 	c.Assert(mgr.Repository().Interfaces().Connections, check.HasLen, 0)
+
+	s.state.Lock()
+	var conns map[string]any
+	c.Assert(s.state.Get("conns", &conns), check.IsNil)
+	s.state.Unlock()
+	_, ok := conns[missingPlug]
+	c.Check(ok, check.Equals, false)
+	_, ok = conns[missingSlot]
+	c.Check(ok, check.Equals, false)
+	_, ok = conns[stalePlugSlot]
+	c.Check(ok, check.Equals, true)
 }
 
 func (s *interfaceManagerSuite) TestConnectionStatesAutoManual(c *check.C) {

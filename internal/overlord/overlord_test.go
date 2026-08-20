@@ -72,8 +72,9 @@ func fakePruneTicker() (w *ticker, restore func()) {
 }
 
 func (ovs *overlordSuite) SetUpTest(c *C) {
-	ovs.dir = c.MkDir()
-	dirs.SetRootDir(ovs.dir)
+	ovs.dir = filepath.Join(c.MkDir(), "data")
+	dirs.SetRootDir(filepath.Dir(ovs.dir))
+	c.Assert(dirs.CreateDirs(), IsNil)
 	ovs.statePath = filepath.Join(ovs.dir, "state.json")
 
 	b, err := fakebackend.New(c.MkDir())

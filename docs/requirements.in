@@ -1,8 +1,13 @@
-# Direct documentation dependencies for Workshop.
+# Workshop-specific documentation dependencies.
 #
 # Dependencies already provided by the Sphinx Stack
 # (canonical/sphinx-stack/docs/requirements.txt) must NOT be listed here.
 # Only add Workshop-specific dependencies.
+#
+# Keep constraints loose, matching the Sphinx Stack convention. Pinning a full
+# transitive closure here puts every sub-dependency into the repository
+# dependency graph and generates Dependabot and Trivy findings for packages
+# that Workshop neither ships nor controls.
 
 # Mermaid diagrams in Sphinx docs (not bundled in the Sphinx Stack).
-sphinxcontrib-mermaid
+sphinxcontrib-mermaid~=2.0

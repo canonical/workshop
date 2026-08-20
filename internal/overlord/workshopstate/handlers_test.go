@@ -93,6 +93,8 @@ func (s *workshopHandlers) SetUpTest(c *check.C) {
 	var err error
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "testuser")
 
+	dirs.SetRootDir(c.MkDir())
+
 	s.backend, err = fakebackend.New(c.MkDir())
 	c.Assert(err, check.IsNil)
 
@@ -224,10 +226,6 @@ func (s *workshopHandlers) TestUndoStash(c *check.C) {
 }
 
 func (s *workshopHandlers) TestRemoveWorkshop(c *check.C) {
-	cacheDir := dirs.CacheDir
-	dirs.SetCacheDir(c.MkDir())
-	defer dirs.SetCacheDir(cacheDir)
-
 	s.state.Lock()
 	defer s.state.Unlock()
 	wFiles := []*workshop.File{{

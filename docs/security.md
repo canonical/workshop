@@ -9,7 +9,7 @@ for the users, is confined as a snap and neither needs nor requires elevated
 privileges to run. Instead, it uses a RESTful API to communicate with the
 `workshopd` daemon, which performs all the heavy lifting and does indeed run
 with elevated privileges. The use of
-[LXD](https://documentation.ubuntu.com/lxd/latest/) for implementation provides
+[LXD](https://canonical.com/lxd/docs/latest/) for implementation provides
 the benefits of a mature container technology.
 
 SDKcraft is an instance of
@@ -26,7 +26,7 @@ limited capabilities on the host. To achieve this, LXD is used to add a level of
 confinement: everything users do ends up in a [nonprivileged
 container](https://ubuntu.com/server/docs/how-to/containers/lxd-containers/)
 within a dedicated
-[project](https://documentation.ubuntu.com/lxd/latest/explanation/projects/),
+[project](https://canonical.com/lxd/docs/latest/explanation/projects/),
 which separates workshops that belong to different users and isolates them from
 each other and the host system.
 
@@ -115,6 +115,11 @@ these values are not used for access control.
 User‑exposed crypto and providers
 - SSH agent interface: forwards the host's `ssh-agent` into the workshop via an LXD proxy device, 
 allowing tools inside the container to authenticate without copying private keys.
+- SSH host trust: a per-user Ed25519 certificate authority signs a host certificate for every
+workshop and a user certificate for connecting to them, so SSH clients trust any CA-signed
+host key without a manual host-key prompt.
+Private keys are stored with owner-only permissions (`0600`), the CA key
+owned by the daemon and the user key by the target host user.
 - Algorithms: follow host OpenSSH (commonly Ed25519, ECDSA P‑256/P‑384/P‑521, RSA 2048/3072/4096).
 - Providers: Go standard library (`crypto/tls`, `crypto/x509`, `crypto/rand`), 
 Canonical LXD Go client (TLS handling), system CA store,

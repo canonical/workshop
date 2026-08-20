@@ -1593,8 +1593,13 @@ func (s *apiSuite) TestDisconnectPlugSuccess(c *check.C) {
 	s.testDisconnect(c, "consumer-ws", "consumer", "plug", "producer-ws", "producer", "slot", &disconnectOpts{})
 	s.d.state.Lock()
 	var conns map[string]any
-	s.d.state.Get("conns", &conns)
-	c.Assert(conns, check.HasLen, 0)
+	c.Assert(s.d.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"b8639dea/consumer-ws/consumer:plug b8639dea/producer-ws/producer:slot": map[string]any{
+			"interface": "test",
+			"undesired": true,
+		},
+	})
 	s.d.state.Unlock()
 }
 
@@ -1634,8 +1639,17 @@ func (s *apiSuite) TestDisconnectBoundPlugMasterSuccess(c *check.C) {
 	s.testDisconnect(c, "consumer-ws", "consumer", "plug", "producer-ws", "producer", "slot", opts)
 	s.d.state.Lock()
 	var conns map[string]any
-	s.d.state.Get("conns", &conns)
-	c.Assert(conns, check.HasLen, 0)
+	c.Assert(s.d.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"b8639dea/consumer-ws/consumer:plug b8639dea/producer-ws/producer:slot": map[string]any{
+			"interface": "test",
+			"undesired": true,
+		},
+		"b8639dea/consumer-ws/consumer:plug2 b8639dea/producer-ws/producer:slot": map[string]any{
+			"interface": "test",
+			"undesired": true,
+		},
+	})
 	s.d.state.Unlock()
 }
 
@@ -1648,8 +1662,17 @@ func (s *apiSuite) TestDisconnectBoundWithEmptyPlug(c *check.C) {
 	s.testDisconnect(c, "", "", "", "producer-ws", "producer", "slot", opts)
 	s.d.state.Lock()
 	var conns map[string]any
-	s.d.state.Get("conns", &conns)
-	c.Assert(conns, check.HasLen, 0)
+	c.Assert(s.d.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"b8639dea/consumer-ws/consumer:plug b8639dea/producer-ws/producer:slot": map[string]any{
+			"interface": "test",
+			"undesired": true,
+		},
+		"b8639dea/consumer-ws/consumer:plug2 b8639dea/producer-ws/producer:slot": map[string]any{
+			"interface": "test",
+			"undesired": true,
+		},
+	})
 	s.d.state.Unlock()
 }
 
@@ -1662,8 +1685,17 @@ func (s *apiSuite) TestDisconnectBoundPlugSlaveSuccess(c *check.C) {
 	s.testDisconnect(c, "consumer-ws", "consumer", "plug2", "producer-ws", "producer", "slot", opts)
 	s.d.state.Lock()
 	var conns map[string]any
-	s.d.state.Get("conns", &conns)
-	c.Assert(conns, check.HasLen, 0)
+	c.Assert(s.d.state.Get("conns", &conns), check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"b8639dea/consumer-ws/consumer:plug b8639dea/producer-ws/producer:slot": map[string]any{
+			"interface": "test",
+			"undesired": true,
+		},
+		"b8639dea/consumer-ws/consumer:plug2 b8639dea/producer-ws/producer:slot": map[string]any{
+			"interface": "test",
+			"undesired": true,
+		},
+	})
 	s.d.state.Unlock()
 }
 

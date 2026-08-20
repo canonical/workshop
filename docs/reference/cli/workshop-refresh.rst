@@ -15,7 +15,7 @@ Update workshops according to their definitions.
 
 .. code-block:: console
 
-   $ workshop refresh [--abort|--continue|--wait-on-error] <WORKSHOP>... [flags]
+   $ workshop refresh <WORKSHOP>... [flags]
 
 .. rubric:: Description
 
@@ -24,8 +24,8 @@ This command updates the workshops listed as arguments. For each workshop,
 it checks the workshop definition and applies any required updates
 to the base image, SDKs, and interface connections:
 
-- Connections added at runtime with "workshop connect" are dropped,
-  and the workshop returns to its definition's auto-connect defaults.
+- Connections added at runtime with "workshop connect" are preserved,
+  as long as their plugs and slots still exist in the new definition.
 
 - A connection removed with "workshop disconnect" without "--forget"
   stays disconnected after refresh.

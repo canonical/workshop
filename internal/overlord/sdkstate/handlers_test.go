@@ -117,7 +117,6 @@ slots:
 func (s *sdkStateSuite) SetUpTest(c *check.C) {
 	var err error
 	dirs.SetRootDir(c.MkDir())
-	dirs.SetCacheDir(c.MkDir())
 	c.Assert(dirs.CreateDirs(), check.IsNil)
 
 	ctx := context.WithValue(context.TODO(), workshop.ContextProjectId, "projectId")

@@ -1,0 +1,2 @@
+name: ws-ssh
+base: ubuntu@24.04

@@ -186,8 +186,8 @@ exclude_patterns = [
 rst_epilog = """
 .. _Canonical website: https://canonical.com/
 .. _GitHub: https://github.com/canonical/workshop/
-.. _LXC: https://documentation.ubuntu.com/lxd/latest/explanation/lxd_lxc/
-.. _LXD: https://documentation.ubuntu.com/lxd/latest/
+.. _LXC: https://canonical.com/lxd/docs/latest/explanation/lxd_lxc/
+.. _LXD: https://canonical.com/lxd/docs/latest/
 .. _SDKcraft: https://github.com/canonical/sdkcraft/
 .. _Releases: https://github.com/canonical/workshop/releases/
 

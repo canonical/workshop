@@ -352,13 +352,18 @@ func logit(handler http.Handler) http.Handler {
 			(strings.HasPrefix(r.URL.Path, "/v1/changes/") && strings.Count(r.URL.Path, "/") == 3 ||
 				r.URL.Path == "/v1/system-info" ||
 				r.URL.Path == "/v1/health")
-		if !skipLog {
-			if strings.HasSuffix(r.RemoteAddr, ";") {
-				logger.Debugf("%s %s %s %s %d", r.RemoteAddr, r.Method, r.URL, t, ww.status())
-				logger.Noticef("%s %s %s %d", r.Method, r.URL, t, ww.status())
-			} else {
-				logger.Noticef("%s %s %s %s %d", r.RemoteAddr, r.Method, r.URL, t, ww.status())
-			}
+		if skipLog {
+			return
+		}
+
+		if strings.HasSuffix(r.RemoteAddr, ";") {
+			logger.Debugf(
+				"%s %s %s %s %d",
+				r.RemoteAddr, r.Method, r.URL, t, ww.status(),
+			)
+			logger.Noticef("%s %s %s %d", r.Method, r.URL, t, ww.status())
+		} else {
+			logger.Noticef("%s %s %s %s %d", r.RemoteAddr, r.Method, r.URL, t, ww.status())
 		}
 	})
 }

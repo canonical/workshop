@@ -135,7 +135,6 @@ func (s *apiSuite) daemon(c *check.C) *Daemon {
 		panic("called daemon() twice")
 	}
 	dirs.SetRootDir(c.MkDir())
-	dirs.SetCacheDir(c.MkDir())
 	c.Assert(dirs.CreateDirs(), check.IsNil)
 	undo := overlord.MockWorkshopBackend(s.b)
 	defer undo()

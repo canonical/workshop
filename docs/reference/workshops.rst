@@ -148,6 +148,36 @@ Unlike the automatic rollback during a failed refresh,
 :command:`restore` is a deliberate user action
 to discard all changes made to a workshop since it was last set up.
 
+Updates to |ws_markup| can introduce new features
+that require changes to existing workshops.
+After updating the |ws_markup| snap,
+these changes will be applied on the next :command:`workshop refresh`.
+Before this refresh, the new features remain unavailable,
+but most operations should continue to work.
+The exceptions are :command:`workshop restore`,
+:command:`workshop launch --continue`,
+and :command:`workshop refresh --continue`.
+|ws_markup| will refuse to perform these operations on an old workshop,
+because it may not be able to reproduce the exact behavior of the previous version.
+
+The |ws_markup| daemon embeds a special :samp:`system` SDK
+that it adds to every workshop.
+When this SDK is updated,
+existing workshops will start using the new version on the next :command:`workshop refresh`.
+Old workshops continue to use the old SDK,
+which is no longer embedded in |ws_markup| itself
+but continues to exist as a LXD storage volume
+until garbage collection.
+
+
+Forward compatibility
+---------------------
+
+|ws_markup| is not forward compatible.
+To downgrade the snap,
+remove it and then reinstall it from scratch.
+Removing the snap removes all workshops and SDKs.
+
 
 Storage pools and drivers
 -------------------------
@@ -163,7 +193,7 @@ If you need more space or different performance,
 you can resize or tune the storage pool (it's named :samp:`workshop`),
 using the :command:`lxc storage` command
 as suggested in this `LXD documentation section
-<https://documentation.ubuntu.com/lxd/latest/howto/storage_pools/>`_.
+<https://canonical.com/lxd/docs/latest/howto/storage_pools/>`_.
 However, day-to-day usage requires little manual intervention.
 
 .. attention::

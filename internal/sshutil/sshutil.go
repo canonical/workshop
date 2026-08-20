@@ -73,17 +73,18 @@ func (k PrivateKey) MarshalText() ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-func (k PrivateKey) SignHostKey(key PublicKey) (*PublicKey, error) {
+func (k PrivateKey) SignHostKey(key PublicKey, principals []string) (*PublicKey, error) {
 	signer, err := ssh.NewSignerFromKey(k.key)
 	if err != nil {
 		return nil, err
 	}
 
 	certificate := &ssh.Certificate{
-		Key:         key.key,
-		CertType:    ssh.HostCert,
-		KeyId:       key.comment,
-		ValidBefore: ssh.CertTimeInfinity,
+		Key:             key.key,
+		CertType:        ssh.HostCert,
+		KeyId:           key.comment,
+		ValidPrincipals: principals,
+		ValidBefore:     ssh.CertTimeInfinity,
 	}
 	if err := certificate.SignCert(rand.Reader, signer); err != nil {
 		return nil, err

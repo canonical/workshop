@@ -21,6 +21,10 @@ import (
 )
 
 var api = []*Command{{
+	Path:    "/v1/system-info",
+	GuestOK: true,
+	GET:     v1GetSystemInfo,
+}, {
 	// See daemon.go:canAccess for details how the access is controlled.
 	Path:    "/v1/projects",
 	GuestOK: false,

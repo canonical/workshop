@@ -246,18 +246,9 @@ func (s *Backend) checkPartialImportSdk(conn lxd.InstanceServer, name string) (b
 
 // Export this so the LXD candidate tests pick up format changes.
 func IsImportSdkOperation(op api.Operation, name string) (bool, error) {
-	// TODO: use api.MetadataEntityURL constant.
-	// See https://github.com/canonical/lxd/pull/18033.
-	entityUrl, ok := op.Metadata["entity_url"].(string)
+	entityUrl, ok := op.Metadata[api.MetadataEntityURL].(string)
 	if !ok {
-		// TODO: return false, nil here when we bump LXD to 6.8+.
-		if op.Description == "Creating storage volume" {
-			return true, nil
-		}
-		if op.Description != "Updating storage volume" || len(op.Resources["storage_volume"]) != 1 {
-			return false, nil
-		}
-		entityUrl = op.Resources["storage_volume"][0]
+		return false, nil
 	}
 
 	u, err := url.Parse(entityUrl)

@@ -446,7 +446,9 @@ func (m *SdkManager) doDeleteUnusedSdkVolumes(task *state.Task, tomb *tomb.Tomb)
 		return nil
 	}
 
-	if !sdkSetup.IsVolume() || sdkSetup.Source == sdk.SystemSource {
+	// Either no volume to clean up, or it's the current system SDK, which we
+	// might as well keep as an optimization.
+	if !sdkSetup.IsVolume() || (sdkSetup.Source == sdk.SystemSource && sdkSetup.Revision == system.SystemSdkRevision) {
 		return nil
 	}
 

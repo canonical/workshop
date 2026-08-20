@@ -157,3 +157,43 @@ func (s *userSuite) TestNormalizeUidGid(c *check.C) {
 	groupErr = fmt.Errorf("GROUP ERROR!")
 	test(ptr(1), nil, "", "GROUP", nil, nil, "GROUP ERROR!")
 }
+
+func (s *userSuite) TestSupplementWSLgDisplayEnvNotWSL(c *check.C) {
+	defer osutil.MockWSLg(false)()
+
+	env := map[string]string{"HOME": "/home/ubuntu"}
+	osutil.SupplementWSLgDisplayEnv(&user.User{Uid: "1000"}, env)
+
+	c.Check(env, check.DeepEquals, map[string]string{"HOME": "/home/ubuntu"})
+}
+
+func (s *userSuite) TestSupplementWSLgDisplayEnvFillsMissing(c *check.C) {
+	defer osutil.MockWSLg(true)()
+
+	env := map[string]string{"HOME": "/home/ubuntu"}
+	osutil.SupplementWSLgDisplayEnv(&user.User{Uid: "1000"}, env)
+
+	c.Check(env, check.DeepEquals, map[string]string{
+		"HOME":            "/home/ubuntu",
+		"DISPLAY":         ":0",
+		"WAYLAND_DISPLAY": "wayland-0",
+		"XDG_RUNTIME_DIR": "/run/user/1000",
+	})
+}
+
+func (s *userSuite) TestSupplementWSLgDisplayEnvKeepsExisting(c *check.C) {
+	defer osutil.MockWSLg(true)()
+
+	env := map[string]string{
+		"DISPLAY":         ":1",
+		"WAYLAND_DISPLAY": "wayland-7",
+		"XDG_RUNTIME_DIR": "/run/user/2000",
+	}
+	osutil.SupplementWSLgDisplayEnv(&user.User{Uid: "1000"}, env)
+
+	c.Check(env, check.DeepEquals, map[string]string{
+		"DISPLAY":         ":1",
+		"WAYLAND_DISPLAY": "wayland-7",
+		"XDG_RUNTIME_DIR": "/run/user/2000",
+	})
+}

@@ -86,7 +86,10 @@ func main() {
 }
 
 func run(stdin io.Reader) (stdout, stderr []byte, err error) {
-	cli, err := client.New(&clientConfig)
+	config := clientConfig
+	config.RoundTripperWrapper = client.NewWorkshopInstanceIDRoundTripper(os.Stderr)
+
+	cli, err := client.New(&config)
 	if err != nil {
 		return nil, nil, err
 	}

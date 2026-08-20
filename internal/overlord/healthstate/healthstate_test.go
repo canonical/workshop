@@ -27,7 +27,6 @@ import (
 
 	"gopkg.in/check.v1"
 
-	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/overlord"
 	"github.com/canonical/workshop/internal/overlord/healthstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate"
@@ -56,7 +55,6 @@ var _ = check.Suite(&healthSuite{})
 func (s *healthSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
 	var err error
-	dirs.SetRootDir(c.MkDir())
 
 	s.state = state.New(nil)
 	s.runner = state.NewTaskRunner(s.state)

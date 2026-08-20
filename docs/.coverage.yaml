@@ -4,7 +4,7 @@
   specs:
     - SK039
 
-"$WORKSHOP":
+"$WORKSHOP_DATA":
   category: "workshopd"
   type: envvar
   specs: []
@@ -498,6 +498,11 @@
   type: command
   specs:
     - SK009
+
+"workshop hostname":
+  category: workshop (container)
+  type: concept
+  specs: []
 
 "workshop info":
   category: "workshop (CLI)"

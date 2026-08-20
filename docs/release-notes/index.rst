@@ -24,6 +24,7 @@ Releases
 .. toctree::
    :hidden:
 
+   Workshop and SDKcraft 0.9.5 <v0.9.5>
    Workshop and SDKcraft 0.9.4 <v0.9.4>
    Workshop and SDKcraft 0.9.3 <v0.9.3>
    Workshop and SDKcraft 0.9.2 <v0.9.2>
@@ -44,7 +45,7 @@ Starting with 0.9.1, |ws_markup| and |sdk_markup| share the same version number.
 Latest version
 ~~~~~~~~~~~~~~
 
-- :doc:`Workshop and SDKcraft 0.9.4 <v0.9.4>`
+- :doc:`Workshop and SDKcraft 0.9.5 <v0.9.5>`
 
 
 Previous versions
@@ -54,6 +55,7 @@ Previous versions
 
    These versions are no longer supported.
 
+- :doc:`Workshop and SDKcraft 0.9.4 <v0.9.4>`
 - :doc:`Workshop and SDKcraft 0.9.3 <v0.9.3>`
 - :doc:`Workshop and SDKcraft 0.9.2 <v0.9.2>`
 - :doc:`Workshop and SDKcraft 0.9.1 <v0.9.1>`

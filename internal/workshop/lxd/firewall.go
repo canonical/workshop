@@ -8,7 +8,7 @@ import (
 	"github.com/canonical/workshop/internal/logger"
 )
 
-const firewallDocLink = "https://documentation.ubuntu.com/lxd/latest/howto/network_bridge_firewalld/"
+const firewallDocLink = "https://canonical.com/lxd/docs/latest/howto/network_bridge_firewalld/"
 
 // CheckBridgeFirewall detects whether firewall rules block forwarding on the
 // workshop bridge. It returns a non-empty warning message with a proposed
@@ -22,7 +22,7 @@ const firewallDocLink = "https://documentation.ubuntu.com/lxd/latest/howto/netwo
 //
 // Uses `nft -j` (JSON output) for structured, robust parsing.
 //
-// See: https://documentation.ubuntu.com/lxd/latest/howto/network_bridge_firewalld/
+// See: https://canonical.com/lxd/docs/latest/howto/network_bridge_firewalld/
 func CheckBridgeFirewall(bridgeName string) string {
 	return firewallChecker(bridgeName)
 }
@@ -181,7 +181,7 @@ func bridgeBlockedWarning(bridgeName string, cause firewallCause) string {
 	case causeDocker:
 		return base + ". " +
 			"This is likely caused by Docker. To resolve, run: " +
-			"sudo nft insert rule ip filter DOCKER-USER iifname " + bridgeName + " accept \\; " +
+			"sudo nft insert rule ip filter DOCKER-USER iifname " + bridgeName + " accept; " +
 			"sudo nft insert rule ip filter DOCKER-USER oifname " + bridgeName +
 			" ct state related,established accept" +
 			" (see " + firewallDocLink + ")"

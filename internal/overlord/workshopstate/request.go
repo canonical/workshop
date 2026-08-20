@@ -248,7 +248,7 @@ func (w *WorkshopManager) RefreshMany(ctx context.Context, project workshop.Proj
 		}
 
 		if option == conflict.RefreshRestore || hasUpdates(current[i], latest[i]) {
-			tasks := refresh(w.state, project, current[i], latest[i], len(snapshot.Sdks))
+			tasks := refresh(w.state, project, current[i], latest[i], len(snapshot.Sdks), option)
 			tasksets = append(tasksets, tasks)
 		}
 	}
@@ -348,7 +348,7 @@ func sdkAdditions(sdks []workshop.SdkRecord, name string) workshop.SdkRecord {
 	return sk
 }
 
-func refresh(st *state.State, project workshop.Project, current, latest Manifest, intact int) *state.TaskSet {
+func refresh(st *state.State, project workshop.Project, current, latest Manifest, intact int, option conflict.RefreshOption) *state.TaskSet {
 	refresh := state.NewTaskSet()
 	prev := (*state.TaskSet)(nil)
 	addTaskSet := func(ts *state.TaskSet) {
@@ -393,8 +393,11 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	saveState := runHooks(st, saveSdks, 0, hookstate.SaveState)
 	addTaskSet(saveState)
 
-	disconnect := disconnectSdks(st, currentSdks)
+	disconnect := disconnectSdks(st, currentSdks, option == conflict.RefreshRestore)
 	addTaskSet(disconnect)
+
+	discard := st.NewTask("discard-conns", fmt.Sprintf("Discard %q undesired connections", latest.File.Name))
+	addTaskSet(state.NewTaskSet(discard))
 
 	stop := st.NewTask("stop-workshop", fmt.Sprintf("Stop %q workshop", latest.File.Name))
 	stop.Set("force", true)
@@ -425,6 +428,12 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	// Install updated SDKs to the rebuilt workshop.
 	install := installSdks(st, newSdks)
 	addTaskSet(install)
+
+	if option == conflict.RefreshUpdate {
+		restoreConns := st.NewTask("restore-conns", fmt.Sprintf("Restore %q undesired connections", latest.File.Name))
+		restoreConns.Set("discard-conns-task", discard.ID())
+		addTaskSet(state.NewTaskSet(restoreConns))
+	}
 
 	configureTimezone := st.NewTask("configure-timezone", fmt.Sprintf("Configure %q workshop timezone", latest.File.Name))
 	addTaskSet(state.NewTaskSet(configureTimezone))
@@ -537,12 +546,13 @@ func uninstallSdks(st *state.State, sdks []sdk.Setup) *state.TaskSet {
 	return uninstallSet
 }
 
-func disconnectSdks(st *state.State, sdks []sdk.Setup) *state.TaskSet {
+func disconnectSdks(st *state.State, sdks []sdk.Setup, forget bool) *state.TaskSet {
 	prev := (*state.Task)(nil)
 	disconnSet := state.NewTaskSet()
 	for _, s := range sdks {
 		disconn := st.NewTask("auto-disconnect", fmt.Sprintf("Disconnect interfaces of %q SDK", s.Name))
 		disconn.Set("sdk", s.Name)
+		disconn.Set("forget", forget)
 		disconnSet.AddTask(disconn)
 
 		if prev != nil {
@@ -733,7 +743,7 @@ func remove(st *state.State, manifest Manifest, hasStash, running bool, project 
 	sdks := slices.Clone(manifest.Sdks)
 	slices.Reverse(sdks)
 
-	disconnectSet := disconnectSdks(st, sdks)
+	disconnectSet := disconnectSdks(st, sdks, true)
 	addTaskSet(disconnectSet)
 
 	discard := st.NewTask("discard-conns", fmt.Sprintf("Discard %q undesired connections", manifest.File.Name))

@@ -327,6 +327,8 @@ see :ref:`exp_interface_concepts`.
    in |ws_markup| source code for an elaborate example.
 
 
+.. _exp_arch_network:
+
 Network
 ~~~~~~~
 
@@ -334,8 +336,35 @@ Network
 through the :samp:`workshopbr0` bridge network,
 providing isolated networking for workshop containers.
 
-This bridge network includes DNS resolution
-configured with the :samp:`workshop` domain.
+:program:`workshopd` registers this bridge with :program:`systemd-resolved`
+as link-specific DNS
+and registers :samp:`wp` as a routing-only domain,
+so :samp:`*.wp` lookups are directed to the bridge.
+Each running workshop registers a canonical name
+of the form :samp:`<WORKSHOP>-<PROJECT-ID>.wp`,
+and :program:`workshopd` adds two aliases that point to it:
+:samp:`<WORKSHOP>.<PROJECT-ID>.wp`,
+which also serves :samp:`<PROJECT-ID>.wp` as a search domain inside workshops
+so a bare :samp:`<WORKSHOP>` resolves,
+and a friendlier :samp:`<WORKSHOP>.<PROJECT>.wp`
+when the project directory name encodes to a valid, unused DNS label.
+Otherwise the workshop keeps the ID-based forms;
+see :ref:`exp_workshop_hostname` for the fallback behavior.
+
+Resolving a hostname isn't the same as trusting what you connect to:
+DNS resolution over :samp:`workshopbr0` is unauthenticated
+and scoped to the bridge network.
+For interactive access, |ws_markup| also maintains
+a per-user SSH certificate authority
+that signs a host certificate for every workshop
+and a user certificate for connecting to them.
+Clients trust any key signed by this authority,
+so tools such as :program:`ssh` and VS Code Remote-SSH
+connect without a first-connection host-key prompt or a password prompt;
+host keys are scoped to the canonical :samp:`<WORKSHOP>-<PROJECT-ID>.wp` hostname
+and user keys are scoped to the :samp:`workshop` user.
+See the :doc:`Security policy </security>`
+for the SSH trust model in full.
 
 
 Diagrams

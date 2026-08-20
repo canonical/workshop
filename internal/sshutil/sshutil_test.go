@@ -42,7 +42,7 @@ func (s *sshSuite) TestSignHostKey(c *check.C) {
 	identity, authority, err := sshutil.GenerateKey("Workshop-CA")
 	c.Assert(err, check.IsNil)
 
-	cert, err := authority.SignHostKey(*pub)
+	cert, err := authority.SignHostKey(*pub, []string{"dev-42424242.wp"})
 	c.Assert(err, check.IsNil)
 
 	scratch := c.MkDir()
@@ -64,7 +64,8 @@ func (s *sshSuite) TestSignHostKey(c *check.C) {
 \s*Key ID: "root@dev-42424242\.wp"
 \s*Serial: 0
 \s*Valid: forever
-\s*Principals: \(none\)
+\s*Principals:\s*
+\s*dev-42424242\.wp
 \s*Critical Options: \(none\)
 \s*Extensions: \(none\)
 `

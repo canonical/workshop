@@ -31,7 +31,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"syscall"
 	"text/template"
 	"time"
 
@@ -45,10 +44,8 @@ import (
 	"github.com/canonical/workshop/internal/fsutil"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
-	"github.com/canonical/workshop/internal/osutil/sys"
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
-	"github.com/canonical/workshop/internal/sshutil"
 	"github.com/canonical/workshop/internal/syscheck"
 	"github.com/canonical/workshop/internal/workshop"
 )
@@ -89,6 +86,7 @@ func init() {
 	// LXD is installed or refreshed, without a restart.
 	syscheck.RegisterCheck(checkServerCapabilities)
 	syscheck.RegisterCheck(ensureBackendReady)
+	syscheck.RegisterCheck(checkWorkshopFormats)
 	syscheck.RegisterCheck(checkStorageSpace)
 }
 
@@ -278,6 +276,32 @@ func checkServerCapabilities() error {
 	return checkStoragePool(conn, info.Environment.StorageSupportedDrivers)
 }
 
+func checkWorkshopFormats() error {
+	backend := Backend{}
+	allprojects, err := backend.Projects(context.Background())
+	if err != nil {
+		return fmt.Errorf("interface manager not ready: %w", err)
+	}
+
+	for user, projects := range allprojects {
+		ctx := context.WithValue(context.Background(), workshop.ContextUser, user)
+		for _, project := range projects {
+			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
+			workshops, err := backend.ProjectWorkshops(pctx)
+			if err != nil {
+				return fmt.Errorf("cannot load workshops from %q: %v", project.Path, err)
+			}
+			for _, workshop := range workshops {
+				if workshop.Format.N > backend.FormatRevision().N {
+					return fmt.Errorf("cannot load %q workshop from %q: upgrade Workshop and remove all workshops before downgrading again", workshop.Name, project.Path)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // New constructs the LXD backend and attempts to prepare the required LXD
 // storage pool and network. It always returns a usable backend; if LXD is not
 // yet ready the error is reported by the system check (see init), which puts
@@ -295,11 +319,7 @@ func New() (*Backend, error) {
 // ensureBackendReady creates the LXD storage pool and network the backend
 // relies on, it is idempotent.
 func ensureBackendReady() error {
-	// TODO: run this logic for a specific user. The code below implies the
-	// default project activated for the connection. As we have seen, every user
-	// has to create its own storage pool to avoid issues with id mapping of a
-	// volume with the same name (e.g. both users have system-1 volume for the
-	// system SDK that cannot be successfully mounted for another user).
+	// TODO: consider separating the storage pool or network for different users.
 	conn, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
 		return ErrorLxdBackend(err)
@@ -685,8 +705,19 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 	rev := revert.New()
 	defer rev.Fail()
 
+	// Enable autostart first so it doesn't race with workshop-waitready.service.
+	// See https://github.com/canonical/lxd/issues/18833.
+	if err := s.setAutoStart(conn, ctx, name, true); err != nil {
+		return err
+	}
+
 	cleanupCtx := context.WithoutCancel(ctx)
 	rev.Add(func() {
+		// TODO: if this becomes a long-term thing, consider adding a timeout.
+		if e := s.setAutoStart(conn, cleanupCtx, name, false); e != nil {
+			logger.Noticef("On StartWorkshop: cannot reset %q workshop boot.autostart: %v", name, e)
+		}
+
 		// Stop workshop's timeout is handled by LXD API, so no need to have
 		// a context with a timeout.
 		if e := s.stopWorkshop(conn, cleanupCtx, name, true); e != nil {
@@ -696,22 +727,6 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 
 	if err := s.updateInstanceState(conn, ctx, name, "start", 60); err != nil {
 		return err
-	}
-
-	for i := range 2 {
-		// Workshop started, enable autostart.
-		if err := s.setAutoStart(conn, ctx, name, true); err != nil {
-			if i == 0 && api.StatusErrorCheck(err, http.StatusPreconditionFailed) && strings.HasPrefix(err.Error(), "ETag does not match: ") {
-				// TODO: remove the loop after modifying the logic to wait for
-				// LXD's instance ready event. Currently, the instance may or
-				// may not set itself to Ready, so we can't rely on it. When it
-				// does so, LXD sets volatile.last_state.ready, which can
-				// invalidates the ETag; a single retry is enough to fix it.
-				continue
-			}
-			return err
-		}
-		break
 	}
 
 	var stderr strings.Builder
@@ -827,7 +842,11 @@ func (s *Backend) AddWorkshopMount(ctx context.Context, name string, mount works
 		return err
 	}
 
-	inst.Devices[mount.Name] = mountToLxdDisk(mount)
+	disk := mountToLxdDisk(mount)
+	if maps.Equal(inst.Devices[mount.Name], disk) {
+		return nil
+	}
+	inst.Devices[mount.Name] = disk
 
 	op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
 	if err != nil {
@@ -867,7 +886,11 @@ func (s *Backend) RemoveWorkshopMount(ctx context.Context, name, mount string) e
 		return err
 	}
 
+	if _, ok := inst.Devices[mount]; !ok {
+		return nil
+	}
 	delete(inst.Devices, mount)
+
 	op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
 	if err != nil {
 		return err
@@ -1409,221 +1432,6 @@ runcmd:
 	}
 
 	return cfg, nil
-}
-
-func sshConfig(usr *user.User, hostname string) (map[string]string, error) {
-	identity, authority, err := createOrLoadCAKeys(usr)
-	if err != nil {
-		return nil, err
-	}
-
-	pub, priv, err := sshutil.GenerateKey("root@" + hostname)
-	if err != nil {
-		return nil, err
-	}
-	data, err := priv.MarshalText()
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := authority.SignHostKey(*pub)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]string{
-		"user.ed25519-key.private":     string(data),
-		"user.ed25519-key.public":      pub.String(),
-		"user.ed25519-key.certificate": cert.String(),
-		"user.ed25519-key.workshop-ca": identity.String(),
-	}, nil
-}
-
-func createOrLoadCAKeys(usr *user.User) (*sshutil.PublicKey, *sshutil.PrivateKey, error) {
-	identity, authority, err := loadCAKeys(usr)
-	if !errors.Is(err, os.ErrNotExist) {
-		return identity, authority, err
-	}
-
-	if err := ensureCAKeys(usr); err != nil {
-		return nil, nil, err
-	}
-	return loadCAKeys(usr)
-}
-
-func loadCAKeys(usr *user.User) (*sshutil.PublicKey, *sshutil.PrivateKey, error) {
-	data, err := os.ReadFile(filepath.Join(dirs.WorkshopSSHDir, usr.Uid, "id_ed25519_ca.pub"))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	identity, err := sshutil.ParsePublicKey(data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	data, err = os.ReadFile(filepath.Join(dirs.WorkshopSSHDir, usr.Uid, "id_ed25519_ca"))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	authority, err := sshutil.ParsePrivateKey(data, identity.Comment())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return identity, authority, nil
-}
-
-func ensureCAKeys(usr *user.User) error {
-	if err := os.MkdirAll(dirs.WorkshopSSHDir, 0755); err != nil {
-		return err
-	}
-
-	removeTemp := revert.New()
-	defer removeTemp.Fail()
-
-	temp, err := os.MkdirTemp(dirs.WorkshopSSHDir, usr.Uid+".*~")
-	if err != nil {
-		return err
-	}
-	removeTemp.Add(func() { _ = os.RemoveAll(temp) })
-
-	closeDir := revert.New()
-	defer closeDir.Fail()
-
-	d, err := os.Open(temp)
-	if err != nil {
-		return err
-	}
-	closeDir.Add(func() { d.Close() })
-
-	if err := d.Chmod(0755); err != nil {
-		return err
-	}
-
-	target := filepath.Join(dirs.WorkshopSSHDir, usr.Uid)
-	if err := writeCAKeys(usr, temp, target); err != nil {
-		return err
-	}
-
-	if err := d.Sync(); err != nil {
-		return err
-	}
-	if err := d.Close(); err != nil {
-		return err
-	}
-	closeDir.Success()
-
-	// One error comes from Go's pre-existence check, the other from syscall.Rename.
-	if err := os.Rename(temp, target); errors.Is(err, os.ErrExist) || errors.Is(err, syscall.ENOTEMPTY) {
-		// Someone else beat us to it, discard the keys and temp dir.
-		return nil
-	} else if err != nil {
-		return err
-	}
-
-	removeTemp.Success()
-	return nil
-}
-
-func writeCAKeys(usr *user.User, temp, target string) error {
-	identity, authority, err := sshutil.GenerateKey("Workshop-CA")
-	if err != nil {
-		return err
-	}
-
-	pub, priv, err := sshutil.GenerateKey(workshop.User.Username + "@" + networkDomain)
-	if err != nil {
-		return err
-	}
-
-	cert, err := authority.SignUserKey(*pub, []string{workshop.User.Username})
-	if err != nil {
-		return err
-	}
-
-	uid, gid, err := osutil.UidGid(usr)
-	if err != nil {
-		return err
-	}
-
-	certPath, err1 := escapeSSHPath(target, "id_ed25519-cert.pub")
-	privPath, err2 := escapeSSHPath(target, "id_ed25519")
-	knownHostsPath, err3 := escapeSSHPath(target, "known_hosts")
-	if err := cmp.Or(err1, err2, err3); err != nil {
-		return err
-	}
-
-	knownHosts := fmt.Sprintf("@cert-authority *.%s %s\n", networkDomain, identity)
-	configTemplate := `
-Host *.%s
-	CertificateFile %s
-	IdentitiesOnly yes
-	IdentityFile %s
-	User %s
-	UserKnownHostsFile %s
-`[1:]
-	config := fmt.Sprintf(configTemplate, networkDomain, certPath, privPath, workshop.User.Username, knownHostsPath)
-
-	if err := writePublicKey(filepath.Join(temp, "id_ed25519_ca.pub"), *identity, osutil.NoChown, osutil.NoChown); err != nil {
-		return err
-	}
-	if err := writePrivateKey(filepath.Join(temp, "id_ed25519_ca"), *authority, osutil.NoChown, osutil.NoChown); err != nil {
-		return err
-	}
-	if err := writePublicKey(filepath.Join(temp, "id_ed25519.pub"), *pub, uid, gid); err != nil {
-		return err
-	}
-	if err := writePrivateKey(filepath.Join(temp, "id_ed25519"), *priv, uid, gid); err != nil {
-		return err
-	}
-	if err := writePublicKey(filepath.Join(temp, "id_ed25519-cert.pub"), *cert, uid, gid); err != nil {
-		return err
-	}
-	if err := writeFileSync(filepath.Join(temp, "known_hosts"), []byte(knownHosts), 0644, uid, gid); err != nil {
-		return err
-	}
-	return writeFileSync(filepath.Join(temp, "config"), []byte(config), 0644, uid, gid)
-}
-
-func escapeSSHPath(elem ...string) (string, error) {
-	path := filepath.Join(elem...)
-	if strings.Contains(path, "${") || strings.Contains(path, "\n") {
-		return "", fmt.Errorf("unrepresentable SSH config value: %q", path)
-	}
-
-	path = strings.ReplaceAll(path, "%", "%%")
-	path = strings.ReplaceAll(path, "\\", "\\\\")
-	path = strings.ReplaceAll(path, "\"", "\\\"")
-	return "\"" + path + "\"", nil
-}
-
-func writePublicKey(name string, key sshutil.PublicKey, uid sys.UserID, gid sys.GroupID) error {
-	return writeFileSync(name, []byte(key.String()+"\n"), 0644, uid, gid)
-}
-
-func writePrivateKey(name string, key sshutil.PrivateKey, uid sys.UserID, gid sys.GroupID) error {
-	pem, err := key.MarshalText()
-	if err != nil {
-		return err
-	}
-	return writeFileSync(name, pem, 0600, uid, gid)
-}
-
-func writeFileSync(name string, data []byte, perm os.FileMode, uid sys.UserID, gid sys.GroupID) error {
-	f, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(data)
-	if err == nil && (uid != osutil.NoChown || gid != osutil.NoChown) {
-		err = sys.Chown(f, uid, gid)
-	}
-	if err == nil {
-		err = f.Sync()
-	}
-	return cmp.Or(err, f.Close())
 }
 
 func FakeStartCommand(script string) func() {

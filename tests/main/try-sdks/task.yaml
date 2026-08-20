@@ -6,7 +6,7 @@ restore: |
   lxc storage volume delete workshop custom/test-sdk-basic-2-x2 || true
   (cd "$TESTSLIB/sdk/test-sdk-basic-2/latest/stable" && run_sdkcraft clean) || true
   (cd "$TESTSLIB/sdk/test-sdk-basic-2/latest/edge" && run_sdkcraft clean) || true
-  rm -rf /home/ubuntu/.local/share/workshop/try/test-sdk-basic-2
+  rm -rf work /home/ubuntu/.local/share/workshop/try/test-sdk-basic-2
 execute: |
   . "$TESTSLIB"/utils.sh
 

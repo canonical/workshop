@@ -59,6 +59,7 @@ execute: |
 
   echo "Manual connection state survives refresh and start/stop"
   workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+manual$"
+  cat workshop.yaml | yq '.sdks[-1] as $jupyter | del(.sdks[-1]) | .sdks = [$jupyter] + .sdks' | sponge workshop.yaml
   workshop_exec refresh
   workshop_exec connections dev | MATCH "^mount.+dev/uv:shared.+:mount.+manual$"
   workshop_exec stop dev

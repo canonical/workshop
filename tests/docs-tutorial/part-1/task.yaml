@@ -1,6 +1,8 @@
 summary: Run tutorial part 1 commands to ensure it's operational
 restore: |
-  rm -rf ~/ollama-python-project
+  . "$TESTSLIB"/utils.sh
+  (cd ollama-python-project && workshop_exec remove) || true
+  rm -rf ollama-python-project
 execute: |
   . "$TESTSLIB"/utils.sh
 

@@ -35,3 +35,7 @@ if [ -d /etc/systemd/system ] && [ -w /etc/systemd/system ] && command -v system
         systemctl start snap.workshop.configure-dns.service || true
     fi
 fi
+
+if [ -d /etc/ssh/ssh_config.d ] && [ -w /etc/ssh/ssh_config.d ] && [ ! -f /etc/ssh/ssh_config.d/70-workshop-cert-authority.conf ]; then
+    install_file 0644 "$SNAP/snap/lib/70-workshop-cert-authority.conf" /etc/ssh/ssh_config.d
+fi
