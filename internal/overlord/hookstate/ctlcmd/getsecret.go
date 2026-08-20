@@ -56,6 +56,5 @@ func (c *getSecretCommand) Execute([]string) error {
 
 	// TODO: resolve the requested secret via workshopd instead of
 	// returning a hard-coded value.
-	_, err := c.printf("%s", hardCodedSecret)
-	return err
+	return c.printf("%s", hardCodedSecret)
 }
