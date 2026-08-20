@@ -29,11 +29,13 @@ import (
 
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
+	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/overlord"
 	"github.com/canonical/workshop/internal/overlord/ifacestate"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/syscheck"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 	"github.com/canonical/workshop/internal/workshop/fakebackend"
@@ -209,6 +211,8 @@ plugs:
 	})
 	s.state.Unlock()
 
+	defer syscheck.MockChecks()()
+
 	mgr := ifacestate.New(s.state, s.o.TaskRunner())
 	err := mgr.StartUp()
 	c.Assert(err, check.IsNil)
@@ -216,7 +220,6 @@ plugs:
 	repo := mgr.Repository()
 
 	ifaces := repo.Interfaces()
-	c.Assert(ifaces.Connections, check.HasLen, 1)
 	cref := &interfaces.ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: s.prj.ProjectId, Workshop: "ws", Sdk: "consumer", Name: "plug"},
 		SlotRef: sdk.SlotRef{ProjectId: s.prj.ProjectId, Workshop: "ws", Sdk: sdk.System.String(), Name: "mount"}}
@@ -234,6 +237,75 @@ plugs:
 		"mount": "foo",
 		"attr":  "stored-value",
 	})
+
+	// Check the InterfaceManager continues to report as ready after StartUp.
+	err = syscheck.CheckSystem()
+	c.Assert(err, check.IsNil)
+
+	ifaces = repo.Interfaces()
+	c.Check(ifaces.Connections, check.DeepEquals, []*interfaces.ConnRef{cref})
+}
+
+func (s *interfaceManagerSuite) TestManagerReloadsConnectionsAfterError(c *check.C) {
+	var consumerYaml = `
+name: consumer
+base: ubuntu@22.04
+plugs:
+ plug:
+  interface: mount
+  attr: plug-value
+`
+
+	s.launchWorkshop(c, "ws", []sdk.Meta{
+		{Setup: consumer.Setup, SdkYAML: consumerYaml},
+	})
+
+	s.state.Lock()
+	s.state.Set("conns", "bad-type")
+	s.state.Unlock()
+
+	defer syscheck.MockChecks()()
+
+	logs, restore := logger.MockLogger()
+	defer restore()
+
+	mgr := ifacestate.New(s.state, s.o.TaskRunner())
+	err := mgr.StartUp()
+	c.Assert(err, check.IsNil)
+	c.Check(logs.String(), check.Matches, "(?s).*: cannot decode data about existing connections: .*")
+
+	repo := mgr.Repository()
+
+	ifaces := repo.Interfaces()
+	c.Check(ifaces.Plugs, check.HasLen, 0)
+	c.Check(ifaces.Slots, check.HasLen, 0)
+	c.Check(ifaces.Connections, check.HasLen, 0)
+
+	// Check we remain in degraded mode, with an empty repo.
+	err = syscheck.CheckSystem()
+	c.Assert(err, check.ErrorMatches, "cannot decode data about existing connections: .*")
+
+	ifaces = repo.Interfaces()
+	c.Check(ifaces.Plugs, check.HasLen, 0)
+	c.Check(ifaces.Slots, check.HasLen, 0)
+	c.Check(ifaces.Connections, check.HasLen, 0)
+
+	s.state.Lock()
+	key := fmt.Sprintf("%s/ws/consumer:plug %s/ws/system:mount", s.prj.ProjectId, s.prj.ProjectId)
+	s.state.Set("conns", map[string]any{
+		key: map[string]any{"interface": "mount"},
+	})
+	s.state.Unlock()
+
+	// Check the connections are reloaded once the issue is resolved.
+	err = syscheck.CheckSystem()
+	c.Assert(err, check.IsNil)
+
+	ifaces = repo.Interfaces()
+	cref := &interfaces.ConnRef{
+		PlugRef: sdk.PlugRef{ProjectId: s.prj.ProjectId, Workshop: "ws", Sdk: "consumer", Name: "plug"},
+		SlotRef: sdk.SlotRef{ProjectId: s.prj.ProjectId, Workshop: "ws", Sdk: sdk.System.String(), Name: "mount"}}
+	c.Check(ifaces.Connections, check.DeepEquals, []*interfaces.ConnRef{cref})
 }
 
 func (s *interfaceManagerSuite) TestManagerDoesntReloadUndesiredAutoconnections(c *check.C) {

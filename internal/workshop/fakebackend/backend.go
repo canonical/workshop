@@ -372,6 +372,20 @@ func (f *FakeWorkshopBackend) AddWorkshopMount(ctx context.Context, name string,
 		return errors.New("fake backend only supports HostWorkshop mounts")
 	}
 
+	_, projectId, err := f.userProject(ctx)
+	if err != nil {
+		return err
+	}
+
+	f.workshopLock.Lock()
+	old := f.Workshops[projectId][name].Devices[mount.Name]
+	f.workshopLock.Unlock()
+
+	device := map[string]string{"type": "disk", "source": mount.What, "path": mount.Where}
+	if maps.Equal(device, old) {
+		return nil
+	}
+
 	wfs, err := f.WorkshopFs(ctx, name)
 	if err != nil {
 		return err
@@ -393,16 +407,10 @@ func (f *FakeWorkshopBackend) AddWorkshopMount(ctx context.Context, name string,
 		return err
 	}
 
-	_, projectId, err := f.userProject(ctx)
-	if err != nil {
-		return err
-	}
-
 	f.workshopLock.Lock()
 	defer f.workshopLock.Unlock()
 
-	f.Workshops[projectId][name].Devices[mount.Name] = map[string]string{"type": "disk", "source": mount.What,
-		"path": mount.Where}
+	f.Workshops[projectId][name].Devices[mount.Name] = device
 	return nil
 }
 

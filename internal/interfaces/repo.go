@@ -28,6 +28,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
 )
@@ -37,9 +38,9 @@ type Repository struct {
 	// Protects the internals from concurrent access.
 	m      sync.Mutex
 	ifaces map[string]Interface
-	// Indexed by [project-id-workshop-sdk][plugName]
+	// Indexed by [project-id/workshop/sdk][plugName]
 	plugs map[string]map[string]*sdk.PlugInfo
-	// Indexed by [project-id-workshop-sdk][slotName]
+	// Indexed by [project-id/workshop/sdk][slotName]
 	slots map[string]map[string]*sdk.SlotInfo
 	// given a slot and a plug, are they connected?
 	slotPlugs map[*sdk.SlotInfo]map[*sdk.PlugInfo]*Connection
@@ -62,7 +63,7 @@ func NewRepository() *Repository {
 }
 
 func plugOrSlotKey(projectId, workshop, sdkName string) string {
-	return strings.Join([]string{projectId, workshop, sdkName}, "-")
+	return strings.Join([]string{projectId, workshop, sdkName}, "/")
 }
 
 // Interface returns an interface with a given name.
@@ -225,6 +226,26 @@ func (r *Repository) AddBackend(backend SecurityBackend) error {
 	}
 	r.backends = append(r.backends, backend)
 	return nil
+}
+
+func (r *Repository) AllSdks() []sdk.Ref {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	keys := append(slices.Collect(maps.Keys(r.plugs)), slices.Collect(maps.Keys(r.slots))...)
+	slices.Sort(keys)
+	keys = slices.Compact(keys)
+
+	var sdks []sdk.Ref
+	for _, key := range keys {
+		parts := strings.Split(key, "/")
+		if len(parts) != 3 {
+			logger.Noticef("Unexpected plugOrSlotKey: %q", key)
+			continue
+		}
+		sdks = append(sdks, sdk.Ref{ProjectId: parts[0], Workshop: parts[1], Sdk: parts[2]})
+	}
+	return sdks
 }
 
 // AllPlugs returns all plugs of the given interface.
@@ -868,13 +889,12 @@ func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
 	if r.plugs[key] != nil || r.slots[key] != nil {
 		return fmt.Errorf("cannot register interfaces for %q SDK more than once", key)
 	}
+	r.plugs[key] = make(map[string]*sdk.PlugInfo, len(sdkInfo.Plugs))
+	r.slots[key] = make(map[string]*sdk.SlotInfo, len(sdkInfo.Slots))
 
 	for plugName, plugInfo := range sdkInfo.Plugs {
 		if _, ok := r.ifaces[plugInfo.Interface]; !ok {
 			continue
-		}
-		if r.plugs[key] == nil {
-			r.plugs[key] = make(map[string]*sdk.PlugInfo)
 		}
 		r.plugs[key][plugName] = plugInfo
 	}
@@ -882,9 +902,6 @@ func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
 	for slotName, slotInfo := range sdkInfo.Slots {
 		if _, ok := r.ifaces[slotInfo.Interface]; !ok {
 			continue
-		}
-		if r.slots[key] == nil {
-			r.slots[key] = make(map[string]*sdk.SlotInfo)
 		}
 		r.slots[key][slotName] = slotInfo
 	}
