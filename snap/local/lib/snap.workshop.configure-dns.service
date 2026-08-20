@@ -4,7 +4,7 @@ After=sys-subsystem-net-devices-workshopbr0.device
 
 [Service]
 Type=oneshot
-ExecCondition=/usr/bin/systemctl is-enabled systemd-resolved.service
+ExecCondition=/usr/bin/systemctl is-enabled --quiet systemd-resolved.service
 ExecStart=/usr/bin/snap run workshop.configure-dns workshopbr0 wp
 
 [Install]

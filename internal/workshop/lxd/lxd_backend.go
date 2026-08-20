@@ -70,6 +70,8 @@ const (
 var (
 	startCommandTimeout = 1 * time.Minute
 	storagePoolDriver   = "zfs"
+
+	workshopFormatsChecked = false
 )
 
 //go:embed start_command.sh
@@ -240,10 +242,14 @@ func checkServerCapabilities() error {
 }
 
 func checkWorkshopFormats() error {
+	if workshopFormatsChecked {
+		return nil
+	}
+
 	backend := Backend{}
 	allprojects, err := backend.Projects(context.Background())
 	if err != nil {
-		return fmt.Errorf("interface manager not ready: %w", err)
+		return fmt.Errorf("cannot check project compatibility: %w", err)
 	}
 
 	for user, projects := range allprojects {
@@ -252,7 +258,7 @@ func checkWorkshopFormats() error {
 			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 			workshops, err := backend.ProjectWorkshops(pctx)
 			if err != nil {
-				return fmt.Errorf("cannot load workshops from %q: %v", project.Path, err)
+				return fmt.Errorf("cannot check workshop compatibility in %q: %w", project.Path, err)
 			}
 			for _, workshop := range workshops {
 				if workshop.Format.N > backend.FormatRevision().N {
@@ -262,6 +268,7 @@ func checkWorkshopFormats() error {
 		}
 	}
 
+	workshopFormatsChecked = true
 	return nil
 }
 
