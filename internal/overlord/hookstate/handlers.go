@@ -84,7 +84,8 @@ func (h *HookManager) doRunHook(task *state.Task, tomb *tomb.Tomb) error {
 		GroupId: 0,
 		Command: command,
 		Environment: map[string]string{
-			"SDK": sdk.SdkDir(hook.Sdk),
+			"SDK":                       sdk.SdkDir(hook.Sdk),
+			"SDK_SYSTEMD_SECRET_SOCKET": dirs.WorkshopSecretSocketPath,
 		},
 		WorkDir: sdk.SdkHooksDir(hook.Sdk),
 		Timeout: hook.Timeout,
