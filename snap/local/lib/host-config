@@ -1,0 +1,139 @@
+configure_host() {
+    local mode="$1"
+
+    configure_shell_completion
+    configure_workshop_managed_networks
+    configure_dns_resolver "$mode"
+    configure_openssh_client
+}
+
+undo_configure_host() {
+    undo_configure_openssh_client
+    undo_configure_dns_resolver
+    undo_configure_workshop_managed_networks
+    undo_configure_shell_completion
+}
+
+configure_shell_completion() {
+    if [ -d /var/lib/snapd/desktop ]; then
+        install_completion sdk bash /var/lib/snapd/desktop/bash-completion/completions/sdk
+        install_completion workshop bash /var/lib/snapd/desktop/bash-completion/completions/workshop
+
+        install_completion sdk fish /var/lib/snapd/desktop/fish/vendor_completions.d/sdk.fish
+        install_completion workshop fish /var/lib/snapd/desktop/fish/vendor_completions.d/workshop.fish
+    fi
+
+    if [ -d /usr/local/share ] && [ -w /usr/local/share ]; then
+        install_completion sdk zsh /usr/local/share/zsh/site-functions/_sdk
+        install_completion workshop zsh /usr/local/share/zsh/site-functions/_workshop
+    fi
+}
+
+undo_configure_shell_completion() {
+    remove_completion /var/lib/snapd/desktop/bash-completion/completions/sdk
+    remove_completion /var/lib/snapd/desktop/bash-completion/completions/workshop
+
+    remove_completion /var/lib/snapd/desktop/fish/vendor_completions.d/sdk.fish
+    remove_completion /var/lib/snapd/desktop/fish/vendor_completions.d/workshop.fish
+
+    remove_completion /usr/local/share/zsh/site-functions/_sdk
+    remove_completion /usr/local/share/zsh/site-functions/_workshop
+}
+
+configure_workshop_managed_networks() {
+    if [ -d /etc/NetworkManager/conf.d ] && [ -w /etc/NetworkManager/conf.d ] && command -v systemctl &>/dev/null; then
+        install_file 0644 "$SNAP/snap/lib/85-workshop-unmanaged.conf" /etc/NetworkManager/conf.d
+        systemctl reload NetworkManager.service || true
+    fi
+
+    if [ -d /etc/udev/rules.d ] && [ -w /etc/udev/rules.d ] && command -v systemctl &>/dev/null; then
+        install_file 0644 "$SNAP/snap/lib/85-workshop-unmanaged.rules" /etc/udev/rules.d
+        systemctl reload systemd-udevd.service || true
+    fi
+}
+
+undo_configure_workshop_managed_networks() {
+    if command -v systemctl &>/dev/null; then
+        rm -f /etc/udev/rules.d/85-workshop-unmanaged.rules
+        systemctl reload systemd-udevd.service || true
+
+        rm -f /etc/NetworkManager/conf.d/85-workshop-unmanaged.conf
+        systemctl reload NetworkManager.service || true
+    fi
+}
+
+configure_dns_resolver() {
+    local mode="$1"
+
+    if [ -d /etc/systemd/system ] && [ -w /etc/systemd/system ] && command -v systemctl &>/dev/null; then
+        install_file 0644 "$SNAP/snap/lib/snap.workshop.configure-dns.service" /etc/systemd/system
+        systemctl daemon-reload
+
+        if [ "$mode" = install ]; then
+            systemctl enable snap.workshop.configure-dns.service
+        fi
+
+        if [ -d /sys/class/net/workshopbr0 ] && systemctl is-enabled --quiet snap.workshop.configure-dns.service; then
+            systemctl start snap.workshop.configure-dns.service || true
+        fi
+    fi
+}
+
+undo_configure_dns_resolver() {
+    if command -v systemctl &>/dev/null; then
+        systemctl disable snap.workshop.configure-dns.service || true
+        rm -f /etc/systemd/system/snap.workshop.configure-dns.service
+        systemctl daemon-reload || true
+    fi
+}
+
+configure_openssh_client() {
+    if [ -d /etc/ssh/ssh_config.d ] && [ -w /etc/ssh/ssh_config.d ]; then
+        install_file 0644 "$SNAP/snap/lib/70-workshop-cert-authority.conf" /etc/ssh/ssh_config.d
+    fi
+}
+
+undo_configure_openssh_client() {
+    rm -f /etc/ssh/ssh_config.d/70-workshop-cert-authority.conf
+}
+
+install_completion() {
+    local bin shell path dir tmp
+    bin="$1"
+    shell="$2"
+    path="$3"
+
+    dir="$(dirname -- "$path")"
+    install --directory -- "$dir"
+
+    tmp="$(mktemp -- "${path}.XXXXXXXXXX")"
+    chmod 0644 -- "$tmp"
+    "$SNAP/bin/$bin" completion "$shell" >"$tmp"
+    mv -- "$tmp" "$path"
+}
+
+remove_completion() {
+    local path dir
+    path="$1"
+
+    rm --force -- "$path"
+
+    # Remove empty parent directories (likely created by us).
+    dir="$(dirname -- "$path")"
+    rmdir --parents -- "$dir" 2>/dev/null || true
+}
+
+install_file() {
+    local mode src tgt name tmp
+    mode="$1"
+    src="$2"
+    tgt="$3"
+
+    install --directory -- "$tgt"
+    name="$(basename -- "$src")"
+
+    tmp="$(mktemp -- "${tgt}/${name}.XXXXXXXXXX")"
+    cp -- "$src" "$tmp"
+    chmod "$mode" -- "$tmp"
+    mv -- "$tmp" "${tgt}/${name}"
+}
