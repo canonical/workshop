@@ -47,8 +47,8 @@ Acceptable use of AI
 
 AI assistance is welcome in contributions of any kind.
 The repository is tuned for GitHub Copilot:
-it ships instructions, agents, and skills
-sourced from the approved
+it includes instructions and agents tailored to the project,
+along with documentation skills sourced from the approved
 `copilot-collections <https://github.com/canonical/copilot-collections>`__ set
 (see :ref:`contributing_copilot`).
 Try Copilot first;
