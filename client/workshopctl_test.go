@@ -27,12 +27,22 @@ import (
 	"github.com/canonical/workshop/client"
 )
 
+// TestClientRunWorkshopCtlCallsEndpoint verifies that
+// [client.Client.RunWorkshopctl] dispatches a POST request to the
+// /v1/workshopctl daemon endpoint.
 func (cs *clientSuite) TestClientRunWorkshopCtlCallsEndpoint(c *check.C) {
+	cs.rsp = `{
+		"type": "sync",
+		"status-code": 200,
+		"result": {}
+	}`
+
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
 	}
-	cs.cli.RunWorkshopctl(options)
+	_, _, err := cs.cli.RunWorkshopctl(options)
+	c.Assert(err, check.IsNil)
 	c.Check(cs.req.Method, check.Equals, "POST")
 	c.Check(cs.req.URL.Path, check.Equals, "/v1/workshopctl")
 }
