@@ -128,6 +128,9 @@ Copy the resulting files from the repository's
 :file:`media/screenshots/` directory;
 don't capture or edit them by hand.
 
+If you draft with AI assistance,
+see :ref:`contributing_ai` first.
+
 
 Test
 ~~~~
