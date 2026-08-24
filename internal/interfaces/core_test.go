@@ -115,6 +115,17 @@ func (s *CoreSuite) TestByName(c *C) {
 	c.Assert(iface.Name(), Equals, "mock-network")
 }
 
+// TestCompareByName verifies that CompareByName orders interfaces by name
+// with strings.Compare semantics: negative when the first sorts before the
+// second, zero when the names are equal, positive when it sorts after.
+func (s *CoreSuite) TestCompareByName(c *C) {
+	before := simpleIface{name: "camera"}
+	after := simpleIface{name: "mount"}
+	c.Check(interfaces.CompareByName(before, after) < 0, Equals, true)
+	c.Check(interfaces.CompareByName(after, before) > 0, Equals, true)
+	c.Check(interfaces.CompareByName(before, simpleIface{name: "camera"}), Equals, 0)
+}
+
 type serviceSnippetIface struct {
 	simpleIface
 

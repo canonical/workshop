@@ -21,7 +21,8 @@ package builtin
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/sdk"
@@ -97,13 +98,14 @@ func SanitizePlugsSlots(sdkInfo *sdk.Info) {
 	}
 }
 
-// Interfaces returns all of the built-in interfaces.
+// Interfaces returns all of the built-in interfaces, sorted by
+// interface name.
 func Interfaces() []interfaces.Interface {
-	ifaces := make([]interfaces.Interface, 0, len(allInterfaces))
-	for _, iface := range allInterfaces {
-		ifaces = append(ifaces, iface)
-	}
-	sort.Sort(byIfaceName(ifaces))
+	ifaces := slices.AppendSeq(
+		make([]interfaces.Interface, 0, len(allInterfaces)),
+		maps.Values(allInterfaces),
+	)
+	slices.SortFunc(ifaces, interfaces.CompareByName)
 	return ifaces
 }
 
@@ -124,12 +126,4 @@ func MockInterface(iface interfaces.Interface) func() {
 	return func() {
 		delete(allInterfaces, name)
 	}
-}
-
-type byIfaceName []interfaces.Interface
-
-func (c byIfaceName) Len() int      { return len(c) }
-func (c byIfaceName) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
-func (c byIfaceName) Less(i, j int) bool {
-	return c[i].Name() < c[j].Name()
 }
