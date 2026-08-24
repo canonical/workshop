@@ -110,6 +110,9 @@ The :ref:`command-line reference <ref_workshop__cli>` pages under
 are generated from the source, not edited by hand.
 See :ref:`contributing_doc_generation` for how they're produced.
 
+If you draft with AI assistance,
+see :ref:`contributing_ai` first.
+
 
 Test
 ~~~~

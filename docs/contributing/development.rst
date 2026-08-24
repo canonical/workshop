@@ -225,6 +225,9 @@ so reviewers can follow the reasoning and collaborate on it.
 error messages, and code structure.
 See the :ref:`coding_style_guide` for the full set of patterns and their rationale.
 
+If you develop with AI assistance,
+see :ref:`contributing_ai` first.
+
 
 Test
 ~~~~
