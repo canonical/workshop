@@ -47,9 +47,12 @@ func NewSystemdResolved() Resolver {
 
 // ConfigureDNS points the given interface's DNS servers at addrs and registers
 // domain as a routing-only search domain, replacing any previously configured
-// values. It mirrors "resolvectl dns <iface> <addr>..." followed by "resolvectl
-// domain <iface> ~<domain>". The interface's kernel index is resolved once for
-// both calls.
+// values. It mirrors the following commands:
+// - resolvectl dns <iface> <addr>...
+// - resolvectl domain <iface> ~<domain>
+// - resolvectl dnssec <iface> no
+// - resolvectl dnsovertls <iface> no
+// The interface's kernel index is resolved once for all calls.
 func (r *systemdResolved) ConfigureDNS(ctx context.Context, iface string, addrs []netip.Addr, domain string) error {
 	index, err := r.interfaceIndex(iface)
 	if err != nil {
@@ -122,6 +125,12 @@ func (*systemdResolved) dispatch(ctx context.Context, conn *dbus.Conn, index int
 		return call.Err
 	}
 	if call := manager.CallWithContext(ctx, "org.freedesktop.resolve1.Manager.SetLinkDomains", 0, index, domains); call.Err != nil {
+		return call.Err
+	}
+	if call := manager.CallWithContext(ctx, "org.freedesktop.resolve1.Manager.SetLinkDNSOverTLS", 0, index, "no"); call.Err != nil {
+		return call.Err
+	}
+	if call := manager.CallWithContext(ctx, "org.freedesktop.resolve1.Manager.SetLinkDNSSEC", 0, index, "no"); call.Err != nil {
 		return call.Err
 	}
 	return nil

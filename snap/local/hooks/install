@@ -1,0 +1,6 @@
+#!/bin/bash -e
+
+# shellcheck source=snap/local/lib/host-config
+. "$SNAP/snap/lib/host-config"
+
+configure_host install

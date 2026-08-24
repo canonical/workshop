@@ -7,33 +7,12 @@ else
     lib="$(dirname -- "$0")/../lib"
 fi
 
+# shellcheck source=snap/local/lib/host-config
+. "$lib/host-config"
 # shellcheck source=snap/local/lib/lxc-utils
 . "$lib/lxc-utils"
-# shellcheck source=snap/local/lib/completion
-. "$lib/completion"
 
-rm -f /etc/ssh/ssh_config.d/70-workshop-cert-authority.conf
-
-if command -v systemctl &>/dev/null; then
-    systemctl disable snap.workshop.configure-dns.service || true
-    rm -f /etc/systemd/system/snap.workshop.configure-dns.service
-    systemctl daemon-reload || true
-
-    rm -f /etc/udev/rules.d/85-workshop-unmanaged.rules
-    systemctl reload systemd-udevd.service || true
-
-    rm -f /etc/NetworkManager/conf.d/85-workshop-unmanaged.conf
-    systemctl reload NetworkManager.service || true
-fi
-
-remove_completion /var/lib/snapd/desktop/bash-completion/completions/sdk
-remove_completion /var/lib/snapd/desktop/bash-completion/completions/workshop
-
-remove_completion /var/lib/snapd/desktop/fish/vendor_completions.d/sdk.fish
-remove_completion /var/lib/snapd/desktop/fish/vendor_completions.d/workshop.fish
-
-remove_completion /usr/local/share/zsh/site-functions/_sdk
-remove_completion /usr/local/share/zsh/site-functions/_workshop
+undo_configure_host
 
 # The workshop services are stopped by the moment the remove
 # hook is called. Therefore, for now, we walk the LXD projects created
