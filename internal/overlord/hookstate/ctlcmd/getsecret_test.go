@@ -37,7 +37,7 @@ func (s *getSecretSuite) TestGetSecret(c *check.C) {
 // identifier argument.
 func (s *getSecretSuite) TestGetSecretMissingArg(c *check.C) {
 	_, _, err := ctlcmd.Run(nil, []string{"get-secret"}, 0)
-	c.Check(err, check.ErrorMatches, ".*the required argument `<sdk>.<secret>` was not provided.*")
+	c.Check(err, check.ErrorMatches, ".*the required argument `<SDK>.<secret>` was not provided.*")
 }
 
 // TestGetSecretNonRoot checks that get-secret is allowed without root, as

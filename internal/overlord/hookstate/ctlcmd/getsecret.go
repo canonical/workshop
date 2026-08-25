@@ -22,7 +22,7 @@ type getSecretCommand struct {
 }
 
 type getSecretPositional struct {
-	Secret string `positional-arg-name:"<sdk>.<secret>" required:"yes" description:"the secret to retrieve, in the form <sdk>.<secret>"`
+	Secret string `positional-arg-name:"<SDK>.<secret>" required:"yes" description:"the secret to retrieve, in the form <SDK>.<secret>"`
 }
 
 const (
@@ -32,7 +32,7 @@ const (
 
 	longGetSecretHelp = `
 The get-secret command retrieves the value of a secret connected to the
-workshop, identified as "<sdk>.<secret>" (e.g. "ollama.ollama-api-key").
+workshop, identified as "<SDK>.<secret>" (e.g. "ollama.ollama-api-key").
 `
 
 	shortGetSecretHelp = "Get the value of a secret"
