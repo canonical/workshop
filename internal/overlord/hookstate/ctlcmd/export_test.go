@@ -45,14 +45,14 @@ func (c *MockCommand) Execute(args []string) error {
 	c.Args = args
 
 	if c.FakeStdout != "" {
-		_, err := c.printf("%s", c.FakeStdout)
+		err := c.printf("%s", c.FakeStdout)
 		if err != nil {
 			return err
 		}
 	}
 
 	if c.FakeStderr != "" {
-		_, err := c.errorf("%s", c.FakeStderr)
+		err := c.errorf("%s", c.FakeStderr)
 		if err != nil {
 			return err
 		}

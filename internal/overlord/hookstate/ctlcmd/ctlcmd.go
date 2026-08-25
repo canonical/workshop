@@ -53,22 +53,24 @@ func (c *baseCommand) setStdout(w io.Writer) {
 	c.stdout = w
 }
 
-func (c *baseCommand) printf(format string, a ...any) (int, error) {
-	if c.stdout != nil {
-		return fmt.Fprintf(c.stdout, format, a...)
+func (c *baseCommand) printf(format string, a ...any) error {
+	if c.stdout == nil {
+		return nil
 	}
-	return 0, nil
+	_, err := fmt.Fprintf(c.stdout, format, a...)
+	return err
 }
 
 func (c *baseCommand) setStderr(w io.Writer) {
 	c.stderr = w
 }
 
-func (c *baseCommand) errorf(format string, a ...any) (int, error) {
-	if c.stderr != nil {
-		return fmt.Fprintf(c.stderr, format, a...)
+func (c *baseCommand) errorf(format string, a ...any) error {
+	if c.stderr == nil {
+		return nil
 	}
-	return 0, nil
+	_, err := fmt.Fprintf(c.stderr, format, a...)
+	return err
 }
 
 func (c *baseCommand) setContext(context *hookstate.Context) {
@@ -137,7 +139,7 @@ func (f ForbiddenCommandError) Error() string {
 
 // nonRootAllowed lists the commands that can be performed even when workshopctl
 // is invoked not by root.
-var nonRootAllowed = []string{"set-health"}
+var nonRootAllowed = []string{"get-secret", "set-health"}
 
 // Run runs the requested command.
 func Run(context *hookstate.Context, args []string, uid uint32) (stdout, stderr []byte, err error) {
