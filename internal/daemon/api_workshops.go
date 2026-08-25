@@ -662,7 +662,9 @@ func v1PostProjectWorkshop(c *Command, r *http.Request, _ *userState) Response {
 		return changeConflictErrorResponse(changeConflictErr)
 	case errors.Is(err, conflict.ErrorNoWaitingChange):
 		return noWaitingChangeResponse(err)
-	case err != nil:
+	case errors.Is(err, workshop.ErrWorkshopNotLaunched):
+		return statusNotFound("%w", err)
+	default:
 		return statusBadRequest("%w", err)
 	}
 
