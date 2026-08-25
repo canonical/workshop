@@ -15,6 +15,70 @@ SDKs use the :program:`workshopctl` tool when reporting to the workshop;
 to invoke a subcommand, add it to your :ref:`SDK hook <ref_sdk_hooks>`.
 
 
+workshopctl get-secret
+----------------------
+
+Get the value of a secret connected to the workshop.
+
+.. rubric:: Usage
+
+.. code-block:: console
+
+   $ workshopctl get-secret [--systemd] <SDK>.<secret>
+
+
+.. rubric:: Description
+
+This command retrieves the value of a secret made available to an SDK
+through a connected secret plug and writes it to standard output.
+SDKs typically call it from wrapper scripts to inject secrets into
+one-shot commands.
+
+.. list-table::
+   :header-rows: 1
+   :width: 95
+   :widths: 1 2 3
+
+   * - Placeholder
+     - Required
+     - Value
+
+   * - :samp:`<SDK>.<secret>`
+     - Required unless :samp:`--systemd` is given.
+     - The name of the SDK and of its secret plug, joined by a dot.
+
+
+.. rubric:: Examples
+
+Read a secret into an environment variable in a wrapper script:
+
+.. code-block:: console
+
+   $ API_KEY=$(workshopctl get-secret my-sdk.api-key)
+
+
+.. rubric:: Flags
+
+--systemd
+
+   Service a systemd :samp:`LoadCredential` request.
+   The workshop secret socket unit invokes :program:`workshopctl`
+   with this flag, passing the accepted socket connection on
+   standard input.
+   The credential name in the requesting unit's
+   :samp:`LoadCredential` entry must take the form
+   :samp:`{<SDK>}.{<secret>}` so that the requesting SDK and secret
+   can be identified from the connection, for example:
+
+   .. code-block:: none
+
+      LoadCredential=my-sdk.api-key:${SDK_SYSTEMD_SECRET_SOCKET}
+
+   The secret value is delivered back to systemd through the
+   connection.
+   Not intended for interactive use.
+
+
 workshopctl set-health
 ----------------------
 

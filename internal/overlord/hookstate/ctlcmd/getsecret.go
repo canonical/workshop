@@ -32,7 +32,7 @@ const (
 
 	longGetSecretHelp = `
 The get-secret command retrieves the value of a secret connected to the
-workshop, identified as "<SDK>.<secret>" (e.g. "ollama.ollama-api-key").
+workshop, identified as "<SDK>.<secret>" (e.g. "my-sdk.api-key").
 `
 
 	shortGetSecretHelp = "Get the value of a secret"
