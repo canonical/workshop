@@ -19,11 +19,11 @@ import (
 	"github.com/canonical/workshop/internal/sdk"
 )
 
-// MountConnectedPlugDefiner is implemented by interfaces that contribute
+// ConnectedPlugMounter is implemented by interfaces that contribute
 // to a workshop's LXD device configuration when a plug of the interface
 // is connected. The backend detects the method by type assertion; an
 // interface that does not implement it contributes nothing.
-type MountConnectedPlugDefiner interface {
+type ConnectedPlugMounter interface {
 	MountConnectedPlug(
 		spec *Specification,
 		plug *interfaces.ConnectedPlug,
@@ -31,11 +31,11 @@ type MountConnectedPlugDefiner interface {
 	) error
 }
 
-// MountConnectedSlotDefiner is implemented by interfaces that contribute
+// ConnectedSlotMounter is implemented by interfaces that contribute
 // to a workshop's LXD device configuration when a slot of the interface
 // is connected. The backend detects the method by type assertion; an
 // interface that does not implement it contributes nothing.
-type MountConnectedSlotDefiner interface {
+type ConnectedSlotMounter interface {
 	MountConnectedSlot(
 		spec *Specification,
 		plug *interfaces.ConnectedPlug,
@@ -43,20 +43,20 @@ type MountConnectedSlotDefiner interface {
 	) error
 }
 
-// MountPermanentPlugDefiner is implemented by interfaces that contribute
+// PermanentPlugMounter is implemented by interfaces that contribute
 // to a workshop's LXD device configuration whenever a plug of the
 // interface is present, regardless of any connection. The backend
 // detects the method by type assertion; an interface that does not
 // implement it contributes nothing.
-type MountPermanentPlugDefiner interface {
+type PermanentPlugMounter interface {
 	MountPermanentPlug(spec *Specification, plug *sdk.PlugInfo) error
 }
 
-// MountPermanentSlotDefiner is implemented by interfaces that contribute
+// PermanentSlotMounter is implemented by interfaces that contribute
 // to a workshop's LXD device configuration whenever a slot of the
 // interface is present, regardless of any connection. The backend
 // detects the method by type assertion; an interface that does not
 // implement it contributes nothing.
-type MountPermanentSlotDefiner interface {
+type PermanentSlotMounter interface {
 	MountPermanentSlot(spec *Specification, slot *sdk.SlotInfo) error
 }
