@@ -61,6 +61,8 @@ parts:
        export CGO_LDFLAGS="-Wl,-rpath=/snap/core24/current/usr/lib/x86_64-linux-gnu -Wl,--disable-new-dtags -Wl,-dynamic-linker=/snap/core24/current/lib64/ld-linux-x86-64.so.2"
       elif [[ "$CRAFT_ARCH_BUILD_FOR" == "arm64" ]]; then
         export CGO_LDFLAGS="-Wl,-rpath=/snap/core24/current/lib/aarch64-linux-gnu -Wl,--disable-new-dtags -Wl,-dynamic-linker=/snap/core24/current/lib/ld-linux-aarch64.so.1"
+      elif [[ "$CRAFT_ARCH_BUILD_FOR" == "riscv64" ]]; then
+        export CGO_LDFLAGS="-Wl,-rpath=/snap/core24/current/lib/riscv64-linux-gnu -Wl,--disable-new-dtags -Wl,-dynamic-linker=/snap/core24/current/lib/ld-linux-riscv64-lp64d.so.1"
       fi
       CGO_ENABLED=0 go build -o "${CRAFT_PART_INSTALL}/bin/workshop" ./cmd/workshop
       CGO_ENABLED=1 go build -o "${CRAFT_PART_INSTALL}/bin/workshopd" ./cmd/workshopd

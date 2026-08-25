@@ -67,6 +67,9 @@ and also has a number of global flags:
 .. include:: sdkcraft-login.rst
 
 
+.. include:: sdkcraft-logout.rst
+
+
 .. include:: sdkcraft-whoami.rst
 
 

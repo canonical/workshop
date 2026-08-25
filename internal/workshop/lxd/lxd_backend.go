@@ -67,6 +67,8 @@ const (
 var (
 	startCommandTimeout = 1 * time.Minute
 	storagePoolDriver   = "zfs"
+
+	workshopFormatsChecked = false
 )
 
 //go:embed start_command.sh
@@ -83,6 +85,7 @@ func init() {
 	// LXD is installed or refreshed, without a restart.
 	syscheck.RegisterCheck(checkServerCapabilities)
 	syscheck.RegisterCheck(ensureBackendReady)
+	syscheck.RegisterCheck(checkWorkshopFormats)
 	syscheck.RegisterCheck(checkStorageSpace)
 }
 
@@ -233,6 +236,37 @@ func checkServerCapabilities() error {
 	}
 
 	return checkStorageDriver(info.Environment.StorageSupportedDrivers)
+}
+
+func checkWorkshopFormats() error {
+	if workshopFormatsChecked {
+		return nil
+	}
+
+	backend := Backend{}
+	allprojects, err := backend.Projects(context.Background())
+	if err != nil {
+		return fmt.Errorf("cannot check project compatibility: %w", err)
+	}
+
+	for user, projects := range allprojects {
+		ctx := context.WithValue(context.Background(), workshop.ContextUser, user)
+		for _, project := range projects {
+			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
+			workshops, err := backend.ProjectWorkshops(pctx)
+			if err != nil {
+				return fmt.Errorf("cannot check workshop compatibility in %q: %w", project.Path, err)
+			}
+			for _, workshop := range workshops {
+				if workshop.Format.N > backend.FormatRevision().N {
+					return fmt.Errorf("cannot load %q workshop from %q: upgrade Workshop and remove all workshops before downgrading again", workshop.Name, project.Path)
+				}
+			}
+		}
+	}
+
+	workshopFormatsChecked = true
+	return nil
 }
 
 // New constructs the LXD backend and attempts to prepare the required LXD
@@ -770,7 +804,11 @@ func (s *Backend) AddWorkshopMount(ctx context.Context, name string, mount works
 		return err
 	}
 
-	inst.Devices[mount.Name] = mountToLxdDisk(mount)
+	disk := mountToLxdDisk(mount)
+	if maps.Equal(inst.Devices[mount.Name], disk) {
+		return nil
+	}
+	inst.Devices[mount.Name] = disk
 
 	op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
 	if err != nil {
@@ -810,7 +848,11 @@ func (s *Backend) RemoveWorkshopMount(ctx context.Context, name, mount string) e
 		return err
 	}
 
+	if _, ok := inst.Devices[mount]; !ok {
+		return nil
+	}
 	delete(inst.Devices, mount)
+
 	op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
 	if err != nil {
 		return err

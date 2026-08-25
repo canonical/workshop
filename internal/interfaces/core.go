@@ -202,6 +202,16 @@ type StaticInfo struct {
 	BaseDeclarationSlots string
 }
 
+// StaticInfoProvider can be implemented by Interfaces that supply static
+// metadata about themselves. [StaticInfoOf] discovers the hook by type
+// assertion; an interface that does not implement it has empty static
+// info.
+type StaticInfoProvider interface {
+	// StaticInfo returns the static metadata describing the interface,
+	// such as its summary and base-declaration policy extensions.
+	StaticInfo() StaticInfo
+}
+
 // PermanentPlugServiceSnippets will return the set of snippets for the systemd
 // service unit that should be generated for a sdk with the specified plug.
 // The list returned is not unique, callers must de-duplicate themselves.
@@ -225,10 +235,7 @@ func PermanentPlugServiceSnippets(iface Interface, plug *sdk.PlugInfo) (snips []
 
 // StaticInfoOf returns the static-info of the given interface.
 func StaticInfoOf(iface Interface) (si StaticInfo) {
-	type metaDataProvider interface {
-		StaticInfo() StaticInfo
-	}
-	if iface, ok := iface.(metaDataProvider); ok {
+	if iface, ok := iface.(StaticInfoProvider); ok {
 		si = iface.StaticInfo()
 	}
 	return si

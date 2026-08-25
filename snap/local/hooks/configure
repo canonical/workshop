@@ -1,41 +1,4 @@
 #!/bin/bash -e
 
-# shellcheck source=snap/local/lib/completion
-. "$SNAP/snap/lib/completion"
-# shellcheck source=snap/local/lib/files
-. "$SNAP/snap/lib/files"
-
-if [ -d /var/lib/snapd/desktop ]; then
-    install_completion sdk bash /var/lib/snapd/desktop/bash-completion/completions/sdk
-    install_completion workshop bash /var/lib/snapd/desktop/bash-completion/completions/workshop
-
-    install_completion sdk fish /var/lib/snapd/desktop/fish/vendor_completions.d/sdk.fish
-    install_completion workshop fish /var/lib/snapd/desktop/fish/vendor_completions.d/workshop.fish
-fi
-if [ -d /usr/local/share ] && [ -w /usr/local/share ]; then
-    install_completion sdk zsh /usr/local/share/zsh/site-functions/_sdk
-    install_completion workshop zsh /usr/local/share/zsh/site-functions/_workshop
-fi
-
-if [ -d /etc/NetworkManager/conf.d ] && [ -w /etc/NetworkManager/conf.d ] && command -v systemctl &>/dev/null && [ ! -f /etc/NetworkManager/conf.d/85-workshop-unmanaged.conf ]; then
-    install_file 0644 "$SNAP/snap/lib/85-workshop-unmanaged.conf" /etc/NetworkManager/conf.d
-    systemctl reload NetworkManager.service || true
-fi
-
-if [ -d /etc/udev/rules.d ] && [ -w /etc/udev/rules.d ] && command -v systemctl &>/dev/null && [ ! -f /etc/udev/rules.d/85-workshop-unmanaged.rules ]; then
-    install_file 0644 "$SNAP/snap/lib/85-workshop-unmanaged.rules" /etc/udev/rules.d
-    systemctl reload systemd-udevd.service || true
-fi
-
-if [ -d /etc/systemd/system ] && [ -w /etc/systemd/system ] && command -v systemctl &>/dev/null && [ ! -f /etc/systemd/system/snap.workshop.configure-dns.service ]; then
-    install_file 0644 "$SNAP/snap/lib/snap.workshop.configure-dns.service" /etc/systemd/system
-    systemctl daemon-reload
-    systemctl enable snap.workshop.configure-dns.service
-    if [ -d /sys/class/net/workshopbr0 ]; then
-        systemctl start snap.workshop.configure-dns.service || true
-    fi
-fi
-
-if [ -d /etc/ssh/ssh_config.d ] && [ -w /etc/ssh/ssh_config.d ] && [ ! -f /etc/ssh/ssh_config.d/70-workshop-cert-authority.conf ]; then
-    install_file 0644 "$SNAP/snap/lib/70-workshop-cert-authority.conf" /etc/ssh/ssh_config.d
-fi
+# This empty hook is required by `snap set`. For simplicity we read the config
+# values in run_daemon instead of creating an intermediate config file here.

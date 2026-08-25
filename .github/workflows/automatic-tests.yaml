@@ -36,6 +36,7 @@ jobs:
 
   code-coverage:
     needs: [spread, unit-tests]
+    if: github.event_name == 'schedule'
     runs-on: [self-hosted, reactive, amd64, large-tiobe, noble]
     steps:
       - name: Checkout Code
@@ -77,20 +78,10 @@ jobs:
           mkdir .coverage
           gocov-xml < coverage.json > .coverage/coverage.xml
 
-      - name: Determine TICS mode
-        id: tics-mode
-        run: |
-          if [[ "$GITHUB_EVENT_NAME" =~ ^(push|schedule)$ ]]; then
-            mode=qserver
-          else
-            mode=client
-          fi
-          printf 'mode=%s\n' "$mode" >>"$GITHUB_OUTPUT"
-
       - name: TICS GitHub Action
         uses: tiobe/tics-github-action@333078bc527399e5916a166bd1a3a788be5a01a9 # v3.12.0
         with:
-          mode: ${{ steps.tics-mode.outputs.mode }}
+          mode: qserver
           viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=GoProjects
           ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }} # zizmor: ignore[secrets-outside-env]
           project: workshop

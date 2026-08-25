@@ -93,20 +93,23 @@ type Specification struct {
 
 // AddPermanentSlot records side-effects of having a slot.
 func (s *Specification) AddPermanentSlot(iface interfaces.Interface, slot *sdk.SlotInfo) error {
+	if iface, ok := iface.(PermanentSlotMounter); ok {
+		return iface.MountPermanentSlot(s, slot)
+	}
 	return nil
 }
 
 // AddPermanentPlug records side-effects of having a plug.
 func (s *Specification) AddPermanentPlug(iface interfaces.Interface, plug *sdk.PlugInfo) error {
+	if iface, ok := iface.(PermanentPlugMounter); ok {
+		return iface.MountPermanentPlug(s, plug)
+	}
 	return nil
 }
 
 // AddConnectedSlot records side-effects of having a connected slot.
 func (s *Specification) AddConnectedSlot(iface interfaces.Interface, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
-	type definer interface {
-		MountConnectedSlot(spec *Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error
-	}
-	if iface, ok := iface.(definer); ok {
+	if iface, ok := iface.(ConnectedSlotMounter); ok {
 		return iface.MountConnectedSlot(s, plug, slot)
 	}
 	return nil
@@ -114,11 +117,7 @@ func (s *Specification) AddConnectedSlot(iface interfaces.Interface, plug *inter
 
 // AddConnectedPlug records side-effects of having a connected plug.
 func (s *Specification) AddConnectedPlug(iface interfaces.Interface, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
-	type definer interface {
-		MountConnectedPlug(spec *Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error
-	}
-
-	if iface, ok := iface.(definer); ok {
+	if iface, ok := iface.(ConnectedPlugMounter); ok {
 		return iface.MountConnectedPlug(s, plug, slot)
 	}
 	return nil

@@ -14,8 +14,8 @@ restore: |
 
 execute: |
   . "$TESTSLIB"/utils.sh
-  PROJECT=$(pwd)
-  
+  PROJECT=$(pwd)/project
+
   workshop_exec --project "$PROJECT" launch
   test -f "$PROJECT"/.workshop.lock
 
@@ -25,17 +25,17 @@ execute: |
   popd; rmdir "$PROJECT"/nested
 
   echo "workshop --project should accept a relative directory"
-  mkdir relative
-  workshop_exec list --project relative | MATCH "^ws-list[[:space:]]+Ready[[:space:]]+-$"
-  rmdir relative
+  workshop_exec list --project project | MATCH "^ws-list[[:space:]]+Ready[[:space:]]+-$"
 
   echo "Listing outside of a project directory should trigger an error"
   workshop_exec --project /home/ubuntu list | MATCH "^error: not a project \(no workshop files found\)$"
 
   echo "The directory was moved, its instances must update configuration with a new path"
+  project_id=$(cat "$PROJECT"/.workshop.lock)
   sudo -u ubuntu mv "$PROJECT" "$PROJECT"-new
-  project_id=$(cat "$PROJECT"-new/.workshop.lock)
   workshop_exec --project "$PROJECT"-new list | MATCH "^ws-list[[:space:]]+Ready[[:space:]]+-$"
+  project_id_moved=$(cat "$PROJECT"-new/.workshop.lock)
+  test "$project_id_moved" = "$project_id"
 
   echo "The directory was copied, its projects instances should still stay available at the old path"
   sudo -u ubuntu cp -R "$PROJECT"-new "$PROJECT"-copy

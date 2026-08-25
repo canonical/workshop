@@ -576,6 +576,29 @@ This mechanism avoids the need to maintain helper scripts manually,
 ensuring instead that they are stored with the rest of the workshop's metadata.
 
 
+Backward compatibility
+----------------------
+
+|ws_markup| strives to maintain backward compatibility between adjacent versions.
+A workshop created by the current version of |ws_markup|
+should continue working after updating to the next version.
+However, maintaining backward compatibility indefinitely is not currently feasible.
+To avoid running into compatibility issues,
+workshops should be refreshed regularly.
+
+The |ws_markup| daemon exposes a REST API for managing workshops.
+Most changes to this API add new endpoints,
+or additional fields to the requests and responses of existing endpoints.
+These are not considered breaking changes.
+Breaking changes will be announced in the |ws_markup| release notes.
+
+The :program:`workshop` and :program:`sdk` CLIs are mainly intended for interactive use,
+and in particular the output format can change at any time.
+Use the :program:`workshopd` API for a more stable output format.
+However, to support running |ws_markup| in scripts and CI environments,
+breaking changes to CLI arguments will be announced in the |ws_markup| release notes.
+
+
 Origins and locations
 ---------------------
 

@@ -4,8 +4,12 @@ After=sys-subsystem-net-devices-workshopbr0.device
 
 [Service]
 Type=oneshot
-ExecCondition=/usr/bin/systemctl is-enabled systemd-resolved.service
+ExecCondition=/usr/bin/systemctl is-enabled --quiet systemd-resolved.service
 ExecStart=/usr/bin/snap run workshop.configure-dns workshopbr0 wp
+# TODO: remove this or rethink what Restart should really be set to. Currently
+# works around an issue where LXD kills whatever process happens to have
+# dnsmasq's PID, even if that dnsmasq process is long gone.
+Restart=on-abort
 
 [Install]
 WantedBy=sys-subsystem-net-devices-workshopbr0.device
