@@ -142,10 +142,10 @@ func (s *getSecretSuite) TestParseSystemdPeerAddressNameInvalid(c *check.C) {
 			err:  `credential name in systemd peer address cannot be empty`,
 		}, {
 			addr: "\x00DEADBEEF/unit/ollama.service/ollama-api-key",
-			err:  `unable to identify workshop sdk and secret name from systemd credential name "ollama-api-key"`,
+			err:  `unable to identify workshop SDK and secret name from systemd credential name "ollama-api-key"`,
 		}, {
 			addr: "\x00DEADBEEF/unit/ollama.service/.ollama-api-key",
-			err:  `workshop sdk in systemd credential name cannot be empty`,
+			err:  `workshop SDK in systemd credential name cannot be empty`,
 		}, {
 			addr: "\x00DEADBEEF/unit/ollama.service/ollama.",
 			err:  `workshop secret name in systemd credential name cannot be empty`,

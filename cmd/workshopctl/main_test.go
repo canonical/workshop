@@ -167,5 +167,5 @@ func (s *workshopctlSuite) TestWorkshopctlGetSecretSystemd(c *check.C) {
 	c.Check(run(args, f, &stdout, &stderr), check.Equals, 0)
 	c.Check(stdout.String(), check.Equals, "test stdout")
 	c.Check(stderr.String(), check.Equals,
-		"processed systemd load credential request for unit \"ollama.service\", sdk \"ollama\" and secret \"ollama-api-key\"")
+		"processed systemd load credential request for unit \"ollama.service\", \"ollama\" SDK and secret \"ollama-api-key\"")
 }

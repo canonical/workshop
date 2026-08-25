@@ -98,7 +98,7 @@ func interceptGetSecret(
 
 	fmt.Fprintf(
 		stderr,
-		"processed systemd load credential request for unit %q, sdk %q and secret %q",
+		"processed systemd load credential request for unit %q, %q SDK and secret %q",
 		systemdSecretReq.Unit,
 		systemdSecretReq.SDK,
 		systemdSecretReq.Secret,
@@ -185,12 +185,12 @@ func parseSystemdPeerAddressName(addr string) (systemdSecretRequest, error) {
 	sdk, secret, ok := strings.Cut(credentialName, ".")
 	if !ok {
 		return systemdSecretRequest{}, fmt.Errorf(
-			"unable to identify workshop sdk and secret name from systemd credential name %q",
+			"unable to identify workshop SDK and secret name from systemd credential name %q",
 			credentialName,
 		)
 	} else if sdk == "" {
 		return systemdSecretRequest{}, errors.New(
-			"workshop sdk in systemd credential name cannot be empty")
+			"workshop SDK in systemd credential name cannot be empty")
 	} else if secret == "" {
 		return systemdSecretRequest{}, errors.New(
 			"workshop secret name in systemd credential name cannot be empty")
