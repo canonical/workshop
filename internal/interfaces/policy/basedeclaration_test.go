@@ -167,6 +167,7 @@ func (s *baseDeclSuite) TestAutoConnectPlugSlot(c *check.C) {
 	// these have more complex or in flux policies and have their
 	// own separate tests
 	snowflakes := map[string]bool{
+		"secret": true,
 		"tunnel": true,
 	}
 
