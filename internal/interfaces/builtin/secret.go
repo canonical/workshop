@@ -57,10 +57,12 @@ const secretBaseDeclarationSlots = `
 
 const secretSummary = `allows SDKs to consume secrets from the host keyring`
 
-// AutoConnect implements [interfaces.Interface]. It always returns
-// false: secrets require an explicit user connection.
+// AutoConnect implements [interfaces.Interface]. It returns true to
+// defer entirely to the base declaration policy, which denies
+// auto-connection for secrets: a secret must always be attached by an
+// explicit user decision.
 func (secretInterface) AutoConnect(_ *sdk.PlugInfo, _ *sdk.SlotInfo) bool {
-	return false
+	return true
 }
 
 func init() {

@@ -29,12 +29,12 @@ type secretSuite struct{}
 
 var _ = check.Suite(&secretSuite{})
 
-// TestDoesNotAutoConnect checks that the secret interface refuses
-// auto-connection: secrets must always be connected by an explicit
-// user decision.
-func (s *secretSuite) TestDoesNotAutoConnect(c *check.C) {
+// TestAutoConnectDefersToPolicy checks that the secret interface's
+// AutoConnect does not override policy: the denial of auto-connection
+// for secrets is enforced solely by the interface's base declaration.
+func (s *secretSuite) TestAutoConnectDefersToPolicy(c *check.C) {
 	iface := secretInterface{}
-	c.Check(iface.AutoConnect(nil, nil), check.Equals, false)
+	c.Check(iface.AutoConnect(nil, nil), check.Equals, true)
 }
 
 // TestInterfaces checks that the secret interface is registered as a
