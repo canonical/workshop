@@ -935,14 +935,16 @@ Use the following template for new release notes, ensuring all links and version
 ````markdown
 ```{eval-rst}
 .. meta::
-   :description: Release notes for Workshop vX.Y.Z, highlighting [key features].
+   :description: Release notes for Workshop X.Y.Z and SDKcraft A.B.C,
+                 highlighting [key features].
 ```
 
-# Workshop vX.Y.Z release notes
+# Workshop X.Y.Z release notes
 
 ## [Day] [Month] [Year]
 
-These release notes cover new features and changes in Workshop vX.Y.Z.
+These release notes cover new features and changes in Workshop X.Y.Z and
+SDKcraft A.B.C.
 
 ## Requirements and compatibility
 
@@ -951,19 +953,53 @@ Workshop relies on Snap and LXD:
 - See the [Tutorial](https://ubuntu.com/workshop/docs/tutorial/) for setup instructions.
 - Refer to the [Contribution Guide](https://ubuntu.com/workshop/docs/contributing/) for development prerequisites.
 
-## What's new in Workshop vX.Y.Z
+## What's new in X.Y.Z
 
 [Brief summary of the release].
 
-### [Feature Name]
+### Workshop
 
-[Description of the feature and its benefit].
+**Repository:** <https://github.com/canonical/workshop>
+
+- [Change and its benefit].
+
+### SDKcraft A.B.C
+
+**Repository:** <https://github.com/canonical/sdkcraft>
+
+- [Change and its benefit].
 
 ----
 
 **Full Changelog**:
-https://github.com/canonical/workshop/compare/vX.Y.Z-1...vX.Y.Z
+
+- Workshop: https://github.com/canonical/workshop/compare/vX.Y.Z-1...vX.Y.Z
+- SDKcraft: https://github.com/canonical/sdkcraft/compare/A.B.C-1...A.B.C
 ````
+
+Add one `###` section per repository that changed in the release, each with its
+`**Repository:**` link. Besides Workshop and SDKcraft, past releases have used
+Reference SDKs, Docs, Workshop GitHub Action, and VS Code Workshop extension.
+
+Workshop and SDKcraft are versioned independently, so the two numbers rarely
+match. Write versions bare in prose and headings; the `v` prefix belongs only in
+filenames and in Workshop tag and compare URLs, since SDKcraft tags carry no
+prefix.
+
+When SDKcraft did not release alongside Workshop, carry its last released version
+forward and mark the heading:
+
+```markdown
+### SDKcraft A.B.C (unchanged)
+
+**Repository:** <https://github.com/canonical/sdkcraft>
+
+- No changes in this release.
+```
+
+In that case, omit the SDKcraft line from the changelog footer: there is no diff
+to link. Either way, record the pairing in the version table in
+`docs/release-notes/index.rst`.
 
 ### Simplified markup for GitHub-rendered files
 

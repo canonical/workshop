@@ -24,11 +24,11 @@ Releases
 .. toctree::
    :hidden:
 
-   Workshop and SDKcraft 0.9.5 <v0.9.5>
-   Workshop and SDKcraft 0.9.4 <v0.9.4>
-   Workshop and SDKcraft 0.9.3 <v0.9.3>
-   Workshop and SDKcraft 0.9.2 <v0.9.2>
-   Workshop and SDKcraft 0.9.1 <v0.9.1>
+   Workshop 0.9.5 <v0.9.5>
+   Workshop 0.9.4 <v0.9.4>
+   Workshop 0.9.3 <v0.9.3>
+   Workshop 0.9.2 <v0.9.2>
+   Workshop 0.9.1 <v0.9.1>
    Workshop v0.9.0 <v0.9.0>
 
 
@@ -39,13 +39,32 @@ A complete |ws_markup| installation comprises two snaps:
 
 
 Both are available for :samp:`amd64` and :samp:`arm64`.
-Starting with 0.9.1, |ws_markup| and |sdk_markup| share the same version number.
+|sdk_markup| is released independently, and only when it has changes,
+so its version can trail |ws_markup|:
+
+.. list-table::
+   :header-rows: 1
+
+   * - |ws_markup|
+     - |sdk_markup|
+   * - 0.9.5
+     - 0.9.3
+   * - 0.9.4
+     - 0.9.2
+   * - 0.9.3
+     - 0.9.2
+   * - 0.9.2
+     - 0.9.1
+   * - 0.9.1
+     - 0.9.1
+   * - v0.9.0
+     - 0.1.14
 
 
 Latest version
 ~~~~~~~~~~~~~~
 
-- :doc:`Workshop and SDKcraft 0.9.5 <v0.9.5>`
+- :doc:`Workshop 0.9.5 <v0.9.5>`
 
 
 Previous versions
@@ -55,10 +74,10 @@ Previous versions
 
    These versions are no longer supported.
 
-- :doc:`Workshop and SDKcraft 0.9.4 <v0.9.4>`
-- :doc:`Workshop and SDKcraft 0.9.3 <v0.9.3>`
-- :doc:`Workshop and SDKcraft 0.9.2 <v0.9.2>`
-- :doc:`Workshop and SDKcraft 0.9.1 <v0.9.1>`
+- :doc:`Workshop 0.9.4 <v0.9.4>`
+- :doc:`Workshop 0.9.3 <v0.9.3>`
+- :doc:`Workshop 0.9.2 <v0.9.2>`
+- :doc:`Workshop 0.9.1 <v0.9.1>`
 - :doc:`Workshop v0.9.0 <v0.9.0>`
 - `Workshop v0.1.30 <https://github.com/canonical/workshop/releases/tag/v0.1.30>`_
 - `SDKcraft 0.1.14 <https://github.com/canonical/sdkcraft/releases/tag/0.1.14>`_
