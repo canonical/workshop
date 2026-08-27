@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -352,7 +353,13 @@ func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, pr
 			continue
 		}
 		if err = meta.WaitExecution(ctx); err != nil {
-			logger.Debugf("cannot check %q bind-mounts: %v, findmnt output: %s", i.Name, err, errbuf.String())
+			// It's unsafe to access errbuf before the DataDone channel is closed.
+			var details string
+			if _, ok := errors.AsType[*workshop.ErrExec](err); ok {
+				details = ", findmnt output: " + errbuf.String()
+			}
+
+			logger.Debugf("cannot check %q bind-mounts: %v%s", i.Name, err, details)
 			continue
 		}
 
