@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"net/url"
@@ -28,15 +29,23 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
 	"github.com/canonical/lxd/shared/entity"
 
+	"github.com/canonical/workshop/internal/dirs"
+	"github.com/canonical/workshop/internal/fsfreeze"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
+)
+
+const (
+	freezeTimeout = 5 * time.Minute
+	thawTimeout   = 2 * time.Minute
 )
 
 var (
@@ -303,7 +312,8 @@ func (s *Backend) TakeSnapshot(ctx context.Context, name string, snapshot worksh
 	snapshotName := sdkSnapshotName(snapshot, digest)
 
 	// Disable cancellation, because the LXD operation will plow on regardless,
-	// and the lock is supposed to prevent concurrent import operations.
+	// and the lock is supposed to prevent concurrent import operations. We
+	// also want to avoid killing the fsfreeze process for VMs.
 	lockedCtx := context.WithoutCancel(ctx)
 	conn, snapshotConn, err := s.snapshotClients(lockedCtx)
 	if err != nil {
@@ -368,6 +378,24 @@ func (s *Backend) TakeSnapshot(ctx context.Context, name string, snapshot worksh
 	}
 	defer unlockSnapshot(snapshotName)
 
+	thawer := revert.New()
+	defer thawer.Fail()
+	var thaw io.Closer
+	var result <-chan error
+
+	running := inst.StatusCode == api.Running || inst.StatusCode == api.Ready
+	if running && inst.Type != string(api.InstanceTypeContainer) {
+		thaw, result, err = s.freezeFilesystems(conn, ctx, name)
+		if err != nil {
+			return err
+		}
+		thawer.Add(func() {
+			if err1 := thawFilesystems(thaw, result); err1 != nil {
+				logger.Noticef("On TakeSnapshot: %v", err1)
+			}
+		})
+	}
+
 	rev := revert.New()
 	defer rev.Fail()
 
@@ -398,12 +426,97 @@ func (s *Backend) TakeSnapshot(ctx context.Context, name string, snapshot worksh
 		}
 	})
 
+	thawer.Success()
+	if thaw != nil {
+		if err := thawFilesystems(thaw, result); err != nil {
+			return err
+		}
+	}
+
 	if err := s.commitPartialSnapshot(snapshotConn, snapshotName); err != nil {
 		return err
 	}
 
 	rev.Success()
 	return nil
+}
+
+// freezeFilesystems runs the fsfreeze facet of workshopctl inside the given
+// workshop. See fsfreeze.FreezeLocalFilesystems for details.
+func (s *Backend) freezeFilesystems(conn lxd.InstanceServer, ctx context.Context, name string) (io.Closer, <-chan error, error) {
+	rev := revert.New()
+	defer rev.Fail()
+
+	stdin, thaw := io.Pipe()
+	rev.Add(func() {
+		thaw.Close()
+	})
+
+	stdout := fsfreeze.NewReadyWriter()
+	var stderr strings.Builder
+	result := make(chan error, 1)
+
+	args := &workshop.Execution{
+		ExecArgs: workshop.ExecArgs{
+			Command: []string{dirs.FsFreezePath},
+			WorkDir: "/",
+		},
+		ExecControls: workshop.ExecControls{
+			Stdin:  stdin,
+			Stdout: stdout,
+			Stderr: &stderr,
+		},
+	}
+	exectx, err := s.execCommand(conn, ctx, name, args)
+	if err != nil {
+		stdin.Close()
+		return nil, nil, err
+	}
+
+	// The fsfreeze process has its own timeout. If we interrupt it we risk
+	// leaving filesystems frozen, but cancelling WaitExecution doesn't
+	// cancel the execution itself.
+	waitCtx, cancel := context.WithTimeout(context.Background(), freezeTimeout)
+	go func() {
+		defer stdin.Close()
+		defer cancel()
+		result <- exectx.WaitExecution(waitCtx)
+		close(result)
+	}()
+
+	select {
+	case <-stdout.Ready():
+		rev.Success()
+		return thaw, result, nil
+	case err := <-result:
+		// It's unsafe to access errbuf before the DataDone channel is closed.
+		if _, ok := errors.AsType[*workshop.ErrExec](err); ok {
+			if s := stderr.String(); s != "" {
+				logger.Noticef("On freezeFilesystems: fsfreeze reported %s", s)
+			} else {
+				logger.Noticef("On freezeFilesystems: fsfreeze exited unexpectedly")
+			}
+		}
+
+		if err == nil {
+			err = errors.New("fsfreeze never reported ready")
+		}
+		return nil, nil, err
+	}
+}
+
+func thawFilesystems(thaw io.Closer, result <-chan error) error {
+	thaw.Close()
+
+	waitCtx, cancel := context.WithTimeout(context.Background(), thawTimeout)
+	defer cancel()
+
+	select {
+	case err := <-result:
+		return err
+	case <-waitCtx.Done():
+		return waitCtx.Err()
+	}
 }
 
 func IsInstanceConflict(err error, name string) bool {
