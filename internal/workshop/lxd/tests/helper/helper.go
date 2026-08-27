@@ -31,6 +31,7 @@ import (
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/dirs"
+	"github.com/canonical/workshop/internal/fsfreeze"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/waitready"
 	"github.com/canonical/workshop/internal/workshop"
@@ -55,6 +56,14 @@ var defaultDevices = workshop.DefaultDevices
 func RunTestsOrWorkshopCtl(m *testing.M) int {
 	if waitready.IsWaitreadyInvocation() {
 		if err := waitready.WaitReady(); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\n", err)
+			return 1
+		}
+		return 0
+	}
+
+	if fsfreeze.IsFsfreezeInvocation() {
+		if err := fsfreeze.FreezeLocalFilesystems(os.Stdin, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %s\n", err)
 			return 1
 		}
