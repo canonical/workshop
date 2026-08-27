@@ -83,22 +83,30 @@ or :command:`git clone` if you don't host on GitHub.
 The choice that follows is how to fill the template in.
 
 
-With the `sdk-designer` skill
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+With the `design-sdk` skill
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`template-sdk <https://github.com/canonical/template-sdk>`_
-also ships an agentic skill named :samp:`sdk-designer`.
-The skill runs an interactive scaffolding conversation:
+`use-workshop-skill <https://github.com/canonical/use-workshop-skill>`_
+ships an agentic skill named :samp:`design-sdk`.
+The skill runs an interactive design conversation:
 it asks about the software to package,
-the target platforms,
-and which interfaces and hooks are needed,
-then writes the corresponding files into the template.
+how upstream distributes it,
+what must persist across refreshes,
+which network services and hardware it needs,
+and which bases and architectures to build for,
+then proposes a design
+and writes the corresponding files into the template
+once you approve it.
+
+#. Install the skill for your agent;
+   see :ref:`ref_ai_design_sdk_skill`.
 
 #. Aim the agent at the new repository.
 
-#. Run :samp:`/sdk-designer` and answer the prompts.
+#. Run :samp:`/design-sdk new <SOFTWARE>` and answer the prompts.
 
-#. Review the generated files
+#. Approve the proposed design,
+   then review the generated files
    and adjust where the skill's defaults don't match your case.
 
 
@@ -499,6 +507,7 @@ How-to guides:
 
 Reference:
 
+- :ref:`ref_ai_design_sdk_skill`
 - :ref:`ref_sdk_definition`
 - :ref:`ref_sdk_hooks`
 - :ref:`ref_sdk_parts`

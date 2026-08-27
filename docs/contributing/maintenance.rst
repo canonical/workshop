@@ -116,9 +116,17 @@ At every release, remember to:
   for an |sdk_markup| release,
   update the respective section in the same manner.
 
+  |ws_markup| and |sdk_markup| are versioned independently,
+  so name the |sdk_markup| version in its own heading.
+  When |sdk_markup| did not release alongside |ws_markup|,
+  carry its last released version forward,
+  mark the heading :samp:`### SDKcraft <VERSION> (unchanged)`,
+  and omit the |sdk_markup| line from the changelog footer.
+
 - Copy the release notes
   to the documentation under :file:`docs/release-notes/`
-  and update the latest version in :file:`docs/release-notes/index.rst`;
+  and update the latest version and the version table
+  in :file:`docs/release-notes/index.rst`;
   the recent version lists should contain versions from the last 6 months.
 
 - Refresh the

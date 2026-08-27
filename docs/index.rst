@@ -56,7 +56,7 @@ That's where |ws_markup| thrives.
 **Built for AI workflows**.
 |ws_markup| publishes :ref:`LLM-readable docs <ref_ai_discovery>`,
 and ships agentic skills for :ref:`operating workshops <ref_ai_use_workshop_skill>`
-and :ref:`scaffolding SDKs <ref_ai_sdk_designer_skill>`.
+and :ref:`designing SDKs <ref_ai_design_sdk_skill>`.
 
 ----
 
@@ -139,7 +139,7 @@ In this documentation
      - :ref:`Use with AI agents <how_use_workshops_with_ai_agents>` •
        :ref:`LLM-readable docs <ref_ai_discovery>` •
        :ref:`Workshop skill <ref_ai_use_workshop_skill>` •
-       :ref:`SDK designer skill <ref_ai_sdk_designer_skill>`
+       :ref:`SDK design skill <ref_ai_design_sdk_skill>`
 
    * - **Troubleshooting**
      - :ref:`Debug workshops <how_debug_issues_workshops>` •
