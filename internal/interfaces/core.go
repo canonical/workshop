@@ -260,3 +260,11 @@ const (
 	// SecurityLxdDevice creates LXD device configurations (mount, GPU, etc.)
 	SecurityLxdDevice SecuritySystem = "lxd-device"
 )
+
+// CompareByName compares two [Interface] values by their names,
+// returning a negative number when a sorts before b, zero when their names
+// are equal, and a positive number when a sorts after b. It is intended as
+// a comparison function for [slices.SortFunc] and friends.
+func CompareByName(a, b Interface) int {
+	return strings.Compare(a.Name(), b.Name())
+}

@@ -21,6 +21,7 @@ package builtin_test
 
 import (
 	"os/user"
+	"slices"
 
 	. "gopkg.in/check.v1"
 
@@ -50,6 +51,13 @@ func (s *AllSuite) TestRegisterIface(c *C) {
 
 	// Duplicates are detected.
 	c.Assert(func() { builtin.RegisterIface(iface) }, PanicMatches, `cannot register duplicate interface "foo"`)
+}
+
+// TestInterfacesSortedByName verifies that Interfaces returns the
+// built-in interfaces sorted by interface name, as documented.
+func (s *AllSuite) TestInterfacesSortedByName(c *C) {
+	sorted := slices.IsSortedFunc(builtin.Interfaces(), interfaces.CompareByName)
+	c.Check(sorted, Equals, true)
 }
 
 const testConsumerInvalidSlotNameYaml = `
