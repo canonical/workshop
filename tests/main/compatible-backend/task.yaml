@@ -1,7 +1,5 @@
 summary: Test workshopd checks LXD compatibility
 priority: -101
-debug: |
-  journalctl -xeu snap.workshop.workshopd.service
 execute: |
   . "$TESTSLIB"/utils.sh
 

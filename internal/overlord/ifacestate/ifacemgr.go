@@ -189,6 +189,17 @@ func (m *InterfaceManager) ensureBackendInit() error {
 		return fmt.Errorf("interface manager not ready: %w", err)
 	}
 
+	defer func() {
+		if m.backendReady {
+			return
+		}
+		for _, s := range m.repo.AllSdks() {
+			if reverr := m.repo.RemoveSdk(s.ProjectId, s.Workshop, s.Sdk); reverr != nil {
+				logger.Noticef("Cannot unregister %q SDK interfaces: %v", s.Sdk, reverr)
+			}
+		}
+	}()
+
 	workshopNames := make(map[string][]string)
 	for user, projects := range allprojects {
 
@@ -197,24 +208,24 @@ func (m *InterfaceManager) ensureBackendInit() error {
 			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 			workshops, err := m.backend.ProjectWorkshops(pctx)
 			if err != nil {
-				return fmt.Errorf("cannot load workshops from %q: %v", project.Path, err)
+				return fmt.Errorf("cannot load workshops from %q: %w", project.Path, err)
 			}
 			for _, workshop := range workshops {
 				workshopNames[project.ProjectId] = append(workshopNames[project.ProjectId], workshop.Name)
 
 				// Recreate the workshopctl mount for every workshop.
 				if err := m.recreateInternalMounts(pctx, workshop.Name); err != nil {
-					return fmt.Errorf("cannot create internal mounts for %q workshop: %v", workshop.Name, err)
+					return fmt.Errorf("cannot create internal mounts for %q workshop: %w", workshop.Name, err)
 				}
 
 				infos, err := workshop.SdkInfosByInstallOrder(pctx)
 				if err != nil {
-					return fmt.Errorf("cannot obtain the installed SDKs for %q workshop: %v", workshop.Name, err)
+					return fmt.Errorf("cannot obtain the installed SDKs for %q workshop: %w", workshop.Name, err)
 				}
 
 				for _, info := range infos {
 					if err = m.repo.AddSdk(info); err != nil {
-						return fmt.Errorf("cannot register %q SDK interfaces: %v", info.Name, err)
+						return fmt.Errorf("cannot register %q SDK interfaces: %w", info.Name, err)
 					}
 				}
 			}

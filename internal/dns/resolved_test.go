@@ -55,18 +55,32 @@ func (s *resolvedSuite) TearDownTest(c *check.C) {
 }
 
 func (s *resolvedSuite) TestConfigureOK(c *check.C) {
-	err := NewSystemdResolved().ConfigureDNS(context.Background(), s.iface, s.addrs, s.domain)
+	out, err := exec.Command("resolvectl", "dnssec", s.iface, "yes").Output()
+	c.Assert(err, check.IsNil, check.Commentf("%s", out))
+
+	out, err = exec.Command("resolvectl", "dnsovertls", s.iface, "yes").Output()
+	c.Assert(err, check.IsNil, check.Commentf("%s", out))
+
+	err = NewSystemdResolved().ConfigureDNS(context.Background(), s.iface, s.addrs, s.domain)
 	c.Assert(err, check.IsNil)
 
 	// Support for resolvectl status --json was added in systemd v259. For now
 	// we rely on textual output.
-	out, err := exec.Command("resolvectl", "dns", s.iface).Output()
+	out, err = exec.Command("resolvectl", "dns", s.iface).Output()
 	c.Assert(err, check.IsNil)
 	c.Check(string(out), check.Matches, `Link \d+ \(testbr0\): 10\.42\.42\.1\n`)
 
 	out, err = exec.Command("resolvectl", "domain", s.iface).Output()
 	c.Assert(err, check.IsNil)
 	c.Check(string(out), check.Matches, `Link \d+ \(testbr0\): ~test\n`)
+
+	out, err = exec.Command("resolvectl", "dnssec", s.iface).Output()
+	c.Assert(err, check.IsNil)
+	c.Check(string(out), check.Matches, `Link \d+ \(testbr0\): no\n`)
+
+	out, err = exec.Command("resolvectl", "dnsovertls", s.iface).Output()
+	c.Assert(err, check.IsNil)
+	c.Check(string(out), check.Matches, `Link \d+ \(testbr0\): no\n`)
 }
 
 func (s *resolvedSuite) TestInterfaceNotFound(c *check.C) {
