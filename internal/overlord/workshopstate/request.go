@@ -400,7 +400,9 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	addTaskSet(state.NewTaskSet(discard))
 
 	stop := st.NewTask("stop-workshop", fmt.Sprintf("Stop %q workshop", latest.File.Name))
-	stop.Set("force", true)
+	// Using force is fine for containers, but for VMs it can lead to (usually
+	// repairable) filesystem integrity issues, which are copied to the stash.
+	stop.Set("force", current.File.Confinement == workshop.ConfinementContainer)
 	addTaskSet(state.NewTaskSet(stop))
 
 	// Unmount SDKs and remove plugs and slots from interfaces repository.
