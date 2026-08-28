@@ -17,6 +17,7 @@ package lxdbackend_test
 import (
 	"testing"
 
+	"github.com/canonical/lxd/shared/api"
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/testutil"
@@ -133,4 +134,32 @@ func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
 
 	err = lxdbackend.CheckServerVersion("6.7.9")
 	c.Assert(err, check.ErrorMatches, `(?s).*LXD server version.*is not supported.*`)
+}
+
+func driverInfo(names ...string) []api.ServerStorageDriverInfo {
+	infos := make([]api.ServerStorageDriverInfo, 0, len(names))
+	for _, n := range names {
+		infos = append(infos, api.ServerStorageDriverInfo{Name: n})
+	}
+	return infos
+}
+
+// preferredDriver keeps ZFS whenever LXD reports it, and falls back to Btrfs
+// otherwise. Detection now trusts LXD's supported-drivers list (which LXD
+// builds by trying to load each driver's module) rather than probing modules.
+func (f *LxdBeTests) TestPreferredDriver(c *check.C) {
+	c.Check(lxdbackend.PreferredDriver(driverInfo("zfs", "btrfs", "dir")), check.Equals, "zfs")
+	c.Check(lxdbackend.PreferredDriver(driverInfo("btrfs", "zfs")), check.Equals, "zfs")
+
+	c.Check(lxdbackend.PreferredDriver(driverInfo("btrfs", "dir")), check.Equals, "btrfs")
+	c.Check(lxdbackend.PreferredDriver(driverInfo("dir")), check.Equals, "btrfs")
+	c.Check(lxdbackend.PreferredDriver(nil), check.Equals, "btrfs")
+}
+
+func (f *LxdBeTests) TestDriverSupported(c *check.C) {
+	supported := driverInfo("zfs", "btrfs")
+	c.Check(lxdbackend.DriverSupported(supported, "zfs"), check.Equals, true)
+	c.Check(lxdbackend.DriverSupported(supported, "btrfs"), check.Equals, true)
+	c.Check(lxdbackend.DriverSupported(supported, "lvm"), check.Equals, false)
+	c.Check(lxdbackend.DriverSupported(nil, "zfs"), check.Equals, false)
 }

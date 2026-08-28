@@ -183,8 +183,9 @@ Storage pools and drivers
 -------------------------
 
 |ws_markup| stores its containers and data on a storage pool.
-On Linux, |ws_markup| uses ZFS,
-while on Windows Subsystem for Linux it automatically uses Btrfs.
+It uses ZFS on systems where |ws_markup| detects that ZFS is available,
+and otherwise falls back to Btrfs
+(for example on Windows Subsystem for Linux).
 This approach consolidates container images, :program:`apt` caches, SDKs
 and other workshop content under a single system.
 

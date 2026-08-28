@@ -31,6 +31,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -69,7 +70,6 @@ const (
 
 var (
 	startCommandTimeout = 1 * time.Minute
-	storagePoolDriver   = "zfs"
 
 	workshopFormatsChecked = false
 )
@@ -78,10 +78,6 @@ var (
 var startCommand string
 
 func init() {
-	if osutil.IsWSL() {
-		storagePoolDriver = "btrfs"
-	}
-
 	// Order matters: capabilities (version and storage) must be validated
 	// before ensureBackendReady attempts to create the storage pool and
 	// network. Registering it as a check also lets the daemon recover after
@@ -164,19 +160,77 @@ func checkVersion(version string) error {
 	return nil
 }
 
-func checkStorageDriver(drivers []api.ServerStorageDriverInfo) error {
-	hasDriver := func(driver api.ServerStorageDriverInfo) bool {
-		return driver.Name == storagePoolDriver
+// driverSupported reports whether LXD lists the named storage driver as
+// supported. LXD builds this list by attempting to load each driver's kernel
+// module (e.g. modprobe zfs), so it reflects what the host can actually back.
+func driverSupported(supported []api.ServerStorageDriverInfo, name string) bool {
+	return slices.ContainsFunc(supported, func(d api.ServerStorageDriverInfo) bool {
+		return d.Name == name
+	})
+}
+
+// preferredDriver picks the driver for a new workshop pool: ZFS when LXD
+// reports it as supported, otherwise Btrfs.
+func preferredDriver(supported []api.ServerStorageDriverInfo) string {
+	if driverSupported(supported, "zfs") {
+		return "zfs"
 	}
-	if slices.ContainsFunc(drivers, hasDriver) {
+	return "btrfs"
+}
+
+// poolDriverCache stores the driver of the workshop storage pool once known.
+// ensureBackendReady records it, and pool operations reuse it instead of
+// re-querying LXD (which reloads the driver's module). The pool's driver is
+// fixed at creation, so the cached value stays accurate for the daemon's run.
+var poolDriverCache struct {
+	sync.RWMutex
+	value string
+}
+
+func setPoolDriver(driver string) {
+	poolDriverCache.Lock()
+	poolDriverCache.value = driver
+	poolDriverCache.Unlock()
+}
+
+func getPoolDriver() string {
+	poolDriverCache.RLock()
+	defer poolDriverCache.RUnlock()
+	return poolDriverCache.value
+}
+
+// poolUsesZFS reports whether the workshop storage pool is backed by ZFS. It
+// reuses the driver recorded by ensureBackendReady, falling back to querying
+// LXD if it hasn't been recorded yet.
+func poolUsesZFS(conn lxd.InstanceServer) (bool, error) {
+	driver := getPoolDriver()
+	if driver == "" {
+		pool, _, err := conn.GetStoragePool(storagePool)
+		if err != nil {
+			return false, err
+		}
+		driver = pool.Driver
+		setPoolDriver(driver)
+	}
+	return driver == "zfs", nil
+}
+
+// checkStoragePool verifies the workshop storage pool is usable. When the pool
+// exists but cannot be loaded, most likely because its storage driver's kernel
+// module is gone (e.g. a ZFS pool after booting a kernel without the ZFS
+// module), it returns an actionable error that puts the daemon into degraded
+// mode. A missing pool is not an error here: ensureBackendReady creates it.
+func checkStoragePool(conn lxd.InstanceServer) error {
+	_, _, err := conn.GetStoragePool(storagePool)
+	if err == nil {
 		return nil
 	}
+	if !api.StatusErrorCheck(err, http.StatusNotFound) {
+		return fmt.Errorf(`cannot use the %q storage pool, its storage driver may be unavailable (for example a ZFS pool after booting a kernel without the ZFS module): %w
+Boot into a kernel that provides the pool's storage driver, or reinstall Workshop to recreate the pool on an available driver`, storagePool, err)
+	}
 
-	// The LXD error message when creating a pool is:
-	//  Error: Error loading "zfs" module: Failed to run: modprobe -b zfs:
-	//  exit status 1 (modprobe: FATAL: Module zfs not found ...)
-	// We keep the first part for consistency, the rest doesn't add much.
-	return fmt.Errorf(`suitable storage backend not found: error loading %q module`, storagePoolDriver)
+	return nil
 }
 
 // checkStorageSpace puts the daemon into degraded mode when the workshop
@@ -238,7 +292,7 @@ func checkServerCapabilities() error {
 		return err
 	}
 
-	return checkStorageDriver(info.Environment.StorageSupportedDrivers)
+	return checkStoragePool(conn)
 }
 
 func checkWorkshopFormats() error {
@@ -296,15 +350,20 @@ func ensureBackendReady() error {
 	}
 	defer conn.Disconnect()
 
-	// Create LXD storage pool if it doesn't exist.
-	pools, err := conn.GetStoragePools()
-	if err != nil {
-		return err
-	}
-	if idx := slices.IndexFunc(pools, func(p api.StoragePool) bool { return p.Name == storagePool }); idx < 0 {
+	// Create the LXD storage pool if it doesn't exist, and record its driver so
+	// pool operations can reuse it. A missing pool returns a 404; any other
+	// error (e.g. a ZFS pool whose module is gone) is left for checkStoragePool
+	// to report as a degraded state.
+	existingPool, _, err := conn.GetStoragePool(storagePool)
+	if api.StatusErrorCheck(err, http.StatusNotFound) {
+		info, _, err := conn.GetServer()
+		if err != nil {
+			return err
+		}
+		driver := preferredDriver(info.Environment.StorageSupportedDrivers)
 		req := api.StoragePoolsPost{
 			Name:   storagePool,
-			Driver: storagePoolDriver,
+			Driver: driver,
 		}
 		op, err := conn.CreateStoragePool(req)
 		if err != nil {
@@ -313,6 +372,7 @@ func ensureBackendReady() error {
 		if err := op.Wait(); err != nil {
 			return err
 		}
+		setPoolDriver(driver)
 
 		// Ensure the new pool has enough total space available.
 		pool, etag, err := conn.GetStoragePool(storagePool)
@@ -343,8 +403,10 @@ func ensureBackendReady() error {
 
 			logger.Noticef("On ensureBackendReady: set storage pool to the minimal size: %dGiB", storagePoolMinimalGiB)
 		}
-	} else if pools[idx].Driver != storagePoolDriver {
-		return fmt.Errorf("storage pool %q already exists with a different driver: %q (expected %q)", storagePool, pools[idx].Driver, storagePoolDriver)
+	} else if err != nil {
+		return err
+	} else {
+		setPoolDriver(existingPool.Driver)
 	}
 
 	network, etag, err := conn.GetNetwork(networkName)

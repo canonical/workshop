@@ -258,8 +258,9 @@ used for temporary storage during workshop rebuild operations.
 Storage backends
 ~~~~~~~~~~~~~~~~
 
-|ws_markup| uses ZFS for storage on Linux,
-with automatic Btrfs fallback on Windows Subsystem for Linux (WSL).
+|ws_markup| uses ZFS for storage where it detects that ZFS is available,
+with automatic Btrfs fallback otherwise,
+for example on Windows Subsystem for Linux (WSL).
 Storage is managed via LXD and requires a minimum pool size of 5 GiB.
 
 The storage backend manages container root filesystems, workshop-specific data volumes,

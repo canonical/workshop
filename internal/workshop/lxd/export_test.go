@@ -23,6 +23,8 @@ var (
 	HandleImageUpdate  = handleImageUpdate
 	CheckServerVersion = checkVersion
 	GenerateCNAME      = generateCNAME
+	PreferredDriver    = preferredDriver
+	DriverSupported    = driverSupported
 )
 
 func MockFirewallChecker(f func(string) string) func() {
