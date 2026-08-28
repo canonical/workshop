@@ -256,7 +256,11 @@ func v1GetConnections(c *Command, r *http.Request, _ *userState) Response {
 	onlyConnected := qselect == ""
 
 	if workshop != "" {
-		if err := checkWorkshopExists(r.Context(), c.d.overlord.WorkshopManager(), projectId, workshop); err != nil {
+		st := c.d.overlord.State()
+		st.Lock()
+		err := checkWorkshopExists(r.Context(), c.d.overlord.WorkshopManager(), projectId, workshop)
+		st.Unlock()
+		if err != nil {
 			return statusNotFound("cannot access %q workshop: %w", workshop, err)
 		}
 	}

@@ -680,8 +680,14 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 		return err
 	}
 
-	if err := s.awaitReadyEvent(conn, ctx, name); err != nil {
+	waited, err := s.legacyWaitready(conn, ctx, name)
+	if err != nil {
 		return err
+	}
+	if !waited {
+		if err := s.awaitReadyEvent(conn, ctx, name); err != nil {
+			return err
+		}
 	}
 
 	// Workshop started, enable autostart.
@@ -695,6 +701,62 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 
 	rev.Success()
 	return nil
+}
+
+func (s *Backend) legacyWaitready(conn lxd.InstanceServer, ctx context.Context, name string) (bool, error) {
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return false, fmt.Errorf("context key project-id not found")
+	}
+
+	inst, _, err := conn.GetInstance(InstanceName(name, projectId))
+	if err != nil {
+		return false, err
+	}
+
+	if inst.Config["user.workshop.format-revision"] != "" {
+		format, err := sdk.ParseRevision(inst.Config["user.workshop.format-revision"])
+		if err != nil {
+			return false, err
+		}
+		if format.N >= 11 {
+			return false, nil
+		}
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	args := workshop.Execution{
+		ExecArgs: workshop.ExecArgs{
+			Command: []string{"systemctl", "is-system-running", "--wait"},
+			WorkDir: "/",
+			Timeout: waitready.Timeout,
+		},
+		ExecControls: workshop.ExecControls{
+			Stdout: &stdout,
+			Stderr: &stderr,
+		},
+	}
+
+	exectx, err := s.execCommand(conn, ctx, name, &args)
+	if err != nil {
+		return false, err
+	}
+
+	if err := exectx.WaitExecution(ctx); err != nil {
+		if _, ok := errors.AsType[*workshop.ErrExec](err); ok {
+			if strings.TrimSpace(stdout.String()) == "degraded" {
+				return true, nil
+			}
+			message := strings.TrimSpace(stderr.String())
+			if message == "" {
+				return false, err
+			}
+			return false, errors.New(message)
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, name string) error {
