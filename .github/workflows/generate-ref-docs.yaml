@@ -1,0 +1,50 @@
+name: Generate CLI Reference Docs
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  generate-ref-docs:
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on:
+      - self-hosted
+      - Linux
+      - noble
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.26"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+
+      - name: Generate CLI reference docs
+        run: |
+          go run ./cmd/sdk generate-docs ./docs/reference/cli
+          go run ./cmd/workshop generate-docs ./docs/reference/cli
+
+      - name: Check for changes, commit, and create PR if any
+        run: |
+          if git diff --exit-code; then
+            echo "No changes detected, skipping commit and PR creation."
+          else
+            pr_branch="docs/reference-cli-$(date +'%Y%m%d%H%M%S')"
+            git checkout -b $pr_branch
+
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+            git add .
+            git commit -m "Update CLI reference docs"
+            git push --set-upstream origin $pr_branch
+
+            gh pr create --title "Update CLI reference docs" --body "This PR updates the generated CLI reference documentation." --base main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
