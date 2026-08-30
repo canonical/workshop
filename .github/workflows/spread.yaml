@@ -1,9 +1,14 @@
 name: Workshop end-to-end tests
 on:
   workflow_call:
+    inputs:
+      lxd_channel:
+        description: LXD snap channel to use
+        type: string
+        default: 6/stable
     secrets:
       STORE_CREDENTIALS:
-        required: true
+        required: false
       SDKCRAFT_STORE_CREDENTIALS:
         required: true
   workflow_dispatch:
@@ -111,7 +116,7 @@ jobs:
       - name: Install LXD
         uses: canonical/setup-lxd@8c6a87bfb56aa48f3fb9b830baa18562d8bfd4ee # v1
         with:
-          channel: 6/stable
+          channel: ${{ inputs.lxd_channel || '6/stable' }}
       - name: Cleanup job workspace
         run: |
           rm -rf "${{ github.workspace }}"
@@ -144,6 +149,7 @@ jobs:
       - name: Run spread
         env:
           SUITE_PATHS: ${{ matrix.suite.paths }}
+          LXD_CHANNEL: ${{ inputs.lxd_channel || '6/stable' }}
         run: |
           mkdir ${{ github.workspace }}.cover
           read -r -a suite_paths <<< "$SUITE_PATHS"
