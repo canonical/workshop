@@ -15,8 +15,11 @@
 package builtin
 
 import (
+	"errors"
+
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/sdk"
+	systemsdk "github.com/canonical/workshop/internal/sdk/system"
 )
 
 // secretInterface is the built-in interface for routing secrets from
@@ -63,6 +66,17 @@ const secretSummary = `allows SDKs to consume secrets from the host keyring`
 // explicit user decision.
 func (secretInterface) AutoConnect(_ *sdk.PlugInfo, _ *sdk.SlotInfo) bool {
 	return true
+}
+
+// BeforePrepareSlot validates and normalizes the host keyring lookup details
+// declared by a secret slot.
+func (secretInterface) BeforePrepareSlot(slot *sdk.SlotInfo) error {
+	if slot.Sdk.Type != sdk.System {
+		return errors.New(
+			"secret interface slots are only supported by the system SDK")
+	}
+
+	return systemsdk.BeforePrepareSlot(slot)
 }
 
 func init() {

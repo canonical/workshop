@@ -20,6 +20,7 @@ import (
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/interfaces"
+	"github.com/canonical/workshop/internal/sdk"
 )
 
 // secretSuite tests the behaviour of the built-in secret interface.
@@ -56,4 +57,39 @@ func (s *secretSuite) TestInterfaces(c *check.C) {
 func (s *secretSuite) TestName(c *check.C) {
 	iface := secretInterface{}
 	c.Check(iface.Name(), check.Equals, "secret")
+}
+
+// TestBeforePrepareSlotDelegatesToSystemSdk checks that the builtin interface
+// routes slot preparation through the system SDK implementation, including
+// normalization performed there.
+func (s *secretSuite) TestBeforePrepareSlotDelegatesToSystemSdk(c *check.C) {
+	slot := secretSlot(map[string]any{
+		"attributes": map[string]any{
+			"service":  "github",
+			"username": "tlm",
+		},
+	})
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Assert(err, check.IsNil)
+	c.Check(slot.Attrs["collection"], check.Equals, "default")
+}
+
+// TestBeforePrepareSlotRejectsUnsupportedProvider checks that the builtin
+// interface only routes secret slots owned by the system SDK.
+func (s *secretSuite) TestBeforePrepareSlotRejectsUnsupportedProvider(c *check.C) {
+	slot := secretSlot(nil)
+	slot.Sdk = &sdk.Info{Name: "producer", Type: sdk.Regular}
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Check(err, check.ErrorMatches, `secret interface slots are only supported by the system SDK`)
+}
+
+func secretSlot(attrs map[string]any) *sdk.SlotInfo {
+	return &sdk.SlotInfo{
+		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+		Name:      "secret",
+		Interface: "secret",
+		Attrs:     attrs,
+	}
 }
