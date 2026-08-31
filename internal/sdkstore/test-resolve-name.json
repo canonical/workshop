@@ -8,12 +8,12 @@
       "id": "x2hQwbuopxeELn5p1G9h3b9ZB3XM0JeG",
       "result": {
         "channel": {
-          "name": "edge",
+          "name": "latest/edge",
           "released-at": "2026-04-15T03:46:16.565275Z",
-          "track": "",
+          "track": "latest",
           "risk": "edge",
           "branch": "",
-          "effective-channel": "edge",
+          "effective-channel": "latest/edge",
           "platform": {
             "name": "ubuntu",
             "channel": "22.04",
