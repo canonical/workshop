@@ -551,10 +551,11 @@ func (s *apiSuite) TestGetWorkshops(c *check.C) {
 	info := rsp.Result.(Workshops)
 
 	c.Check(info.Workshops, testutil.DeepUnsortedMatches, []*WorkshopInfo{{
-		Name:      "manysdks",
-		Base:      "ubuntu@24.04",
-		ProjectId: s.project.ProjectId,
-		Status:    "Ready",
+		Name:        "manysdks",
+		Base:        "ubuntu@24.04",
+		Confinement: "container",
+		ProjectId:   s.project.ProjectId,
+		Status:      "Ready",
 		Sdks: []*SdkInfo{
 			{
 				Name:        "system",
@@ -569,10 +570,11 @@ func (s *apiSuite) TestGetWorkshops(c *check.C) {
 			},
 		},
 	}, {
-		Name:      "basic",
-		Base:      "ubuntu@22.04",
-		ProjectId: s.project.ProjectId,
-		Status:    "Ready",
+		Name:        "basic",
+		Base:        "ubuntu@22.04",
+		Confinement: "container",
+		ProjectId:   s.project.ProjectId,
+		Status:      "Ready",
 		Sdks: []*SdkInfo{{
 			Name:        "system",
 			Revision:    system.SystemSdkRevision.String(),
@@ -672,11 +674,12 @@ func (s *apiSuite) TestGetWorkshopInfo(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(result, check.DeepEquals, Workshop{
 		WorkshopInfo: WorkshopInfo{
-			Name:      "tunnels",
-			Base:      "ubuntu@22.04",
-			ProjectId: s.project.ProjectId,
-			Status:    "Ready",
-			Notes:     nil,
+			Name:        "tunnels",
+			Base:        "ubuntu@22.04",
+			Confinement: "container",
+			ProjectId:   s.project.ProjectId,
+			Status:      "Ready",
+			Notes:       nil,
 			Sdks: []*SdkInfo{
 				{
 					Name:        "system",
@@ -824,11 +827,12 @@ func (s *apiSuite) TestGetWorkshopInfoSomePlugsBound(c *check.C) {
 	}
 	c.Check(result, check.DeepEquals, Workshop{
 		WorkshopInfo: WorkshopInfo{
-			Name:      "somebound",
-			Base:      "ubuntu@22.04",
-			ProjectId: s.project.ProjectId,
-			Status:    "Ready",
-			Notes:     nil,
+			Name:        "somebound",
+			Base:        "ubuntu@22.04",
+			Confinement: "container",
+			ProjectId:   s.project.ProjectId,
+			Status:      "Ready",
+			Notes:       nil,
 			Sdks: []*SdkInfo{
 				{
 					Name:        "mount-conflict",
