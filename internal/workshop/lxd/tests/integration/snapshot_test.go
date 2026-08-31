@@ -310,24 +310,38 @@ func (s *snapshotSuite) snapshotFormat(c *check.C, snapshot workshop.Snapshot) a
 	return inst
 }
 
+func (s *snapshotSuite) TestLxdBackendSnapshotDiffContainer20(c *check.C) {
+	s.snapshotDiff(c, "ubuntu@20.04", workshop.ConfinementContainer)
+}
+func (s *snapshotSuite) TestLxdBackendSnapshotDiffContainer22(c *check.C) {
+	s.snapshotDiff(c, "ubuntu@22.04", workshop.ConfinementContainer)
+}
+func (s *snapshotSuite) TestLxdBackendSnapshotDiffContainer24(c *check.C) {
+	s.snapshotDiff(c, "ubuntu@24.04", workshop.ConfinementContainer)
+}
+func (s *snapshotSuite) TestLxdBackendSnapshotDiffContainer26(c *check.C) {
+	s.snapshotDiff(c, "ubuntu@26.04", workshop.ConfinementContainer)
+}
+func (s *snapshotSuite) TestLxdBackendSnapshotDiffVM20(c *check.C) {
+	s.snapshotDiff(c, "ubuntu@20.04", workshop.ConfinementVirtualMachine)
+}
+func (s *snapshotSuite) TestLxdBackendSnapshotDiffVM22(c *check.C) {
+	s.snapshotDiff(c, "ubuntu@22.04", workshop.ConfinementVirtualMachine)
+}
+func (s *snapshotSuite) TestLxdBackendSnapshotDiffVM24(c *check.C) {
+	s.snapshotDiff(c, "ubuntu@24.04", workshop.ConfinementVirtualMachine)
+}
+func (s *snapshotSuite) TestLxdBackendSnapshotDiffVM26(c *check.C) {
+	s.snapshotDiff(c, "ubuntu@26.04", workshop.ConfinementVirtualMachine)
+}
+
 // Launches 2 workshops from scratch and another from a snapshot of the first,
 // then checks that the third workshop is indistinguishable from the other two.
-func (s *snapshotSuite) TestLxdBackendSnapshotDiff(c *check.C) {
+func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement workshop.Confinement) {
 	if os.Geteuid() != 0 {
 		c.Skip("requires root to mount and compare workshop filesystems")
 	}
 
-	for _, confinement := range []workshop.Confinement{workshop.ConfinementContainer, workshop.ConfinementVirtualMachine} {
-		kind, err := confinement.MarshalText()
-		c.Assert(err, check.IsNil)
-		for _, base := range workshop.SupportedBases {
-			c.Logf("Testing snapshot integrity for %s %ss", base, kind)
-			s.snapshotDiff(c, base, confinement)
-		}
-	}
-}
-
-func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement workshop.Confinement) {
 	// Download base image.
 	image, err := s.bd.GetBase(s.ctx, base, confinement)
 	c.Assert(err, check.IsNil)
