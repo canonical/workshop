@@ -154,6 +154,7 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 		fmt.Fprintf(w, "hostname:\t%s\n", workshop.Hostname)
 	}
 	fmt.Fprintf(w, "status:\t%s\n", strings.ToLower(workshop.Status))
+	fmt.Fprintf(w, "confinement:\t%s\n", workshop.Confinement)
 
 	// get the workshop notes
 	notes := workshop.Notes

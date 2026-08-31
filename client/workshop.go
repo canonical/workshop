@@ -71,13 +71,14 @@ type Workshops struct {
 }
 
 type WorkshopInfo struct {
-	ProjectId string   `json:"project-id"`
-	Name      string   `json:"name"`
-	Base      string   `json:"base"`
-	Status    string   `json:"status"`
-	Sdks      []*Sdk   `json:"sdks,omitempty"`
-	Hostname  string   `json:"hostname,omitempty"`
-	Notes     []string `json:"notes,omitempty"`
+	ProjectId   string   `json:"project-id"`
+	Name        string   `json:"name"`
+	Base        string   `json:"base"`
+	Confinement string   `json:"confinement"`
+	Status      string   `json:"status"`
+	Sdks        []*Sdk   `json:"sdks,omitempty"`
+	Hostname    string   `json:"hostname,omitempty"`
+	Notes       []string `json:"notes,omitempty"`
 }
 
 type WorkshopFile struct {
