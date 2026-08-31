@@ -1,4 +1,7 @@
 summary: Ensure that launch for multiple workshops works correctly
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove ws-one ws-two ws-three
 execute: |
   . "$TESTSLIB"/utils.sh
 
@@ -8,4 +11,7 @@ execute: |
   workshop_exec list | MATCH "ws-two[[:space:]]*Ready[[:space:]]*-"
   workshop_exec list | MATCH "ws-three[[:space:]]*Ready[[:space:]]*-"
 
-  workshop_exec remove ws-one ws-two ws-three
+  # ensure workshops can resolve each other by name
+  mkdir -p srv/qwertyuiop
+  workshop_exec exec ws-one -- systemd-run --user --working-directory=/project/srv -- python3 -m http.server 8877
+  workshop_exec exec ws-two -- curl http://ws-one:8877 | MATCH qwertyuiop
