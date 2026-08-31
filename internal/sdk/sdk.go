@@ -438,12 +438,6 @@ func (e *AttributeNotFoundError) Error() string {
 
 }
 
-// CompareByName compares the slot's name with another slot's name. It is
-// useful for ordering slots by name.
-func (slot *SlotInfo) CompareByName(other *SlotInfo) int {
-	return strings.Compare(slot.Name, other.Name)
-}
-
 func (slot *SlotInfo) Attr(key string, val any) error {
 	v, ok := slot.Lookup(key)
 	if !ok {
