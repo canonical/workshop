@@ -123,6 +123,10 @@ func (w *WorkshopManager) Workshop(ctx context.Context, name, pId string) (*work
 		return nil, err
 	}
 
+	if w.FormatRevision().N >= 11 && workshop.Format.N < 11 {
+		w.state.Warnf("%q workshop needs to be refreshed; a future Workshop release will drop support for starting it", name)
+	}
+
 	return workshop, nil
 }
 
@@ -174,6 +178,12 @@ func (w *WorkshopManager) Workshops(ctx context.Context, pId string) ([]*worksho
 	workshops, err := w.backend.ProjectWorkshops(pCtx)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, workshop := range workshops {
+		if w.FormatRevision().N >= 11 && workshop.Format.N < 11 {
+			w.state.Warnf("%q workshop needs to be refreshed; a future Workshop release will drop support for starting it", workshop.Name)
+		}
 	}
 
 	return workshops, nil

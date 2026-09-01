@@ -106,13 +106,14 @@ type Workshops struct {
 }
 
 type WorkshopInfo struct {
-	ProjectId string     `json:"project-id"`
-	Name      string     `json:"name"`
-	Base      string     `json:"base"`
-	Status    string     `json:"status"`
-	Sdks      []*SdkInfo `json:"sdks,omitempty"`
-	Hostname  string     `json:"hostname,omitempty"`
-	Notes     []string   `json:"notes,omitempty"`
+	ProjectId   string     `json:"project-id"`
+	Name        string     `json:"name"`
+	Base        string     `json:"base"`
+	Confinement string     `json:"confinement"`
+	Status      string     `json:"status"`
+	Sdks        []*SdkInfo `json:"sdks,omitempty"`
+	Hostname    string     `json:"hostname,omitempty"`
+	Notes       []string   `json:"notes,omitempty"`
 }
 
 type WorkshopFileInfo struct {
@@ -202,6 +203,12 @@ func workshopToInfo(username string, w *workshop.Workshop, health healthstate.He
 	info.ProjectId = w.Project.ProjectId
 	info.Base = w.File.Base
 
+	confinement, err := w.File.Confinement.MarshalText()
+	if err != nil {
+		return nil, err
+	}
+	info.Confinement = string(confinement)
+
 	sdkSetups := w.SdksByInstallOrder()
 
 	usr, env, err := osutil.UserAndEnv(username)
@@ -254,6 +261,12 @@ func workshopToInfoFull(ctx context.Context, username string, w *workshop.Worksh
 	info.Name = w.Name
 	info.ProjectId = w.Project.ProjectId
 	info.Base = w.File.Base
+
+	confinement, err := w.File.Confinement.MarshalText()
+	if err != nil {
+		return nil, err
+	}
+	info.Confinement = string(confinement)
 
 	sdks, err := w.SdkInfosByInstallOrder(ctx)
 	if err != nil {

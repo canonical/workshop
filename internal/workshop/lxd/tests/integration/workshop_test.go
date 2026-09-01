@@ -42,6 +42,7 @@ import (
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/syscheck"
 	"github.com/canonical/workshop/internal/testutil"
+	"github.com/canonical/workshop/internal/waitready"
 	"github.com/canonical/workshop/internal/workshop"
 	lxdbackend "github.com/canonical/workshop/internal/workshop/lxd"
 	"github.com/canonical/workshop/internal/workshop/lxd/tests/helper"
@@ -77,7 +78,7 @@ func (f *wsOps) SetUpSuite(c *check.C) {
 	c.Assert(os.Mkdir(f.project.Path, os.ModePerm), check.IsNil)
 	f.ctx = helper.CreateTestContext(f.usr.Username, "42424242")
 
-	f.restoreDevices = workshop.FakeDefaultDevices(helper.DefaultTestDevices)
+	f.restoreDevices = workshop.FakeDefaultDevices(helper.TestDevices)
 	f.restoreImageServer = lxdbackend.FakeImageServer(helper.MinimalImageServer)
 	f.restoreUserLookup = osutil.FakeUserLookup(func(name string) (*user.User, error) {
 		return f.usr, nil
@@ -154,11 +155,11 @@ func (f *wsOps) TestLxdBackendWorkshopStashUnstash(c *check.C) {
 		Name: "test",
 		Base: "ubuntu@22.04",
 	}
-	image, err := f.bd.GetBase(f.ctx, wf.Base)
+	image, err := f.bd.GetBase(f.ctx, wf.Base, workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Assert(err, check.IsNil)
-	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, image.Fingerprint)
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.ConfinementContainer, image.Fingerprint)
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -531,9 +532,10 @@ func (f *wsOps) TestLxdBackendDownloadBase(c *check.C) {
 	// ensure there is no image in LXD storage
 	f.deleteImages(c, "ubuntu@22.04")
 
-	image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04")
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04", workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	c.Check(image.Name, check.Equals, "ubuntu@22.04")
+	c.Check(image.Confinement, check.Equals, workshop.ConfinementContainer)
 	c.Assert(image.Fingerprint, check.Not(check.Equals), "")
 
 	var wg sync.WaitGroup
@@ -561,30 +563,30 @@ func (f *wsOps) TestLxdBackendDownloadBase(c *check.C) {
 }
 
 func (f *wsOps) TestLxdBackendGetOrDownloadMalformedBase(c *check.C) {
-	image := workshop.BaseImage{Name: "ubuntu:24.04", Fingerprint: ""}
-	_, err := f.bd.GetBase(f.ctx, image.Name)
+	image := workshop.BaseImage{Name: "ubuntu:24.04", Confinement: workshop.ConfinementContainer, Fingerprint: ""}
+	_, err := f.bd.GetBase(f.ctx, image.Name, workshop.ConfinementContainer)
 	c.Check(err, check.ErrorMatches, `invalid base "ubuntu:24.04" \(expected <NAME>@<VERSION>\)`)
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Check(err, check.ErrorMatches, `invalid base "ubuntu:24.04" \(expected <NAME>@<VERSION>\)`)
 
 	image.Name = "ubuntu@"
-	_, err = f.bd.GetBase(f.ctx, image.Name)
+	_, err = f.bd.GetBase(f.ctx, image.Name, workshop.ConfinementContainer)
 	c.Check(err, check.ErrorMatches, `invalid base "ubuntu@" \(expected <NAME>@<VERSION>\)`)
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Check(err, check.ErrorMatches, `invalid base "ubuntu@" \(expected <NAME>@<VERSION>\)`)
 
 	image.Name = "canonical@ubuntu@24.04"
-	_, err = f.bd.GetBase(f.ctx, image.Name)
+	_, err = f.bd.GetBase(f.ctx, image.Name, workshop.ConfinementContainer)
 	c.Check(err, check.ErrorMatches, `invalid base "canonical@ubuntu@24.04" \(expected <NAME>@<VERSION>\)`)
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Check(err, check.ErrorMatches, `invalid base "canonical@ubuntu@24.04" \(expected <NAME>@<VERSION>\)`)
 }
 
 func (f *wsOps) TestLxdBackendDownloadBaseImageNotFound(c *check.C) {
-	_, err := f.bd.GetBase(f.ctx, "ubuntu@1.01")
+	_, err := f.bd.GetBase(f.ctx, "ubuntu@1.01", workshop.ConfinementContainer)
 	c.Check(err, check.ErrorMatches, `base "ubuntu@1.01" not found.*`)
 
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "##################"}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "##################"}
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Check(err, check.ErrorMatches, `"ubuntu@22.04" download failed.*`)
 }
@@ -592,15 +594,15 @@ func (f *wsOps) TestLxdBackendDownloadBaseImageNotFound(c *check.C) {
 func (f *wsOps) TestLxdBackendDownloadProtocolNotSupported(c *check.C) {
 	defer lxdbackend.FakeImageServer("https://cloud-images.ubuntu.com/minimal/releases")()
 
-	image := workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: ""}
-	_, err := f.bd.GetBase(f.ctx, image.Name)
+	image := workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: ""}
+	_, err := f.bd.GetBase(f.ctx, image.Name, workshop.ConfinementContainer)
 	c.Check(err, check.ErrorMatches, `unknown image server URL prefix \(supported: simplestreams, lxd\)`)
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Check(err, check.ErrorMatches, `unknown image server URL prefix \(supported: simplestreams, lxd\)`)
 }
 
 func (f *wsOps) TestLxdBackendDownloadConcurrentErrors(c *check.C) {
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "##################"}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "##################"}
 
 	var wg sync.WaitGroup
 	for range 5 {
@@ -616,9 +618,10 @@ func (f *wsOps) TestLxdBackendDownloadBaseResumeAfterCancellation(c *check.C) {
 	// ensure there is no image in LXD storage
 	f.deleteImages(c, "ubuntu@22.04")
 
-	image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04")
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04", workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	c.Check(image.Name, check.Equals, "ubuntu@22.04")
+	c.Check(image.Confinement, check.Equals, workshop.ConfinementContainer)
 	c.Assert(image.Fingerprint, check.Not(check.Equals), "")
 
 	wcancel, cancel := context.WithCancel(f.ctx)
@@ -663,9 +666,10 @@ func (f *wsOps) TestLxdBackendDownloadMultipleBasesConcurrently(c *check.C) {
 	var wg sync.WaitGroup
 	for i, b := range workshop.SupportedBases {
 		wg.Go(func() {
-			image, err := f.bd.GetBase(f.ctx, b)
+			image, err := f.bd.GetBase(f.ctx, b, workshop.ConfinementContainer)
 			c.Assert(err, check.IsNil)
 			c.Check(image.Name, check.Equals, b)
+			c.Check(image.Confinement, check.Equals, workshop.ConfinementContainer)
 			c.Assert(image.Fingerprint, check.Not(check.Equals), "")
 			fingerprints[i] = image.Fingerprint
 
@@ -703,9 +707,10 @@ func (f *wsOps) TestLxdBackendReuseDownloadedBase(c *check.C) {
 		images := f.listAllImages(c, "ubuntu@22.04")
 		c.Assert(images, check.HasLen, 0)
 
-		image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04")
+		image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04", workshop.ConfinementContainer)
 		c.Assert(err, check.IsNil)
 		c.Check(image.Name, check.Equals, "ubuntu@22.04")
+		c.Check(image.Confinement, check.Equals, workshop.ConfinementContainer)
 		c.Assert(image.Fingerprint, check.Not(check.Equals), "")
 		err = f.bd.DownloadBase(f.ctx, image, nil)
 		c.Assert(err, check.IsNil)
@@ -766,7 +771,7 @@ func (f *wsOps) TestLxdBackendReuseCachedBase(c *check.C) {
 	c.Check(ok, check.Equals, false)
 	c.Check(imageCached.UpdateSource, check.NotNil)
 
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: imageCached.Fingerprint}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: imageCached.Fingerprint}
 	err := f.bd.DownloadBase(f.ctx, image, nil)
 	c.Assert(err, check.IsNil)
 
@@ -791,13 +796,18 @@ func (f *wsOps) TestLxdBackendWorkshopStartFailed(c *check.C) {
 	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
 	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
 
-	err := f.bd.StopWorkshop(f.ctx, "test", true)
+	// Disable the waitready service, so start will time out.
+	fs, err := f.bd.WorkshopFs(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	err = fs.Remove("/etc/systemd/system/multi-user.target.wants/workshop-waitready.service")
+	c.Assert(fs.Close(), check.IsNil)
+	c.Assert(err, check.IsNil)
+
+	err = f.bd.StopWorkshop(f.ctx, "test", true)
 	c.Check(err, check.IsNil)
 
-	// Leaves the workshop instance in a started state with a failed start
-	// command. The StartWorkshop API must clean up its previous progress, i.e.
-	// set the workshop to the Stopped state.
-	defer lxdbackend.FakeStartCommand("exit 1")()
+	// Speed up the test.
+	defer testutil.FakeFunc(time.Second, &waitready.Timeout)()
 
 	err = f.bd.StartWorkshop(f.ctx, "test")
 	c.Check(err, check.NotNil)
@@ -890,13 +900,13 @@ func (f *wsOps) lsMnt(c *check.C) []os.FileInfo {
 }
 
 func (f *wsOps) TestLxdBackendWorkshopLaunch(c *check.C) {
-	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04")
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Assert(err, check.IsNil)
 
 	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04"}
-	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, image.Fingerprint)
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.ConfinementContainer, image.Fingerprint)
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
@@ -943,11 +953,11 @@ func (f *wsOps) TestLxdBackendWorkshopRebuild(c *check.C) {
 		Name: "test",
 		Base: "ubuntu@22.04",
 	}
-	image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04")
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04", workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Assert(err, check.IsNil)
-	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, image.Fingerprint)
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.ConfinementContainer, image.Fingerprint)
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -1144,6 +1154,7 @@ func (f *wsOps) TestLxdBackendSnapshotOK(c *check.C) {
 		Format: f.bd.FormatRevision(),
 		Image: workshop.BaseImage{
 			Name:        "ubuntu@24.04",
+			Confinement: workshop.ConfinementContainer,
 			Fingerprint: "0b9429c9855cb158b90159bb818e6f98eab9b5b1260ace11b30ddb936e4f78979abc7cdc5e4e9fad51e3e290a2190ac2",
 		},
 		Sdks: []sdk.ContentID{{
@@ -1198,6 +1209,7 @@ func (f *wsOps) TestLxdBackendSnapshotConflict(c *check.C) {
 		Format: f.bd.FormatRevision(),
 		Image: workshop.BaseImage{
 			Name:        "ubuntu@24.04",
+			Confinement: workshop.ConfinementContainer,
 			Fingerprint: "0b9429c9855cb158b90159bb818e6f98eab9b5b1260ace11b30ddb936e4f78979abc7cdc5e4e9fad51e3e290a2190ac2",
 		},
 		Sdks: []sdk.ContentID{{
@@ -1280,6 +1292,7 @@ func (f *wsOps) TestLxdBackendSnapshotInterrupted(c *check.C) {
 		Format: f.bd.FormatRevision(),
 		Image: workshop.BaseImage{
 			Name:        "ubuntu@24.04",
+			Confinement: workshop.ConfinementContainer,
 			Fingerprint: "0b9429c9855cb158b90159bb818e6f98eab9b5b1260ace11b30ddb936e4f78979abc7cdc5e4e9fad51e3e290a2190ac2",
 		},
 		Sdks: []sdk.ContentID{{
@@ -1328,6 +1341,7 @@ func (f *wsOps) TestLxdBackendSnapshotHashCollision(c *check.C) {
 		Format: f.bd.FormatRevision(),
 		Image: workshop.BaseImage{
 			Name:        "ubuntu@24.04",
+			Confinement: workshop.ConfinementContainer,
 			Fingerprint: "0b9429c9855cb158b90159bb818e6f98eab9b5b1260ace11b30ddb936e4f78979abc7cdc5e4e9fad51e3e290a2190ac2",
 		},
 		Sdks: []sdk.ContentID{{

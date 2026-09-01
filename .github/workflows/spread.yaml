@@ -150,10 +150,23 @@ jobs:
         env:
           SUITE_PATHS: ${{ matrix.suite.paths }}
           LXD_CHANNEL: ${{ inputs.lxd_channel || '6/stable' }}
+          ARTIFACTS: ${{ github.workspace }}.cover
         run: |
-          mkdir ${{ github.workspace }}.cover
+          mkdir "$ARTIFACTS"
           read -r -a suite_paths <<< "$SUITE_PATHS"
-          spread -artifacts=${{ github.workspace }}.cover "${suite_paths[@]}"
+          spread -artifacts="$ARTIFACTS" "${suite_paths[@]}"
+
+          # Workaround https://github.com/actions/upload-artifact/issues/546
+          cd "$ARTIFACTS/lxd:ubuntu-24.04:tests" || exit 0
+          tasks=(*/*/)
+          for task in "${tasks[@]}"; do
+            suite=${task%%/*}
+            task=${task#*/}
+            task=${task%/}
+            safe=${task//:/.}
+            [ "$task" = "$safe" ] || (cd "$suite" && mv "$task" "$safe")
+          done
+        shell: bash
       - name: Upload Coverage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

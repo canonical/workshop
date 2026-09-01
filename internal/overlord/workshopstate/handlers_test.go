@@ -156,7 +156,7 @@ func (s *workshopHandlers) TestStopPeriodicProgressUpdate(c *check.C) {
 	defer s.state.Unlock()
 	s.createWFile(c, "ws", wsFocal)
 	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Check(err, check.IsNil)
 
@@ -199,7 +199,7 @@ func (s *workshopHandlers) TestUndoStash(c *check.C) {
 		{Name: "test2", Channel: "latest/stable"},
 	}}
 
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Check(err, check.IsNil)
 
@@ -244,7 +244,7 @@ func (s *workshopHandlers) TestRemoveWorkshop(c *check.C) {
 	userDataDir := workshop.UserDataRootDir(s.user.HomeDir, nil)
 
 	for _, wf := range wFiles {
-		snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+		snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 		err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 		c.Check(err, check.IsNil)
 
@@ -324,7 +324,7 @@ func (s *workshopHandlers) TestCreateWorkshopNoWorkshopDefinitionFound(c *check.
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.AddTask(t1)
 
@@ -350,7 +350,7 @@ func (s *workshopHandlers) TestCreateWorkshopWithSystemSdk(c *check.C) {
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.AddTask(t1)
 
@@ -380,7 +380,7 @@ func (s *workshopHandlers) TestCreateWorkshopCleanup(c *check.C) {
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.AddTask(t1)
 
@@ -412,7 +412,7 @@ func (s *workshopHandlers) TestRebuildWorkshopNoCleanup(c *check.C) {
 	t1.Set("workshop-file", wsJammy)
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"}
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", image)
 	chg.Set("ws_new_sdks", []sdk.Setup{})
@@ -452,7 +452,7 @@ func (s *workshopHandlers) TestDownloadBase(c *check.C) {
 	t1 := s.state.NewTask("download-base", "...")
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage1234"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage1234"})
 	chg.AddTask(t1)
 
 	s.state.Unlock()
@@ -660,7 +660,7 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterRemove(c *check.C) {
 	manifest := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk, testSdk2},
 	}
 	snapshot1 := workshop.SdkSnapshot(manifest.Format, manifest.Image, manifest.Sdks[:1])
@@ -712,7 +712,7 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterFailedLaunch(c *check.C) {
 	manifest := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk, testSdk2},
 	}
 	snapshot1 := workshop.SdkSnapshot(manifest.Format, manifest.Image, manifest.Sdks[:1])
@@ -771,7 +771,7 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterRefresh(c *check.C) {
 	current := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot1 := workshop.SdkSnapshot(current.Format, current.Image, current.Sdks)
@@ -779,7 +779,7 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterRefresh(c *check.C) {
 	latest := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk2},
 	}
 	snapshot2 := workshop.SdkSnapshot(latest.Format, latest.Image, latest.Sdks)
@@ -845,7 +845,7 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterFailedRefresh(c *check.C) {
 	current := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot1 := workshop.SdkSnapshot(current.Format, current.Image, current.Sdks)
@@ -853,7 +853,7 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterFailedRefresh(c *check.C) {
 	latest := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk2},
 	}
 	snapshot2 := workshop.SdkSnapshot(latest.Format, latest.Image, latest.Sdks)
@@ -920,7 +920,7 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterRemoveMidRefresh(c *check.C) 
 	current := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot1 := workshop.SdkSnapshot(current.Format, current.Image, current.Sdks)
@@ -928,7 +928,7 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterRemoveMidRefresh(c *check.C) 
 	latest := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk2},
 	}
 	snapshot2 := workshop.SdkSnapshot(latest.Format, latest.Image, latest.Sdks)
@@ -1049,7 +1049,7 @@ func (s *workshopHandlers) TestSnapshotExitCleanupAfterSuccessfulLaunch(c *check
 	manifest := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot := workshop.SdkSnapshot(manifest.Format, manifest.Image, manifest.Sdks)
@@ -1093,7 +1093,7 @@ func (s *workshopHandlers) TestSnapshotNotRemovedBeforeCooldown(c *check.C) {
 	manifest := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot := workshop.SdkSnapshot(manifest.Format, manifest.Image, manifest.Sdks)
@@ -1137,7 +1137,7 @@ func (s *workshopHandlers) TestSnapshotExitCleanupIfUsedAgain(c *check.C) {
 	manifest1 := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot1 := workshop.SdkSnapshot(manifest1.Format, manifest1.Image, manifest1.Sdks)
@@ -1145,7 +1145,7 @@ func (s *workshopHandlers) TestSnapshotExitCleanupIfUsedAgain(c *check.C) {
 	manifest2 := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws2", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 
@@ -1203,7 +1203,7 @@ func (s *workshopHandlers) TestSnapshotRetriesCleanupIfBlockingChangesArePresent
 	manifest1 := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot1 := workshop.SdkSnapshot(manifest1.Format, manifest1.Image, manifest1.Sdks)
@@ -1211,7 +1211,7 @@ func (s *workshopHandlers) TestSnapshotRetriesCleanupIfBlockingChangesArePresent
 	manifest2 := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws2", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 
@@ -1289,7 +1289,7 @@ func (s *workshopHandlers) TestSnapshotCleanupPerformedByLatestUser(c *check.C) 
 	manifest1 := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot1 := workshop.SdkSnapshot(manifest1.Format, manifest1.Image, manifest1.Sdks)
@@ -1297,7 +1297,7 @@ func (s *workshopHandlers) TestSnapshotCleanupPerformedByLatestUser(c *check.C) 
 	manifest2 := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws2", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 
@@ -1351,7 +1351,7 @@ func (s *workshopHandlers) TestSnapshotCleanupWaitsForDependentSnapshots(c *chec
 	manifest1 := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk, testSdk2},
 	}
 	snapshot1 := workshop.SdkSnapshot(manifest1.Format, manifest1.Image, manifest1.Sdks)
@@ -1359,7 +1359,7 @@ func (s *workshopHandlers) TestSnapshotCleanupWaitsForDependentSnapshots(c *chec
 	manifest2 := workshopstate.Manifest{
 		File:   &workshop.File{Name: "ws2", Base: "ubuntu@22.04"},
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks:   []sdk.Setup{testSdk},
 	}
 	snapshot2 := workshop.SdkSnapshot(manifest2.Format, manifest2.Image, manifest2.Sdks)

@@ -46,8 +46,8 @@ var (
 	currentDownloads = map[string]*downloadOp{}
 )
 
-func (b *Backend) GetBase(ctx context.Context, base string) (workshop.BaseImage, error) {
-	source, err := baseImageSource(base)
+func (b *Backend) GetBase(ctx context.Context, base string, confinement workshop.Confinement) (workshop.BaseImage, error) {
+	source, err := baseImageSource(base, confinement)
 	if err != nil {
 		return workshop.BaseImage{}, err
 	}
@@ -63,7 +63,7 @@ func (b *Backend) GetBase(ctx context.Context, base string) (workshop.BaseImage,
 		return workshop.BaseImage{}, fmt.Errorf("base %q not found: %w", base, err)
 	}
 
-	return workshop.BaseImage{Name: base, Fingerprint: alias.Target}, nil
+	return workshop.BaseImage{Name: base, Confinement: confinement, Fingerprint: alias.Target}, nil
 }
 
 func (b *Backend) DownloadBase(ctx context.Context, image workshop.BaseImage, report *progress.Reporter) error {
@@ -109,7 +109,7 @@ func (b *Backend) tryDownloadBase(ctx context.Context, op *downloadOp, image wor
 }
 
 func (b *Backend) downloadBase(ctx context.Context, op *downloadOp, image workshop.BaseImage) error {
-	source, err := baseImageSource(image.Name)
+	source, err := baseImageSource(image.Name, image.Confinement)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func (b *Backend) downloadBase(ctx context.Context, op *downloadOp, image worksh
 	return nil
 }
 
-func baseImageSource(base string) (*api.ImageSource, error) {
+func baseImageSource(base string, confinement workshop.Confinement) (*api.ImageSource, error) {
 	parts := strings.FieldsFunc(base, func(r rune) bool { return r == '@' })
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid base %q (expected <NAME>@<VERSION>)", base)
@@ -218,7 +218,7 @@ func baseImageSource(base string) (*api.ImageSource, error) {
 	// variants, but it should be OK for x86_64, aarch64 and riscv64.
 	source := api.ImageSource{
 		Alias:     parts[1],
-		ImageType: string(api.InstanceTypeContainer),
+		ImageType: string(instanceType(confinement)),
 		Protocol:  protocol,
 		Server:    url,
 	}

@@ -18,7 +18,7 @@ import (
 	"cmp"
 	"context"
 	"embed"
-	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -42,11 +42,13 @@ import (
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/fsutil"
+	"github.com/canonical/workshop/internal/idmap"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/syscheck"
+	"github.com/canonical/workshop/internal/waitready"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -68,14 +70,10 @@ const (
 )
 
 var (
-	startCommandTimeout = 1 * time.Minute
-	storagePoolDriver   = "zfs"
+	storagePoolDriver = "zfs"
 
 	workshopFormatsChecked = false
 )
-
-//go:embed start_command.sh
-var startCommand string
 
 func init() {
 	if osutil.IsWSL() {
@@ -414,10 +412,10 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 	req := api.InstancesPost{
 		InstancePut: api.InstancePut{
 			Config:  config,
-			Devices: defaultDevices(usr, projectId, file.Name),
+			Devices: defaultDevices(usr, projectId, file.Name, file.Confinement),
 		},
 		Name: InstanceName(file.Name, projectId),
-		Type: api.InstanceTypeContainer,
+		Type: instanceType(file.Confinement),
 	}
 
 	if !snapshot.IsBase() {
@@ -432,7 +430,14 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 		return err
 	}
 
-	return s.adjustInstanceTemplates(conn, req.Name)
+	return s.adjustInstanceTemplates(conn, req.Name, file.Confinement)
+}
+
+func instanceType(confinement workshop.Confinement) api.InstanceType {
+	if confinement == workshop.ConfinementVirtualMachine {
+		return api.InstanceTypeVM
+	}
+	return api.InstanceTypeContainer
 }
 
 func (s *Backend) launchOrRebuildFromImage(conn lxd.InstanceServer, usr *user.User, req api.InstancesPost) error {
@@ -517,7 +522,7 @@ var instanceTemplates embed.FS
 // from an image (although the instance-id is different for 22.04 and up), but
 // when rebuilding a workshop from a snapshot, it results in both the hostname
 // and instance-id being taken from the snapshot.
-func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string) error {
+func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string, confinement workshop.Confinement) error {
 	fromImage := []string{"create"}
 	fromSnapshot := []string{"create", "copy"}
 
@@ -529,10 +534,6 @@ func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string) 
 		"/etc/hostname": {
 			When:     fromSnapshot,
 			Template: "hostname.tpl",
-		},
-		"/etc/machine-id": {
-			When:     fromSnapshot,
-			Template: "machine-id.tpl",
 		},
 		"/etc/ssh/ssh_host_ed25519_key": {
 			When:     fromSnapshot,
@@ -555,11 +556,17 @@ func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string) 
 			Template:   "eth0.network.tpl",
 			Properties: map[string]string{"domain": networkDomain},
 		},
-		dirs.WorkshopSocketPath + ".untrusted": {
+	}
+	if confinement == workshop.ConfinementContainer {
+		templates["/etc/machine-id"] = &api.ImageMetadataTemplate{
+			When:     fromSnapshot,
+			Template: "machine-id.tpl",
+		}
+		templates[dirs.WorkshopSocketPath+".untrusted"] = &api.ImageMetadataTemplate{
 			When:       fromImage,
 			CreateOnly: true,
 			Template:   "workshop.socket.untrusted.tpl",
-		},
+		}
 	}
 
 	metadata, etag, err := conn.GetInstanceMetadata(name)
@@ -586,12 +593,8 @@ func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string) 
 	}
 	maps.Copy(metadata.Templates, templates)
 
-	files, err := instanceTemplates.ReadDir("templates")
-	if err != nil {
-		return err
-	}
-	for _, entry := range files {
-		if err := createInstanceTemplateFile(conn, name, entry.Name()); err != nil {
+	for _, template := range templates {
+		if err := createInstanceTemplateFile(conn, name, template.Template); err != nil {
 			return err
 		}
 	}
@@ -670,19 +673,8 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 	rev := revert.New()
 	defer rev.Fail()
 
-	// Enable autostart first so it doesn't race with workshop-waitready.service.
-	// See https://github.com/canonical/lxd/issues/18833.
-	if err := s.setAutoStart(conn, ctx, name, true); err != nil {
-		return err
-	}
-
 	cleanupCtx := context.WithoutCancel(ctx)
 	rev.Add(func() {
-		// TODO: if this becomes a long-term thing, consider adding a timeout.
-		if e := s.setAutoStart(conn, cleanupCtx, name, false); e != nil {
-			logger.Noticef("On StartWorkshop: cannot reset %q workshop boot.autostart: %v", name, e)
-		}
-
 		// Stop workshop's timeout is handled by LXD API, so no need to have
 		// a context with a timeout.
 		if e := s.stopWorkshop(conn, cleanupCtx, name, true); e != nil {
@@ -694,35 +686,18 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 		return err
 	}
 
-	var stderr strings.Builder
-	args := workshop.Execution{
-		ExecArgs: workshop.ExecArgs{
-			UserId:  0,
-			GroupId: 0,
-			Command: []string{
-				"bash", "-euc", startCommand,
-			},
-			WorkDir: "/",
-			Timeout: startCommandTimeout,
-		},
-		ExecControls: workshop.ExecControls{
-			Stderr: &stderr,
-		},
-	}
-
-	exectx, err := s.execCommand(conn, ctx, name, &args)
+	waited, err := s.legacyWaitready(conn, ctx, name)
 	if err != nil {
 		return err
 	}
-
-	var errExec *workshop.ErrExec
-	if err := exectx.WaitExecution(ctx); errors.As(err, &errExec) {
-		message := strings.TrimSpace(stderr.String())
-		if message == "" {
+	if !waited {
+		if err := s.awaitReadyEvent(conn, ctx, name); err != nil {
 			return err
 		}
-		return errors.New(message)
-	} else if err != nil {
+	}
+
+	// Workshop started, enable autostart.
+	if err := s.setAutoStart(conn, ctx, name, true); err != nil {
 		return err
 	}
 
@@ -732,6 +707,139 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 
 	rev.Success()
 	return nil
+}
+
+func (s *Backend) legacyWaitready(conn lxd.InstanceServer, ctx context.Context, name string) (bool, error) {
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return false, fmt.Errorf("context key project-id not found")
+	}
+
+	inst, _, err := conn.GetInstance(InstanceName(name, projectId))
+	if err != nil {
+		return false, err
+	}
+
+	if inst.Config["user.workshop.format-revision"] != "" {
+		format, err := sdk.ParseRevision(inst.Config["user.workshop.format-revision"])
+		if err != nil {
+			return false, err
+		}
+		if format.N >= 11 {
+			return false, nil
+		}
+	}
+
+	var stdout strings.Builder
+	var stderr strings.Builder
+	args := workshop.Execution{
+		ExecArgs: workshop.ExecArgs{
+			Command: []string{"systemctl", "is-system-running", "--wait"},
+			WorkDir: "/",
+			Timeout: waitready.Timeout,
+		},
+		ExecControls: workshop.ExecControls{
+			Stdout: &stdout,
+			Stderr: &stderr,
+		},
+	}
+
+	exectx, err := s.execCommand(conn, ctx, name, &args)
+	if err != nil {
+		return false, err
+	}
+
+	if err := exectx.WaitExecution(ctx); err != nil {
+		if _, ok := errors.AsType[*workshop.ErrExec](err); ok {
+			if strings.TrimSpace(stdout.String()) == "degraded" {
+				return true, nil
+			}
+			message := strings.TrimSpace(stderr.String())
+			if message == "" {
+				return false, err
+			}
+			return false, errors.New(message)
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, name string) error {
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return fmt.Errorf("context key project-id not found")
+	}
+	instance := InstanceName(name, projectId)
+
+	ctx, cancel := context.WithTimeout(ctx, waitready.Timeout)
+	defer cancel()
+
+	listener, err := conn.GetEvents()
+	if err != nil {
+		return err
+	}
+	defer listener.Disconnect()
+
+	events := make(chan api.Event, 1)
+	defer close(events)
+
+	target, err := listener.AddHandler([]string{"lifecycle"}, func(event api.Event) {
+		defer func() { _ = recover() }()
+		events <- event
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = listener.RemoveHandler(target) }()
+
+	ready, err := s.isInstanceReady(conn, instance)
+	for {
+		if err != nil {
+			return err
+		}
+		if ready {
+			return nil
+		}
+		select {
+		case event := <-events:
+			ready, err = s.isReadyEvent(event, instance)
+		case <-ctx.Done():
+			ready, err := s.isInstanceReady(conn, instance)
+			if err == nil && ready {
+				return nil
+			}
+			return ctx.Err()
+		}
+	}
+}
+
+func (s *Backend) isInstanceReady(conn lxd.InstanceServer, instance string) (bool, error) {
+	state, _, err := conn.GetInstanceState(instance)
+	if err != nil {
+		return false, err
+	}
+	return state.StatusCode == api.Ready, nil
+}
+
+func (s *Backend) isReadyEvent(event api.Event, instance string) (bool, error) {
+	var lifecycle api.EventLifecycle
+	if err := json.Unmarshal(event.Metadata, &lifecycle); err != nil {
+		return false, err
+	}
+
+	if lifecycle.Name != instance {
+		return false, nil
+	}
+
+	switch lifecycle.Action {
+	case api.EventLifecycleInstanceReady:
+		return true, nil
+	case api.EventLifecycleInstanceShutdown, api.EventLifecycleInstanceStopped:
+		return false, fmt.Errorf("received %q event", lifecycle.Action)
+	default:
+		return false, nil
+	}
 }
 
 func (s *Backend) StopWorkshop(ctx context.Context, name string, force bool) error {
@@ -1035,6 +1143,7 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, p wo
 
 	image := workshop.BaseImage{
 		Name:        f.Base,
+		Confinement: f.Confinement,
 		Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 	}
 
@@ -1131,7 +1240,7 @@ func (s *Backend) ProjectWorkshops(ctx context.Context) ([]*workshop.Workshop, e
 
 	// Get all the running workshops for this project.
 	args := lxd.GetInstancesArgs{
-		InstanceType: api.InstanceTypeContainer,
+		InstanceType: api.InstanceTypeAny,
 		Filters:      []string{"config.user.workshop.project-id=" + p.ProjectId},
 	}
 	instances, err := conn.GetInstances(args)
@@ -1225,7 +1334,7 @@ func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {
 	return ConnectLxd(ctx)
 }
 
-func defaultDevices(usr *user.User, pid, w string) map[string]map[string]string {
+func defaultDevices(usr *user.User, pid, w string, confinement workshop.Confinement) map[string]map[string]string {
 	devices := map[string]map[string]string{
 		"root":             {"type": "disk", "pool": storagePool, "path": "/"},
 		"workshop.network": {"type": "nic", "network": networkName, "name": "eth0"},
@@ -1236,8 +1345,11 @@ func defaultDevices(usr *user.User, pid, w string) map[string]map[string]string 
 		devices[mount.Name] = mountToLxdDisk(mount)
 	}
 
-	for _, proxy := range proxies {
-		devices[proxy.Name] = proxyToLxdDevice(usr, proxy)
+	// LXD VMs have only limited support for proxy devices.
+	if confinement == workshop.ConfinementContainer {
+		for _, proxy := range proxies {
+			devices[proxy.Name] = proxyToLxdDevice(usr, proxy)
+		}
 	}
 
 	return devices
@@ -1339,9 +1451,29 @@ write_files:
       [Service]
       Type=notify
       ExecStart=/usr/local/lib/workshop/waitready
+      Restart=on-failure
+      RestartSec=2s
 
       [Install]
       WantedBy=multi-user.target
+{{- if .HasGRUB}}
+  - path: /etc/grub.d/70_workshop
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      exec tail --lines=+4 "$0"
+
+      # Extract SMBIOS UUID and store it in a GRUB variable. We use it to set
+      # the systemd.machine_id kernel parameter to the LXD UUID, which forces
+      # systemd to use it. By default it prefers reading the machine ID from
+      # /etc/machine-id, which may be stale when restoring from a snapshot.
+      insmod smbios
+      smbios --type 1 --get-uuid 8 --set workshop_machine_id
+      export workshop_machine_id
+  - path: /etc/default/grub.d/70-workshop.cfg
+    content: |
+      GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:+$GRUB_CMDLINE_LINUX }"'systemd.machine_id=${workshop_machine_id}'
+{{- end}}
 runcmd:
   # Project directory is required for 'workshop exec'.
   - install --directory --mode=755 /project /usr/local/bin /usr/local/lib/workshop {{shquote .WorkshopStateDir}}
@@ -1352,17 +1484,35 @@ runcmd:
   # Put workshopctl on the PATH.
   - ln -sf {{shquote .WorkshopCtlPath}} /usr/local/bin/workshopctl
   - ln -sf ../../bin/workshopctl /usr/local/lib/workshop/waitready
+{{- if ne .FsFreezePath ""}}
+  - ln -sf ../../bin/workshopctl {{shquote .FsFreezePath}}
+{{- end}}
   - systemctl enable --now workshop-waitready.service
+  # Linger starts the user manager for the specified user on boot, which then creates /run/user/$UID,
+  # sets $XDG_RUNTIME_DIR and more. Interfaces such as desktop rely on both of these to be present.
+  # This does not introduce any additional modification beyond what a login session would normally create.
+  - loginctl enable-linger workshop
+{{- if .HasGRUB}}
+  - update-grub
+{{- end}}
 `[1:]
 
 	var cloudConfig strings.Builder
 	funcs := map[string]any{
 		"shquote": shlex.Quote,
 	}
+	var fsFreezePath string
+	if file.Confinement != workshop.ConfinementContainer {
+		fsFreezePath = dirs.FsFreezePath
+	}
 	dot := struct {
+		FsFreezePath     string
+		HasGRUB          bool
 		WorkshopCtlPath  string
 		WorkshopStateDir string
 	}{
+		FsFreezePath:     fsFreezePath,
+		HasGRUB:          file.Confinement == workshop.ConfinementVirtualMachine,
 		WorkshopCtlPath:  filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
 		WorkshopStateDir: dirs.WorkshopStateDir,
 	}
@@ -1373,36 +1523,118 @@ runcmd:
 
 	f, err := yaml.Marshal(file)
 	if err != nil {
-		return map[string]string{}, err
+		return nil, err
+	}
+
+	idmapSet, err := workshopIdmap(file.Confinement, userid, groupid)
+	if err != nil {
+		return nil, err
 	}
 
 	// Include all options we might change, even those with default values,
 	// so that workshops can be rebuilt.
 	cfg := map[string]string{
 		"boot.autostart":                 "false",
-		"raw.idmap":                      fmt.Sprintf("uid %s %s\ngid %s %s", userid, workshop.User.Uid, groupid, workshop.User.Gid),
-		"security.nesting":               "true",
 		"cloud-init.user-data":           cloudConfig.String(),
+		"raw.idmap":                      formatIdmap(idmapSet),
 		"user.workshop.format-revision":  format.String(),
 		"user.workshop.project-id":       projectId,
 		"user.workshop.name":             file.Name,
 		"user.workshop.file":             string(f),
 		"user.workshop.base-fingerprint": baseFingerprint,
+	}
+
+	if file.Confinement == workshop.ConfinementContainer {
+		cfg["security.nesting"] = "true"
 		// LXC appears to have a race condition wherein a proxy device mounted in
 		// a dynamically created directory has the potential to be 'masked' by this
 		// directory. We create an explicit mount for /tmp here (one such dynamic
 		// directory) to allow us to mount X11 sockets reliably.
 		// See: https://github.com/lxc/lxc/issues/434
-		"raw.lxc": "lxc.mount.entry = tmpfs tmp tmpfs defaults",
+		cfg["raw.lxc"] = "lxc.mount.entry = tmpfs tmp tmpfs defaults"
+	} else {
+		// Ensure the NIC is named "eth0" so we can configure it.
+		cfg["agent.nic_config"] = "true"
 	}
 
 	return cfg, nil
 }
 
-func FakeStartCommand(script string) func() {
-	old := startCommand
-	startCommand = script
-	return func() {
-		startCommand = old
+func workshopIdmap(confinement workshop.Confinement, userid, groupid string) (*idmap.IdmapSet, error) {
+	hostUid, err1 := strconv.ParseInt(userid, 10, 64)
+	nsUid, err2 := strconv.ParseInt(workshop.User.Uid, 10, 64)
+	hostGid, err3 := strconv.ParseInt(groupid, 10, 64)
+	nsGid, err4 := strconv.ParseInt(workshop.User.Gid, 10, 64)
+	if err := cmp.Or(err1, err2, err3, err4); err != nil {
+		return nil, fmt.Errorf("invalid user or group ID: %w", err)
 	}
+	entries := []idmap.IdmapEntry{
+		{Isuid: true, Hostid: hostUid, Nsid: nsUid, Maprange: 1},
+		{Isgid: true, Hostid: hostGid, Nsid: nsGid, Maprange: 1},
+	}
+
+	idmapSet := &idmap.IdmapSet{}
+	if confinement != workshop.ConfinementContainer {
+		// TODO: query LXD for the default idmap somehow. The current
+		// implementation only works because the LXD snap runs in a mount
+		// namespace where /etc/ is a tmpfs, so it effectively ignores
+		// /etc/subuid and /etc/subgid. It would be more correct to call
+		// DefaultIdmapSet("/proc/<lxd>/root", "root"), but traversing
+		// /proc/<lxd>/root is a privileged operation.
+		var err error
+		idmapSet, err = idmap.KernelDefaultMap()
+		if err != nil {
+			return nil, err
+		}
+		if idmapSet.Len() == 0 {
+			return nil, errors.New("no available uid/gid map could be found")
+		}
+		if err := idmapSet.Usable(); err != nil {
+			return nil, err
+		}
+	}
+
+	for _, entry := range entries {
+		if err := idmapSet.AddSafe(entry); err != nil {
+			singleton := &idmap.IdmapSet{Idmap: []idmap.IdmapEntry{entry}}
+			return nil, fmt.Errorf("raw.idmap %q: %w", strings.TrimSpace(formatIdmap(singleton)), err)
+		}
+	}
+
+	return idmapSet, nil
+}
+
+func formatIdmap(idmapSet *idmap.IdmapSet) string {
+	var entries strings.Builder
+	for _, ent := range idmapSet.Idmap {
+		switch {
+		case ent.Maprange <= 0, !ent.Isuid && !ent.Isgid:
+			continue
+		case ent.Isuid && !ent.Isgid:
+			entries.WriteString("uid")
+		case !ent.Isuid && ent.Isgid:
+			entries.WriteString("gid")
+		case ent.Isuid && ent.Isgid:
+			entries.WriteString("both")
+		}
+
+		entries.WriteByte(' ')
+
+		entries.WriteString(strconv.FormatInt(ent.Hostid, 10))
+		if ent.Maprange > 1 {
+			entries.WriteByte('-')
+			entries.WriteString(strconv.FormatInt(ent.Hostid+ent.Maprange-1, 10))
+		}
+
+		entries.WriteByte(' ')
+
+		entries.WriteString(strconv.FormatInt(ent.Nsid, 10))
+		if ent.Maprange > 1 {
+			entries.WriteByte('-')
+			entries.WriteString(strconv.FormatInt(ent.Nsid+ent.Maprange-1, 10))
+		}
+
+		entries.WriteByte('\n')
+	}
+	return entries.String()
 }

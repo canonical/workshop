@@ -10,12 +10,12 @@ launched:
   architecture: ''
   config:
     boot.autostart: 'false'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: '17fd6f33c4c2802b0142eefe3d41d4f98b1c0ce338ce06da2b3e6d06776ac3c2204ed2cc7c6c367d40cdfc6e11d82e6a'
+    cloud-init.user-data: '8cb63e0464ae87dca0a4b43e73fa6420b8b81e758a313b166732c886113af229acbaf83af34ce8b5fc1006772aae84f4'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -50,12 +50,12 @@ started:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: '17fd6f33c4c2802b0142eefe3d41d4f98b1c0ce338ce06da2b3e6d06776ac3c2204ed2cc7c6c367d40cdfc6e11d82e6a'
+    cloud-init.user-data: '8cb63e0464ae87dca0a4b43e73fa6420b8b81e758a313b166732c886113af229acbaf83af34ce8b5fc1006772aae84f4'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -90,12 +90,12 @@ sdk-attached:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: '17fd6f33c4c2802b0142eefe3d41d4f98b1c0ce338ce06da2b3e6d06776ac3c2204ed2cc7c6c367d40cdfc6e11d82e6a'
+    cloud-init.user-data: '8cb63e0464ae87dca0a4b43e73fa6420b8b81e758a313b166732c886113af229acbaf83af34ce8b5fc1006772aae84f4'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -142,12 +142,12 @@ sdk-mounted:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: '17fd6f33c4c2802b0142eefe3d41d4f98b1c0ce338ce06da2b3e6d06776ac3c2204ed2cc7c6c367d40cdfc6e11d82e6a'
+    cloud-init.user-data: '8cb63e0464ae87dca0a4b43e73fa6420b8b81e758a313b166732c886113af229acbaf83af34ce8b5fc1006772aae84f4'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''

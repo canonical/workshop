@@ -400,7 +400,9 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	addTaskSet(state.NewTaskSet(discard))
 
 	stop := st.NewTask("stop-workshop", fmt.Sprintf("Stop %q workshop", latest.File.Name))
-	stop.Set("force", true)
+	// Using force is fine for containers, but for VMs it can lead to (usually
+	// repairable) filesystem integrity issues, which are copied to the stash.
+	stop.Set("force", current.File.Confinement == workshop.ConfinementContainer)
 	addTaskSet(state.NewTaskSet(stop))
 
 	// Unmount SDKs and remove plugs and slots from interfaces repository.
@@ -661,8 +663,7 @@ func (w *WorkshopManager) Exec(ctx context.Context, name, projectId string, args
 		return nil, err
 	}
 
-	ctx = context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
-	wp, err := w.backend.Workshop(ctx, name)
+	wp, err := w.Workshop(ctx, name, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -671,6 +672,7 @@ func (w *WorkshopManager) Exec(ctx context.Context, name, projectId string, args
 		return nil, err
 	}
 
+	ctx = context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 	wrkspc, err := w.backend.WorkshopFs(ctx, name)
 	if err != nil {
 		return nil, err

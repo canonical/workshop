@@ -1,51 +1,64 @@
 summary: Test launch for the supported workshop bases
+environment:
+  # TODO: enable VM variants
+  BASE/ctr20: ubuntu@20.04
+  BASE/ctr22: ubuntu@22.04
+  BASE/ctr24: ubuntu@24.04
+  BASE/ctr26: ubuntu@26.04
+  CONFINEMENT: container
 prepare: |
   timedatectl set-timezone Pacific/Auckland
 restore: |
   . "$TESTSLIB"/utils.sh
   timedatectl set-timezone Etc/UTC
-  workshop_exec remove ws-20 ws-22 ws-24
+  workshop_exec remove || true
 execute: |
   . "$TESTSLIB"/utils.sh
 
-  echo "Test launch for all the supported bases"
+  echo "Test launch for $BASE ${CONFINEMENT}s"
+  envsubst '${BASE}${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
+  chown ubuntu:ubuntu workshop.yaml
+  workshop_exec launch ws
+  workshop_exec list | MATCH 'ws[[:space:]]*Ready[[:space:]]*-'
 
+  # ensure user idmap is applied
+  rm -f build-artifact
+  workshop_exec exec ws touch build-artifact
+  stat --format='%U %G' build-artifact | MATCH '^ubuntu ubuntu$'
+  workshop_exec exec ws sudo chown 0:0 build-artifact
+  stat --format='%u %g' build-artifact | MATCH '^1000000 1000000$'
+  workshop_exec exec ws sudo chown 1001:1001 build-artifact
+  stat --format='%u %g' build-artifact | MATCH '^1001001 1001001$'
+
+  # ensure the workshop has a socket for workshopctl
+  if [ "$CONFINEMENT" = container ]; then
+    workshop_exec exec ws test -S /var/lib/workshop/run/workshop.socket.untrusted
+  fi
+
+  # ensure the apt cache is mounted
+  workshop_exec exec ws mountpoint /var/cache/apt/archives
+  workshop_exec exec ws stat --format='%A %U %G' /var/cache/apt/archives | MATCH '^drwxr-xr-x workshop workshop$'
+
+  # ensure apt is configured to exclude suggested and recommended packages
+  workshop_exec run ws check-apt
+
+  # ensure systemd-resolved is configured for the workshopbr0 network
+  resolvectl domain workshopbr0 | MATCH '^Link [0-9]+ \(workshopbr0\): ~wp$'
+  resolvectl query "ws-$(< .workshop.lock).wp" | MATCH 'link: workshopbr0'
+  resolvectl query --type=CNAME "ws.$(< .workshop.lock).wp" | MATCH "IN CNAME ws-$(< .workshop.lock).wp"
+  resolvectl query --type=CNAME 'ws.launch.wp' | MATCH "IN CNAME ws-$(< .workshop.lock).wp"
+
+  # ensure systemd-networkd is configured not to release DHCP on stop
+  # just skip if `networkctl cat` is missing, since old bases have been manually tested
   function extract_section() {
     awk --assign title="[$1]" '/\[/ {p=0} $0 == title {p=1; next} p'
   }
+  sd_ver="$(workshop_exec exec ws networkctl --version | awk 'FNR == 1 {print $2}')"
+  if [ "$sd_ver" -ge 254 ]; then
+    workshop_exec exec ws sudo networkctl cat @eth0 > eth0.log
+    extract_section DHCPv4 < eth0.log | MATCH '^SendRelease=false$'
+    extract_section DHCPv6 < eth0.log | MATCH '^SendRelease=false$'
+  fi
 
-  function launch_and_validate() {
-    workshop_exec launch "$1"
-    workshop_exec list | MATCH "$1[[:space:]]*Ready[[:space:]]*-"
-    # ensure the workshop has a socket for workshopctl
-    workshop_exec exec "$1" test -S /var/lib/workshop/run/workshop.socket.untrusted
-    # ensure the apt cache is mounted
-    workshop_exec exec "$1" mountpoint /var/cache/apt/archives
-    workshop_exec exec "$1" stat --format='%A %U %G' /var/cache/apt/archives | MATCH '^drwxr-xr-x workshop workshop$'
-    # ensure apt is configured to exclude suggested and recommended packages
-    workshop_exec run "$1" check-apt
-    # ensure systemd-resolved is configured for the workshopbr0 network
-    resolvectl domain workshopbr0 | MATCH '^Link [0-9]+ \(workshopbr0\): ~wp$'
-    resolvectl query "$1-$(< .workshop.lock).wp" | MATCH 'link: workshopbr0'
-    resolvectl query --type=CNAME "${1}.$(< .workshop.lock).wp" | MATCH "IN CNAME $1-$(< .workshop.lock).wp"
-    resolvectl query --type=CNAME "${1}.launch.wp" | MATCH "IN CNAME $1-$(< .workshop.lock).wp"
-    # ensure systemd-networkd is configured not to release DHCP on stop
-    # just skip if `networkctl cat` is missing, since old bases have been manually tested
-    sd_ver="$(workshop_exec exec "$1" networkctl --version | awk 'FNR == 1 {print $2}')"
-    if [ "$sd_ver" -ge 254 ]; then
-      workshop_exec exec "$1" sudo networkctl cat @eth0 > eth0.log
-      extract_section DHCPv4 < eth0.log | MATCH '^SendRelease=false$'
-      extract_section DHCPv6 < eth0.log | MATCH '^SendRelease=false$'
-    fi
-    # ensure timezone is inherited from host
-    workshop_exec exec "$1" timedatectl show | MATCH '^Timezone=Pacific/Auckland$'
-  }
-  
-  launch_and_validate ws-20
-  launch_and_validate ws-22
-  launch_and_validate ws-24
-
-  # ensure workshops can resolve each other by name
-  mkdir -p srv/qwertyuiop
-  workshop_exec exec ws-22 -- systemd-run --user --working-directory=/project/srv -- python3 -m http.server 8877
-  workshop_exec exec ws-24 -- curl http://ws-22:8877 | MATCH qwertyuiop
+  # ensure timezone is inherited from host
+  workshop_exec exec ws timedatectl show | MATCH '^Timezone=Pacific/Auckland$'

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -289,7 +290,7 @@ func (s *Backend) pruneProjects(client lxd.InstanceServer, ctx context.Context, 
 		// list of projects that we track (only if there are no remaining
 		// workshops for this project)
 		args := lxd.GetInstancesArgs{
-			InstanceType: api.InstanceTypeContainer,
+			InstanceType: api.InstanceTypeAny,
 			Filters:      []string{"config.user.workshop.project-id=" + prj.ProjectId},
 		}
 		workshops, err := client.GetInstances(args)
@@ -313,7 +314,7 @@ func (s *Backend) pruneProjects(client lxd.InstanceServer, ctx context.Context, 
 
 func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, projectId string) (path string, err error) {
 	args := lxd.GetInstancesArgs{
-		InstanceType: api.InstanceTypeContainer,
+		InstanceType: api.InstanceTypeAny,
 		Filters:      []string{"config.user.workshop.project-id=" + projectId},
 	}
 	workshops, err := conn.GetInstances(args)
@@ -352,7 +353,13 @@ func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, pr
 			continue
 		}
 		if err = meta.WaitExecution(ctx); err != nil {
-			logger.Debugf("cannot check %q bind-mounts: %v, findmnt output: %s", i.Name, err, errbuf.String())
+			// It's unsafe to access errbuf before the DataDone channel is closed.
+			var details string
+			if _, ok := errors.AsType[*workshop.ErrExec](err); ok {
+				details = ", findmnt output: " + errbuf.String()
+			}
+
+			logger.Debugf("cannot check %q bind-mounts: %v%s", i.Name, err, details)
 			continue
 		}
 
@@ -403,7 +410,7 @@ func (s *Backend) updateProjectMounts(conn lxd.InstanceServer, ctx context.Conte
 	projectCtx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 
 	args := lxd.GetInstancesArgs{
-		InstanceType: api.InstanceTypeContainer,
+		InstanceType: api.InstanceTypeAny,
 		Filters:      []string{"config.user.workshop.project-id=" + project.ProjectId},
 	}
 	workshops, err := conn.GetInstances(args)
