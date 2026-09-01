@@ -1327,6 +1327,12 @@ ssh_genkeytypes: [ed25519]
 write_files:
   - path: /etc/cloud/cloud-init.disabled
     defer: true
+  # Workaround https://bugs.launchpad.net/snapd/+bug/2165972. Without network
+  # access snapd retries certain HTTP requests a few times before timing out.
+  - path: /etc/systemd/system/snapd.service.d/70-snapd-after-network.conf
+    content: |
+      [Unit]
+      After=network.target
   - path: /etc/ssh/sshd_config.d/90-workshop.conf
     content: |
       HostCertificate /etc/ssh/ssh_host_ed25519_key-cert.pub
