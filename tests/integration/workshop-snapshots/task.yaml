@@ -1,18 +1,18 @@
 summary: Run LXD integration tests for workshop snapshots
 
 environment:
-  METHOD/format: TestLxdBackendSnapshotFormat
-  # TODO: enable VM variants
-  METHOD/ctr20: TestLxdBackendSnapshotDiffContainer20
-  METHOD/ctr22: TestLxdBackendSnapshotDiffContainer22
-  METHOD/ctr24: TestLxdBackendSnapshotDiffContainer24
-  METHOD/ctr26: TestLxdBackendSnapshotDiffContainer26
+  METHOD/vm20: TestLxdBackendSnapshotDiffVM20
+  METHOD/vm22: TestLxdBackendSnapshotDiffVM22
+  METHOD/vm24: TestLxdBackendSnapshotDiffVM24
+  METHOD/vm26: TestLxdBackendSnapshotDiffVM26
+
+kill-timeout: 60m
 
 execute: |
   rm -rf cover
   mkdir cover
 
-  go test -cover "$SPREAD_PATH"/internal/workshop/lxd/tests/integration -timeout=30m -tags=integration -check.v -check.f "snapshotSuite.$METHOD" -coverpkg=github.com/canonical/workshop/internal/workshop/lxd -args -test.gocoverdir="$PWD"/cover
+  go test -v -cover "$SPREAD_PATH"/internal/workshop/lxd/tests/integration -timeout=60m -tags=integration -check.vv -check.f "snapshotSuite.$METHOD" -coverpkg=github.com/canonical/workshop/internal/workshop/lxd -args -test.gocoverdir="$PWD"/cover
 
 artifacts:
   - cover

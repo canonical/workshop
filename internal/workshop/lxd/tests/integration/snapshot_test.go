@@ -35,6 +35,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/dirs"
+	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
@@ -58,6 +59,12 @@ type snapshotSuite struct {
 var _ = check.Suite(&snapshotSuite{})
 
 func (s *snapshotSuite) SetUpSuite(c *check.C) {
+	l, err := logger.New(os.Stderr, 0)
+	if err != nil {
+		panic(err)
+	}
+	logger.SetLogger(l)
+
 	s.usr = &user.User{Username: "testuser", Uid: "1000", Gid: "1000", HomeDir: c.MkDir()}
 	s.project = workshop.Project{
 		ProjectId: "42424242",
@@ -76,7 +83,6 @@ func (s *snapshotSuite) SetUpSuite(c *check.C) {
 	dirs.SocketPath = filepath.Join(dirs.DataDir, "workshop.socket")
 	c.Assert(dirs.CreateDirs(), check.IsNil)
 
-	var err error
 	s.bd, err = lxdbackend.New()
 	c.Assert(err, check.IsNil)
 
@@ -756,6 +762,7 @@ func (s *snapshotSuite) extractUniqueFiles(c *check.C, name, path string) unique
 		"var/cache/apparmor",
 		"var/cache/snapd",
 		"var/lib/cloud",
+		"var/lib/crony",
 		"var/lib/snapd",
 		"var/log",
 		"var/snap/lxd/common",

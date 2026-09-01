@@ -1,23 +1,26 @@
 summary: Test launch for the supported workshop bases
 environment:
-  # TODO: enable VM variants
-  BASE/ctr20: ubuntu@20.04
-  BASE/ctr22: ubuntu@22.04
-  BASE/ctr24: ubuntu@24.04
-  BASE/ctr26: ubuntu@26.04
-  CONFINEMENT: container
+  BASE/ctr20,vm20: ubuntu@20.04
+  BASE/ctr22,vm22: ubuntu@22.04
+  BASE/ctr24,vm24: ubuntu@24.04
+  BASE/ctr26,vm26: ubuntu@26.04
+  CONFINEMENT/ctr20,ctr22,ctr24,ctr26: container
+  CONFINEMENT/vm20,vm22,vm24,vm26: virtual-machine
 prepare: |
   timedatectl set-timezone Pacific/Auckland
 restore: |
   . "$TESTSLIB"/utils.sh
   timedatectl set-timezone Etc/UTC
   workshop_exec remove || true
+debug: |
+  lxc storage info workshop
 execute: |
   . "$TESTSLIB"/utils.sh
 
   echo "Test launch for $BASE ${CONFINEMENT}s"
   envsubst '${BASE}${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
   chown ubuntu:ubuntu workshop.yaml
+  lxc storage info workshop || true
   workshop_exec launch ws
   workshop_exec list | MATCH 'ws[[:space:]]*Ready[[:space:]]*-'
 

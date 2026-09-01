@@ -809,6 +809,63 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 			if err == nil && ready {
 				return nil
 			}
+			var stdout strings.Builder
+			args := &workshop.Execution{
+				ExecArgs: workshop.ExecArgs{
+					Command: []string{"journalctl", "--no-pager", "-b"},
+					WorkDir: "/",
+				},
+				ExecControls: workshop.ExecControls{
+					Stdout: &stdout,
+				},
+			}
+			eCtx := context.WithValue(context.Background(), workshop.ContextProjectId, projectId)
+			exectx, err := s.execCommand(conn, eCtx, name, args)
+			if err != nil {
+				return err
+			}
+			if err := exectx.WaitExecution(eCtx); err != nil {
+				if _, ok := errors.AsType[*workshop.ErrExec](err); !ok {
+					return err
+				}
+			}
+			logger.Noticef("LOGS: =======\n\n%s\n\n===========\n", stdout.String())
+			stdout.Reset()
+			args.Command = []string{"systemctl", "status", "workshop-waitready.service"}
+			exectx, err = s.execCommand(conn, eCtx, name, args)
+			if err != nil {
+				return err
+			}
+			if err := exectx.WaitExecution(eCtx); err != nil {
+				if _, ok := errors.AsType[*workshop.ErrExec](err); !ok {
+					return err
+				}
+			}
+			logger.Noticef("WAITREADY STATUS: =========\n\n%s\n\n=============\n", stdout.String())
+			stdout.Reset()
+			args.Command = []string{"systemctl", "status"}
+			exectx, err = s.execCommand(conn, eCtx, name, args)
+			if err != nil {
+				return err
+			}
+			if err := exectx.WaitExecution(eCtx); err != nil {
+				if _, ok := errors.AsType[*workshop.ErrExec](err); !ok {
+					return err
+				}
+			}
+			logger.Noticef("SYSTEM STATUS: =========\n\n%s\n\n=============\n", stdout.String())
+			stdout.Reset()
+			args.Command = []string{"systemd-detect-virt"}
+			exectx, err = s.execCommand(conn, eCtx, name, args)
+			if err != nil {
+				return err
+			}
+			if err := exectx.WaitExecution(eCtx); err != nil {
+				if _, ok := errors.AsType[*workshop.ErrExec](err); !ok {
+					return err
+				}
+			}
+			logger.Noticef("SYSTEMD VIRT: =========\n\n%s\n\n=============\n", stdout.String())
 			return ctx.Err()
 		}
 	}
@@ -858,9 +915,9 @@ func (s *Backend) stopWorkshop(conn lxd.InstanceServer, ctx context.Context, nam
 		return err
 	}
 
-	timeout := 60
+	timeout := 120
 	if force {
-		timeout = 10
+		timeout = 20
 	}
 	err := s.updateInstanceState(conn, ctx, name, "stop", timeout)
 	if err != nil && force {
