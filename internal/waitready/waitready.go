@@ -29,7 +29,7 @@ import (
 	"github.com/canonical/workshop/internal/systemd"
 )
 
-var Timeout = 5 * time.Minute
+var Timeout = 5 * time.Minute //10
 
 // IsWaitreadyInvocation reports whether the process was invoked via a symlink
 // named waitready. This allows multiple logically unrelated commands to be

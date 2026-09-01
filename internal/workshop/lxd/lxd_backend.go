@@ -764,6 +764,63 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 			if err == nil && ready {
 				return nil
 			}
+			var stdout strings.Builder
+			args := &workshop.Execution{
+				ExecArgs: workshop.ExecArgs{
+					Command: []string{"journalctl", "--no-pager", "-b"},
+					WorkDir: "/",
+				},
+				ExecControls: workshop.ExecControls{
+					Stdout: &stdout,
+				},
+			}
+			eCtx := context.WithValue(context.Background(), workshop.ContextProjectId, projectId)
+			exectx, err := s.execCommand(conn, eCtx, name, args)
+			if err != nil {
+				return err
+			}
+			if err := exectx.WaitExecution(eCtx); err != nil {
+				if _, ok := errors.AsType[*workshop.ErrExec](err); !ok {
+					return err
+				}
+			}
+			logger.Noticef("LOGS: =======\n\n%s\n\n===========\n", stdout.String())
+			stdout.Reset()
+			args.Command = []string{"systemctl", "status", "workshop-waitready.service"}
+			exectx, err = s.execCommand(conn, eCtx, name, args)
+			if err != nil {
+				return err
+			}
+			if err := exectx.WaitExecution(eCtx); err != nil {
+				if _, ok := errors.AsType[*workshop.ErrExec](err); !ok {
+					return err
+				}
+			}
+			logger.Noticef("WAITREADY STATUS: =========\n\n%s\n\n=============\n", stdout.String())
+			stdout.Reset()
+			args.Command = []string{"systemctl", "status"}
+			exectx, err = s.execCommand(conn, eCtx, name, args)
+			if err != nil {
+				return err
+			}
+			if err := exectx.WaitExecution(eCtx); err != nil {
+				if _, ok := errors.AsType[*workshop.ErrExec](err); !ok {
+					return err
+				}
+			}
+			logger.Noticef("SYSTEM STATUS: =========\n\n%s\n\n=============\n", stdout.String())
+			stdout.Reset()
+			args.Command = []string{"systemd-detect-virt"}
+			exectx, err = s.execCommand(conn, eCtx, name, args)
+			if err != nil {
+				return err
+			}
+			if err := exectx.WaitExecution(eCtx); err != nil {
+				if _, ok := errors.AsType[*workshop.ErrExec](err); !ok {
+					return err
+				}
+			}
+			logger.Noticef("SYSTEMD VIRT: =========\n\n%s\n\n=============\n", stdout.String())
 			return ctx.Err()
 		}
 	}
@@ -813,9 +870,9 @@ func (s *Backend) stopWorkshop(conn lxd.InstanceServer, ctx context.Context, nam
 		return err
 	}
 
-	timeout := 60
+	timeout := 60 // 120
 	if force {
-		timeout = 10
+		timeout = 10 // 20
 	}
 	err := s.updateInstanceState(conn, ctx, name, "stop", timeout)
 	if err != nil && force {
@@ -1518,6 +1575,14 @@ runcmd:
 	} else {
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
+
+		// Before systemd v249, /etc/machine-id only uses the VM UUID when
+		// `systemd-detect-virt` says kvm (not qemu). See
+		// https://github.com/systemd/systemd/pull/19403 and
+		// https://github.com/systemd/systemd/pull/22945.
+		if file.Base == "ubuntu@20.04" {
+			cfg["raw.qemu"] = "-smbios type=1,product=KVM"
+		}
 	}
 
 	return cfg, nil
