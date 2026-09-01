@@ -177,8 +177,17 @@ type PlugSanitizer interface {
 	BeforePreparePlug(plug *sdk.PlugInfo) error
 }
 
-// SlotSanitizer can be implemented by Interfaces that have reasons to sanitize their slots.
+// SlotSanitizer is implemented by interfaces that validate or normalize slot
+// definitions before they are added to the interface repository.
+//
+// Implementations may modify slot attributes to apply defaults or store a
+// canonical representation. They must not change the slot's identity,
+// including its name, interface, or owning SDK.
 type SlotSanitizer interface {
+	// BeforePrepareSlot validates and normalizes slot.
+	//
+	// It returns an error when the slot definition is invalid. On success,
+	// slot may contain normalized attributes or interface-defined defaults.
 	BeforePrepareSlot(slot *sdk.SlotInfo) error
 }
 
