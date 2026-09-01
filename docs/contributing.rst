@@ -40,6 +40,45 @@ Before you start, familiarize yourself with two documents:
   governs how the project's code is used and distributed.
 
 
+.. _contributing_ai:
+
+Acceptable use of AI
+~~~~~~~~~~~~~~~~~~~~
+
+AI assistance is welcome in contributions of any kind.
+The repository is tuned for GitHub Copilot:
+it includes instructions and agents tailored to the project,
+along with documentation skills sourced from the approved
+`copilot-collections <https://github.com/canonical/copilot-collections>`__ set
+(see :ref:`contributing_copilot`).
+Try Copilot first;
+other assistants are just as acceptable.
+
+Whichever tool you use, authorship stays with you:
+submit AI-assisted work as your own, without AI attribution,
+and take full responsibility for its contents.
+
+A few ground rules:
+
+- Use AI freely to write pull request descriptions;
+  a clear statement of intent and rationale helps reviewers.
+
+- Write commit messages and code comments yourself:
+  they're the project's long-term memory
+  and follow :ref:`conventions <contributing_development>` of their own.
+
+- Draft documentation with AI if it helps,
+  then edit the result to comply with the :ref:`doc_style_guide`.
+  Running the documentation review skills is mandatory
+  for documentation contributions.
+
+
+Bulk or low-effort AI-generated pull requests
+that disregard the project's practices
+are closed at the maintainers' sole discretion,
+without extended discussion.
+
+
 Ways to contribute
 ------------------
 
