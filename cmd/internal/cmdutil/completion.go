@@ -20,6 +20,9 @@
 package cmdutil
 
 import (
+	"os"
+	"strings"
+
 	"github.com/spf13/cobra"
 )
 
@@ -27,4 +30,17 @@ func CompleteChoices(choices ...string) cobra.CompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return choices, cobra.ShellCompDirectiveNoFileComp
 	}
+}
+
+func CompleteEnv(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	environ := os.Environ()
+	names := make([]string, 0, len(environ))
+	for _, e := range environ {
+		if strings.HasPrefix(e, "_") && !strings.HasPrefix(toComplete, "_") {
+			continue
+		}
+		name, _, _ := strings.Cut(e, "=")
+		names = append(names, name)
+	}
+	return names, cobra.ShellCompDirectiveNoFileComp
 }
