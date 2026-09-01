@@ -59,10 +59,10 @@ func (s *secretSuite) TestName(c *check.C) {
 	c.Check(iface.Name(), check.Equals, "secret")
 }
 
-// TestBeforePrepareSlotDelegatesToSystemSdk checks that the builtin interface
-// routes slot preparation through the system SDK implementation, including
-// normalization performed there.
-func (s *secretSuite) TestBeforePrepareSlotDelegatesToSystemSdk(c *check.C) {
+// TestBeforePrepareSlotDefaultsCollection checks that a valid secret slot
+// which omits the optional collection is normalized to use the default host
+// keyring collection.
+func (s *secretSuite) TestBeforePrepareSlotDefaultsCollection(c *check.C) {
 	slot := secretSlot(map[string]any{
 		"attributes": map[string]any{
 			"service":  "github",
@@ -75,14 +75,98 @@ func (s *secretSuite) TestBeforePrepareSlotDelegatesToSystemSdk(c *check.C) {
 	c.Check(slot.Attrs["collection"], check.Equals, "default")
 }
 
+// TestBeforePrepareSlotKeepsCollection checks that an explicitly selected host
+// keyring collection is accepted and preserved during slot preparation.
+func (s *secretSuite) TestBeforePrepareSlotKeepsCollection(c *check.C) {
+	slot := secretSlot(map[string]any{
+		"collection": "non-default-test",
+		"attributes": map[string]any{"service": "ollama"},
+	})
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Assert(err, check.IsNil)
+	c.Check(slot.Attrs["collection"], check.Equals, "non-default-test")
+}
+
 // TestBeforePrepareSlotRejectsUnsupportedProvider checks that the builtin
-// interface only routes secret slots owned by the system SDK.
+// interface only accepts secret slots owned by the system SDK.
 func (s *secretSuite) TestBeforePrepareSlotRejectsUnsupportedProvider(c *check.C) {
 	slot := secretSlot(nil)
 	slot.Sdk = &sdk.Info{Name: "producer", Type: sdk.Regular}
 
 	err := (secretInterface{}).BeforePrepareSlot(slot)
 	c.Check(err, check.ErrorMatches, `secret interface slots are only supported by the system SDK`)
+}
+
+// TestBeforePrepareSlotRejectsUnsupportedKeys checks that the secret schema
+// does not silently accept unknown top-level slot keys.
+func (s *secretSuite) TestBeforePrepareSlotRejectsUnsupportedKeys(c *check.C) {
+	slot := secretSlot(map[string]any{"unknown": "value"})
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Check(err, check.ErrorMatches, `unsupported keys found in secret slot`)
+}
+
+// TestBeforePrepareSlotRequiresAttributes checks that every secret slot
+// defines the keyring search attributes used to locate its secret.
+func (s *secretSuite) TestBeforePrepareSlotRequiresAttributes(c *check.C) {
+	slot := secretSlot(nil)
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Check(err, check.ErrorMatches, `secret interface slot must contain "attributes"`)
+}
+
+// TestBeforePrepareSlotRequiresAttributesMap checks that keyring search
+// attributes are represented as a mapping rather than a scalar value.
+func (s *secretSuite) TestBeforePrepareSlotRequiresAttributesMap(c *check.C) {
+	slot := secretSlot(map[string]any{"attributes": "service=github"})
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Check(err, check.ErrorMatches, `secret interface slot "attributes" must be a map`)
+}
+
+// TestBeforePrepareSlotRequiresAtLeastOneAttribute checks that a secret slot
+// cannot perform an unconstrained keyring lookup.
+func (s *secretSuite) TestBeforePrepareSlotRequiresAtLeastOneAttribute(c *check.C) {
+	slot := secretSlot(map[string]any{"attributes": map[string]any{}})
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Check(err, check.ErrorMatches, `at least one attribute must be defined for a secret slot`)
+}
+
+// TestBeforePrepareSlotRequiresStringAttributeValues checks that every keyring
+// search attribute has the string representation required by the provider.
+func (s *secretSuite) TestBeforePrepareSlotRequiresStringAttributeValues(c *check.C) {
+	slot := secretSlot(map[string]any{
+		"attributes": map[string]any{"service": int64(42)},
+	})
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Check(err, check.ErrorMatches, `attribute "service" must be of type string`)
+}
+
+// TestBeforePrepareSlotRequiresStringCollection checks that an optional
+// keyring collection selector is represented as a string.
+func (s *secretSuite) TestBeforePrepareSlotRequiresStringCollection(c *check.C) {
+	slot := secretSlot(map[string]any{
+		"collection": int64(42),
+		"attributes": map[string]any{"service": "github"},
+	})
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Check(err, check.ErrorMatches, `secret slot collection key must have a string value`)
+}
+
+// TestBeforePrepareSlotRequiresNonEmptyCollection checks that an explicitly
+// selected keyring collection contains a usable name.
+func (s *secretSuite) TestBeforePrepareSlotRequiresNonEmptyCollection(c *check.C) {
+	slot := secretSlot(map[string]any{
+		"collection": " ",
+		"attributes": map[string]any{"service": "github"},
+	})
+
+	err := (secretInterface{}).BeforePrepareSlot(slot)
+	c.Check(err, check.ErrorMatches, `secret slot collection value must contain a non empty string value`)
 }
 
 func secretSlot(attrs map[string]any) *sdk.SlotInfo {

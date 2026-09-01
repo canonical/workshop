@@ -16,10 +16,13 @@ package builtin
 
 import (
 	"errors"
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/sdk"
-	systemsdk "github.com/canonical/workshop/internal/sdk/system"
 )
 
 // secretInterface is the built-in interface for routing secrets from
@@ -58,7 +61,22 @@ const secretBaseDeclarationSlots = `
     allow-auto-connection: false
 `
 
-const secretSummary = `allows SDKs to consume secrets from the host keyring`
+const (
+	// secretSlotAttributesKey identifies the host keyring search attributes in
+	// a secret slot.
+	secretSlotAttributesKey = "attributes"
+
+	// secretSlotCollectionKey identifies the optional host keyring collection
+	// in a secret slot.
+	secretSlotCollectionKey = "collection"
+
+	// defaultSecretCollection is used when a secret slot does not select a host
+	// keyring collection.
+	defaultSecretCollection = "default"
+
+	// secretSummary describes the purpose of the secret interface.
+	secretSummary = `allows SDKs to consume secrets from the host keyring`
+)
 
 // AutoConnect implements [interfaces.Interface]. It returns true to
 // defer entirely to the base declaration policy, which denies
@@ -76,7 +94,52 @@ func (secretInterface) BeforePrepareSlot(slot *sdk.SlotInfo) error {
 			"secret interface slots are only supported by the system SDK")
 	}
 
-	return systemsdk.BeforePrepareSlot(slot)
+	knownSlotKeys := []string{
+		secretSlotAttributesKey,
+		secretSlotCollectionKey,
+	}
+	attrKeys := slices.Collect(maps.Keys(slot.Attrs))
+	unknownKeys := slices.DeleteFunc(attrKeys, func(key string) bool {
+		return slices.Contains(knownSlotKeys, key)
+	})
+	if len(unknownKeys) > 0 {
+		return errors.New("unsupported keys found in secret slot")
+	}
+
+	rawAttributes, exists := slot.Attrs[secretSlotAttributesKey]
+	if !exists {
+		return errors.New(`secret interface slot must contain "attributes"`)
+	}
+
+	attributes, ok := rawAttributes.(map[string]any)
+	if !ok {
+		return errors.New(`secret interface slot "attributes" must be a map`)
+	}
+	if len(attributes) == 0 {
+		return errors.New("at least one attribute must be defined for a secret slot")
+	}
+
+	for key, value := range attributes {
+		if _, ok := value.(string); !ok {
+			return fmt.Errorf("attribute %q must be of type string", key)
+		}
+	}
+
+	rawCollection, exists := slot.Attrs[secretSlotCollectionKey]
+	if !exists {
+		slot.Attrs[secretSlotCollectionKey] = defaultSecretCollection
+		return nil
+	}
+
+	collection, ok := rawCollection.(string)
+	if !ok {
+		return errors.New("secret slot collection key must have a string value")
+	}
+	if strings.TrimSpace(collection) == "" {
+		return errors.New("secret slot collection value must contain a non empty string value")
+	}
+
+	return nil
 }
 
 func init() {
