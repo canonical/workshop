@@ -13,6 +13,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/jessevdk/go-flags v1.6.1
+	github.com/juju/ansiterm v1.0.1-0.20260902080743-06414fabd2b1
 	github.com/juju/clock v1.1.1
 	github.com/juju/retry v1.0.1
 	github.com/pkg/sftp v1.13.11
@@ -34,6 +35,7 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -46,6 +48,8 @@ require (
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/lunixbochs/vtclean v1.0.0 // indirect
+	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/pkg/xattr v0.4.12 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect

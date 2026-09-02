@@ -20,10 +20,10 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/canonical/lxd/shared/units"
+	"github.com/juju/ansiterm/tabwriter"
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"

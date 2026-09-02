@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/juju/ansiterm/tabwriter"
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
