@@ -19,7 +19,6 @@ Remove one or many workshops.
 
 .. rubric:: Description
 
-
 This command removes the workshops listed as arguments. For each workshop, it:
 
 - Checks that the workshop isn't "Off" or "Pending"
@@ -35,9 +34,7 @@ Notes:
 - For mount interface plugs,
   non-default sources set by "workshop remount" aren't removed.
 
-
 .. rubric:: Examples
-
 
 Remove the "nimble" and "jazzy" workshops in the current project directory:
 
@@ -45,13 +42,9 @@ Remove the "nimble" and "jazzy" workshops in the current project directory:
 
    $ workshop remove nimble jazzy
 
-
 The name is optional if the project has only one workshop:
 
 .. code-block:: console
 
    $ workshop remove
-
-
-
 

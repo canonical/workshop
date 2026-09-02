@@ -19,7 +19,6 @@ Restore workshops to the state of the last launch or refresh.
 
 .. rubric:: Description
 
-
 This command restores the container filesystem of the workshops listed
 as arguments to the point of the last launch or refresh,
 then resets the interface connections to default settings:
@@ -44,16 +43,13 @@ Notes:
 - To update an existing workshop instead of reverting changes,
   use "workshop refresh".
 
-
 .. rubric:: Examples
-
 
 Restore the "nimble" and "jazzy" workshops in the current project directory:
 
 .. code-block:: console
 
    $ workshop restore nimble jazzy
-
 
 The name is optional if the project has only one workshop:
 
@@ -62,19 +58,13 @@ The name is optional if the project has only one workshop:
    $ workshop restore
 
 
-
 .. rubric:: Flags
-
 
 --no-wait
 
    Return the change ID, don't wait for the operation to finish.
 
-
 --verbose
 
    Combine stdout and stderr output from hooks.
-
-
-
 

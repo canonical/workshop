@@ -19,7 +19,6 @@ Construct one or many workshops using their definitions.
 
 .. rubric:: Description
 
-
 This command constructs the workshops listed as arguments by going over their
 definitions and installing their components. For each workshop, it:
 
@@ -49,16 +48,13 @@ Notes:
 
 - SDKs are installed in the order they are listed in the definition.
 
-
 .. rubric:: Examples
-
 
 Launch the "nimble" and "jazzy" workshops in the current project directory:
 
 .. code-block:: console
 
    $ workshop launch nimble jazzy
-
 
 The name is optional if the project has only one workshop:
 
@@ -67,34 +63,25 @@ The name is optional if the project has only one workshop:
    $ workshop launch
 
 
-
 .. rubric:: Flags
-
 
 --abort
 
    Abort the previously paused operation, reverting any changes.
 
-
 --continue
 
    Continue the previously paused operation.
-
 
 --no-wait
 
    Return the change ID, don't wait for the operation to finish.
 
-
 --verbose
 
    Combine stdout and stderr output from hooks.
 
-
 --wait-on-error
 
    Pause the operation on error; to resume, use "--continue" or "--abort".
-
-
-
 

@@ -40,9 +40,7 @@ Notes:
 - Run "workshop info" to list all SDKs currently installed
   in the workshop, including the sketch SDK if present.
 
-
 .. rubric:: Examples
-
 
 Edit the sketch SDK definition for the "nimble" workshop
 and apply it after saving by automatically refreshing the workshop:
@@ -51,14 +49,12 @@ and apply it after saving by automatically refreshing the workshop:
 
    $ workshop sketch-sdk nimble
 
-
 Save the sketch SDK for the "nimble" workshop
 as a project SDK named "tools":
 
 .. code-block:: console
 
    $ workshop sketch-sdk nimble --eject --name tools
-
 
 Stash the sketch SDK, temporarily reverting the changes in the workshop:
 
@@ -67,39 +63,29 @@ Stash the sketch SDK, temporarily reverting the changes in the workshop:
    $ workshop sketch-sdk nimble --stash
 
 
-
 .. rubric:: Flags
-
 
 --eject
 
    Promote the sketch SDK to an in-project SDK.
 
-
 --name
 
    Name for the ejected SDK.
-
 
 --remove
 
    Remove the sketch SDK from the workshop.
 
-
 --restore
 
    Return the previously stashed SDK to the workshop.
-
 
 --stash
 
    Stash the sketch SDK and remove it from the workshop.
 
-
 --verbose
 
    Combine stdout and stderr output from hooks.
-
-
-
 

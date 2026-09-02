@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/adrg/xdg v0.5.3
-	github.com/canonical/gencodo v0.2.1
+	github.com/canonical/gencodo v0.3.0
 	github.com/canonical/lxd v0.0.0-20260521084752-704f941eaeb2
 	github.com/canonical/x-go v0.0.0-20230522092633-7947a7587f5b
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf

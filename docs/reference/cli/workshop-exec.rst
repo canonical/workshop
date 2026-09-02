@@ -19,7 +19,6 @@ Run an ad-hoc shell command in a workshop.
 
 .. rubric:: Description
 
-
 The "exec" subcommand runs an arbitrary command in the specified workshop,
 waiting for it to complete. If a timeout elapses before that, it's terminated.
 
@@ -59,9 +58,7 @@ Notes:
 - You can set the working directory, environment variables, user and group ID
   for running the command in the workshop; reasonable defaults are provided.
 
-
 .. rubric:: Examples
-
 
 Run the "go build main.go" command under the "nimble" workshop
 in the current project directory:
@@ -70,13 +67,11 @@ in the current project directory:
 
    $ workshop exec nimble -- go build main.go
 
-
 A similar command that sets an environment variable and the working directory:
 
 .. code-block:: console
 
    $ workshop exec --env GO111MODULE=off -w /project nimble -- go build -x
-
 
 Run a command as root (the default is "workshop"):
 
@@ -84,20 +79,17 @@ Run a command as root (the default is "workshop"):
 
    $ workshop exec --uid 0 nimble id
 
-
 Run a custom interactive shell:
 
 .. code-block:: console
 
    $ workshop exec -I nimble sh
 
-
 If the project has only one workshop, the workshop name is optional:
 
 .. code-block:: console
 
    $ workshop exec -- sh
-
 
 If the command doesn't overlap with a workshop name
 and the shell is interactive,
@@ -108,44 +100,41 @@ the separator is also optional:
    $ workshop exec sh
 
 
-
 .. rubric:: Flags
 
-
---cwd
+-w, --cwd
 
    Set the working directory in the workshop.
 
+   Default: ``/project``
 
 --env
 
    Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.
 
-
 --uid
 
    Run as a specific workshop user.
 
+   Default: ``1000``
 
 --gid
 
    Run as a member of a specific workshop group.
 
+   Default: ``1000``
 
 --timeout
 
    Set a timeout; valid units are ns, us or µs, ms, s, m, h.
 
+   Default: ``0s``
 
---interactive
+-i, --interactive
 
    Force interactive mode.
 
-
---non-interactive
+-I, --non-interactive
 
    Force non-interactive mode.
-
-
-
 

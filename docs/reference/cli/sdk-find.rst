@@ -19,7 +19,6 @@ Search the Store for SDKs.
 
 .. rubric:: Description
 
-
 Search the Store for SDKs matching the given query.
 The query can match the SDK's name, title, summary, description, or publisher.
 
@@ -29,9 +28,7 @@ Notes:
 - To view more details for one of the SDKs, use "sdk info".
 - To list SDKs on the local system, use "sdk list".
 
-
 .. rubric:: Examples
-
 
 Search for SDKs matching a single keyword:
 
@@ -39,13 +36,11 @@ Search for SDKs matching a single keyword:
 
    $ sdk find openvino
 
-
 Combine multiple words into a single query:
 
 .. code-block:: console
 
    $ sdk find jupyter notebooks
-
 
 Hide the table header in the output:
 
@@ -54,14 +49,9 @@ Hide the table header in the output:
    $ sdk find openvino --no-headers
 
 
-
 .. rubric:: Flags
-
 
 --no-headers
 
    Hide table headers.
-
-
-
 
