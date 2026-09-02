@@ -247,6 +247,10 @@ type Backend interface {
 	// has a username key that the corresponding projects belong to.
 	Projects(ctx context.Context) (map[string][]Project, error)
 
+	// Returns the projects belonging to the user in context. If the context
+	// does not contain a user, it returns an empty slice.
+	UserProjects(ctx context.Context) ([]Project, error)
+
 	// Loads a workshop instance.
 	Workshop(ctx context.Context, name string) (*Workshop, error)
 

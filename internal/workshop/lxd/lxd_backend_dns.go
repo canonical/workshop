@@ -83,7 +83,7 @@ func (s *Backend) addWorkshopCNAMEs(conn lxd.InstanceServer, ctx context.Context
 	}
 
 	// Call this before locking because it might prune the dnsmasq config.
-	projects, err := s.userProjects(ctx)
+	projects, err := s.UserProjects(ctx)
 	if err != nil {
 		return err
 	}

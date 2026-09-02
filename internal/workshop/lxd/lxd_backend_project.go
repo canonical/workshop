@@ -169,7 +169,7 @@ func (s *Backend) CreateOrLoadProject(ctx context.Context, path string) (*worksh
 
 func (s *Backend) Projects(ctx context.Context) (map[string][]workshop.Project, error) {
 	if user, ok := ctx.Value(workshop.ContextUser).(string); ok {
-		projects, err := s.userProjects(ctx)
+		projects, err := s.UserProjects(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +203,7 @@ func (s *Backend) Projects(ctx context.Context) (map[string][]workshop.Project, 
 		}
 
 		prjctx := context.WithValue(ctx, workshop.ContextUser, username)
-		projects, err := s.userProjects(prjctx)
+		projects, err := s.UserProjects(prjctx)
 		if err != nil {
 			return nil, err
 		}
@@ -213,7 +213,11 @@ func (s *Backend) Projects(ctx context.Context) (map[string][]workshop.Project, 
 	return allProjects, nil
 }
 
-func (s *Backend) userProjects(ctx context.Context) ([]workshop.Project, error) {
+func (s *Backend) UserProjects(ctx context.Context) ([]workshop.Project, error) {
+	if _, ok := ctx.Value(workshop.ContextUser).(string); !ok {
+		return nil, nil
+	}
+
 	client, err := s.LxdClient(ctx)
 	if err != nil {
 		return nil, err
