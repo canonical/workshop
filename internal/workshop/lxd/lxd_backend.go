@@ -211,8 +211,8 @@ func checkStorageSpace() error {
 	if usedPct >= fullThresholdPct {
 		availGiB := float64(res.Space.Total-res.Space.Used) / (1024 * 1024 * 1024)
 		return fmt.Errorf("storage pool %q is %.0f%% full (%.1f GiB available); "+
-			"free up space or expand the pool with `lxc storage volume set workshop size=<N>GiB`\n"+
-			"For details see: https://ubuntu.com/workshop/docs/reference/workshops/#storage-pools-and-drivers",
+			"free up space or expand the pool with `lxc storage set workshop size=<N>GiB`\n"+
+			"For details, see: https://ubuntu.com/workshop/docs/reference/workshops/#storage-pools-and-drivers",
 			storagePool, usedPct, availGiB)
 	}
 
