@@ -195,7 +195,22 @@ as suggested in this `LXD documentation section
 <https://canonical.com/lxd/docs/latest/howto/storage_pools/>`_.
 However, day-to-day usage requires little manual intervention.
 
-.. attention::
+When the storage pool is 90% or more full,
+the |ws_markup| daemon enters degraded mode:
+it rejects commands that change state, such as launching a workshop,
+and reports the pool usage instead.
+It returns to normal operation as soon as space is available.
+To recover, remove unused workshops or SDKs,
+or expand the pool by setting a larger size at the pool level:
+
+.. code-block:: console
+
+   $ lxc storage set workshop size=<N>GiB
+
+
+LXD only grows a pool this way; it never shrinks one.
+
+.. warning::
 
    Don't use storage driver utilities (such as :command:`zfs` or :command:`btrfs`)
    directly to alter the LXD-managed storage pool,
