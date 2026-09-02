@@ -19,7 +19,6 @@ List recent changes to the workshops in a project.
 
 .. rubric:: Description
 
-
 Any substantial operation on a workshop is a change that consists of tasks;
 the command lists details of recent changes for all workshops within a project.
 For each change, it prints the following details:
@@ -41,9 +40,7 @@ Notes:
 
 - To investigate the details of a specific change, use "workshop tasks" instead
 
-
 .. rubric:: Examples
-
 
 List changes for all workshops in the current project directory:
 
@@ -52,23 +49,16 @@ List changes for all workshops in the current project directory:
    $ workshop changes
 
 
-
 .. rubric:: Flags
-
 
 --no-headers
 
    Hide table headers.
 
 
-
-
-
 .. rubric:: See also
 
 Reference:
 
-
 - :ref:`ref_workshop_info`
 - :ref:`ref_workshop_list`
-

@@ -19,7 +19,6 @@ Start one or many workshops.
 
 .. rubric:: Description
 
-
 This command activates the workshops listed as arguments. For each one, it:
 
 - Makes sure the workshop was actually launched
@@ -39,9 +38,7 @@ Notes:
 
 - To stop a started workshop, use "workshop stop".
 
-
 .. rubric:: Examples
-
 
 Start the "nimble" and "jazzy" workshops in the current project directory:
 
@@ -49,13 +46,9 @@ Start the "nimble" and "jazzy" workshops in the current project directory:
 
    $ workshop start nimble jazzy
 
-
 The name is optional if the project has only one workshop:
 
 .. code-block:: console
 
    $ workshop start
-
-
-
 
