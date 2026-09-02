@@ -339,7 +339,7 @@
       "lt": 4294967295
     }
   },
-  "additionalProperties": true,
+  "additionalProperties": false,
   "description": "Structure to hold output metadata.",
   "properties": {
     "name": {

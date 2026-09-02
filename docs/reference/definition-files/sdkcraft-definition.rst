@@ -142,7 +142,7 @@ Top-level fields
 
 |sdk_markup| writes :samp:`name`, :samp:`base`, :samp:`version`, :samp:`title`,
 :samp:`summary`, :samp:`description`, :samp:`license`, :samp:`contact`,
-:samp:`issues`, :samp:`source-code`, :samp:`plugs`, and :samp:`slots`
+:samp:`issues`, :samp:`source-code`, :samp:`website`, :samp:`plugs`, and :samp:`slots`
 straight into the runtime :file:`sdk.yaml`.
 The other top-level fields control the build only.
 

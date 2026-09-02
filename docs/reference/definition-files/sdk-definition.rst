@@ -112,21 +112,29 @@ Top-level fields
 
           Match the license to the actual components the SDK installs.
 
-   * - :samp:`contact`
+   * - :samp:`contact` (built SDKs only)
      - string, array, or URL
      - Contact information for the SDK publisher.
+       Copied from :file:`sdkcraft.yaml` by |sdk_markup|;
+       |ws_markup| ignores it.
 
-   * - :samp:`issues`
+   * - :samp:`issues` (built SDKs only)
      - string, array, or URL
      - Where users should report problems with the SDK.
+       Copied from :file:`sdkcraft.yaml` by |sdk_markup|;
+       |ws_markup| ignores it.
 
-   * - :samp:`source-code`
+   * - :samp:`source-code` (built SDKs only)
      - URL
      - Where the SDK's source code is hosted.
+       Copied from :file:`sdkcraft.yaml` by |sdk_markup|;
+       |ws_markup| ignores it.
 
-   * - :samp:`website`
+   * - :samp:`website` (built SDKs only)
      - URL
      - The web page for the SDK.
+       Copied from :file:`sdkcraft.yaml` by |sdk_markup|;
+       |ws_markup| ignores it.
 
    * - :samp:`plugs`
      - object
@@ -154,6 +162,33 @@ Top-level fields
    In particular,
    :samp:`architecture` for in-project SDKs is assumed
    to match the host (or :samp:`all`).
+
+   "Built SDKs only" means |ws_markup| accepts the field
+   in a packed :file:`sdk.yaml` but does not use it.
+
+
+.. _ref_sdk_definition_unknown_keys:
+
+Unknown keys
+------------
+
+|ws_markup| reads the two kinds of :file:`sdk.yaml` differently:
+
+- An in-project :file:`sdk.yaml` is validated strictly.
+  Any top-level key outside the table above,
+  including the built-SDKs-only keys
+  :samp:`contact`, :samp:`issues`, :samp:`source-code`, and :samp:`website`,
+  fails :command:`workshop launch`:
+
+  .. code-block:: text
+
+     error: cannot launch "my-workshop": invalid "ccache" SDK: unknown SDK YAML fields: website (line 2, column 10)
+
+  The message names every unknown key with its line and column.
+
+- A built :file:`sdk.yaml`, as shipped by Store SDKs and SDKs from :command:`sdkcraft try`,
+  is read leniently:
+  |ws_markup| picks the fields it understands and ignores the rest.
 
 
 .. _ref_sdk_definition_interfaces:
@@ -196,6 +231,12 @@ and describes the structure above:
    for an in-project :file:`sdk.yaml` you author by hand,
    only :samp:`name` is mandatory
    (see the note below the table).
+   Because the schema describes what |sdk_markup| writes,
+   it also lists the built-SDKs-only keys
+   :samp:`contact`, :samp:`issues`, :samp:`source-code`, and :samp:`website`,
+   which an in-project :file:`sdk.yaml` cannot contain
+   (see :ref:`ref_sdk_definition_unknown_keys`).
+   Rely on the field table for what an in-project file may carry.
 
    Numeric bounds use pydantic-style :samp:`ge`, :samp:`le`, and :samp:`lt` keywords.
    Generic JSON Schema validators will not enforce them;

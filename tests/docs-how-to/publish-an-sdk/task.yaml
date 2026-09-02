@@ -3,10 +3,12 @@ summary: |
   register, upload, and release because those commands talk to the
   live SDK Store at api.charmhub.io and cannot run in CI. Their CLI
   surface is still verified via --help, so doc drift between the
-  how-to and the sdkcraft binary will fail the test. The CI-credentials
-  section's tooling (libsecret-tools, secret-tool) is checked for
-  availability and command surface only; the real secret-tool search
-  isn't run because it needs a keyring and D-Bus session absent in CI.
+  how-to and the sdkcraft binary will fail the test. The same --help
+  check covers the other Store-side commands the doc invokes: whoami,
+  create-track --track, and login --export together with the
+  SDKCRAFT_STORE_CREDENTIALS variable the CI-credentials section relies
+  on. The real login isn't run because it prompts for Ubuntu One
+  credentials and contacts the Store.
 
   Note on scaffolding: the doc points new authors at canonical/template-sdk
   for the project skeleton plus CI/renovate glue. The test uses sdkcraft
@@ -44,9 +46,22 @@ execute: |
 
   # Verify register, upload, and release expose the surface the how-to
   # describes, without contacting the SDK Store. sdkcraft prints --help
-  # output to stderr, so redirect it for MATCH to see.
+  # output to stderr, so redirect it for MATCH to see. MATCH is
+  # grep -E "$@", so patterns that start with -- go through -e.
   run_sdkcraft register --help 2>&1 | MATCH "[Rr]egister"
   run_sdkcraft upload --help 2>&1 | MATCH "[Uu]pload"
-  run_sdkcraft upload --help 2>&1 | MATCH "release"
+  run_sdkcraft upload --help 2>&1 | MATCH -e "--release"
   run_sdkcraft release --help 2>&1 | MATCH "[Rr]elease"
   run_sdkcraft release --help 2>&1 | MATCH "CHANNELS"
+
+  # The doc also runs whoami after login, and create-track --track for
+  # non-default tracks. Check their surface the same way.
+  run_sdkcraft whoami --help 2>&1 | MATCH "[Aa]uthenticated"
+  run_sdkcraft create-track --help 2>&1 | MATCH -e "--track"
+
+  # The "Automate uploads from CI" section exports credentials with
+  # login --export and feeds them to CI via SDKCRAFT_STORE_CREDENTIALS.
+  # Verify both names in the help text; the real login isn't run because
+  # it prompts for Ubuntu One credentials and contacts the Store.
+  run_sdkcraft login --help 2>&1 | MATCH -e "--export"
+  run_sdkcraft login --help 2>&1 | MATCH "SDKCRAFT_STORE_CREDENTIALS"
