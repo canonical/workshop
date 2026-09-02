@@ -21,10 +21,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
+	"github.com/canonical/workshop/cmd/internal/cmdutil"
 	"github.com/canonical/workshop/internal/timeutil"
 )
 
 type CmdChanges struct {
+	cmdutil.ColorMixin
 	root      *CmdRoot
 	noHeaders bool
 }
@@ -89,7 +91,8 @@ func (c *CmdChanges) Run(cmd *cobra.Command, av []string) error {
 
 	w := tabWriter()
 	if !c.noHeaders {
-		fmt.Fprintf(w, "ID\tSTATUS\tSPAWN\tREADY\tSUMMARY\n")
+		esc := c.GetEscapes()
+		fmt.Fprintf(w, "%sID\tSTATUS\tSPAWN\tREADY\tSUMMARY%s\n", esc.Bold, esc.End)
 	}
 	for _, chg := range chngs {
 		spawnTime := timeutil.Human(chg.SpawnTime)

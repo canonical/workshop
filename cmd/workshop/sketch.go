@@ -630,6 +630,7 @@ func writeHooks(sdkdir string, file sdk.SketchSDKYaml) error {
 }
 
 type CmdSketches struct {
+	cmdutil.ColorMixin
 	root      *CmdRoot
 	noHeaders bool
 }
@@ -702,7 +703,8 @@ func (c *CmdSketches) Run(cmd *cobra.Command, _ []string) error {
 		maxRev = max(maxRev, len(entry.rev))
 	}
 	if !c.noHeaders && len(entries) > 0 {
-		fmt.Fprintf(w, "WORKSHOP\t%*s\tNOTES\n", maxRev, "REV")
+		esc := c.GetEscapes()
+		fmt.Fprintf(w, "%sWORKSHOP\t%*s\tNOTES%s\n", esc.Bold, maxRev, "REV", esc.End)
 	}
 	for _, entry := range entries {
 		fmt.Fprintf(w, "%s\t%*s\t%s\n", entry.workshop, maxRev, entry.rev, entry.notes)

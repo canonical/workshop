@@ -146,11 +146,11 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 	if c.Arch != "all" {
 		archTpl = "%.0s"
 	}
-	tpl := "  %s\t%s\t%s\t" + baseTpl + archTpl + "%*s\t%*s\n"
+	tpl := "  %s%s\t%s\t%s\t" + baseTpl + archTpl + "%*s\t%*s%s\n"
 	if len(tracks) > 0 {
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "%s%s%s\n", esc.Bold, "CHANNELS", esc.End)
-		fmt.Fprintf(w, tpl, "CHANNEL", "VERSION", "BUILD", "BASE", "ARCH", maxRev, "REV", maxSize, "SIZE")
+		fmt.Fprintf(w, tpl, esc.Bold, "CHANNEL", "VERSION", "BUILD", "BASE", "ARCH", maxRev, "REV", maxSize, "SIZE", esc.End)
 	}
 	for _, track := range tracks {
 		closedSign := "-"
@@ -158,7 +158,7 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 			channel := track + "/" + risk
 			revs := revsByChannel[channel]
 			if len(revs) == 0 {
-				fmt.Fprintf(w, tpl, channel, closedSign, "", "", "", 0, "", 0, "")
+				fmt.Fprintf(w, tpl, "", channel, closedSign, "", "", "", 0, "", 0, "", "")
 				continue
 			}
 			closedSign = esc.UpArrow
@@ -169,7 +169,7 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 				prev = rev
 
 				size := units.GetByteSizeString(rev.DownloadSize, 2)
-				fmt.Fprintf(w, tpl, channel, version, build, base, rev.Arch, maxRev, rev.Revision, maxSize, size)
+				fmt.Fprintf(w, tpl, "", channel, version, build, base, rev.Arch, maxRev, rev.Revision, maxSize, size, "")
 			}
 		}
 	}
@@ -178,11 +178,11 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 	for _, it := range installed {
 		maxRev = max(maxRev, len(it.Revision))
 	}
-	tpl = "  %s\t%s\t%s\t%s\t" + baseTpl + archTpl + "%*s\n"
+	tpl = "  %s%s\t%s\t%s\t%s\t" + baseTpl + archTpl + "%*s%s\n"
 	if len(installed) > 0 {
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "%s%s%s\n", esc.Bold, "INSTALLED", esc.End)
-		fmt.Fprintf(w, tpl, "PROJECT", "WORKSHOP", "CHANNEL", "VERSION", "BASE", "ARCH", maxRev, "REV")
+		fmt.Fprintf(w, tpl, esc.Bold, "PROJECT", "WORKSHOP", "CHANNEL", "VERSION", "BASE", "ARCH", maxRev, "REV", esc.End)
 	}
 	for _, it := range installed {
 		project := cmdutil.ContractHome(it.ProjectPath)
@@ -191,7 +191,7 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 		if base == "" {
 			base = "all"
 		}
-		fmt.Fprintf(w, tpl, project, it.Workshop, channel, it.Version, base, it.Arch, maxRev, it.Revision)
+		fmt.Fprintf(w, tpl, "", project, it.Workshop, channel, it.Version, base, it.Arch, maxRev, it.Revision, "")
 	}
 	w.Flush()
 

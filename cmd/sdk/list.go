@@ -29,6 +29,7 @@ import (
 )
 
 type CmdList struct {
+	cmdutil.ColorMixin
 	root      *CmdRoot
 	noHeaders bool
 }
@@ -105,7 +106,8 @@ func (c *CmdList) Run(cmd *cobra.Command, _ []string) error {
 		maxSize = max(maxSize, len(units.GetByteSizeString(sdk.Size, 2)))
 	}
 	if !c.noHeaders {
-		fmt.Fprintf(w, "NAME\tVERSION\t%*s\t%*s\n", maxRev, "REV", maxSize, "SIZE")
+		esc := c.GetEscapes()
+		fmt.Fprintf(w, "%sNAME\tVERSION\t%*s\t%*s%s\n", esc.Bold, maxRev, "REV", maxSize, "SIZE", esc.End)
 	}
 	for _, sdk := range sdks {
 		version := cmdutil.EmptyDash(sdk.Version)
