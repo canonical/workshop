@@ -87,7 +87,7 @@ jobs:
           merge-multiple: true
 
       - run: |
-          gh release create --notes-file=- "$TAG_NAME" snaps/*.snap <<EOF
+          gh release create --repo "$GITHUB_REPOSITORY" --notes-file=- "$TAG_NAME" snaps/*.snap <<EOF
           See [release notes](https://ubuntu.com/workshop/docs/release-notes/$TAG_NAME/).
           EOF
         env:
