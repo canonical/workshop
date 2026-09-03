@@ -69,7 +69,14 @@ func (f *wsOps) SetUpSuite(c *check.C) {
 	f.bd, err = lxdbackend.New()
 	c.Assert(err, check.IsNil)
 
-	f.usr = &user.User{Username: "testuser", Uid: "1000", Gid: "1000", HomeDir: c.MkDir()}
+	currentUser, err := user.Current()
+	c.Assert(err, check.IsNil)
+	f.usr = &user.User{
+		Username: "testuser",
+		Uid:      currentUser.Uid,
+		Gid:      currentUser.Gid,
+		HomeDir:  c.MkDir(),
+	}
 	f.project = workshop.Project{
 		ProjectId: "42424242",
 		Path:      filepath.Join(c.MkDir(), "testprj"),
