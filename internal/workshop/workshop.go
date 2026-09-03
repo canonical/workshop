@@ -47,6 +47,9 @@ var InstallTimeNow = time.Now
 type Workshop struct {
 	Backend Backend
 	Project Project
+	// InstanceID uniquely identifies the running backend instance. It is used
+	// to associate requests originating inside the workshop with this record.
+	InstanceID string
 	// Workshop file that was used to launch it; it may be out of sync with the
 	// file in the project directory due to user's edits, etc.
 	File    *File

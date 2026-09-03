@@ -240,6 +240,28 @@ func fullInstance(c *check.C, conn lxd.InstanceServer, name string) *api.Instanc
 	return inst
 }
 
+// TestLxdBackendWorkshopInstanceID checks that loading a workshop exposes the
+// LXD instance UUID in the same normalized form written to its machine ID file.
+func (f *wsOps) TestLxdBackendWorkshopInstanceID(c *check.C) {
+	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	loaded, err := f.bd.Workshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	inst, _, err := conn.GetInstance(
+		lxdbackend.InstanceName("test", f.project.ProjectId),
+	)
+	c.Assert(err, check.IsNil)
+	expected := strings.ReplaceAll(inst.Config["volatile.uuid"], "-", "")
+
+	c.Check(loaded.InstanceID, check.Equals, expected)
+}
+
 func includeWhenCopying(key string) bool {
 	if strings.HasPrefix(key, "user.ed25519-key.") {
 		return false
