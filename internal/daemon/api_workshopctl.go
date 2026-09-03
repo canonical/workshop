@@ -62,15 +62,15 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 
 	// Ignore missing context error to allow 'workshopctl -h' without a context;
 	// Actual context is validated later by get/set.
-	context, _ := c.d.overlord.HookManager().Context(reqData.ContextID)
+	hookContext, _ := c.d.overlord.HookManager().Context(reqData.ContextID)
 
 	if reqData.Stdin != nil {
-		context.Lock()
-		context.Set("stdin", reqData.Stdin)
-		context.Unlock()
+		hookContext.Lock()
+		hookContext.Set("stdin", reqData.Stdin)
+		hookContext.Unlock()
 	}
 
-	stdout, stderr, err := ctlcmd.Run(context, reqData.Args, uid)
+	stdout, stderr, err := ctlcmd.Run(r.Context(), hookContext, reqData.Args, uid)
 	if err != nil {
 		if e, ok := err.(*flags.Error); ok && e.Type == flags.ErrHelp {
 			stdout = []byte(e.Error())

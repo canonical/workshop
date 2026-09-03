@@ -45,8 +45,11 @@ func NewMockCommand() *MockCommand {
 }
 
 func (c *MockCommand) Execute(ctx context.Context, args []string) error {
-	c.ExecuteContext = ctx
 	c.Args = args
+
+	if c.ExecuteFunc != nil {
+		return c.ExecuteFunc(ctx, args)
+	}
 
 	if c.FakeStdout != "" {
 		err := c.printf("%s", c.FakeStdout)
@@ -75,7 +78,7 @@ type MockCommand struct {
 	ExecuteError bool
 	FakeStdout   string
 	FakeStderr   string
+	ExecuteFunc  func(context.Context, []string) error
 
-	ExecuteContext context.Context
-	Args           []string
+	Args []string
 }

@@ -143,7 +143,12 @@ func (f ForbiddenCommandError) Error() string {
 var nonRootAllowed = []string{"get-secret", "set-health"}
 
 // Run runs the requested command.
-func Run(hookContext *hookstate.Context, args []string, uid uint32) (stdout, stderr []byte, err error) {
+func Run(
+	ctx context.Context,
+	hookContext *hookstate.Context,
+	args []string,
+	uid uint32,
+) (stdout, stderr []byte, err error) {
 	if len(args) == 0 {
 		return nil, nil, fmt.Errorf("workshopctl cannot run without args")
 	}
@@ -178,7 +183,7 @@ func Run(hookContext *hookstate.Context, args []string, uid uint32) (stdout, std
 		if !ok {
 			return fmt.Errorf("internal error: active command %q not found", parser.Active.Name)
 		}
-		return cmd.Execute(context.TODO(), args)
+		return cmd.Execute(ctx, args)
 	}
 
 	_, err = parser.ParseArgs(args)
