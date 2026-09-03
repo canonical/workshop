@@ -18,7 +18,7 @@ import (
 	"cmp"
 	"context"
 	"embed"
-	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -47,6 +47,7 @@ import (
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/syscheck"
+	"github.com/canonical/workshop/internal/waitready"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -68,14 +69,10 @@ const (
 )
 
 var (
-	startCommandTimeout = 1 * time.Minute
-	storagePoolDriver   = "zfs"
+	storagePoolDriver = "zfs"
 
 	workshopFormatsChecked = false
 )
-
-//go:embed start_command.sh
-var startCommand string
 
 func init() {
 	if osutil.IsWSL() {
@@ -670,19 +667,8 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 	rev := revert.New()
 	defer rev.Fail()
 
-	// Enable autostart first so it doesn't race with workshop-waitready.service.
-	// See https://github.com/canonical/lxd/issues/18833.
-	if err := s.setAutoStart(conn, ctx, name, true); err != nil {
-		return err
-	}
-
 	cleanupCtx := context.WithoutCancel(ctx)
 	rev.Add(func() {
-		// TODO: if this becomes a long-term thing, consider adding a timeout.
-		if e := s.setAutoStart(conn, cleanupCtx, name, false); e != nil {
-			logger.Noticef("On StartWorkshop: cannot reset %q workshop boot.autostart: %v", name, e)
-		}
-
 		// Stop workshop's timeout is handled by LXD API, so no need to have
 		// a context with a timeout.
 		if e := s.stopWorkshop(conn, cleanupCtx, name, true); e != nil {
@@ -694,35 +680,12 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 		return err
 	}
 
-	var stderr strings.Builder
-	args := workshop.Execution{
-		ExecArgs: workshop.ExecArgs{
-			UserId:  0,
-			GroupId: 0,
-			Command: []string{
-				"bash", "-euc", startCommand,
-			},
-			WorkDir: "/",
-			Timeout: startCommandTimeout,
-		},
-		ExecControls: workshop.ExecControls{
-			Stderr: &stderr,
-		},
-	}
-
-	exectx, err := s.execCommand(conn, ctx, name, &args)
-	if err != nil {
+	if err := s.awaitReadyEvent(conn, ctx, name); err != nil {
 		return err
 	}
 
-	var errExec *workshop.ErrExec
-	if err := exectx.WaitExecution(ctx); errors.As(err, &errExec) {
-		message := strings.TrimSpace(stderr.String())
-		if message == "" {
-			return err
-		}
-		return errors.New(message)
-	} else if err != nil {
+	// Workshop started, enable autostart.
+	if err := s.setAutoStart(conn, ctx, name, true); err != nil {
 		return err
 	}
 
@@ -732,6 +695,83 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 
 	rev.Success()
 	return nil
+}
+
+func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, name string) error {
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return fmt.Errorf("context key project-id not found")
+	}
+	instance := InstanceName(name, projectId)
+
+	ctx, cancel := context.WithTimeout(ctx, waitready.Timeout)
+	defer cancel()
+
+	listener, err := conn.GetEvents()
+	if err != nil {
+		return err
+	}
+	defer listener.Disconnect()
+
+	events := make(chan api.Event, 1)
+	defer close(events)
+
+	target, err := listener.AddHandler([]string{"lifecycle"}, func(event api.Event) {
+		defer func() { _ = recover() }()
+		events <- event
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = listener.RemoveHandler(target) }()
+
+	ready, err := s.isInstanceReady(conn, instance)
+	for {
+		if err != nil {
+			return err
+		}
+		if ready {
+			return nil
+		}
+		select {
+		case event := <-events:
+			ready, err = s.isReadyEvent(event, instance)
+		case <-ctx.Done():
+			ready, err := s.isInstanceReady(conn, instance)
+			if err == nil && ready {
+				return nil
+			}
+			return ctx.Err()
+		}
+	}
+}
+
+func (s *Backend) isInstanceReady(conn lxd.InstanceServer, instance string) (bool, error) {
+	state, _, err := conn.GetInstanceState(instance)
+	if err != nil {
+		return false, err
+	}
+	return state.StatusCode == api.Ready, nil
+}
+
+func (s *Backend) isReadyEvent(event api.Event, instance string) (bool, error) {
+	var lifecycle api.EventLifecycle
+	if err := json.Unmarshal(event.Metadata, &lifecycle); err != nil {
+		return false, err
+	}
+
+	if lifecycle.Name != instance {
+		return false, nil
+	}
+
+	switch lifecycle.Action {
+	case api.EventLifecycleInstanceReady:
+		return true, nil
+	case api.EventLifecycleInstanceShutdown, api.EventLifecycleInstanceStopped:
+		return false, fmt.Errorf("received %q event", lifecycle.Action)
+	default:
+		return false, nil
+	}
 }
 
 func (s *Backend) StopWorkshop(ctx context.Context, name string, force bool) error {
@@ -1345,6 +1385,8 @@ write_files:
       [Service]
       Type=notify
       ExecStart=/usr/local/lib/workshop/waitready
+      Restart=on-failure
+      RestartSec=2s
 
       [Install]
       WantedBy=multi-user.target
@@ -1359,6 +1401,10 @@ runcmd:
   - ln -sf {{shquote .WorkshopCtlPath}} /usr/local/bin/workshopctl
   - ln -sf ../../bin/workshopctl /usr/local/lib/workshop/waitready
   - systemctl enable --now workshop-waitready.service
+  # Linger starts the user manager for the specified user on boot, which then creates /run/user/$UID,
+  # sets $XDG_RUNTIME_DIR and more. Interfaces such as desktop rely on both of these to be present.
+  # This does not introduce any additional modification beyond what a login session would normally create.
+  - loginctl enable-linger workshop
 `[1:]
 
 	var cloudConfig strings.Builder
@@ -1403,12 +1449,4 @@ runcmd:
 	}
 
 	return cfg, nil
-}
-
-func FakeStartCommand(script string) func() {
-	old := startCommand
-	startCommand = script
-	return func() {
-		startCommand = old
-	}
 }

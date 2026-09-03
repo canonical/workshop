@@ -145,7 +145,7 @@ jobs:
         run: sudo chmod +x /usr/local/bin/spread
       - name: Set LXD storage size
         run: |
-          lxc storage set default volume.size=32GB
+          lxc profile device set default root size=32GiB
       - name: Run spread
         env:
           SUITE_PATHS: ${{ matrix.suite.paths }}

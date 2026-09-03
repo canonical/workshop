@@ -591,6 +591,10 @@ func (w *WorkshopManager) StartMany(ctx context.Context, names []string, project
 		if err = healthstate.CheckWorkshopHealth(w.state, wp, allowedHealthStatus); err != nil {
 			return nil, fmt.Errorf("cannot start %q: %w", name, err)
 		}
+
+		if w.FormatRevision().N >= 11 && wp.Format.N < 11 {
+			return nil, fmt.Errorf("cannot start %q: workshop too old: use %q and %q to update it", name, "workshop remove "+name, "workshop launch "+name)
+		}
 	}
 
 	project, err := w.Project(ctx, projectId)
@@ -661,8 +665,7 @@ func (w *WorkshopManager) Exec(ctx context.Context, name, projectId string, args
 		return nil, err
 	}
 
-	ctx = context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
-	wp, err := w.backend.Workshop(ctx, name)
+	wp, err := w.Workshop(ctx, name, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -671,6 +674,7 @@ func (w *WorkshopManager) Exec(ctx context.Context, name, projectId string, args
 		return nil, err
 	}
 
+	ctx = context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 	wrkspc, err := w.backend.WorkshopFs(ctx, name)
 	if err != nil {
 		return nil, err
