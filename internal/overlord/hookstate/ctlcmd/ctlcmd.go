@@ -20,6 +20,7 @@ package ctlcmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 
@@ -97,7 +98,7 @@ type command interface {
 	setContext(context *hookstate.Context)
 	context() *hookstate.Context
 
-	Execute(args []string) error
+	Execute(ctx context.Context, args []string) error
 }
 
 type commandInfo struct {
@@ -142,7 +143,7 @@ func (f ForbiddenCommandError) Error() string {
 var nonRootAllowed = []string{"get-secret", "set-health"}
 
 // Run runs the requested command.
-func Run(context *hookstate.Context, args []string, uid uint32) (stdout, stderr []byte, err error) {
+func Run(hookContext *hookstate.Context, args []string, uid uint32) (stdout, stderr []byte, err error) {
 	if len(args) == 0 {
 		return nil, nil, fmt.Errorf("workshopctl cannot run without args")
 	}
@@ -156,18 +157,28 @@ func Run(context *hookstate.Context, args []string, uid uint32) (stdout, stderr 
 	// Create stdout/stderr buffers, and make sure commands use them.
 	var stdoutBuffer bytes.Buffer
 	var stderrBuffer bytes.Buffer
+	activeCommands := make(map[string]command, len(commands))
 	for name, cmdInfo := range commands {
 		cmd := cmdInfo.generator()
 		cmd.setName(name)
 		cmd.setStdout(&stdoutBuffer)
 		cmd.setStderr(&stderrBuffer)
-		cmd.setContext(context)
+		cmd.setContext(hookContext)
+		activeCommands[name] = cmd
 
 		theCmd, err := parser.AddCommand(name, cmdInfo.shortHelp, cmdInfo.longHelp, cmd)
 		theCmd.Hidden = cmdInfo.hidden
 		if err != nil {
 			logger.Panicf("cannot add command %q: %s", name, err)
 		}
+	}
+
+	parser.CommandHandler = func(_ flags.Commander, args []string) error {
+		cmd, ok := activeCommands[parser.Active.Name]
+		if !ok {
+			return fmt.Errorf("internal error: active command %q not found", parser.Active.Name)
+		}
+		return cmd.Execute(context.TODO(), args)
 	}
 
 	_, err = parser.ParseArgs(args)

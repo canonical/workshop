@@ -14,7 +14,10 @@
 
 package ctlcmd
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 func AddMockCommand(name string) *MockCommand {
 	return addMockCmd(name, false)
@@ -41,7 +44,8 @@ func NewMockCommand() *MockCommand {
 	}
 }
 
-func (c *MockCommand) Execute(args []string) error {
+func (c *MockCommand) Execute(ctx context.Context, args []string) error {
+	c.ExecuteContext = ctx
 	c.Args = args
 
 	if c.FakeStdout != "" {
@@ -72,5 +76,6 @@ type MockCommand struct {
 	FakeStdout   string
 	FakeStderr   string
 
-	Args []string
+	ExecuteContext context.Context
+	Args           []string
 }
