@@ -101,6 +101,12 @@ func (w *HookManager) Ensure() error {
 	return nil
 }
 
+// NewEphemeralContext returns a context that is not associated with a hook
+// task. Its data is retained only for the lifetime of the context.
+func (m *HookManager) NewEphemeralContext() (*Context, error) {
+	return NewContext(nil, m.state, &HookSetup{}, nil, "")
+}
+
 func (m *HookManager) ephemeralContext(cookieID string) (context *Context, err error) {
 	var contexts map[string]string
 	m.state.Lock()

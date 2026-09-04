@@ -20,7 +20,10 @@ import (
 
 	"github.com/jessevdk/go-flags"
 
+	"github.com/canonical/workshop/internal/logger"
+	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 // workshopCtlOptions holds the various options with which workshopctl is invoked.
@@ -60,9 +63,10 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 		return statusForbidden("cannot get remote user: %w", err)
 	}
 
-	// Ignore missing context error to allow 'workshopctl -h' without a context;
-	// Actual context is validated later by get/set.
-	hookContext, _ := c.d.overlord.HookManager().Context(reqData.ContextID)
+	hookContext, response := workshopctlHookContext(c, r, reqData.ContextID)
+	if response != nil {
+		return response
+	}
 
 	if reqData.Stdin != nil {
 		hookContext.Lock()
@@ -85,4 +89,64 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 	}
 
 	return SyncResponse(result, http.StatusOK)
+}
+
+// workshopctlHookContext returns the hook context used to execute a
+// workshopctl command. A supplied cookie selects an existing context;
+// otherwise the workshop instance ID is validated before creating an
+// ephemeral context.
+func workshopctlHookContext(
+	c *Command,
+	r *http.Request,
+	contextID string,
+) (*hookstate.Context, Response) {
+	if contextID != "" {
+		return workshopctlHookContextFromCookie(c, contextID)
+	}
+	return workshopctlHookContextFromInstanceID(c, r)
+}
+
+// workshopctlHookContextFromCookie returns the active or long-lived context
+// identified by the supplied workshop cookie. An invalid cookie is rejected
+// rather than falling back to instance ID authentication.
+func workshopctlHookContextFromCookie(
+	c *Command,
+	contextID string,
+) (*hookstate.Context, Response) {
+	hookContext, err := c.d.overlord.HookManager().Context(contextID)
+	if err != nil {
+		return nil, statusBadRequest("cannot get workshop context: %w", err)
+	}
+	return hookContext, nil
+}
+
+// workshopctlHookContextFromInstanceID validates that the requesting user owns
+// the workshop instance identified by the request context, then creates a
+// taskless context for this individual workshopctl invocation.
+func workshopctlHookContextFromInstanceID(
+	c *Command,
+	r *http.Request,
+) (*hookstate.Context, Response) {
+	instanceID, _ := r.Context().
+		Value(workshop.ContextWorkshopInstanceID).(string)
+	if instanceID == "" {
+		return nil, statusBadRequest("workshop instance ID not supplied")
+	}
+
+	valid, err := c.d.overlord.WorkshopManager().
+		OwnsWorkshopInstanceID(r.Context(), instanceID)
+	if err != nil {
+		logger.Noticef("cannot validate workshop instance ID: %v", err)
+		return nil, statusInternalError("internal error occurred validating workshop instance id")
+	}
+	if !valid {
+		return nil, statusForbidden("invalid workshop instance ID")
+	}
+
+	hookContext, err := c.d.overlord.HookManager().NewEphemeralContext()
+	if err != nil {
+		logger.Noticef("cannot create workshop context: %v", err)
+		return nil, statusInternalError("internal error occurred")
+	}
+	return hookContext, nil
 }
