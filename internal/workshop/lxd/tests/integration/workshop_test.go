@@ -71,10 +71,19 @@ func (f *wsOps) SetUpSuite(c *check.C) {
 
 	currentUser, err := user.Current()
 	c.Assert(err, check.IsNil)
+	uid := currentUser.Uid
+	gid := currentUser.Gid
+	// Spread runs integration tests as root, but mapping host root into an
+	// unprivileged instance prevents LXD from starting it. Retain the historical
+	// test IDs for root while allowing non-root developers to use their own IDs.
+	if os.Geteuid() == 0 {
+		uid = workshop.User.Uid
+		gid = workshop.User.Gid
+	}
 	f.usr = &user.User{
 		Username: "testuser",
-		Uid:      currentUser.Uid,
-		Gid:      currentUser.Gid,
+		Uid:      uid,
+		Gid:      gid,
 		HomeDir:  c.MkDir(),
 	}
 	f.project = workshop.Project{
