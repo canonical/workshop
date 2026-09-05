@@ -801,7 +801,7 @@ Long: `This command will launch a new workshop. It will create the workshop base
 
 ```go
 // Good: Use tabwriter for consistent table formatting
-import "text/tabwriter"
+import "github.com/juju/ansiterm/tabwriter"
 
 func tabWriter() *tabwriter.Writer {
     return tabwriter.NewWriter(Stdout, 4, 3, 2, ' ', tabwriter.StripEscape)

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/juju/ansiterm/tabwriter"
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
@@ -92,7 +92,7 @@ func (c *CmdFind) Run(cmd *cobra.Command, av []string) error {
 	esc := c.GetEscapes()
 	w := tabwriter.NewWriter(Stdout, 4, 3, 2, ' ', tabwriter.StripEscape)
 	if !c.noHeaders {
-		fmt.Fprintln(w, "NAME\tVERSION\tPUBLISHER\tSUMMARY")
+		fmt.Fprintf(w, "%sNAME\tVERSION\tPUBLISHER\tSUMMARY%s\n", esc.Bold, esc.End)
 	}
 	for _, sdk := range sdks {
 		version := cmdutil.EmptyDash(sdk.Version)

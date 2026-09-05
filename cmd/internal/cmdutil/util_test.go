@@ -22,9 +22,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"text/tabwriter"
 	"unicode/utf8"
 
+	"github.com/juju/ansiterm/tabwriter"
 	"gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
 )

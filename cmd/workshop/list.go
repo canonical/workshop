@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/juju/ansiterm/tabwriter"
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
@@ -28,6 +28,7 @@ import (
 )
 
 type CmdList struct {
+	cmdutil.ColorMixin
 	root      *CmdRoot
 	global    bool
 	noHeaders bool
@@ -112,7 +113,8 @@ func (c *CmdList) listProject() error {
 
 	w := tabWriter()
 	if !c.noHeaders {
-		fmt.Fprintf(w, "WORKSHOP\tSTATUS\tNOTES\n")
+		esc := c.GetEscapes()
+		fmt.Fprintf(w, "%sWORKSHOP\tSTATUS\tNOTES%s\n", esc.Bold, esc.End)
 	}
 	for _, wp := range merged {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", wp.name, wp.status, wp.notes)
@@ -151,7 +153,8 @@ func (c *CmdList) listGlobal() error {
 		}
 
 		if printHeaders {
-			fmt.Fprintf(w, "PROJECT\tWORKSHOP\tSTATUS\tNOTES\n")
+			esc := c.GetEscapes()
+			fmt.Fprintf(w, "%sPROJECT\tWORKSHOP\tSTATUS\tNOTES%s\n", esc.Bold, esc.End)
 			printHeaders = false
 		}
 		project := cmdutil.ContractHome(p.Path)

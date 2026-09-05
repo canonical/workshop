@@ -24,9 +24,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
+	"github.com/juju/ansiterm/tabwriter"
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
