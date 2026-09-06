@@ -54,6 +54,10 @@ func WaitReady() error {
 	}
 	defer server.Disconnect()
 
+	if err := server.UpdateState(api.DevLXDPut{State: api.Started.String()}); err != nil {
+		return err
+	}
+
 	if err := waitReady(ctx); err != nil {
 		return err
 	}
