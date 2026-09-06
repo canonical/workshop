@@ -713,7 +713,7 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 	defer listener.Disconnect()
 
-	events := make(chan api.Event, 1)
+	events := make(chan api.Event, 16)
 
 	target, err := listener.AddHandler([]string{"lifecycle"}, func(event api.Event) {
 		select {
