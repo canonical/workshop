@@ -1381,6 +1381,8 @@ write_files:
     content: |
       [Unit]
       Description=Signal workshop readiness to LXD
+      After=dbus.socket
+      Requires=dbus.socket
 
       [Service]
       Type=notify
