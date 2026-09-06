@@ -714,11 +714,12 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	defer listener.Disconnect()
 
 	events := make(chan api.Event, 1)
-	defer close(events)
 
 	target, err := listener.AddHandler([]string{"lifecycle"}, func(event api.Event) {
-		defer func() { _ = recover() }()
-		events <- event
+		select {
+		case events <- event:
+		case <-ctx.Done():
+		}
 	})
 	if err != nil {
 		return err
