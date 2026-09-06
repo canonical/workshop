@@ -394,6 +394,11 @@
   specs:
   - SK033
 
+"virtualization interface":
+  category: interface
+  type: concept
+  specs: []
+
 "try SDK":
   category: SDK
   type: concept

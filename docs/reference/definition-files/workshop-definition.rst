@@ -302,6 +302,8 @@ a workshop may graft additional plugs and slots that follow them.
 
 .. include:: _interfaces/tunnel.rst
 
+.. include:: _interfaces/virtualization.rst
+
 
 JSON Schema
 -----------

@@ -109,6 +109,11 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 				VendorID:  "0403",
 				ProductID: "6001"}},
 		},
+		{
+			Sdk:            "sdk",
+			Mounts:         map[string]workshop.Mount{},
+			Virtualization: &workshop.Virtualization{Name: "virtualization"},
+		},
 	}
 
 	for i, t := range []struct {
@@ -218,6 +223,30 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 					"ownership.inherit": "true"}},
 			map[string]string{
 				"user.workshop.sdk_mydevice.type": "custom-device"},
+		}, {
+			"sdk",
+			map[string]map[string]string{
+				"sdk_virtualization": {
+					"type": "none"},
+				"sdk_virtualization_kvm": {
+					"type":     "unix-char",
+					"source":   "/dev/kvm",
+					"path":     "/dev/kvm",
+					"gid":      "1000",
+					"mode":     "0660",
+					"required": "false"},
+				"sdk_virtualization_vhost-net": {
+					"type":     "unix-char",
+					"source":   "/dev/vhost-net",
+					"path":     "/dev/vhost-net",
+					"gid":      "1000",
+					"mode":     "0660",
+					"required": "false"}},
+			map[string]string{
+				"user.workshop.sdk_virtualization":                `{"name": "virtualization"}`,
+				"user.workshop.sdk_virtualization.type":           "virtualization",
+				"user.workshop.sdk_virtualization_kvm.type":       "virtualization",
+				"user.workshop.sdk_virtualization_vhost-net.type": "virtualization"},
 		},
 	} {
 		res, err := lxdbackend.LxdToSdkProfile(t.name, t.devs, t.cfg)
@@ -227,6 +256,7 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 		c.Assert(res.Camera, check.DeepEquals, expected[i].Camera)
 		c.Assert(res.CustomDevices, testutil.DeepUnsortedMatches, expected[i].CustomDevices)
 		c.Assert(res.Gpu, check.DeepEquals, expected[i].Gpu)
+		c.Assert(res.Virtualization, check.DeepEquals, expected[i].Virtualization)
 		c.Assert(res.Mounts, testutil.DeepUnsortedMatches, expected[i].Mounts)
 		c.Assert(res.Tunnels, testutil.DeepUnsortedMatches, expected[i].Tunnels)
 	}
