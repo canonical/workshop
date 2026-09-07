@@ -14,7 +14,11 @@
 
 package ctlcmd
 
-import "github.com/canonical/workshop/internal/logger"
+import (
+	"context"
+
+	"github.com/canonical/workshop/internal/logger"
+)
 
 type getSecretCommand struct {
 	baseCommand
@@ -50,7 +54,7 @@ func init() {
 }
 
 // Execute runs the get-secret command, writing the secret value to stdout.
-func (c *getSecretCommand) Execute([]string) error {
+func (c *getSecretCommand) Execute(context.Context, []string) error {
 	// Log the requested identifier only; never the resolved value.
 	logger.Debugf("get-secret request for %q", c.Secret)
 
