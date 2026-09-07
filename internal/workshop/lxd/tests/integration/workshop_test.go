@@ -69,7 +69,23 @@ func (f *wsOps) SetUpSuite(c *check.C) {
 	f.bd, err = lxdbackend.New()
 	c.Assert(err, check.IsNil)
 
-	f.usr = &user.User{Username: "testuser", Uid: "1000", Gid: "1000", HomeDir: c.MkDir()}
+	currentUser, err := user.Current()
+	c.Assert(err, check.IsNil)
+	uid := currentUser.Uid
+	gid := currentUser.Gid
+	// Spread runs integration tests as root, but mapping host root into an
+	// unprivileged instance prevents LXD from starting it. Retain the historical
+	// test IDs for root while allowing non-root developers to use their own IDs.
+	if os.Geteuid() == 0 {
+		uid = workshop.User.Uid
+		gid = workshop.User.Gid
+	}
+	f.usr = &user.User{
+		Username: "testuser",
+		Uid:      uid,
+		Gid:      gid,
+		HomeDir:  c.MkDir(),
+	}
 	f.project = workshop.Project{
 		ProjectId: "42424242",
 		Path:      filepath.Join(c.MkDir(), "testprj"),
@@ -231,6 +247,28 @@ func fullInstance(c *check.C, conn lxd.InstanceServer, name string) *api.Instanc
 	maps.DeleteFunc(inst.Config, func(k, v string) bool { return !includeWhenCopying(k) })
 
 	return inst
+}
+
+// TestLxdBackendWorkshopInstanceID checks that loading a workshop exposes the
+// LXD instance UUID in the same normalized form written to its machine ID file.
+func (f *wsOps) TestLxdBackendWorkshopInstanceID(c *check.C) {
+	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	loaded, err := f.bd.Workshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	inst, _, err := conn.GetInstance(
+		lxdbackend.InstanceName("test", f.project.ProjectId),
+	)
+	c.Assert(err, check.IsNil)
+	expected := strings.ReplaceAll(inst.Config["volatile.uuid"], "-", "")
+
+	c.Check(loaded.InstanceID, check.Equals, expected)
 }
 
 func includeWhenCopying(key string) bool {

@@ -19,6 +19,7 @@ SdkRecord:
 Workshop:
   Backend:
   Project: workshop.Project
+  InstanceID: string
   File: '*workshop.File'
   Name: string
   Format: sdk.Revision

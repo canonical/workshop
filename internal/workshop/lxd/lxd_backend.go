@@ -51,6 +51,10 @@ const (
 	storagePool           = "workshop"
 	storagePoolMinimalGiB = 5
 
+	// instanceUUIDConfigKey identifies the LXD configuration value used to
+	// derive the workshop's machine ID.
+	instanceUUIDConfigKey = "volatile.uuid"
+
 	networkName = "workshopbr0"
 	networkType = "bridge"
 
@@ -1063,17 +1067,24 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, p wo
 	hostname := b.hostname(f.Name, p, running, cnames)
 
 	return &workshop.Workshop{
-		Backend:  b,
-		Project:  p,
-		Name:     f.Name,
-		Format:   format,
-		Image:    image,
-		Running:  running,
-		Sdks:     sdks,
-		Profiles: profs,
-		File:     f,
-		Hostname: hostname,
+		Backend:    b,
+		Project:    p,
+		InstanceID: instanceIDFromLXDUUID(inst.Config[instanceUUIDConfigKey]),
+		Name:       f.Name,
+		Format:     format,
+		Image:      image,
+		Running:    running,
+		Sdks:       sdks,
+		Profiles:   profs,
+		File:       f,
+		Hostname:   hostname,
 	}, nil
+}
+
+// instanceIDFromLXDUUID converts an LXD instance UUID to the identifier
+// written to the workshop's machine ID file.
+func instanceIDFromLXDUUID(uuid string) string {
+	return strings.ReplaceAll(uuid, "-", "")
 }
 
 func (s *Backend) hostname(name string, p workshop.Project, running bool, cnames []cname) workshop.Hostname {

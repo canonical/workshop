@@ -104,7 +104,7 @@ var api = []*Command{{
 	Path:        "/v1/workshopctl",
 	UserOK:      true,
 	UntrustedOK: true,
-	POST:        v1PostWorkshopCtl,
+	POST:        withWorkshopInstanceID(v1PostWorkshopCtl),
 },
 }
 

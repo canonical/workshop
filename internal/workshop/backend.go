@@ -35,10 +35,14 @@ import (
 
 type ContextKeyProjectId string
 type ContextKeyUser string
+type ContextKeyWorkshopInstanceID string
 
 const (
 	ContextProjectId = ContextKeyProjectId("project-id")
 	ContextUser      = ContextKeyUser("user")
+	// ContextWorkshopInstanceID stores the identifier of the workshop instance
+	// from which a request originated.
+	ContextWorkshopInstanceID = ContextKeyWorkshopInstanceID("workshop-instance-id")
 
 	Uid = 1000
 	Gid = 1000
@@ -246,6 +250,10 @@ type Backend interface {
 	// Returns a list of projects known to the backend. The returned map
 	// has a username key that the corresponding projects belong to.
 	Projects(ctx context.Context) (map[string][]Project, error)
+
+	// Returns the projects belonging to the user in context. If the context
+	// does not contain a user, it returns an empty slice.
+	UserProjects(ctx context.Context) ([]Project, error)
 
 	// Loads a workshop instance.
 	Workshop(ctx context.Context, name string) (*Workshop, error)
