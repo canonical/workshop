@@ -125,24 +125,28 @@ func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 	c.Check(rsp.Status, check.Equals, http.StatusOK)
 }
 
-// TestWorkshopCtlCookieSkipsInstanceIDValidation checks that a valid hook
-// cookie remains the authentication mechanism and does not require an instance
-// ID lookup.
-func (s *apiSuite) TestWorkshopCtlCookieSkipsInstanceIDValidation(c *check.C) {
+// TestWorkshopCtlRejectsUnknownCookie checks that an invalid cookie produces
+// a generic client error even when a valid workshop instance ID is supplied.
+func (s *apiSuite) TestWorkshopCtlRejectsUnknownCookie(c *check.C) {
 	s.daemon(c)
-	st := s.d.overlord.State()
-	st.Lock()
-	st.Set("workshop-cookies", map[string]string{"cookie-id": "test-workshop"})
-	st.Unlock()
-
+	s.addWorkshopWithInstanceID("instance-id")
 	wctl := apiCmd("/v1/workshopctl")
 	buf := bytes.NewBufferString(
-		`{"context-id":"cookie-id","args":["get-secret","sdk.secret"]}`,
+		`{"context-id":"unknown-cookie","args":["get-secret","sdk.secret"]}`,
 	)
 	req, err := s.createProjectsRequest("POST", "/v1/workshopctl", buf)
 	c.Assert(err, check.IsNil)
+	req = req.WithContext(context.WithValue(
+		req.Context(),
+		workshop.ContextWorkshopInstanceID,
+		"instance-id",
+	))
 
 	rsp := v1PostWorkshopCtl(wctl, req, nil).(*resp)
 
-	c.Check(rsp.Status, check.Equals, http.StatusOK)
+	c.Check(rsp.Status, check.Equals, http.StatusBadRequest)
+	c.Check(rsp.Type, check.Equals, ResponseTypeError)
+	c.Assert(rsp.Result, check.FitsTypeOf, &errorResult{})
+	c.Check(rsp.Result.(*errorResult).Message, check.Equals,
+		"invalid workshop cookie")
 }

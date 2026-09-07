@@ -101,21 +101,22 @@ func workshopctlHookContext(
 	contextID string,
 ) (*hookstate.Context, Response) {
 	if contextID != "" {
-		return workshopctlHookContextFromCookie(c, contextID)
+		return workshopctlHookContextFromContextID(c, contextID)
 	}
 	return workshopctlHookContextFromInstanceID(c, r)
 }
 
-// workshopctlHookContextFromCookie returns the active or long-lived context
-// identified by the supplied workshop cookie. An invalid cookie is rejected
-// rather than falling back to instance ID authentication.
-func workshopctlHookContextFromCookie(
+// workshopctlHookContextFromContextID returns the active hook context
+// identified by the request's context ID, supplied to hooks as WORKSHOP_COOKIE.
+// An invalid context ID is rejected rather than falling back to instance ID
+// authentication.
+func workshopctlHookContextFromContextID(
 	c *Command,
 	contextID string,
 ) (*hookstate.Context, Response) {
 	hookContext, err := c.d.overlord.HookManager().Context(contextID)
 	if err != nil {
-		return nil, statusBadRequest("cannot get workshop context: %w", err)
+		return nil, statusBadRequest("invalid workshop cookie")
 	}
 	return hookContext, nil
 }
