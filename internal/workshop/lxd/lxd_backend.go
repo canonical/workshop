@@ -713,12 +713,13 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 	defer listener.Disconnect()
 
-	events := make(chan api.Event, 1)
-	defer close(events)
+	events := make(chan api.Event, 16)
 
 	target, err := listener.AddHandler([]string{"lifecycle"}, func(event api.Event) {
-		defer func() { _ = recover() }()
-		events <- event
+		select {
+		case events <- event:
+		case <-ctx.Done():
+		}
 	})
 	if err != nil {
 		return err
@@ -1381,6 +1382,8 @@ write_files:
     content: |
       [Unit]
       Description=Signal workshop readiness to LXD
+      After=dbus.socket
+      Requires=dbus.socket
 
       [Service]
       Type=notify

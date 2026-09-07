@@ -54,6 +54,10 @@ func WaitReady() error {
 	}
 	defer server.Disconnect()
 
+	if err := server.UpdateState(api.DevLXDPut{State: api.Started.String()}); err != nil {
+		return err
+	}
+
 	if err := waitReady(ctx); err != nil {
 		return err
 	}
@@ -75,7 +79,7 @@ func waitReady(ctx context.Context) error {
 	}
 	defer conn.Close()
 
-	signal := make(chan *dbus.Signal, 1)
+	signal := make(chan *dbus.Signal, 8)
 	conn.Signal(signal)
 
 	options := []dbus.MatchOption{
@@ -98,11 +102,20 @@ func waitReady(ctx context.Context) error {
 	if ready {
 		return nil
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-signal:
-		return nil
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case sig := <-signal:
+			if sig == nil {
+				return errors.New("bus connection closed unexpectedly")
+			}
+			if sig.Name != "org.freedesktop.systemd1.Manager.StartupFinished" {
+				continue
+			}
+			return nil
+		}
 	}
 }
 
