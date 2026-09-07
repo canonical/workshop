@@ -18,6 +18,7 @@
 package ctlcmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -67,7 +68,7 @@ var (
 	validCode = regexp.MustCompile(`^[a-z](?:-?[a-z0-9])+$`).MatchString
 )
 
-func (c *healthCommand) Execute([]string) error {
+func (c *healthCommand) Execute(context.Context, []string) error {
 	if c.Status == "okay" && (len(c.Message) > 0 || len(c.Code) > 0) {
 		return fmt.Errorf(`when status is "okay", message and code must be empty`)
 	}

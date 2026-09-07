@@ -126,6 +126,47 @@ func (w *WorkshopManager) Workshop(ctx context.Context, name, pId string) (*work
 	return workshop, nil
 }
 
+// OwnsWorkshopInstanceID reports whether the user in ctx owns a workshop with
+// the specified backend instance identifier. If ctx does not identify a user,
+// it returns false without an error.
+func (w *WorkshopManager) OwnsWorkshopInstanceID(
+	ctx context.Context,
+	instanceID string,
+) (bool, error) {
+	if instanceID == "" {
+		return false, nil
+	}
+
+	projects, err := w.backend.UserProjects(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	for _, project := range projects {
+		projectCtx := context.WithValue(
+			ctx,
+			workshop.ContextProjectId,
+			project.ProjectId,
+		)
+		workshops, err := w.backend.ProjectWorkshops(projectCtx)
+		if err != nil {
+			return false, fmt.Errorf(
+				"cannot list workshops for project %q: %w",
+				project.ProjectId,
+				err,
+			)
+		}
+
+		for _, candidate := range workshops {
+			if candidate.InstanceID == instanceID {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
 // Returns latest file for a workshop. The state must be locked, as listing
 // projects can update project metadata.
 func (w *WorkshopManager) WorkshopFile(ctx context.Context, name, pId string) (*workshop.File, error) {

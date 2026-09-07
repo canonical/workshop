@@ -15,6 +15,8 @@
 package ctlcmd_test
 
 import (
+	"context"
+
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
@@ -27,7 +29,7 @@ type getSecretSuite struct{}
 var _ = check.Suite(&getSecretSuite{})
 
 func (s *getSecretSuite) TestGetSecret(c *check.C) {
-	stdout, stderr, err := ctlcmd.Run(nil, []string{"get-secret", "ollama.ollama-api-key"}, 0)
+	stdout, stderr, err := ctlcmd.Run(context.TODO(), nil, []string{"get-secret", "ollama.ollama-api-key"}, 0)
 	c.Assert(err, check.IsNil)
 	c.Check(string(stdout), check.Equals, "workshop-placeholder-secret")
 	c.Check(string(stderr), check.Equals, "")
@@ -36,7 +38,7 @@ func (s *getSecretSuite) TestGetSecret(c *check.C) {
 // TestGetSecretMissingArg checks that get-secret requires a secret
 // identifier argument.
 func (s *getSecretSuite) TestGetSecretMissingArg(c *check.C) {
-	_, _, err := ctlcmd.Run(nil, []string{"get-secret"}, 0)
+	_, _, err := ctlcmd.Run(context.TODO(), nil, []string{"get-secret"}, 0)
 	c.Check(err, check.ErrorMatches, ".*the required argument `<SDK>.<secret>` was not provided.*")
 }
 
@@ -44,7 +46,7 @@ func (s *getSecretSuite) TestGetSecretMissingArg(c *check.C) {
 // both the socket-activated systemd path and SDK wrapper scripts invoke it
 // as the workshop user.
 func (s *getSecretSuite) TestGetSecretNonRoot(c *check.C) {
-	stdout, _, err := ctlcmd.Run(nil, []string{"get-secret", "ollama.ollama-api-key"}, 1000)
+	stdout, _, err := ctlcmd.Run(context.TODO(), nil, []string{"get-secret", "ollama.ollama-api-key"}, 1000)
 	c.Assert(err, check.IsNil)
 	c.Check(string(stdout), check.Equals, "workshop-placeholder-secret")
 }
