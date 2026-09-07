@@ -83,7 +83,8 @@ func (s *ctlcmdSuite) TestRunPassesContextToCommand(c *C) {
 	mockCommand := ctlcmd.AddMockCommand("mock")
 	defer ctlcmd.RemoveCommand("mock")
 
-	key := struct{}{}
+	type contextKey struct{}
+	key := contextKey{}
 	ctx := context.WithValue(context.Background(), key, "test")
 	called := false
 	mockCommand.ExecuteFunc = func(ctx context.Context, _ []string) error {
