@@ -14,3 +14,5 @@ slots:
     interface: custom-device
   desktop:
     interface: desktop
+  virtualization:
+    interface: virtualization
