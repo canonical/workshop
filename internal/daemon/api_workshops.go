@@ -172,6 +172,46 @@ func changeConflictErrorResponse(conflictErr *conflict.ChangeConflictError) Resp
 	}
 }
 
+// changeConflictResponse returns a structured change-conflict API error when
+// err wraps either conflict type the daemon uses for "one change per workshop
+// at a time": a [conflict.ChangeConflictError] (workshop lifecycle checks) or a
+// [healthstate.ChangeInProgressError] (interface health checks). It keeps err's
+// full message so operation context (e.g. `cannot connect %q: ...`) is
+// preserved, and returns nil for any other error so callers fall through to
+// their default handling.
+func changeConflictResponse(err error) Response {
+	var value changeConflictValue
+	var conflictErr *conflict.ChangeConflictError
+	var inProgressErr healthstate.ChangeInProgressError
+	switch {
+	case errors.As(err, &conflictErr):
+		value = changeConflictValue{
+			ChangeID:   conflictErr.ChangeID,
+			ChangeKind: conflictErr.ChangeKind,
+			ProjectID:  conflictErr.ProjectId,
+			Workshop:   conflictErr.Workshop,
+		}
+	case errors.As(err, &inProgressErr):
+		value = changeConflictValue{
+			ChangeID:   inProgressErr.ChangeID,
+			ChangeKind: inProgressErr.ChangeKind,
+			ProjectID:  inProgressErr.ProjectID,
+			Workshop:   inProgressErr.Workshop,
+		}
+	default:
+		return nil
+	}
+	return &resp{
+		Type:   ResponseTypeError,
+		Status: http.StatusBadRequest,
+		Result: &errorResult{
+			Kind:    errorKindChangeConflict,
+			Message: err.Error(),
+			Value:   value,
+		},
+	}
+}
+
 // noWaitingChangeResponse converts a [conflict.ErrorNoWaitingChange] into a
 // no-waiting-change-in-progress API error response, preserving the wrapped
 // message.
