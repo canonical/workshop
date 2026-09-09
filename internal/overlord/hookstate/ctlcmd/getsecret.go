@@ -16,8 +16,14 @@ package ctlcmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/canonical/workshop/internal/logger"
+	"github.com/canonical/workshop/internal/overlord/secretstate"
+	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 type getSecretCommand struct {
@@ -30,10 +36,6 @@ type getSecretPositional struct {
 }
 
 const (
-	// hardCodedSecret is a placeholder secret value returned until secret
-	// resolution via workshopd is implemented.
-	hardCodedSecret = "workshop-placeholder-secret"
-
 	longGetSecretHelp = `
 The get-secret command retrieves the value of a secret connected to the
 workshop, identified as "<SDK>.<secret>" (e.g. "my-sdk.api-key").
@@ -53,12 +55,68 @@ func init() {
 	)
 }
 
-// Execute runs the get-secret command, writing the secret value to stdout.
-func (c *getSecretCommand) Execute(context.Context, []string) error {
-	// Log the requested identifier only; never the resolved value.
-	logger.Debugf("get-secret request for %q", c.Secret)
+// parseSecretIdentifier splits an SDK-qualified secret plug identifier into
+// its SDK and plug names.
+func parseSecretIdentifier(identifier string) (sdkName, plugName string, err error) {
+	sdkName, plugName, found := strings.Cut(identifier, ".")
 
-	// TODO: resolve the requested secret via workshopd instead of
-	// returning a hard-coded value.
-	return c.printf("%s", hardCodedSecret)
+	if !found || sdkName == "" || plugName == "" {
+		return "", "", errors.New(
+			`invalid secret identifier: expected "<SDK>.<secret>" with both names present`,
+		)
+	}
+	err = sdk.ValidateName(sdkName)
+	if err != nil {
+		return "", "", fmt.Errorf(
+			"invalid SDK name: expected at most %d characters using "+
+				"lowercase letters, digits and single internal hyphens, "+
+				"with at least one letter; the name agent and prefixes "+
+				"try- and project- are reserved",
+			sdk.MAX_SDK_NAME_LENGTH,
+		)
+	}
+	err = sdk.ValidatePlugName(plugName)
+	if err != nil {
+		return "", "", errors.New(
+			"invalid secret plug name: expected a lowercase letter " +
+				"followed by lowercase letters or digits, optionally " +
+				"separated by single hyphens",
+		)
+	}
+	return sdkName, plugName, nil
+}
+
+// Execute runs the get-secret command, writing the secret value to stdout.
+func (c *getSecretCommand) Execute(ctx context.Context, _ []string) error {
+	sdkName, plugName, err := parseSecretIdentifier(c.Secret)
+	if err != nil {
+		return err
+	}
+
+	// Log the requested identifier only; never the resolved value.
+	logger.Debugf("get-secret request for SDK %q plug %q", sdkName, plugName)
+
+	hookContext, err := c.ensureContext()
+	if err != nil {
+		return err
+	}
+
+	// TODO: use the validated workshop identity before enabling real providers.
+	project := workshop.Project{
+		Path:      "/project",
+		ProjectId: "placeholder-project",
+	}
+	ref := sdk.PlugRef{
+		Name:      plugName,
+		ProjectId: project.ProjectId,
+		Sdk:       sdkName,
+		Workshop:  "placeholder-workshop",
+	}
+
+	value, err := secretstate.GetSecret(ctx, hookContext.State(), project, ref)
+
+	if err != nil {
+		return err
+	}
+	return c.printf("%s", value)
 }
