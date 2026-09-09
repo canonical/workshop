@@ -110,6 +110,15 @@ func (ovs *overlordSuite) TestNew(c *C) {
 	c.Check(patchSublevel, Equals, 2)
 }
 
+// TestSecretManager checks that a new overlord exposes a usable secret manager.
+func (ovs *overlordSuite) TestSecretManager(c *C) {
+	o, err := overlord.New(ovs.dir, nil)
+	c.Assert(err, IsNil)
+
+	manager := o.SecretManager()
+	c.Check(manager.Ensure(), IsNil)
+}
+
 func (ovs *overlordSuite) TestNewWithGoodState(c *C) {
 	fakeState := []byte(fmt.Sprintf(`{"data":{"patch-level":%d,"patch-sublevel":%d,"patch-sublevel-last-version":%q,"some":"data"},"changes":null,"tasks":null,"last-change-id":0,"last-task-id":0,"last-lane-id":0}`, patch.Level, patch.Sublevel, version.Version))
 	err := os.WriteFile(ovs.statePath, fakeState, 0600)
