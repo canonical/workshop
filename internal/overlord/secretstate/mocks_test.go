@@ -14,12 +14,23 @@
 
 package secretstate
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/canonical/workshop/internal/workshop"
+)
 
 // secretStateBackend signals ensure requests without blocking the state lock.
 type secretStateBackend struct {
 	ensureBefore chan time.Duration
 }
+
+// workshopBackendFunc supplies workshop lookup behaviour without a backend.
+type workshopBackendFunc func(
+	context.Context,
+	string,
+) (*workshop.Workshop, error)
 
 // Checkpoint discards state snapshots in retrieval tests.
 func (b *secretStateBackend) Checkpoint([]byte) error {
@@ -32,4 +43,12 @@ func (b *secretStateBackend) EnsureBefore(delay time.Duration) {
 	case b.ensureBefore <- delay:
 	default:
 	}
+}
+
+// Workshop delegates lookup to the test's callback.
+func (f workshopBackendFunc) Workshop(
+	ctx context.Context,
+	name string,
+) (*workshop.Workshop, error) {
+	return f(ctx, name)
 }

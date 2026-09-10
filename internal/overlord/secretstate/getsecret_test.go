@@ -23,6 +23,7 @@ import (
 	. "gopkg.in/check.v1"
 	"gopkg.in/tomb.v2"
 
+	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
@@ -70,7 +71,7 @@ func (s *getSecretSuite) SetUpTest(c *C) {
 	}
 	s.st = state.New(s.backend)
 	s.runner = state.NewTaskRunner(s.st)
-	New(s.runner)
+	New(s.runner, nil, nil)
 }
 
 // start launches retrieval with a buffered completion channel.
@@ -425,6 +426,51 @@ func (s *getSecretSuite) TestSuccess(c *C) {
 		Workshop:  "test-workshop",
 	}
 
+	repo := interfaces.NewRepository()
+	iface, err := interfaces.ByName("secret")
+	c.Assert(err, IsNil)
+	c.Assert(repo.AddInterface(iface), IsNil)
+	plug := &sdk.PlugInfo{
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk: &sdk.Info{
+			Name: "ollama", ProjectId: "test-project",
+			Type: sdk.Regular, Workshop: "test-workshop",
+		},
+	}
+	slot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{"service": "ollama"},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+	}
+	c.Assert(repo.AddPlug(plug), IsNil)
+	c.Assert(repo.AddSlot(slot), IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(plug, slot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, IsNil)
+	backend := workshopBackendFunc(func(
+		context.Context,
+		string,
+	) (*workshop.Workshop, error) {
+		return &workshop.Workshop{
+			Name: "test-workshop",
+			Sdks: map[string]workshop.SdkInstallation{
+				"ollama": {Setup: sdk.Setup{Name: "ollama"}},
+			},
+		}, nil
+	})
+	New(s.runner, backend, repo)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
@@ -454,7 +500,7 @@ func (s *getSecretSuite) TestSuccess(c *C) {
 			`Retrieve secret "test-workshop/ollama:api-key"`)
 	}()
 
-	err := s.runner.Ensure()
+	err = s.runner.Ensure()
 	c.Assert(err, IsNil)
 	s.runner.Wait()
 	result := <-results

@@ -16,21 +16,35 @@ package secretstate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"gopkg.in/tomb.v2"
 
+	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/overlord/handlersetup"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 // SecretManager registers and handles secret operation tasks.
-type SecretManager struct{}
+type SecretManager struct {
+	backend WorkshopBackend
+	repo    *interfaces.Repository
+}
 
 // secretResultKey identifies a task's []byte result in the non-persisted state
 // cache. The consumer must remove the entry after reading the result.
 type secretResultKey string
+
+// WorkshopBackend resolves workshops using the identity in the supplied context.
+type WorkshopBackend interface {
+	// Workshop resolves the named workshop within the user and project
+	// identified by [workshop.ContextUser] and [workshop.ContextProjectId]
+	// in the supplied context.
+	Workshop(context.Context, string) (*workshop.Workshop, error)
+}
 
 // doGetSecret extracts the caller and secret consumer from task metadata
 // before attempting retrieval outside the state lock.
@@ -77,7 +91,10 @@ func (m SecretManager) doGetSecret(
 
 	value, err := m.getSecret(ctx, ref)
 	if err != nil {
-		return err
+		return fmt.Errorf(
+			"getting secret value for sdk %q and plug %q in workshop %q: %w",
+			ref.Sdk, ref.Name, ref.Workshop, err,
+		)
 	}
 
 	st.Lock()
@@ -96,16 +113,54 @@ func (m SecretManager) Ensure() error {
 	return nil
 }
 
-// getSecret returns a placeholder until provider support is implemented.
+// getSecret validates the consumer and its connection before returning a
+// placeholder until provider support is implemented.
 //
 // The following errors may be expected:
 //   - [context.Canceled]: the retrieval was cancelled.
 //   - [context.DeadlineExceeded]: the retrieval deadline expired.
 func (m SecretManager) getSecret(
 	ctx context.Context,
-	_ sdk.PlugRef,
+	ref sdk.PlugRef,
 ) ([]byte, error) {
 	err := ctx.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	wp, err := m.backend.Workshop(ctx, ref.Workshop)
+	if err != nil {
+		return nil, fmt.Errorf("resolving workshop: %w", err)
+	}
+	if _, ok := wp.Sdks[ref.Sdk]; !ok {
+		return nil, errors.New("requested sdk is not installed in workshop")
+	}
+
+	plug := m.repo.Plug(ref.ProjectId, ref.Workshop, ref.Sdk, ref.Name)
+	if plug == nil {
+		return nil, errors.New("requested plug is not declared by sdk")
+	}
+
+	if plug.Interface != "secret" {
+		return nil, errors.New(
+			"requested plug does not use the secret interface",
+		)
+	}
+
+	connections, err := m.repo.Connected(
+		ref.ProjectId,
+		ref.Workshop,
+		ref.Sdk,
+		ref.Name,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("resolving secret plug connections: %w", err)
+	}
+	if len(connections) == 0 {
+		return nil, errors.New("secret plug is not connected")
+	}
+
+	err = ctx.Err()
 	if err != nil {
 		return nil, err
 	}
@@ -113,8 +168,12 @@ func (m SecretManager) getSecret(
 }
 
 // New creates a secret manager and registers its task handlers.
-func New(runner *state.TaskRunner) SecretManager {
-	manager := SecretManager{}
+func New(
+	runner *state.TaskRunner,
+	backend WorkshopBackend,
+	repo *interfaces.Repository,
+) SecretManager {
+	manager := SecretManager{backend: backend, repo: repo}
 	runner.AddHandler("get-secret", manager.doGetSecret, manager.undoGetSecret)
 	return manager
 }

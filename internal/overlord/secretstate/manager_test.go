@@ -25,6 +25,8 @@ import (
 	. "gopkg.in/check.v1"
 	"gopkg.in/tomb.v2"
 
+	"github.com/canonical/workshop/internal/interfaces"
+	_ "github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
@@ -66,13 +68,62 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 	st := state.New(nil)
 	runner := state.NewTaskRunner(st)
 	defer runner.Stop()
-	New(runner)
+	repo := interfaces.NewRepository()
+	iface, err := interfaces.ByName("secret")
+	c.Assert(err, IsNil)
+	c.Assert(repo.AddInterface(iface), IsNil)
+	plug := &sdk.PlugInfo{
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk: &sdk.Info{
+			Name: "ollama", ProjectId: "test-project",
+			Type: sdk.Regular, Workshop: "test-workshop",
+		},
+	}
+	slot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{"service": "ollama"},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+	}
+	c.Assert(repo.AddPlug(plug), IsNil)
+	c.Assert(repo.AddSlot(slot), IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(plug, slot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, IsNil)
+	var lookupUser, lookupProject, lookupWorkshop any
+	backend := workshopBackendFunc(func(
+		ctx context.Context,
+		name string,
+	) (*workshop.Workshop, error) {
+		lookupUser = ctx.Value(workshop.ContextUser)
+		lookupProject = ctx.Value(workshop.ContextProjectId)
+		lookupWorkshop = name
+		return &workshop.Workshop{
+			Name: name,
+			Sdks: map[string]workshop.SdkInstallation{
+				"ollama": {Setup: sdk.Setup{Name: "ollama"}},
+			},
+		}, nil
+	})
+	New(runner, backend, repo)
 
 	st.Lock()
 	task := st.NewTask("get-secret", "Retrieve a workshop secret")
 	change := st.NewChange("get-secret", "Retrieve a workshop secret")
 	change.AddTask(task)
 	change.Set("user", "test-user")
+	// The task project, not stale change metadata, scopes backend lookup.
+	change.Set("project-id", "stale-project")
 	task.Set("project", workshop.Project{
 		Path:      c.MkDir(),
 		ProjectId: "test-project",
@@ -82,9 +133,12 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 	task.Set("plug", "api-key")
 	st.Unlock()
 
-	err := runner.Ensure()
+	err = runner.Ensure()
 	c.Assert(err, IsNil)
 	runner.Wait()
+	c.Check(lookupUser, Equals, "test-user")
+	c.Check(lookupProject, Equals, "test-project")
+	c.Check(lookupWorkshop, Equals, "test-workshop")
 
 	st.Lock()
 	defer st.Unlock()
@@ -107,7 +161,7 @@ func (s *managerSuite) TestGetSecretMissingPlug(c *C) {
 	st := state.New(nil)
 	runner := state.NewTaskRunner(st)
 	defer runner.Stop()
-	New(runner)
+	New(runner, nil, nil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
@@ -132,7 +186,7 @@ func (s *managerSuite) TestGetSecretMissingProject(c *C) {
 	st := state.New(nil)
 	runner := state.NewTaskRunner(st)
 	defer runner.Stop()
-	New(runner)
+	New(runner, nil, nil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
@@ -157,7 +211,7 @@ func (s *managerSuite) TestGetSecretMissingSDK(c *C) {
 	st := state.New(nil)
 	runner := state.NewTaskRunner(st)
 	defer runner.Stop()
-	New(runner)
+	New(runner, nil, nil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
@@ -182,7 +236,7 @@ func (s *managerSuite) TestGetSecretMissingUser(c *C) {
 	st := state.New(nil)
 	runner := state.NewTaskRunner(st)
 	defer runner.Stop()
-	New(runner)
+	New(runner, nil, nil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
@@ -207,7 +261,7 @@ func (s *managerSuite) TestGetSecretMissingWorkshop(c *C) {
 	st := state.New(nil)
 	runner := state.NewTaskRunner(st)
 	defer runner.Stop()
-	New(runner)
+	New(runner, nil, nil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
@@ -236,9 +290,51 @@ func (s *managerSuite) TestGetSecretCancelledBeforeTomb(c *C) {
 	task.Change().Abort()
 	st.Unlock()
 	var taskTomb tomb.Tomb
-	manager := SecretManager{}
-
-	err := manager.doGetSecret(task, &taskTomb)
+	repo := interfaces.NewRepository()
+	iface, err := interfaces.ByName("secret")
+	c.Assert(err, IsNil)
+	c.Assert(repo.AddInterface(iface), IsNil)
+	plug := &sdk.PlugInfo{
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk: &sdk.Info{
+			Name: "ollama", ProjectId: "test-project",
+			Type: sdk.Regular, Workshop: "test-workshop",
+		},
+	}
+	slot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{"service": "ollama"},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+	}
+	c.Assert(repo.AddPlug(plug), IsNil)
+	c.Assert(repo.AddSlot(slot), IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(plug, slot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, IsNil)
+	backend := workshopBackendFunc(func(
+		context.Context,
+		string,
+	) (*workshop.Workshop, error) {
+		return &workshop.Workshop{
+			Name: "test-workshop",
+			Sdks: map[string]workshop.SdkInstallation{
+				"ollama": {Setup: sdk.Setup{Name: "ollama"}},
+			},
+		}, nil
+	})
+	manager := SecretManager{backend: backend, repo: repo}
+	err = manager.doGetSecret(task, &taskTomb)
 
 	c.Check(err, IsNil)
 	st.Lock()
@@ -313,7 +409,50 @@ func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 	st := state.New(nil)
 	runner := state.NewTaskRunner(st)
 	defer runner.Stop()
-	New(runner)
+	repo := interfaces.NewRepository()
+	iface, err := interfaces.ByName("secret")
+	c.Assert(err, IsNil)
+	c.Assert(repo.AddInterface(iface), IsNil)
+	plug := &sdk.PlugInfo{
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk: &sdk.Info{
+			Name: "ollama", ProjectId: "test-project",
+			Type: sdk.Regular, Workshop: "test-workshop",
+		},
+	}
+	slot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{"service": "ollama"},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+	}
+	c.Assert(repo.AddPlug(plug), IsNil)
+	c.Assert(repo.AddSlot(slot), IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(plug, slot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, IsNil)
+	backend := workshopBackendFunc(func(
+		context.Context,
+		string,
+	) (*workshop.Workshop, error) {
+		return &workshop.Workshop{
+			Name: "test-workshop",
+			Sdks: map[string]workshop.SdkInstallation{
+				"ollama": {Setup: sdk.Setup{Name: "ollama"}},
+			},
+		}, nil
+	})
+	New(runner, backend, repo)
 	task := newSecretTask(c, st)
 	runner.AddHandler("fail", func(*state.Task, *tomb.Tomb) error {
 		return errors.New("subsequent task failed")
@@ -324,7 +463,7 @@ func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 	task.Change().AddTask(failure)
 	st.Unlock()
 
-	err := runner.Ensure()
+	err = runner.Ensure()
 	c.Assert(err, IsNil)
 	runner.Wait()
 
@@ -400,7 +539,7 @@ func (s *managerSuite) TestNewRegistersGetSecret(c *C) {
 	runner := state.NewTaskRunner(st)
 	defer runner.Stop()
 
-	manager := New(runner)
+	manager := New(runner, nil, nil)
 
 	c.Check(manager.Ensure(), IsNil)
 	c.Check(runner.KnownTaskKinds(), DeepEquals, []string{"get-secret"})
