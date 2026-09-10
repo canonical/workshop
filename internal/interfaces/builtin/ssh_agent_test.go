@@ -103,3 +103,18 @@ slots:
 	}}
 	c.Assert(deviceSpec.Profile.Agent, check.DeepEquals, expectedProxy)
 }
+
+func (s *sshAgentSuite) TestSshAgentInterfaceRequiresContainer(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+  ssh-agent:
+    interface: ssh-agent
+`, s.projectId, "ws", "consumer", "ssh-agent")
+
+	container := &lxd_device.Instance{Confinement: workshop.ConfinementContainer}
+	c.Check(container.SupportsPlug(s.iface, plug), check.IsNil)
+
+	vm := &lxd_device.Instance{Confinement: workshop.ConfinementVirtualMachine}
+	c.Check(vm.SupportsPlug(s.iface, plug), check.ErrorMatches, `ssh-agent interface only available to containers`)
+}

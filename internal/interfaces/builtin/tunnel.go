@@ -241,6 +241,20 @@ func (iface *tunnelInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo
 	return false
 }
 
+func (iface *tunnelInterface) LxdDeviceSupportsPlug(instance *lxd_device.Instance, plug *sdk.PlugInfo) error {
+	if instance.Confinement != workshop.ConfinementContainer {
+		return errors.New("tunnel interface only available to containers")
+	}
+	return nil
+}
+
+func (iface *tunnelInterface) LxdDeviceSupportsSlot(instance *lxd_device.Instance, slot *sdk.SlotInfo) error {
+	if instance.Confinement != workshop.ConfinementContainer {
+		return errors.New("tunnel interface only available to containers")
+	}
+	return nil
+}
+
 func (iface *tunnelInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
 	entry := workshop.ProxyEntry{Name: plug.Name()}
 

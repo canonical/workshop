@@ -26,6 +26,7 @@ import (
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 // TestSecurityBackend is a security backend intended for testing.
@@ -37,6 +38,10 @@ type TestSecurityBackend struct {
 	RemoveCalls []string
 	// SetupCallback is an callback that is optionally called in Setup
 	SetupCallback func(context context.Context, sdkRef sdk.Ref, repo *interfaces.Repository) error
+	// SupportsPlugCallback is optionally called by TestSandbox.SupportsPlug
+	SupportsPlugCallback func(iface interfaces.Interface, plug *sdk.PlugInfo, w *workshop.Workshop) error
+	// SupportsSlotCallback is optionally called by TestSandbox.SupportsSlot
+	SupportsSlotCallback func(iface interfaces.Interface, slot *sdk.SlotInfo, w *workshop.Workshop) error
 	// RemoveCallback is a callback that is optionally called in Remove
 	RemoveCallback func(sdkName string) error
 	lock           sync.Mutex
@@ -48,6 +53,11 @@ type TestSecurityBackend struct {
 type TestSetupCall struct {
 	// SdkInfo is a copy of the sdkRef argument to a particular call to Setup
 	SdkRef sdk.Ref
+}
+
+type TestSandbox struct {
+	Backend  *TestSecurityBackend
+	Workshop *workshop.Workshop
 }
 
 // Initialize does nothing.
@@ -90,6 +100,27 @@ func (b *TestSecurityBackend) NewSpecification(user string, sdk string) (interfa
 		return nil, err
 	}
 	return &Specification{user: usr, sdk: sdk}, nil
+}
+
+func (b *TestSecurityBackend) NewSandbox(w *workshop.Workshop) interfaces.Sandbox {
+	return &TestSandbox{
+		Backend:  b,
+		Workshop: w,
+	}
+}
+
+func (s *TestSandbox) SupportsPlug(iface interfaces.Interface, plug *sdk.PlugInfo) error {
+	if s.Backend.SupportsPlugCallback == nil {
+		return nil
+	}
+	return s.Backend.SupportsPlugCallback(iface, plug, s.Workshop)
+}
+
+func (s *TestSandbox) SupportsSlot(iface interfaces.Interface, slot *sdk.SlotInfo) error {
+	if s.Backend.SupportsSlotCallback == nil {
+		return nil
+	}
+	return s.Backend.SupportsSlotCallback(iface, slot, s.Workshop)
 }
 
 func (b *TestSecurityBackend) SandboxFeatures() []string {

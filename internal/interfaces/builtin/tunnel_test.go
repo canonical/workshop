@@ -1286,3 +1286,30 @@ plugs:
 	c.Check(iface.AutoConnect(info.Plugs["wildcard4"], nil), check.Equals, false)
 	c.Check(iface.AutoConnect(info.Plugs["wildcard6"], nil), check.Equals, false)
 }
+
+func (s *tunnelSuite) TestTunnelInterfaceRequiresContainer(c *check.C) {
+	plug := builtin.MockPlug(c, `name: client
+base: ubuntu@22.04
+plugs:
+  tunnel-plug:
+    interface: tunnel
+    endpoint: 1234
+`, s.projectId, "ws", "client", "tunnel-plug")
+
+	slot := builtin.MockSlot(c, `name: system
+base: ubuntu@22.04
+type: system
+slots:
+  tunnel-slot:
+    interface: tunnel
+    endpoint: 4321
+`, s.projectId, "ws", "system", "tunnel-slot")
+
+	container := &lxd_device.Instance{Confinement: workshop.ConfinementContainer}
+	c.Check(container.SupportsPlug(s.iface, plug), check.IsNil)
+	c.Check(container.SupportsSlot(s.iface, slot), check.IsNil)
+
+	vm := &lxd_device.Instance{Confinement: workshop.ConfinementVirtualMachine}
+	c.Check(vm.SupportsPlug(s.iface, plug), check.ErrorMatches, `tunnel interface only available to containers`)
+	c.Check(vm.SupportsSlot(s.iface, slot), check.ErrorMatches, `tunnel interface only available to containers`)
+}

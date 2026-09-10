@@ -796,3 +796,29 @@ slots:
 	_, err := ic.CheckAutoConnect()
 	c.Check(err, check.IsNil)
 }
+
+func (s *mountSuite) TestMountInterfaceSupportsAllInstances(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+ mount:
+  interface: mount
+  workshop-target: /mnt
+`, s.projectId, "ws", "consumer", "mount")
+
+	slot := builtin.MockSlot(c, `name: producer
+base: ubuntu@22.04
+slots:
+ mount:
+  interface: mount
+  workshop-source: /opt
+`, s.projectId, "ws", "system", "mount")
+
+	container := &lxd_device.Instance{Confinement: workshop.ConfinementVirtualMachine}
+	c.Check(container.SupportsPlug(s.iface, plug), check.IsNil)
+	c.Check(container.SupportsSlot(s.iface, slot), check.IsNil)
+
+	vm := &lxd_device.Instance{Confinement: workshop.ConfinementVirtualMachine}
+	c.Check(vm.SupportsPlug(s.iface, plug), check.IsNil)
+	c.Check(vm.SupportsSlot(s.iface, slot), check.IsNil)
+}

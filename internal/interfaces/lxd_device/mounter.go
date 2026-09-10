@@ -19,6 +19,22 @@ import (
 	"github.com/canonical/workshop/internal/sdk"
 )
 
+// PlugSupporter is implemented by interfaces whose LXD devices cannot be
+// attached to every kind of instance. The backend detects the method by type
+// assertion; the plugs of an interface that does not implement it are
+// supported by any instance.
+type PlugSupporter interface {
+	LxdDeviceSupportsPlug(instance *Instance, plug *sdk.PlugInfo) error
+}
+
+// SlotSupporter is implemented by interfaces whose LXD devices cannot be
+// attached to every kind of instance. The backend detects the method by type
+// assertion; the slots of an interface that does not implement it are
+// supported by any instance.
+type SlotSupporter interface {
+	LxdDeviceSupportsSlot(instance *Instance, slot *sdk.SlotInfo) error
+}
+
 // ConnectedPlugMounter is implemented by interfaces that contribute
 // to a workshop's LXD device configuration when a plug of the interface
 // is connected. The backend detects the method by type assertion; an

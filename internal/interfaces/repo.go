@@ -789,6 +789,40 @@ func (r *Repository) Interfaces() *Interfaces {
 	return ifaces
 }
 
+// WorkshopSupportsPlug checks if the plug makes sense to use in the given workshop.
+func (r *Repository) WorkshopSupportsPlug(wp *workshop.Workshop, plug *sdk.PlugInfo) error {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	iface, ok := r.ifaces[plug.Interface]
+	if !ok {
+		return fmt.Errorf("unknown interface %q", plug.Interface)
+	}
+	for _, backend := range r.backends {
+		if err := backend.NewSandbox(wp).SupportsPlug(iface, plug); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WorkshopSupportsSlot checks if the slot makes sense to use in the given workshop.
+func (r *Repository) WorkshopSupportsSlot(wp *workshop.Workshop, slot *sdk.SlotInfo) error {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	iface, ok := r.ifaces[slot.Interface]
+	if !ok {
+		return fmt.Errorf("unknown interface %q", slot.Interface)
+	}
+	for _, backend := range r.backends {
+		if err := backend.NewSandbox(wp).SupportsSlot(iface, slot); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // SdkSpecification returns the specification of a given sdk in a given security system.
 func (r *Repository) SdkSpecification(ctx context.Context, securitySystem SecuritySystem, sdkInfo sdk.Ref) (Specification, error) {
 	r.m.Lock()
