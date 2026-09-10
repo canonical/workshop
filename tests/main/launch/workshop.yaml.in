@@ -1,5 +1,6 @@
-name: ws-20
-base: ubuntu@20.04
+name: ws
+base: ${BASE}
+confinement: ${CONFINEMENT}
 actions:
   check-apt: |
     dry_run() {

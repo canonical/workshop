@@ -1,6 +1,13 @@
 summary: OpenSSH is configured for automatic access to workshops
+
+environment:
+  CONFINEMENT/ctr: container
+  CONFINEMENT/vm: virtual-machine
+
 prepare: |
   . "$TESTSLIB"/utils.sh
+  envsubst '${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
+  chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch ws-ssh
 restore: |
   . "$TESTSLIB"/utils.sh
