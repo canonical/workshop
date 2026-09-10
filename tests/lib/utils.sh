@@ -88,6 +88,7 @@ function setup_workshop() {
     snap install --dangerous --classic /workshop/tests/*.snap
 
     snap set workshop workshop.debug=1
+    snap set workshop workshop.experimental-vms=1
     snap set workshop workshop.image.server.url="$IMAGE_SERVER"
     snap alias workshop.sdk sdk
     snap restart workshop

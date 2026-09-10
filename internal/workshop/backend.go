@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/user"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -63,6 +64,9 @@ var (
 		Username: "workshop",
 		HomeDir:  "/home/workshop",
 	}
+
+	// TODO: remove when we require LXD > 6.9.
+	WorkshopVMsSupportSDKs atomic.Bool
 )
 
 type ErrExec struct {

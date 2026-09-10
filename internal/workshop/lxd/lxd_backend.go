@@ -236,7 +236,23 @@ func checkServerCapabilities() error {
 		return err
 	}
 
+	workshop.WorkshopVMsSupportSDKs.Store(checkVMsSupportSDKs(conn))
+
 	return checkStorageDriver(info.Environment.StorageSupportedDrivers)
+}
+
+// vmDiskShiftSupported checks whether LXD supports mounting shifted SDK
+// volumes in VMs. See https://github.com/canonical/lxd/pull/18918.
+func checkVMsSupportSDKs(conn lxd.InstanceServer) bool {
+	metadata, err := conn.GetMetadataConfiguration()
+	if err != nil {
+		return false
+	}
+
+	return slices.ContainsFunc(metadata.Configs["device-disk"]["device-conf"].Keys, func(keys map[string]api.MetadataConfigurationConfigKey) bool {
+		shift, ok := keys["shift"]
+		return ok && shift.Condition != "container"
+	})
 }
 
 func checkWorkshopFormats() error {
