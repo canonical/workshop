@@ -37,6 +37,7 @@ import (
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -1387,6 +1388,57 @@ func (s *apiSuite) TestConnectAlreadyConnected(c *check.C) {
 	err = chg.Err()
 	st.Unlock()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *apiSuite) TestConnectFailureOnConfinement(c *check.C) {
+	d := s.daemon(c)
+
+	mockIface(c, d, &ifacetest.TestInterface{InterfaceName: "test"})
+
+	s.mockInstalledSDK(c, consumerYaml, "consumer-ws")
+	s.mockInstalledSDK(c, producerYaml, "producer-ws")
+
+	supportsPlugCallback := func(iface interfaces.Interface, plug *sdk.PlugInfo, w *workshop.Workshop) error {
+		return fmt.Errorf("%s interface only available to containers", iface.Name())
+	}
+	defer testutil.FakeFunc(supportsPlugCallback, &s.secBackend.SupportsPlugCallback)()
+
+	d.Overlord().Loop()
+	defer d.Overlord().Stop()
+
+	action := &client.InterfaceAction{
+		Action: "connect",
+		Plugs:  []client.Plug{{ProjectId: "b8639dea", Workshop: "consumer-ws", Sdk: "consumer", Name: "plug"}},
+		Slots:  []client.Slot{{ProjectId: "b8639dea", Workshop: "producer-ws", Sdk: "producer", Name: "slot"}},
+	}
+	text, err := json.Marshal(action)
+	c.Assert(err, check.IsNil)
+	buf := bytes.NewBuffer(text)
+	cmd := apiCmd("/v1/connections")
+	req, err := http.NewRequest("POST", cmd.Path, buf)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	v1PostConnections(cmd, req.WithContext(s.ctx), nil).ServeHTTP(rec, req)
+	c.Check(rec.Code, check.Equals, 202)
+	var body map[string]any
+	json.Unmarshal(rec.Body.Bytes(), &body)
+	id := body["change"].(string)
+
+	st := d.Overlord().State()
+	st.Lock()
+	chg := st.Change(id)
+	st.Unlock()
+	c.Assert(chg, check.NotNil)
+
+	<-chg.Ready()
+
+	st.Lock()
+	err = chg.Err()
+	st.Unlock()
+	c.Check(err, check.ErrorMatches, `(?s).*\(test devices are only available to containers\).*`)
+
+	repo := d.Overlord().InterfaceManager().Repository()
+	c.Check(repo.Interfaces().Connections, check.HasLen, 0)
 }
 
 func (s *apiSuite) TestConnectFailureOnConflict(c *check.C) {

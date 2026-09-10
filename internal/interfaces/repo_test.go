@@ -21,6 +21,7 @@ package interfaces_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/user"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 type RepositorySuite struct {
@@ -191,6 +193,70 @@ func (s *RepositorySuite) TestBackends(c *C) {
 	c.Assert(s.emptyRepo.AddBackend(b1), IsNil)
 	// The order of insertion is retained.
 	c.Assert(s.emptyRepo.Backends(), DeepEquals, []SecurityBackend{b2, b1})
+}
+
+func (s *RepositorySuite) TestSupportsPlug(c *C) {
+	iface := &ifacetest.TestInterface{InterfaceName: "iface"}
+	c.Assert(s.emptyRepo.AddInterface(iface), IsNil)
+
+	backend := &ifacetest.TestSecurityBackend{
+		BackendName: "test",
+		SupportsPlugCallback: func(iface Interface, plug *sdk.PlugInfo, w *workshop.Workshop) error {
+			if w.File.Confinement == workshop.ConfinementVirtualMachine {
+				return errors.New("test devices are only available to containers")
+			}
+			return nil
+		},
+	}
+	c.Assert(s.emptyRepo.AddBackend(backend), IsNil)
+
+	container := &workshop.Workshop{File: &workshop.File{Confinement: workshop.ConfinementContainer}}
+	vm := &workshop.Workshop{File: &workshop.File{Confinement: workshop.ConfinementVirtualMachine}}
+
+	sdkInfo := &sdk.Info{ProjectId: s.projectId, Workshop: "ws", Name: "sdk"}
+	plug := &sdk.PlugInfo{Sdk: sdkInfo, Name: "plug", Interface: "iface"}
+	c.Check(s.emptyRepo.WorkshopSupportsPlug(plug, container), IsNil)
+
+	err := s.emptyRepo.WorkshopSupportsPlug(plug, vm)
+	c.Check(err, ErrorMatches,
+		`test devices are only available to containers`)
+
+	// Unknown interfaces cannot be used at all.
+	other := &sdk.PlugInfo{Sdk: sdkInfo, Name: "plug", Interface: "other"}
+	c.Check(s.emptyRepo.WorkshopSupportsPlug(other, container),
+		ErrorMatches, `unknown interface "other"`)
+}
+
+func (s *RepositorySuite) TestSupportsSlot(c *C) {
+	iface := &ifacetest.TestInterface{InterfaceName: "iface"}
+	c.Assert(s.emptyRepo.AddInterface(iface), IsNil)
+
+	backend := &ifacetest.TestSecurityBackend{
+		BackendName: "test",
+		SupportsSlotCallback: func(iface Interface, slot *sdk.SlotInfo, w *workshop.Workshop) error {
+			if w.File.Confinement == workshop.ConfinementVirtualMachine {
+				return errors.New("test devices are only available to containers")
+			}
+			return nil
+		},
+	}
+	c.Assert(s.emptyRepo.AddBackend(backend), IsNil)
+
+	container := &workshop.Workshop{File: &workshop.File{Confinement: workshop.ConfinementContainer}}
+	vm := &workshop.Workshop{File: &workshop.File{Confinement: workshop.ConfinementVirtualMachine}}
+
+	sdkInfo := &sdk.Info{ProjectId: s.projectId, Workshop: "ws", Name: "sdk"}
+	slot := &sdk.SlotInfo{Sdk: sdkInfo, Name: "slot", Interface: "iface"}
+	c.Check(s.emptyRepo.WorkshopSupportsSlot(slot, container), IsNil)
+
+	err := s.emptyRepo.WorkshopSupportsSlot(slot, vm)
+	c.Check(err, ErrorMatches,
+		`test devices are only available to containers`)
+
+	// Unknown interfaces cannot be used at all.
+	other := &sdk.SlotInfo{Sdk: sdkInfo, Name: "slot", Interface: "other"}
+	c.Check(s.emptyRepo.WorkshopSupportsSlot(other, container),
+		ErrorMatches, `unknown interface "other"`)
 }
 
 // Tests for Repository.Interface()

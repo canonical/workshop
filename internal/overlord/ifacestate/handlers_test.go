@@ -1202,6 +1202,145 @@ func (s *interfaceHandlersSuite) TestUndoAutoConnect(c *check.C) {
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 2)
 }
 
+func (s *interfaceHandlersSuite) TestAutoconnectSkipsUnsupportedConfinement(c *check.C) {
+	// Setup: the plug and the slot live in the same workshop, as the policy
+	// refuses to connect SDKs across workshops.
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws", []sdk.Meta{producer, consumer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// The backend cannot support the plug in this workshop.
+	s.secBackend.SupportsPlugCallback = func(iface interfaces.Interface, plug *sdk.PlugInfo, w *workshop.Workshop) error {
+		if iface.Name() == "mock-network" {
+			return errors.New("mock devices are only available to containers")
+		}
+		return nil
+	}
+	defer func() { s.secBackend.SupportsPlugCallback = nil }()
+
+	// Execute: auto-connect the SDK owning the plug.
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate: the plug is silently left unconnected.
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), check.ErrorMatches, `no state entry for key "conns"`)
+}
+
+// TestAutoconnectSkipsUnsupportedConfinementForSlot covers the same case from
+// the other side: the SDK being connected owns the slot and the candidate plug
+// is the one that cannot be supported.
+func (s *interfaceHandlersSuite) TestAutoconnectSkipsUnsupportedConfinementForSlot(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws", []sdk.Meta{producer, consumer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	s.secBackend.SupportsPlugCallback = func(iface interfaces.Interface, plug *sdk.PlugInfo, w *workshop.Workshop) error {
+		if iface.Name() == "mock-network" {
+			return errors.New("mock devices are only available to containers")
+		}
+		return nil
+	}
+	defer func() { s.secBackend.SupportsPlugCallback = nil }()
+
+	// Execute: auto-connect the SDK owning the slot.
+	s.state.Lock()
+	chg := s.newAutoconnectChange("producer")
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate: no connect task was created for the unsupported plug.
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "producer", "slot")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), check.ErrorMatches, `no state entry for key "conns"`)
+}
+
+// TestAutoconnectSkipsUnsupportedSlotConfinement covers the slot side: no
+// interface restricts its slots today, but the check must still hold.
+func (s *interfaceHandlersSuite) TestAutoconnectSkipsUnsupportedSlotConfinement(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws", []sdk.Meta{producer, consumer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// The backend cannot support the slot in this workshop.
+	s.secBackend.SupportsSlotCallback = func(iface interfaces.Interface, slot *sdk.SlotInfo, w *workshop.Workshop) error {
+		if iface.Name() == "mock-network" {
+			return errors.New("mock devices are only available to containers")
+		}
+		return nil
+	}
+	defer func() { s.secBackend.SupportsSlotCallback = nil }()
+
+	// Execute: auto-connect the SDK owning the plug.
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate: the candidate slot is silently skipped.
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 0)
+
+	var conns map[string]any
+	c.Check(s.state.Get("conns", &conns), check.ErrorMatches, `no state entry for key "conns"`)
+}
+
+// TestAutoconnectSupportedConfinement is the control for the two tests above:
+// with no restriction in place the very same setup does connect.
+func (s *interfaceHandlersSuite) TestAutoconnectSupportedConfinement(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws", []sdk.Meta{producer, consumer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumer.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.IsNil)
+
+	// Validate
+	refs, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(refs, check.HasLen, 1)
+}
+
 func (s *interfaceHandlersSuite) newRemountChange(newSource string) *state.Change {
 	s.state.Lock()
 	defer s.state.Unlock()

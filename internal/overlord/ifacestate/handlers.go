@@ -15,6 +15,7 @@
 package ifacestate
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -112,7 +113,7 @@ func (m *InterfaceManager) doAutoConnect(task *state.Task, tomb *tomb.Tomb) (err
 		return err
 	}
 
-	return m.connectAuto(task, wp, info, preserved)
+	return m.connectAuto(ctx, task, wp, info, preserved)
 }
 
 func (m *InterfaceManager) preserveConns(st *state.State, chg *state.Change, projectId, w, s string) error {
@@ -220,7 +221,7 @@ func workshopConns(wp *workshop.Workshop) []interfaces.ConnRef {
 	return conns
 }
 
-func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, info *sdk.Info, preserved map[string]schema.PreservedConn) error {
+func (m *InterfaceManager) connectAuto(ctx context.Context, task *state.Task, wp *workshop.Workshop, info *sdk.Info, preserved map[string]schema.PreservedConn) error {
 	conns, err := getConns(m.state)
 	if err != nil {
 		return err
@@ -230,9 +231,35 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 	connectRefs := []*interfaces.ConnRef{}
 	connectAttrs := map[string]schema.PreservedConn{}
 
-	planConnect := func(iface string, connRef *interfaces.ConnRef, slaves []sdk.PlugRef) {
+	getWorkshop := func(pid, w string) (*workshop.Workshop, error) {
+		if pid == wp.Project.ProjectId && w == wp.Name {
+			return wp, nil
+		}
+
+		// TODO: optimise this for cross-workshop connections.
+		logger.Debugf("On connectAuto: using unoptimized workshop lookup")
+		ctx := context.WithValue(ctx, workshop.ContextProjectId, pid)
+		return m.backend.Workshop(ctx, w)
+	}
+
+	planConnect := func(plug *sdk.PlugInfo, slot *sdk.SlotInfo, connRef *interfaces.ConnRef, slaves []sdk.PlugRef) {
+		plugW, err1 := getWorkshop(plug.Sdk.ProjectId, plug.Sdk.Workshop)
+		slotW, err2 := getWorkshop(slot.Sdk.ProjectId, slot.Sdk.Workshop)
+		if err := cmp.Or(err1, err2); err != nil {
+			logger.Noticef("On connectAuto: missing workshop still in repo: %w", err)
+			return
+		}
+		if err := m.repo.WorkshopSupportsPlug(plugW, plug); err != nil {
+			logger.Debugf("On connectAuto: skipping %q: %w", connRef.ID(), err)
+			return
+		}
+		if err := m.repo.WorkshopSupportsSlot(slotW, slot); err != nil {
+			logger.Debugf("On connectAuto: skipping %q: %w", connRef.ID(), err)
+			return
+		}
+
 		attrs := preserved[connRef.ID()]
-		if attrs.Interface == iface {
+		if attrs.Interface == plug.Interface {
 			mconn, bound := attrs.DynamicPlugAttrs["bind"].(string)
 			if bound {
 				mattrs, ok := preserved[mconn]
@@ -285,7 +312,7 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 
 		for _, slot := range candidates {
 			connRef := interfaces.NewConnRef(plug, slot)
-			planConnect(plug.Interface, connRef, slaves)
+			planConnect(plug, slot, connRef, slaves)
 		}
 	}
 
@@ -307,7 +334,7 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 				// Already handled above.
 				continue
 			}
-			planConnect(plug.Interface, connRef, slaves)
+			planConnect(plug, slot, connRef, slaves)
 		}
 	}
 
@@ -342,7 +369,7 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 			continue
 		}
 
-		planConnect(attrs.Interface, connRef, slaves)
+		planConnect(plug, slot, connRef, slaves)
 	}
 
 	// Sort connections by their ID to ensure deterministic order of connection tasks creation.
@@ -486,18 +513,34 @@ func MaybeBound(w *workshop.Workshop, ref sdk.PlugRef) (sdk.PlugRef, []sdk.PlugR
 
 func (m *InterfaceManager) doConnect(task *state.Task, tomb *tomb.Tomb) error {
 	st := task.State()
+
 	st.Lock()
 	defer st.Unlock()
 
 	var user string
-	err := task.Change().Get("user", &user)
-	if err != nil {
+	if err := task.Change().Get("user", &user); err != nil {
 		return err
 	}
 
 	plugRef, slotRef, err := getPlugAndSlotRefs(task)
 	if err != nil {
 		return err
+	}
+
+	ctx, cancel := handlersetup.BackendContext(tomb, user, plugRef.ProjectId)
+	defer cancel()
+
+	plugW, err := m.backend.Workshop(ctx, plugRef.Workshop)
+	if err != nil {
+		return err
+	}
+	slotW := plugW
+	if slotRef.ProjectId != plugRef.ProjectId || slotRef.Workshop != plugRef.Workshop {
+		ctx := context.WithValue(ctx, workshop.ContextProjectId, slotRef.ProjectId)
+		slotW, err = m.backend.Workshop(ctx, slotRef.Workshop)
+		if err != nil {
+			return err
+		}
 	}
 
 	conns, err := getConns(st)
@@ -530,6 +573,15 @@ func (m *InterfaceManager) doConnect(task *state.Task, tomb *tomb.Tomb) error {
 
 	var delayedSetupProfile bool
 	if err := task.Get("delayed-setup-profile", &delayedSetupProfile); err != nil && !errors.Is(err, state.ErrNoState) {
+		return err
+	}
+
+	// The devices an interface relies on may not exist in every kind of
+	// workshop, and the two ends may run in workshops of different kinds.
+	if err := m.repo.WorkshopSupportsPlug(plugW, plug); err != nil {
+		return err
+	}
+	if err := m.repo.WorkshopSupportsSlot(slotW, slot); err != nil {
 		return err
 	}
 
