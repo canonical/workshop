@@ -41,3 +41,11 @@ var (
 	CauseDocker          = causeDocker
 	CauseUFW             = causeUFW
 )
+
+// Exported for testing VM resource defaults.
+var (
+	DefaultVMLimits       = defaultVMLimits
+	VMLimitsConfig        = vmLimitsConfig
+	DefaultVMRootDiskSize = defaultVMRootDiskSize
+	DefaultDevices        = defaultDevices
+)
