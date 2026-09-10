@@ -26,22 +26,36 @@ var (
 	procMeminfo = "/proc/meminfo"
 )
 
-// TotalUsableMemory returns the total usable memory in the system in bytes.
-//
-// Usable means (MemTotal - CmaTotal), i.e. the total amount of memory
-// minus the space reserved for the CMA (Contiguous Memory Allocator).
-//
-// CMA memory is taken up by e.g. the framebuffer on the Raspberry Pi or
-// by DSPs on specific boards.
-func TotalUsableMemory() (totalMem uint64, err error) {
+// MemInfo holds the parts of /proc/meminfo we care about, in bytes.
+type MemInfo struct {
+	// Total is the total usable memory in the system.
+	//
+	// Usable means (MemTotal - CmaTotal), i.e. the total amount of memory
+	// minus the space reserved for the CMA (Contiguous Memory Allocator).
+	//
+	// CMA memory is taken up by e.g. the framebuffer on the Raspberry Pi or
+	// by DSPs on specific boards.
+	Total uint64
+
+	// Available is the kernel's own estimate of how much memory can be
+	// handed out without pushing the system into swapping or reclaim.
+	Available uint64
+
+	// SwapTotal is the configured swap size. Without swap, running out of
+	// memory kills processes rather than slowing the system down.
+	SwapTotal uint64
+}
+
+// ReadMemInfo returns the memory accounting reported by the kernel.
+func ReadMemInfo() (*MemInfo, error) {
 	f, err := os.Open(procMeminfo)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	defer f.Close()
 	s := bufio.NewScanner(f)
 
-	var memTotal, cmaTotal uint64
+	var memTotal, cmaTotal, memAvailable, swapTotal uint64
 	for s.Scan() {
 		var p *uint64
 		l := strings.TrimSpace(s.Text())
@@ -50,26 +64,37 @@ func TotalUsableMemory() (totalMem uint64, err error) {
 			p = &memTotal
 		case strings.HasPrefix(l, "CmaTotal:"):
 			p = &cmaTotal
+		case strings.HasPrefix(l, "MemAvailable:"):
+			p = &memAvailable
+		case strings.HasPrefix(l, "SwapTotal:"):
+			p = &swapTotal
 		default:
 			continue
 		}
 		fields := strings.Fields(l)
 		if len(fields) != 3 || fields[2] != "kB" {
-			return 0, fmt.Errorf("cannot process unexpected meminfo entry %q", l)
+			return nil, fmt.Errorf("cannot process unexpected meminfo entry %q", l)
 		}
 		v, err := strconv.ParseUint(fields[1], 10, 64)
 		if err != nil {
-			return 0, fmt.Errorf("cannot convert memory size value: %v", err)
+			return nil, fmt.Errorf("cannot convert memory size value: %v", err)
 		}
 		*p = v * 1024
 	}
 	if err := s.Err(); err != nil {
-		return 0, err
+		return nil, err
 	}
 	if memTotal == 0 {
-		return 0, fmt.Errorf("cannot determine the total amount of memory in the system from %s", procMeminfo)
+		return nil, fmt.Errorf("cannot determine the total amount of memory in the system from %s", procMeminfo)
 	}
-	return memTotal - cmaTotal, nil
+	if memAvailable == 0 {
+		return nil, fmt.Errorf("cannot determine the available amount of memory in the system from %s", procMeminfo)
+	}
+	return &MemInfo{
+		Total:     memTotal - cmaTotal,
+		Available: memAvailable,
+		SwapTotal: swapTotal,
+	}, nil
 }
 
 func MockProcMeminfo(newPath string) (restore func()) {
