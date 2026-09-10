@@ -304,14 +304,6 @@ func ValidateFile(file *File) error {
 		return fmt.Errorf("base %q not supported", file.Base)
 	}
 
-	if file.Confinement != ConfinementContainer {
-		confinement, err := file.Confinement.MarshalText()
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("confinement %q not supported", confinement)
-	}
-
 	if err := validateSdks(file.Sdks); err != nil {
 		return err
 	}

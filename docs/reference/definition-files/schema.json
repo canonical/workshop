@@ -23,6 +23,15 @@
       ],
       "errorMessage": "The base must be one of the supported values: ubuntu@20.04, ubuntu@22.04, ubuntu@24.04, ubuntu@26.04."
     },
+    "confinement": {
+      "type": "string",
+      "description": "Type of sandboxing to use to run the workshop.",
+      "enum": [
+        "container",
+        "virtual-machine"
+      ],
+      "errorMessage": "The confinement must be one of the supported values: container, virtual-machine."
+    },
     "sdks": {
       "type": "array",
       "description": "Ordered list of SDKs to install on top of the base. Each entry references an existing SDK; names must be unique within the list. The system SDK is installed first implicitly and need not be listed.",

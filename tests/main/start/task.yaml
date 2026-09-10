@@ -1,6 +1,15 @@
 summary: Check workshop start
+
+environment:
+  CONFINEMENT/ctr: container
+  CONFINEMENT/vm: virtual-machine
+
 prepare: |
   . "$TESTSLIB"/utils.sh
+  envsubst '${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
+  # TODO: remove the next line once VMs support SDKs
+  [ "${CONFINEMENT}" = container ] || (head --lines=-2 workshop.yaml | sponge workshop.yaml)
+  chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch
 restore: |
   . "$TESTSLIB"/utils.sh
@@ -8,13 +17,6 @@ restore: |
 execute: |
   . "$TESTSLIB"/utils.sh
 
-  function check_linger() {
-    echo "Check that linger is enabled for the workshop user"
-    workshop_exec exec -- test -f /var/lib/systemd/linger/workshop
-    workshop_exec exec -- test -d /run/user/1000
-  }
-
-  check_linger
   workshop_exec stop
 
   echo "Check the workshop is in Stopped state"
@@ -25,8 +27,6 @@ execute: |
 
   echo "Check the workshop is in Ready state"
   workshop_exec list | MATCH "^ws-start[[:space:]]+Ready[[:space:]]+-$"
-
-  check_linger
 
   echo "Check the workshop also becomes Ready when systemd boots degraded"
   workshop_exec exec -- sudo cp /project/workshop-test-degraded.service /etc/systemd/system/

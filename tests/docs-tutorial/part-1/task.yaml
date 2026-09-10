@@ -34,7 +34,6 @@ execute: |
   MATCH 'channel:[[:space:]]+cpu/stable$' < .workshop/dev.yaml
 
   workshop_exec list
-  lxc storage set workshop size=20GB
 
 
   ## Launch, start, and stop
