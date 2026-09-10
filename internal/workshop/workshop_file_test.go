@@ -95,6 +95,7 @@ actions:
 	c.Assert(err, check.Equals, nil)
 	c.Assert(file.Name, check.Equals, "xbert-gpu")
 	c.Assert(file.Base, check.Equals, "ubuntu@20.04")
+	c.Assert(file.Confinement, check.Equals, workshop.ConfinementContainer)
 	c.Assert(file.Sdks[0], check.DeepEquals, workshop.SdkRecord{Name: "system", Source: sdk.SystemSource})
 	c.Assert(file.Sdks[1], check.DeepEquals, workshop.SdkRecord{Name: "huggingface"})
 	c.Assert(file.Sdks[2], check.DeepEquals, workshop.SdkRecord{Name: "cuda", Channel: "latest/edge"})
@@ -184,6 +185,34 @@ func (f *workshopFile) TestSingleWorkshopFileError(c *check.C) {
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(file, check.IsNil)
 	c.Assert(err, check.ErrorMatches, ".*is a directory")
+}
+
+func (f *workshopFile) TestConfinement(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@20.04
+confinement: container
+`
+	f.createSingleWFile(c, "workshop.yaml", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.Confinement, check.Equals, workshop.ConfinementContainer)
+
+	yaml = strings.Replace(yaml, "container", "virtual-machine", 1)
+	f.createSingleWFile(c, "workshop.yaml", yaml)
+	file, err = f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.Confinement, check.Equals, workshop.ConfinementVirtualMachine)
+}
+
+func (f *workshopFile) TestConfinementError(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@20.04
+confinement: classic
+`
+	f.createSingleWFile(c, "workshop.yaml", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, `invalid file ".*": invalid confinement: "classic"`)
 }
 
 func (f *workshopFile) TestWorkshopFileDuplicate(c *check.C) {

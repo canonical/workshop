@@ -3,7 +3,6 @@ restore: |
   rm -rf ollama
 execute: |
   . "$TESTSLIB"/utils.sh
-  lxc storage set default size=32GB
 
   # ----------------------------------------------------------------------------
 

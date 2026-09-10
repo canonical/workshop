@@ -1,4 +1,5 @@
 name: ws-start
 base: ubuntu@22.04
+confinement: ${CONFINEMENT}
 sdks:
   - name: test-sdk-basic-2
