@@ -38,6 +38,13 @@ type SecretManager struct {
 // cache. The consumer must remove the entry after reading the result.
 type secretResultKey string
 
+// TaskHandlerRegistrar registers handlers for secret operation tasks.
+type TaskHandlerRegistrar interface {
+	// AddHandler registers the do and undo handlers for a task kind.
+	// A nil undo handler indicates that the task has no undo operation.
+	AddHandler(string, state.HandlerFunc, state.HandlerFunc)
+}
+
 // WorkshopBackend resolves workshops using the identity in the supplied context.
 type WorkshopBackend interface {
 	// Workshop resolves the named workshop within the user and project
@@ -169,7 +176,7 @@ func (m SecretManager) getSecret(
 
 // New creates a secret manager and registers its task handlers.
 func New(
-	runner *state.TaskRunner,
+	runner TaskHandlerRegistrar,
 	backend WorkshopBackend,
 	repo *interfaces.Repository,
 ) SecretManager {

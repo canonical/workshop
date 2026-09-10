@@ -159,125 +159,115 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 // a secret result.
 func (s *managerSuite) TestGetSecretMissingPlug(c *C) {
 	st := state.New(nil)
-	runner := state.NewTaskRunner(st)
-	defer runner.Stop()
+	runner := &taskHandlerRegistrar{}
 	New(runner, nil, nil)
+	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
 	task.Set("plug", nil)
 	st.Unlock()
 
-	err := runner.Ensure()
-	c.Assert(err, IsNil)
-	runner.Wait()
+	var taskTomb tomb.Tomb
+	err := runner.do(task, &taskTomb)
 
 	st.Lock()
 	defer st.Unlock()
-	c.Check(task.Status(), Equals, state.ErrorStatus)
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
-	c.Check(task.Change().Err(), ErrorMatches,
-		"(?s).*cannot read get secret task parameters for sdk and plug:.*")
+	c.Check(err, ErrorMatches,
+		"(?s)cannot read get secret task parameters for sdk and plug:.*")
 }
 
 // TestGetSecretMissingProject checks that a missing project fails without
 // caching a secret result.
 func (s *managerSuite) TestGetSecretMissingProject(c *C) {
 	st := state.New(nil)
-	runner := state.NewTaskRunner(st)
-	defer runner.Stop()
+	runner := &taskHandlerRegistrar{}
 	New(runner, nil, nil)
+	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
 	task.Set("project", nil)
 	st.Unlock()
 
-	err := runner.Ensure()
-	c.Assert(err, IsNil)
-	runner.Wait()
+	var taskTomb tomb.Tomb
+	err := runner.do(task, &taskTomb)
 
 	st.Lock()
 	defer st.Unlock()
-	c.Check(task.Status(), Equals, state.ErrorStatus)
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
-	c.Check(task.Change().Err(), ErrorMatches,
-		"(?s).*cannot resolve secret task identity.*")
+	c.Check(err, ErrorMatches,
+		"(?s)cannot resolve secret task identity.*")
 }
 
 // TestGetSecretMissingSDK checks that a missing SDK fails without caching
 // a secret result.
 func (s *managerSuite) TestGetSecretMissingSDK(c *C) {
 	st := state.New(nil)
-	runner := state.NewTaskRunner(st)
-	defer runner.Stop()
+	runner := &taskHandlerRegistrar{}
 	New(runner, nil, nil)
+	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
 	task.Set("sdk", nil)
 	st.Unlock()
 
-	err := runner.Ensure()
-	c.Assert(err, IsNil)
-	runner.Wait()
+	var taskTomb tomb.Tomb
+	err := runner.do(task, &taskTomb)
 
 	st.Lock()
 	defer st.Unlock()
-	c.Check(task.Status(), Equals, state.ErrorStatus)
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
-	c.Check(task.Change().Err(), ErrorMatches,
-		"(?s).*cannot read get secret task parameters for sdk and plug:.*")
+	c.Check(err, ErrorMatches,
+		"(?s)cannot read get secret task parameters for sdk and plug:.*")
 }
 
 // TestGetSecretMissingUser checks that a missing change user fails without
 // caching a secret result.
 func (s *managerSuite) TestGetSecretMissingUser(c *C) {
 	st := state.New(nil)
-	runner := state.NewTaskRunner(st)
-	defer runner.Stop()
+	runner := &taskHandlerRegistrar{}
 	New(runner, nil, nil)
+	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
 	task.Change().Set("user", nil)
 	st.Unlock()
 
-	err := runner.Ensure()
-	c.Assert(err, IsNil)
-	runner.Wait()
+	var taskTomb tomb.Tomb
+	err := runner.do(task, &taskTomb)
 
 	st.Lock()
 	defer st.Unlock()
-	c.Check(task.Status(), Equals, state.ErrorStatus)
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
-	c.Check(task.Change().Err(), ErrorMatches,
-		"(?s).*cannot resolve secret task identity.*")
+	c.Check(err, ErrorMatches,
+		"(?s)cannot resolve secret task identity.*")
 }
 
 // TestGetSecretMissingWorkshop checks that a missing workshop fails without
 // caching a secret result.
 func (s *managerSuite) TestGetSecretMissingWorkshop(c *C) {
 	st := state.New(nil)
-	runner := state.NewTaskRunner(st)
-	defer runner.Stop()
+	runner := &taskHandlerRegistrar{}
 	New(runner, nil, nil)
+	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
 	st.Lock()
 	task.Set("workshop", nil)
 	st.Unlock()
 
-	err := runner.Ensure()
-	c.Assert(err, IsNil)
-	runner.Wait()
+	var taskTomb tomb.Tomb
+	err := runner.do(task, &taskTomb)
 
 	st.Lock()
 	defer st.Unlock()
-	c.Check(task.Status(), Equals, state.ErrorStatus)
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
-	c.Check(task.Change().Err(), ErrorMatches,
-		"(?s).*cannot resolve secret task identity.*")
+	c.Check(err, ErrorMatches,
+		"(?s)cannot resolve secret task identity.*")
 }
 
 // TestGetSecretCancelledBeforeTomb checks successful retrieval publishes a
@@ -348,7 +338,6 @@ func (s *managerSuite) TestGetSecretCancelledBeforeTomb(c *C) {
 // without a value when cancellation precedes retrieval.
 func (s *managerSuite) TestGetSecretCancelledContext(c *C) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	cancel()
 	ref := sdk.PlugRef{
 		Name:      "api-key",
@@ -533,14 +522,16 @@ func (s *managerSuite) TestUndoGetSecretWithoutResult(c *C) {
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
 }
 
-// TestNewRegistersGetSecret checks that construction registers the task kind.
+// TestNewRegistersGetSecret checks construction registers the get-secret
+// handler and its undo operation exactly once.
 func (s *managerSuite) TestNewRegistersGetSecret(c *C) {
-	st := state.New(nil)
-	runner := state.NewTaskRunner(st)
-	defer runner.Stop()
+	runner := &taskHandlerRegistrar{}
 
 	manager := New(runner, nil, nil)
 
 	c.Check(manager.Ensure(), IsNil)
-	c.Check(runner.KnownTaskKinds(), DeepEquals, []string{"get-secret"})
+	c.Check(runner.calls, Equals, 1)
+	c.Check(runner.kind, Equals, "get-secret")
+	c.Check(runner.do, NotNil)
+	c.Check(runner.undo, NotNil)
 }

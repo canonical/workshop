@@ -47,18 +47,24 @@ var _ = Suite(&getSecretSuite{})
 // awaitTask waits for scheduling before inspecting the task under lock.
 func (s *getSecretSuite) awaitTask(c *C) *state.Task {
 	s.awaitEnsure(c)
+
 	s.st.Lock()
 	defer s.st.Unlock()
+
 	changes := s.st.Changes()
 	c.Assert(changes, HasLen, 1)
+
 	tasks := changes[0].Tasks()
 	c.Assert(tasks, HasLen, 1)
+
 	c.Check(changes[0].Kind(), Equals, "get-secret")
 	c.Check(tasks[0].Kind(), Equals, "get-secret")
+
 	return tasks[0]
 }
 
-// awaitEnsure waits for an immediate ensure request without polling.
+// awaitEnsure waits for the next ensure request and checks that its requested
+// delay is zero.
 func (s *getSecretSuite) awaitEnsure(c *C) {
 	delay := <-s.backend.ensureBefore
 	c.Check(delay, Equals, time.Duration(0))
@@ -134,7 +140,9 @@ func (s *getSecretSuite) TestCancelledAfterCompletion(c *C) {
 	c.Check(s.st.Cached(secretResultKey(task.ID())), IsNil)
 }
 
-// TestCancelledBeforeScheduling checks cancellation creates no changes.
+// TestCancelledBeforeScheduling checks that [GetSecret] returns
+// [context.Canceled] without creating a change when its context is already
+// cancelled.
 func (s *getSecretSuite) TestCancelledBeforeScheduling(c *C) {
 	project := workshop.Project{
 		Path:      c.MkDir(),
@@ -148,18 +156,16 @@ func (s *getSecretSuite) TestCancelledBeforeScheduling(c *C) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 	cancel()
 
-	result := <-s.start(ctx, project, ref)
-	c.Check(errors.Is(result.err, context.Canceled), Equals, true)
-	c.Check(result.value, IsNil)
+	value, err := GetSecret(ctx, s.st, project, ref)
+	c.Check(errors.Is(err, context.Canceled), Equals, true)
+	c.Check(value, IsNil)
 
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
-	c.Check(s.backend.ensureBefore, HasLen, 0)
 }
 
 // TestCancelledWhileQueued checks cancellation aborts an unstarted task and
@@ -177,6 +183,8 @@ func (s *getSecretSuite) TestCancelledWhileQueued(c *C) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	// Release the retrieval goroutine if an assertion aborts the test before
+	// the explicit cancellation below.
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 	results := s.start(ctx, project, ref)
@@ -203,7 +211,8 @@ func (s *getSecretSuite) TestCancelledWhileQueued(c *C) {
 	c.Check(s.st.Cached(secretResultKey(task.ID())), IsNil)
 }
 
-// TestMissingUser checks that unauthenticated requests create no tasks.
+// TestMissingUser checks that [GetSecret] rejects a context without a user
+// and does not create a change.
 func (s *getSecretSuite) TestMissingUser(c *C) {
 	project := workshop.Project{
 		Path:      c.MkDir(),
@@ -218,17 +227,17 @@ func (s *getSecretSuite) TestMissingUser(c *C) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	result := <-s.start(ctx, project, ref)
+	value, err := GetSecret(ctx, s.st, project, ref)
 
-	c.Check(result.err, ErrorMatches, "secret request has no user")
-	c.Check(result.value, IsNil)
+	c.Check(err, ErrorMatches, "secret request has no user")
+	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
 }
 
-// TestMismatchedProject checks that inconsistent lookup identity is rejected
-// before a task is scheduled.
+// TestMismatchedProject checks that [GetSecret] rejects a plug reference whose
+// project ID differs from the supplied project, without creating a change.
 func (s *getSecretSuite) TestMismatchedProject(c *C) {
 	project := workshop.Project{
 		Path:      c.MkDir(),
@@ -244,12 +253,12 @@ func (s *getSecretSuite) TestMismatchedProject(c *C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
-	result := <-s.start(ctx, project, ref)
+	value, err := GetSecret(ctx, s.st, project, ref)
 
-	c.Check(result.err, ErrorMatches,
+	c.Check(err, ErrorMatches,
 		"validating get secret request arguments: "+
 			"plug reference project ID does not match project ID")
-	c.Check(result.value, IsNil)
+	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)

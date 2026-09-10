@@ -18,6 +18,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -26,11 +27,31 @@ type secretStateBackend struct {
 	ensureBefore chan time.Duration
 }
 
+// taskHandlerRegistrar records task registration without running tasks.
+type taskHandlerRegistrar struct {
+	calls int
+	do    state.HandlerFunc
+	kind  string
+	undo  state.HandlerFunc
+}
+
 // workshopBackendFunc supplies workshop lookup behaviour without a backend.
 type workshopBackendFunc func(
 	context.Context,
 	string,
 ) (*workshop.Workshop, error)
+
+// AddHandler records the supplied task kind and handlers.
+func (r *taskHandlerRegistrar) AddHandler(
+	kind string,
+	do state.HandlerFunc,
+	undo state.HandlerFunc,
+) {
+	r.calls++
+	r.do = do
+	r.kind = kind
+	r.undo = undo
+}
 
 // Checkpoint discards state snapshots in retrieval tests.
 func (b *secretStateBackend) Checkpoint([]byte) error {
