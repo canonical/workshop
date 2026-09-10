@@ -83,21 +83,11 @@ func (m SecretManager) doGetSecret(
 	st.Lock()
 	defer st.Unlock()
 
-	// Check under the publication lock: an abort may precede tomb cancellation.
-	switch status := task.Status(); status {
-	case state.DoingStatus:
-		st.Cache(secretResultKey(task.ID()), value)
-		return nil
-
-	case state.AbortStatus:
-		return context.Canceled
-
-	default:
-		return fmt.Errorf(
-			"cannot publish secret result: unexpected task status %s",
-			status,
-		)
-	}
+	st.Cache(secretResultKey(task.ID()), value)
+	// Do not return an error after publication: the runner only schedules
+	// undo for a successful aborted handler. An error would skip undo and
+	// could leave a late result cached after the caller has returned.
+	return nil
 }
 
 // Ensure implements the state manager lifecycle. There is currently no
@@ -125,6 +115,20 @@ func (m SecretManager) getSecret(
 // New creates a secret manager and registers its task handlers.
 func New(runner *state.TaskRunner) SecretManager {
 	manager := SecretManager{}
-	runner.AddHandler("get-secret", manager.doGetSecret, nil)
+	runner.AddHandler("get-secret", manager.doGetSecret, manager.undoGetSecret)
 	return manager
+}
+
+// undoGetSecret removes a result published by an aborted retrieval.
+// Removing an already-consumed or absent result is harmless.
+func (m SecretManager) undoGetSecret(
+	task *state.Task,
+	_ *tomb.Tomb,
+) error {
+	st := task.State()
+	st.Lock()
+	defer st.Unlock()
+
+	st.Cache(secretResultKey(task.ID()), nil)
+	return nil
 }

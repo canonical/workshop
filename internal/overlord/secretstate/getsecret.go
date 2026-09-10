@@ -27,7 +27,8 @@ import (
 // GetSecret schedules retrieval for a previously authorised secret consumer
 // and waits for its result. The caller must not hold the state lock, and the
 // state engine must be running. Results are consumed from the in-memory cache.
-// Cancellation aborts the change and discards any result.
+// Cancellation aborts the change and discards any cached result. Results
+// published after cancellation are discarded when the task is undone.
 //
 // The following errors may be expected:
 //   - [context.Canceled]: the request was cancelled.
@@ -75,12 +76,12 @@ func GetSecret(
 
 	st.Lock()
 	defer st.Unlock()
-	// Remove the secret on every return path so results do not outlive their
-	// request. This defer runs before the state is unlocked.
+	// Remove any cached result before returning and unlocking the state.
+	// If an aborted handler publishes later, its undo handler removes it.
 	defer st.Cache(resultKey, nil)
 
-	// Prefer cancellation if it raced with task completion. Aborting under
-	// this lock prevents the handler from publishing a result after cleanup.
+	// Prefer cancellation if it raced with task completion. The runner
+	// handles undo if retrieval succeeds despite the abort.
 	err = ctx.Err()
 	if err != nil {
 		change.Abort()

@@ -226,27 +226,26 @@ func (s *managerSuite) TestGetSecretMissingWorkshop(c *C) {
 		"(?s).*cannot resolve secret task identity.*")
 }
 
-// TestGetSecretCancelledBeforeTomb checks that an aborted task cannot publish
-// a result even before the runner cancels its tomb.
+// TestGetSecretCancelledBeforeTomb checks successful retrieval publishes a
+// result and returns nil even when the task has already been aborted.
 func (s *managerSuite) TestGetSecretCancelledBeforeTomb(c *C) {
 	st := state.New(nil)
 	task := newSecretTask(c, st)
-
 	st.Lock()
 	task.SetStatus(state.DoingStatus)
 	task.Change().Abort()
-	c.Check(task.Status(), Equals, state.AbortStatus)
 	st.Unlock()
-
 	var taskTomb tomb.Tomb
 	manager := SecretManager{}
+
 	err := manager.doGetSecret(task, &taskTomb)
 
-	c.Check(errors.Is(err, context.Canceled), Equals, true)
-	c.Check(taskTomb.Alive(), Equals, true)
+	c.Check(err, IsNil)
 	st.Lock()
 	defer st.Unlock()
-	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
+	c.Check(task.Status(), Equals, state.AbortStatus)
+	c.Check(st.Cached(secretResultKey(task.ID())), DeepEquals,
+		[]byte("workshop-placeholder-secret"))
 }
 
 // TestGetSecretCancelledContext checks retrieval returns the context error
@@ -308,22 +307,88 @@ func (s *managerSuite) TestGetSecretExpiredContext(c *C) {
 	c.Check(errors.Is(err, context.DeadlineExceeded), Equals, true)
 }
 
-// TestGetSecretUnexpectedStatus checks that a completed task cannot publish
-// another result and reports a lifecycle error rather than cancellation.
-func (s *managerSuite) TestGetSecretUnexpectedStatus(c *C) {
+// TestGetSecretUndoneAfterFailure checks the runner invokes the registered
+// undo handler when a subsequent task fails in the same change.
+func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
+	st := state.New(nil)
+	runner := state.NewTaskRunner(st)
+	defer runner.Stop()
+	New(runner)
+	task := newSecretTask(c, st)
+	runner.AddHandler("fail", func(*state.Task, *tomb.Tomb) error {
+		return errors.New("subsequent task failed")
+	}, nil)
+	st.Lock()
+	failure := st.NewTask("fail", "Fail after secret retrieval")
+	failure.WaitFor(task)
+	task.Change().AddTask(failure)
+	st.Unlock()
+
+	err := runner.Ensure()
+	c.Assert(err, IsNil)
+	runner.Wait()
+
+	st.Lock()
+	c.Check(task.Status(), Equals, state.DoneStatus)
+	c.Check(st.Cached(secretResultKey(task.ID())), DeepEquals,
+		[]byte("workshop-placeholder-secret"))
+	st.Unlock()
+
+	err = runner.Ensure()
+	c.Assert(err, IsNil)
+	runner.Wait()
+
+	st.Lock()
+	c.Check(failure.Status(), Equals, state.ErrorStatus)
+	c.Check(task.Status(), Equals, state.UndoStatus)
+	st.Unlock()
+
+	err = runner.Ensure()
+	c.Assert(err, IsNil)
+	runner.Wait()
+
+	st.Lock()
+	defer st.Unlock()
+	c.Check(task.Status(), Equals, state.UndoneStatus)
+	c.Check(task.Change().Err(), ErrorMatches,
+		"(?s).*subsequent task failed.*")
+	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
+}
+
+// TestUndoGetSecretRemovesResult checks undo discards a cached secret.
+func (s *managerSuite) TestUndoGetSecretRemovesResult(c *C) {
 	st := state.New(nil)
 	task := newSecretTask(c, st)
 	st.Lock()
-	task.SetStatus(state.DoneStatus)
+	st.Cache(secretResultKey(task.ID()), []byte("workshop-placeholder-secret"))
 	st.Unlock()
 	var taskTomb tomb.Tomb
 	manager := SecretManager{}
 
-	err := manager.doGetSecret(task, &taskTomb)
+	err := manager.undoGetSecret(task, &taskTomb)
 
-	c.Check(err, ErrorMatches,
-		"cannot publish secret result: unexpected task status Done")
-	c.Check(errors.Is(err, context.Canceled), Equals, false)
+	c.Check(err, IsNil)
+	st.Lock()
+	defer st.Unlock()
+	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
+}
+
+// TestUndoGetSecretWithoutResult checks undo succeeds when the caller has
+// already removed the cached result, even if the undo tomb is cancelled.
+func (s *managerSuite) TestUndoGetSecretWithoutResult(c *C) {
+	st := state.New(nil)
+	task := newSecretTask(c, st)
+	st.Lock()
+	st.Cache(secretResultKey(task.ID()), []byte("workshop-placeholder-secret"))
+	st.Cache(secretResultKey(task.ID()), nil)
+	st.Unlock()
+	var taskTomb tomb.Tomb
+	taskTomb.Kill(nil)
+	manager := SecretManager{}
+
+	err := manager.undoGetSecret(task, &taskTomb)
+
+	c.Check(err, IsNil)
 	st.Lock()
 	defer st.Unlock()
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
