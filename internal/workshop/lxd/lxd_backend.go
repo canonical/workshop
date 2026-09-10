@@ -180,9 +180,17 @@ func checkStorageDriver(drivers []api.ServerStorageDriverInfo) error {
 }
 
 // checkStorageSpace puts the daemon into degraded mode when the workshop
-// storage pool is 90% or more full, preventing further launches from failing
+// storage pool is nearly full, preventing further launches from failing
 // weirdly (e.g. on workshop remove causing troubles with backup yaml files
 // removal) due to lack of space.
+//
+// This is a coarse, size-unaware health check: it runs periodically and knows
+// nothing about what is about to be launched. checkLaunchCapacity does the
+// size-aware gating immediately before a launch.
+//
+// A percentage alone is not enough. On a 100 GiB pool 90% still leaves 10 GiB,
+// while on a 4 GiB pool it leaves 400 MiB, which is not even enough to unpack
+// one base image. An absolute floor is therefore applied as well.
 func checkStorageSpace() error {
 	const fullThresholdPct = 90
 
@@ -203,17 +211,19 @@ func checkStorageSpace() error {
 	}
 
 	if res.Space.Total == 0 {
-		// Cannot determine usage (e.g. directory-backed pools report zero).
+		// Cannot determine usage. Pools backed by a filesystem LXD cannot
+		// measure report zero here rather than an error.
 		return nil
 	}
 
+	avail := res.Space.Total - min(res.Space.Used, res.Space.Total)
 	usedPct := float64(res.Space.Used) / float64(res.Space.Total) * 100
-	if usedPct >= fullThresholdPct {
-		availGiB := float64(res.Space.Total-res.Space.Used) / (1024 * 1024 * 1024)
-		return fmt.Errorf("storage pool %q is %.0f%% full (%.1f GiB available); "+
+
+	if usedPct >= fullThresholdPct || avail < poolReserve {
+		return fmt.Errorf("storage pool %q is %.0f%% full (%s available); "+
 			"free up space or expand the pool with `lxc storage set workshop size=<N>GiB`\n"+
 			"For details, see: https://ubuntu.com/workshop/docs/reference/workshops/#storage-pools-and-drivers",
-			storagePool, usedPct, availGiB)
+			storagePool, usedPct, byteSize(avail))
 	}
 
 	return nil
@@ -420,6 +430,12 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 
 	usr, err := osutil.UserLookup(username)
 	if err != nil {
+		return err
+	}
+
+	// Refuse early and with a clear message rather than letting LXD fail
+	// part-way through, which leaves a half-created instance behind.
+	if err := checkLaunchCapacity(conn, snapshot); err != nil {
 		return err
 	}
 

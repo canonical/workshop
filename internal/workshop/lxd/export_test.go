@@ -42,10 +42,21 @@ var (
 	CauseUFW             = causeUFW
 )
 
-// Exported for testing VM resource defaults.
+// Exported for testing the launch capacity gate.
+type LaunchSource = launchSource
+
 var (
+	CheckPoolSpace        = checkPoolSpace
+	LaunchSpace           = launchSpace
+	CheckAvailableMemory  = checkAvailableMemory
+	LaunchMemoryNeeded    = launchMemoryNeeded
 	DefaultVMLimits       = defaultVMLimits
 	VMLimitsConfig        = vmLimitsConfig
 	DefaultVMRootDiskSize = defaultVMRootDiskSize
 	DefaultDevices        = defaultDevices
+)
+
+const (
+	PoolReserve    = poolReserve
+	CloneFootprint = cloneFootprint
 )
