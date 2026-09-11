@@ -168,6 +168,8 @@ extensions = [
     "sphinxcontrib.cairosvgconverter",
     "sphinx_sitemap",
     "flat_toctree",
+    "sphinx_structured_toc",
+    "structured_toc",
     "category_nav",
 ]
 
