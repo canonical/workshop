@@ -65,13 +65,13 @@ func (s *secretSuite) TestFormatPointer(c *check.C) {
 	secret := NewSecret([]byte("token"))
 	defer secret.Close()
 
-	c.Check(fmt.Sprintf("%v", secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%+v", secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%#v", secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%s", secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%q", secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%x", secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%20.3s", secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%v", &secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%+v", &secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%#v", &secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%s", &secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%q", &secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%x", &secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%20.3s", &secret), check.Equals, "")
 
 	value, err := io.ReadAll(secret)
 	c.Check(err, check.IsNil)
@@ -84,14 +84,14 @@ func (s *secretSuite) TestFormatValue(c *check.C) {
 	secret := NewSecret([]byte("token"))
 	defer secret.Close()
 
-	c.Check(fmt.Sprint(*secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%v", *secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%+v", *secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%#v", *secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%s", *secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%q", *secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%x", *secret), check.Equals, "")
-	c.Check(fmt.Sprintf("%20.3s", *secret), check.Equals, "")
+	c.Check(fmt.Sprint(secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%v", secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%+v", secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%#v", secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%s", secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%q", secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%x", secret), check.Equals, "")
+	c.Check(fmt.Sprintf("%20.3s", secret), check.Equals, "")
 
 	value, err := io.ReadAll(secret)
 	c.Check(err, check.IsNil)
@@ -156,7 +156,7 @@ func (s *secretSuite) TestReadZeroLength(c *check.C) {
 func (s *secretSuite) TestCopiesShareReads(c *check.C) {
 	secret := NewSecret([]byte("token"))
 	defer secret.Close()
-	other := *secret
+	other := secret
 	buffer := make([]byte, 2)
 
 	n, err := secret.Read(buffer)
@@ -164,7 +164,7 @@ func (s *secretSuite) TestCopiesShareReads(c *check.C) {
 	c.Check(n, check.Equals, 2)
 	c.Check(buffer, check.DeepEquals, []byte("to"))
 
-	value, err := io.ReadAll(&other)
+	value, err := io.ReadAll(other)
 	c.Check(err, check.IsNil)
 	c.Check(value, check.DeepEquals, []byte("ken"))
 	n, err = secret.Read(buffer)
@@ -177,7 +177,8 @@ func (s *secretSuite) TestCopiesShareReads(c *check.C) {
 func (s *secretSuite) TestCopiesShareClose(c *check.C) {
 	secret := NewSecret([]byte("token"))
 	backing := secret.state.value
-	other := *secret
+	defer secret.Close()
+	other := secret
 
 	err := other.Close()
 

@@ -35,7 +35,7 @@ type secretState struct {
 
 // Close clears unread bytes and releases the buffer. Repeated calls are safe.
 // Reads after Close return [io.EOF], except for zero-length reads.
-func (s *Secret) Close() error {
+func (s Secret) Close() error {
 	if s.state == nil {
 		return nil
 	}
@@ -51,8 +51,8 @@ func (Secret) Format(fmt.State, rune) {}
 // NewSecret takes ownership of value without copying it. The caller must not
 // subsequently access value or any aliases of its backing array.
 // Callers should close the secret if they may not read it to completion.
-func NewSecret(value []byte) *Secret {
-	return &Secret{state: &secretState{value: value}}
+func NewSecret(value []byte) Secret {
+	return Secret{state: &secretState{value: value}}
 }
 
 // Read copies unread bytes into p and immediately clears the consumed bytes
@@ -61,7 +61,7 @@ func NewSecret(value []byte) *Secret {
 //
 // The following errors may be expected:
 //   - [io.EOF]: no unread bytes remain and p is non-empty.
-func (s *Secret) Read(p []byte) (int, error) {
+func (s Secret) Read(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
