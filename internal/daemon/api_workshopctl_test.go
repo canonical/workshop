@@ -107,6 +107,10 @@ func (s *apiSuite) TestWorkshopCtlRejectsUnknownInstanceID(c *check.C) {
 func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 	s.daemon(c)
 	s.addWorkshopWithInstanceID("instance-id")
+	s.d.overlord.Loop()
+	defer func() {
+		c.Check(s.d.overlord.Stop(), check.IsNil)
+	}()
 
 	wctl := apiCmd("/v1/workshopctl")
 	buf := bytes.NewBufferString(
