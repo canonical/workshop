@@ -135,6 +135,8 @@ Let's build something better and...
       $ workshop launch
 
 
+.. _how_git_worktrees:
+
 Use worktrees
 -------------
 
