@@ -1,0 +1,203 @@
+# When updating this file, please carefully consider whether the snapshot
+# format revision number needs to be bumped. This file is used by the
+# snapshotSuite.TestLxdBackendSnapshotFormatVM test. It records the writable
+# parts of workshops and snapshots at each step from launch to snapshot.
+# Changes to this file may or may not influence the snapshot format. For
+# instance boot.autostart isn't snapshotted and has no side effects.
+launched:
+  architecture: ''
+  config:
+    agent.nic_config: 'true'
+    boot.autostart: 'false'
+    raw.idmap: |
+      uid 1000000-1000999 0-999
+      uid 1000 1000
+      uid 1001001-1000999999 1001-999999999
+      gid 1000000-1000999 0-999
+      gid 1000 1000
+      gid 1001001-1000999999 1001-999999999
+    user.workshop.name: test
+    user.workshop.project-id: '42424242'
+  description: ''
+  devices:
+    cache.apt:
+      path: /var/cache/apt/archives
+      readonly: 'false'
+      type: disk
+    root:
+      path: /
+      pool: workshop
+      type: disk
+    workshop.network:
+      name: eth0
+      network: workshopbr0
+      type: nic
+    workshop.bin:
+      path: /var/lib/workshop/bin
+      readonly: 'true'
+      type: disk
+  ephemeral: false
+  profiles: [default]
+  stateful: false
+started:
+  architecture: ''
+  config:
+    agent.nic_config: 'true'
+    boot.autostart: 'true'
+    raw.idmap: |
+      uid 1000000-1000999 0-999
+      uid 1000 1000
+      uid 1001001-1000999999 1001-999999999
+      gid 1000000-1000999 0-999
+      gid 1000 1000
+      gid 1001001-1000999999 1001-999999999
+    user.workshop.name: test
+    user.workshop.project-id: '42424242'
+  description: ''
+  devices:
+    cache.apt:
+      path: /var/cache/apt/archives
+      readonly: 'false'
+      type: disk
+    root:
+      path: /
+      pool: workshop
+      type: disk
+    workshop.network:
+      name: eth0
+      network: workshopbr0
+      type: nic
+    workshop.bin:
+      path: /var/lib/workshop/bin
+      readonly: 'true'
+      type: disk
+  ephemeral: false
+  profiles: [default]
+  stateful: false
+sdk-attached:
+  architecture: ''
+  config:
+    agent.nic_config: 'true'
+    boot.autostart: 'true'
+    raw.idmap: |
+      uid 1000000-1000999 0-999
+      uid 1000 1000
+      uid 1001001-1000999999 1001-999999999
+      gid 1000000-1000999 0-999
+      gid 1000 1000
+      gid 1001001-1000999999 1001-999999999
+    user.workshop.name: test
+    user.workshop.project-id: '42424242'
+  description: ''
+  devices:
+    cache.apt:
+      path: /var/cache/apt/archives
+      readonly: 'false'
+      type: disk
+    root:
+      path: /
+      pool: workshop
+      type: disk
+    sdk.store-sdk:
+      path: /var/lib/workshop/sdk/store-sdk
+      pool: workshop
+      readonly: 'true'
+      source: store-sdk-23
+      type: disk
+      user.sdk.channel: latest/stable
+      user.sdk.install-order: '1'
+      user.sdk.package-id: '7MW8x1TQWSOXMR6t8kvcsLiYJomy4eSz'
+      user.sdk.revision: '23'
+      user.sdk.sha3-384: '18b8ce233667942e94e1f5bdd22bcd516c4a375030a359a5bb09220b416d215fffda138d8d45eaab419ae2403c81ec5d'
+      user.sdk.source: store
+    workshop.network:
+      name: eth0
+      network: workshopbr0
+      type: nic
+    workshop.bin:
+      path: /var/lib/workshop/bin
+      readonly: 'true'
+      type: disk
+  ephemeral: false
+  profiles: [default]
+  stateful: false
+sdk-mounted:
+  architecture: ''
+  config:
+    agent.nic_config: 'true'
+    boot.autostart: 'true'
+    raw.idmap: |
+      uid 1000000-1000999 0-999
+      uid 1000 1000
+      uid 1001001-1000999999 1001-999999999
+      gid 1000000-1000999 0-999
+      gid 1000 1000
+      gid 1001001-1000999999 1001-999999999
+    user.workshop.name: test
+    user.workshop.project-id: '42424242'
+  description: ''
+  devices:
+    cache.apt:
+      path: /var/cache/apt/archives
+      readonly: 'false'
+      type: disk
+    root:
+      path: /
+      pool: workshop
+      type: disk
+    sdk.store-sdk:
+      path: /var/lib/workshop/sdk/store-sdk
+      pool: workshop
+      readonly: 'true'
+      source: store-sdk-23
+      type: disk
+      user.sdk.channel: latest/stable
+      user.sdk.install-order: '1'
+      user.sdk.package-id: '7MW8x1TQWSOXMR6t8kvcsLiYJomy4eSz'
+      user.sdk.revision: '23'
+      user.sdk.sha3-384: '18b8ce233667942e94e1f5bdd22bcd516c4a375030a359a5bb09220b416d215fffda138d8d45eaab419ae2403c81ec5d'
+      user.sdk.source: store
+    sdk.local-sdk:
+      path: /var/lib/workshop/sdk/local-sdk
+      readonly: 'true'
+      type: disk
+      user.sdk.install-order: '2'
+      user.sdk.revision: 'x34'
+      user.sdk.sha3-384: 'dc00101dfd688cdc058e31d3b82e680df123f85935f741fabcb8f0dfd29d80612f131db8487621abad7ee856223bede1'
+      user.sdk.source: project
+    workshop.network:
+      name: eth0
+      network: workshopbr0
+      type: nic
+    workshop.bin:
+      path: /var/lib/workshop/bin
+      readonly: 'true'
+      type: disk
+  ephemeral: false
+  profiles: [default]
+  stateful: false
+snapshot:
+  architecture: ''
+  config:
+    security.protection.start: 'true'
+    user.workshop.base: ubuntu@24.04
+    user.workshop.snapshot-type: sdk
+  description: ''
+  devices:
+    root:
+      path: /
+      pool: workshop
+      type: disk
+    sdk.store-sdk:
+      type: none
+      user.sdk.install-order: '1'
+      user.sdk.is-volume: 'true'
+      user.sdk.sha3-384: '18b8ce233667942e94e1f5bdd22bcd516c4a375030a359a5bb09220b416d215fffda138d8d45eaab419ae2403c81ec5d'
+    sdk.local-sdk:
+      type: none
+      user.sdk.install-order: '2'
+      user.sdk.is-volume: 'false'
+      user.sdk.sha3-384: 'dc00101dfd688cdc058e31d3b82e680df123f85935f741fabcb8f0dfd29d80612f131db8487621abad7ee856223bede1'
+  ephemeral: false
+  profiles: []
+  stateful: false

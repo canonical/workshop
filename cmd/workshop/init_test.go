@@ -85,6 +85,21 @@ base: ubuntu@24.04
 `)
 }
 
+func (s *workshopInit) TestInitVM(c *check.C) {
+	projectDir := c.MkDir()
+	cmd := s.makeCmd(projectDir)
+	cmd.vm = true
+
+	err := s.run(cmd, "dev")
+	c.Assert(err, check.IsNil)
+
+	path := workshop.Filepath(projectDir, "dev")
+	c.Check(path, testutil.FileEquals, `name: dev
+base: ubuntu@24.04
+confinement: virtual-machine
+`)
+}
+
 func (s *workshopInit) TestInitWithSdkChannel(c *check.C) {
 	projectDir := c.MkDir()
 	cmd := s.makeCmd(projectDir)

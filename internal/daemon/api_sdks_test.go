@@ -439,11 +439,11 @@ func (s *apiSuite) TestSdkInfoGetOk(c *check.C) {
 	s.createWFile(c, "lerobot", "name: lerobot\nbase: ubuntu@20.04\n")
 
 	wf := &workshop.File{Name: "nav2", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
 
 	wf = &workshop.File{Name: "lerobot", Base: "ubuntu@20.04"}
-	snapshot = workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot = workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
 
 	// Add SDK setups with channels so the endpoint can report channels.
@@ -667,7 +667,7 @@ func (s *apiSuite) TestSdkInfoLocalOnly(c *check.C) {
 
 	s.createWFile(c, "nav2", "name: nav2\nbase: ubuntu@20.04\n")
 	wf := &workshop.File{Name: "nav2", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
 
 	// Add SDK setup with channels so the endpoint can report channels.
@@ -798,7 +798,7 @@ func (s *apiSuite) TestSdkInfoGetInvalidLocalMetadata(c *check.C) {
 
 	s.createWFile(c, "ws", "name: ws\nbase: ubuntu@20.04\n")
 	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
 
 	meta := sdk.Meta{

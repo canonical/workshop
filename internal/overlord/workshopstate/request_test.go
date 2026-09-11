@@ -133,7 +133,7 @@ func (s *requestSuite) launchWorkshopWithSDKs(c *check.C, ws string, sdks []work
 	c.Assert(err, check.IsNil)
 
 	wf := workshop.File{Name: ws, Base: "ubuntu@20.04", Sdks: sdks}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	err = s.backend.LaunchOrRebuildWorkshop(s.ctx, &wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -198,7 +198,7 @@ connections:
 	current := []workshopstate.Manifest{{
 		File:   &oldf,
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: newf.Base, Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: newf.Base, Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"},
 		Sdks: []sdk.Setup{{
 			Name:     "system",
 			Source:   sdk.SystemSource,
@@ -365,7 +365,7 @@ sdks:
 	err := yaml.Unmarshal([]byte(file), &wf)
 	c.Assert(err, check.IsNil)
 
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"}
 
 	uv := sdk.Setup{
 		Name:     "uv",
@@ -523,7 +523,7 @@ sdks:
 	err := yaml.Unmarshal([]byte(file), &wf)
 	c.Assert(err, check.IsNil)
 
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"}
 
 	uv := sdk.Setup{
 		Name:     "uv",

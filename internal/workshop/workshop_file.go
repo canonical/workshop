@@ -209,9 +209,40 @@ type Connection struct {
 
 type Action string
 
+type Confinement int
+
+const (
+	ConfinementContainer Confinement = iota
+	ConfinementVirtualMachine
+)
+
+func (c Confinement) MarshalText() ([]byte, error) {
+	switch c {
+	case ConfinementContainer:
+		return []byte("container"), nil
+	case ConfinementVirtualMachine:
+		return []byte("virtual-machine"), nil
+	default:
+		return nil, fmt.Errorf("invalid confinement: %v", int(c))
+	}
+}
+
+func (c *Confinement) UnmarshalText(text []byte) error {
+	switch string(text) {
+	case "container":
+		*c = ConfinementContainer
+	case "virtual-machine":
+		*c = ConfinementVirtualMachine
+	default:
+		return fmt.Errorf("invalid confinement: %q", string(text))
+	}
+	return nil
+}
+
 type File struct {
 	Name        string            `yaml:"name"`
 	Base        string            `yaml:"base"`
+	Confinement Confinement       `yaml:"confinement,omitempty"`
 	Sdks        []SdkRecord       `yaml:"sdks,omitempty"`
 	Connections []Connection      `yaml:"connections,omitempty"`
 	Actions     map[string]Action `yaml:"actions,omitempty"`

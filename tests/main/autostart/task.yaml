@@ -1,4 +1,9 @@
 summary: Ensure that workshop autostart behavior performs correctly
+
+environment:
+  CONFINEMENT/ctr: container
+  CONFINEMENT/vm: virtual-machine
+
 debug: |
   resolvectl status workshopbr0 || true
   systemctl status sys-subsystem-net-devices-workshopbr0.device || true
@@ -6,6 +11,8 @@ debug: |
   journalctl -xeu snap.workshop.configure-dns.service || true
 prepare: |
   . "$TESTSLIB"/utils.sh
+  envsubst '${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
+  chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch
 restore: |
   . "$TESTSLIB"/utils.sh
@@ -40,8 +47,9 @@ execute: |
   fi
 
   echo "Make sure a stopped workshop remains stopped after reboot"
-  workshop_exec stop ws-autostart
   if [ $SPREAD_REBOOT = 2 ]; then
+    retry 5 workshop_exec exec ws-autostart systemctl is-system-running --wait
+    workshop_exec stop ws-autostart
     REBOOT
   fi
   workshop_exec list | MATCH 'Stopped'
