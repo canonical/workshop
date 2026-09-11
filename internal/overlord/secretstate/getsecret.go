@@ -54,9 +54,11 @@ func GetSecret(
 		return nil, fmt.Errorf("validating get secret request arguments: %w", err)
 	}
 
+	summary := fmt.Sprintf("Retrieve secret %q", ref.ShortRef())
+
 	st.Lock()
-	task := st.NewTask("get-secret", "Retrieve a workshop secret")
-	change := st.NewChange("get-secret", "Retrieve a workshop secret")
+	task := st.NewTask("get-secret", summary)
+	change := st.NewChange("get-secret", summary)
 	change.AddTask(task)
 	change.Set("user", user)
 	change.Set("project-id", project.ProjectId)

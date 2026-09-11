@@ -448,6 +448,10 @@ func (s *getSecretSuite) TestSuccess(c *C) {
 		c.Check(workshopName, Equals, ref.Workshop)
 		c.Check(sdkName, Equals, ref.Sdk)
 		c.Check(plugName, Equals, ref.Name)
+		c.Check(task.Summary(), Equals,
+			`Retrieve secret "test-workshop/ollama:api-key"`)
+		c.Check(task.Change().Summary(), Equals,
+			`Retrieve secret "test-workshop/ollama:api-key"`)
 	}()
 
 	err := s.runner.Ensure()
