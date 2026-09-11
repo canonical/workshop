@@ -84,8 +84,12 @@ func GetSecret(
 	// handles undo if retrieval succeeds despite the abort.
 	err = ctx.Err()
 	if err != nil {
-		change.Abort()
-		st.EnsureBefore(0)
+		// A ready change must not become unready through an abort. Check
+		// under the same lock so completion cannot race with this decision.
+		if !change.IsReady() {
+			change.Abort()
+			st.EnsureBefore(0)
+		}
 		return nil, err
 	}
 

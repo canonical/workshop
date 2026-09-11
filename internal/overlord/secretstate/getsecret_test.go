@@ -92,6 +92,47 @@ func (s *getSecretSuite) TearDownTest(c *C) {
 	s.runner.Stop()
 }
 
+// TestCancelledAfterCompletion checks cancellation discards a completed result
+// without aborting the ready change or making it unready.
+func (s *getSecretSuite) TestCancelledAfterCompletion(c *C) {
+	project := workshop.Project{
+		Path:      c.MkDir(),
+		ProjectId: "test-project",
+	}
+	ref := sdk.PlugRef{
+		Name:      "api-key",
+		ProjectId: project.ProjectId,
+		Sdk:       "ollama",
+		Workshop:  "test-workshop",
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+	results := s.start(ctx, project, ref)
+	task := s.awaitTask(c)
+
+	s.st.Lock()
+	// Complete and cancel under one lock so GetSecret observes both before
+	// it can consume the result, regardless of which select case wakes it.
+	task.SetStatus(state.DoingStatus)
+	s.st.Cache(secretResultKey(task.ID()), []byte("workshop-placeholder-secret"))
+	task.SetStatus(state.DoneStatus)
+	c.Check(task.Change().IsReady(), Equals, true)
+	cancel()
+	s.st.Unlock()
+
+	result := <-results
+	c.Check(errors.Is(result.err, context.Canceled), Equals, true)
+	c.Check(result.value, IsNil)
+
+	s.st.Lock()
+	defer s.st.Unlock()
+	c.Check(task.Status(), Equals, state.DoneStatus)
+	c.Check(task.Change().IsReady(), Equals, true)
+	c.Check(task.Change().Err(), IsNil)
+	c.Check(s.st.Cached(secretResultKey(task.ID())), IsNil)
+}
+
 // TestCancelledBeforeScheduling checks cancellation creates no changes.
 func (s *getSecretSuite) TestCancelledBeforeScheduling(c *C) {
 	project := workshop.Project{
