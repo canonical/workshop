@@ -215,6 +215,8 @@ would interfere with each other.
    make sure you understand the implications.
 
 
+.. _how_ai_agents_parallel_runs:
+
 Scenario 1: Parallel runs
 -------------------------
 
@@ -335,6 +337,8 @@ In a regular development workflow,
 you would cherry-pick the best design choices between the two alternatives,
 eventually merging the result into :samp:`main`.
 
+
+.. _how_ai_agents_role_based:
 
 Scenario 2: Role-based coding
 -----------------------------
