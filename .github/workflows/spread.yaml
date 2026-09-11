@@ -172,7 +172,7 @@ jobs:
           if-no-files-found: ignore
   publish:
     needs: [build-deps, snap-tests]
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork)
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Download snap artifact
