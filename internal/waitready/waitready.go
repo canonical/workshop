@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	lxd "github.com/canonical/lxd/client"
@@ -41,7 +42,16 @@ func IsWaitreadyInvocation() bool {
 // WaitReady waits for the system to finish booting and then sets the instance
 // to Ready via the DevLXD socket.
 func WaitReady() error {
-	ctx, cancel := context.WithTimeout(context.Background(), Timeout)
+	timeout := Timeout
+	if timeoutSetting := os.Getenv("WORKSHOP_WAITREADY_TIMEOUT_NS"); timeoutSetting != "" {
+		timeoutNS, err := strconv.ParseInt(timeoutSetting, 10, 64)
+		if err != nil {
+			return err
+		}
+		timeout = time.Duration(timeoutNS) * time.Nanosecond
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	server, err := lxd.ConnectDevLXDWithContext(ctx, "/dev/lxd/sock", nil)
