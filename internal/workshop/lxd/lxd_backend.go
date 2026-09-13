@@ -47,7 +47,6 @@ import (
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/syscheck"
-	"github.com/canonical/workshop/internal/waitready"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -66,6 +65,9 @@ const (
 	// NetworkBridgeName is the name of the LXD bridge network used by
 	// workshops, exported for use by other packages (e.g. firewall checks).
 	NetworkBridgeName = networkName
+
+	startTimeoutContainer = 5 * time.Minute
+	startTimeoutVM        = 10 * time.Minute
 )
 
 var (
@@ -669,6 +671,20 @@ func (s *Backend) StartWorkshop(ctx context.Context, name string) error {
 }
 
 func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, name string) error {
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return fmt.Errorf("context key project-id not found")
+	}
+
+	inst, _, err := conn.GetInstance(InstanceName(name, projectId))
+	if err != nil {
+		return err
+	}
+	timeout := startTimeoutContainer
+	if inst.Type != string(api.InstanceTypeContainer) {
+		timeout = startTimeoutVM
+	}
+
 	rev := revert.New()
 	defer rev.Fail()
 
@@ -685,7 +701,7 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 		return err
 	}
 
-	if err := s.awaitReadyEvent(conn, ctx, name); err != nil {
+	if err := s.awaitReadyEvent(conn, ctx, name, timeout); err != nil {
 		return err
 	}
 
@@ -702,14 +718,14 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 	return nil
 }
 
-func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, name string) error {
+func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, name string, timeout time.Duration) error {
 	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
 	if !ok {
 		return fmt.Errorf("context key project-id not found")
 	}
 	instance := InstanceName(name, projectId)
 
-	ctx, cancel := context.WithTimeout(ctx, waitready.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	listener, err := conn.GetEvents()
@@ -791,16 +807,28 @@ func (s *Backend) StopWorkshop(ctx context.Context, name string, force bool) err
 }
 
 func (s *Backend) stopWorkshop(conn lxd.InstanceServer, ctx context.Context, name string, force bool) error {
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return fmt.Errorf("context key project-id not found")
+	}
+
+	inst, _, err := conn.GetInstance(InstanceName(name, projectId))
+	if err != nil {
+		return err
+	}
+	timeout := 60
+	if force && inst.Type == string(api.InstanceTypeContainer) {
+		timeout = 10
+	} else if force && inst.Type != string(api.InstanceTypeContainer) {
+		timeout = 30
+	}
+
 	// Workshop stopped, disable autostart.
 	if err := s.setAutoStart(conn, ctx, name, false); err != nil {
 		return err
 	}
 
-	timeout := 60
-	if force {
-		timeout = 10
-	}
-	err := s.updateInstanceState(conn, ctx, name, "stop", timeout)
+	err = s.updateInstanceState(conn, ctx, name, "stop", timeout)
 	if err != nil && force {
 		logger.Noticef("On StopWorkshop: failed to stop %q workshop: %v", name, err)
 		err = s.updateInstanceState(conn, ctx, name, "stop", 0)
@@ -1397,6 +1425,7 @@ write_files:
       [Service]
       Type=notify
       ExecStart=/usr/local/lib/workshop/waitready
+      Environment=WORKSHOP_WAITREADY_TIMEOUT_NS={{.StartTimeout}}
       Restart=on-failure
       RestartSec=2s
 
@@ -1427,15 +1456,19 @@ runcmd:
 		"shquote": shlex.Quote,
 	}
 	var fsFreezePath string
+	startTimeout := startTimeoutContainer
 	if file.Confinement != workshop.ConfinementContainer {
 		fsFreezePath = dirs.FsFreezePath
+		startTimeout = startTimeoutVM
 	}
 	dot := struct {
 		FsFreezePath     string
+		StartTimeout     int64
 		WorkshopCtlPath  string
 		WorkshopStateDir string
 	}{
 		FsFreezePath:     fsFreezePath,
+		StartTimeout:     startTimeout.Nanoseconds(),
 		WorkshopCtlPath:  filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
 		WorkshopStateDir: dirs.WorkshopStateDir,
 	}
