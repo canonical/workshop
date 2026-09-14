@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/canonical/workshop/internal/logger"
@@ -118,5 +119,11 @@ func (c *getSecretCommand) Execute(ctx context.Context, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return c.printf("%s", value)
+	defer value.Close()
+
+	if c.stdout == nil {
+		return nil
+	}
+	_, err = io.Copy(c.stdout, value)
+	return err
 }
