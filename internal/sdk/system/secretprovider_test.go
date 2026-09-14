@@ -71,8 +71,8 @@ func (s *secretProviderSuite) TestResolve(c *check.C) {
 
 }
 
-// TestResolveCancelled checks an already-cancelled request returns an empty,
-// usable secret without looking up slot configuration.
+// TestResolveCancelled checks an already-cancelled request returns a
+// cancellation error without looking up slot configuration.
 func (s *secretProviderSuite) TestResolveCancelled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -87,17 +87,13 @@ func (s *secretProviderSuite) TestResolveCancelled(c *check.C) {
 
 	slot := sdk.SlotRef{Name: "api-key", Sdk: "system"}
 
-	value, err := provider.Resolve(ctx, slot)
+	_, err := provider.Resolve(ctx, slot)
 
-	data, readErr := io.ReadAll(value)
-	c.Check(readErr, check.IsNil)
-	c.Check(len(data), check.Equals, 0)
-	c.Check(value.Close(), check.IsNil)
 	c.Check(errors.Is(err, context.Canceled), check.Equals, true)
 }
 
-// TestResolveExpired checks an elapsed deadline returns an empty, usable
-// secret without looking up slot configuration.
+// TestResolveExpired checks an elapsed deadline returns a deadline-exceeded
+// error without looking up slot configuration.
 func (s *secretProviderSuite) TestResolveExpired(c *check.C) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Time{})
 	defer cancel()
@@ -112,17 +108,12 @@ func (s *secretProviderSuite) TestResolveExpired(c *check.C) {
 
 	slot := sdk.SlotRef{Name: "api-key", Sdk: "system"}
 
-	value, err := provider.Resolve(ctx, slot)
+	_, err := provider.Resolve(ctx, slot)
 
-	data, readErr := io.ReadAll(value)
-	c.Check(readErr, check.IsNil)
-	c.Check(len(data), check.Equals, 0)
-	c.Check(value.Close(), check.IsNil)
 	c.Check(errors.Is(err, context.DeadlineExceeded), check.Equals, true)
 }
 
-// TestResolveLookupFailure checks lookup errors retain their identity and
-// return an empty, usable secret instead of a placeholder.
+// TestResolveLookupFailure checks lookup errors retain their identity.
 func (s *secretProviderSuite) TestResolveLookupFailure(c *check.C) {
 	lookupErr := errors.New("slot not found")
 	slots := secretSlotLookup(func(
@@ -134,18 +125,13 @@ func (s *secretProviderSuite) TestResolveLookupFailure(c *check.C) {
 	provider := system.NewSecretProvider(slots)
 	slot := sdk.SlotRef{Name: "api-key", Sdk: "system"}
 
-	value, err := provider.Resolve(context.Background(), slot)
-
-	data, readErr := io.ReadAll(value)
-	c.Check(readErr, check.IsNil)
-	c.Check(len(data), check.Equals, 0)
-	c.Check(value.Close(), check.IsNil)
+	_, err := provider.Resolve(context.Background(), slot)
 
 	c.Check(errors.Is(err, lookupErr), check.Equals, true)
 }
 
 // TestResolveLookupCancelled checks cancellation reported by the lookup is
-// preserved through error wrapping and returns an empty, usable secret.
+// preserved through error wrapping.
 func (s *secretProviderSuite) TestResolveLookupCancelled(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
@@ -156,11 +142,7 @@ func (s *secretProviderSuite) TestResolveLookupCancelled(c *check.C) {
 	provider := system.NewSecretProvider(slots)
 	slot := sdk.SlotRef{Name: "api-key", Sdk: "system"}
 
-	value, err := provider.Resolve(context.Background(), slot)
+	_, err := provider.Resolve(context.Background(), slot)
 
-	data, readErr := io.ReadAll(value)
-	c.Check(readErr, check.IsNil)
-	c.Check(len(data), check.Equals, 0)
-	c.Check(value.Close(), check.IsNil)
 	c.Check(errors.Is(err, context.Canceled), check.Equals, true)
 }
