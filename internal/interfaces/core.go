@@ -105,6 +105,12 @@ func NewConnRef(plug *sdk.PlugInfo, slot *sdk.SlotInfo) *ConnRef {
 	return &ConnRef{PlugRef: plug.Ref(), SlotRef: slot.Ref()}
 }
 
+// ConnectedToPlug reports whether the connection's plug matches ref,
+// including its project, workshop, SDK and name.
+func (conn *ConnRef) ConnectedToPlug(ref sdk.PlugRef) bool {
+	return conn.PlugRef == ref
+}
+
 // ID returns a string identifying a given connection.
 func (conn *ConnRef) ID() string {
 	return fmt.Sprintf("%s/%s/%s:%s %s/%s/%s:%s",
