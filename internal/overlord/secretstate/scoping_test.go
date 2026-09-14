@@ -57,9 +57,8 @@ func (s *managerSuite) TestGetSecretConnectionResolutionFailure(c *C) {
 	})
 	manager := SecretManager{backend: backend, repo: repo}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(err, ErrorMatches,
 		"resolving secret plug connections: internal error: "+
 			"cannot obtain workshop name while computing connections")
@@ -127,9 +126,8 @@ func (s *managerSuite) TestGetSecretConnectionScopedToProject(c *C) {
 	})
 	manager := SecretManager{backend: backend, repo: repo}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(err, ErrorMatches,
 		`secret plug is not connected`)
 }
@@ -196,9 +194,8 @@ func (s *managerSuite) TestGetSecretConnectionScopedToWorkshop(c *C) {
 	})
 	manager := SecretManager{backend: backend, repo: repo}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(err, ErrorMatches,
 		`secret plug is not connected`)
 }

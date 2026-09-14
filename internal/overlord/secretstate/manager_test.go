@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 	_ "github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -76,8 +78,10 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 		Interface: "secret",
 		Name:      "api-key",
 		Sdk: &sdk.Info{
-			Name: "ollama", ProjectId: "test-project",
-			Type: sdk.Regular, Workshop: "test-workshop",
+			Name:      "ollama",
+			ProjectId: "test-project",
+			Type:      sdk.Regular,
+			Workshop:  "test-workshop",
 		},
 	}
 	slot := &sdk.SlotInfo{
@@ -87,7 +91,10 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 		},
 		Interface: "secret",
 		Name:      "api-key",
-		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+		Sdk: &sdk.Info{
+			Name: "system",
+			Type: sdk.System,
+		},
 	}
 	c.Assert(repo.AddPlug(plug), IsNil)
 	c.Assert(repo.AddSlot(slot), IsNil)
@@ -115,7 +122,19 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 			},
 		}, nil
 	})
-	New(runner, backend, repo, nil)
+	resolved := secrets.NewSecret([]byte("provider-api-token"))
+	defer resolved.Close()
+	resolver := secretResolver(func(
+		_ context.Context,
+		ref sdk.SlotRef,
+	) (secrets.Secret, error) {
+		c.Check(ref.Name, Equals, "api-key")
+		c.Check(ref.ProjectId, Equals, "")
+		c.Check(ref.Sdk, Equals, "system")
+		c.Check(ref.Workshop, Equals, "")
+		return resolved, nil
+	})
+	New(runner, backend, repo, resolver)
 
 	st.Lock()
 	task := st.NewTask("get-secret", "Retrieve a workshop secret")
@@ -144,9 +163,11 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 	defer st.Unlock()
 	c.Check(task.Status(), Equals, state.DoneStatus)
 	c.Check(change.Err(), IsNil)
-	value, ok := st.Cached(secretResultKey(task.ID())).([]byte)
+	cached, ok := st.Cached(secretResultKey(task.ID())).(secrets.Secret)
 	c.Assert(ok, Equals, true)
-	c.Check(string(value), Equals, "workshop-placeholder-secret")
+	value, err := io.ReadAll(cached)
+	c.Assert(err, IsNil)
+	c.Check(string(value), Equals, "provider-api-token")
 
 	data, err := st.MarshalJSON()
 	c.Assert(err, IsNil)
@@ -288,8 +309,10 @@ func (s *managerSuite) TestGetSecretCancelledBeforeTomb(c *C) {
 		Interface: "secret",
 		Name:      "api-key",
 		Sdk: &sdk.Info{
-			Name: "ollama", ProjectId: "test-project",
-			Type: sdk.Regular, Workshop: "test-workshop",
+			Name:      "ollama",
+			ProjectId: "test-project",
+			Type:      sdk.Regular,
+			Workshop:  "test-workshop",
 		},
 	}
 	slot := &sdk.SlotInfo{
@@ -299,7 +322,10 @@ func (s *managerSuite) TestGetSecretCancelledBeforeTomb(c *C) {
 		},
 		Interface: "secret",
 		Name:      "api-key",
-		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+		Sdk: &sdk.Info{
+			Name: "system",
+			Type: sdk.System,
+		},
 	}
 	c.Assert(repo.AddPlug(plug), IsNil)
 	c.Assert(repo.AddSlot(slot), IsNil)
@@ -323,15 +349,35 @@ func (s *managerSuite) TestGetSecretCancelledBeforeTomb(c *C) {
 			},
 		}, nil
 	})
-	manager := SecretManager{backend: backend, repo: repo}
+	resolved := secrets.NewSecret([]byte("provider-api-token"))
+	defer resolved.Close()
+	resolver := secretResolver(func(
+		_ context.Context,
+		ref sdk.SlotRef,
+	) (secrets.Secret, error) {
+		c.Check(ref.Name, Equals, "api-key")
+		c.Check(ref.ProjectId, Equals, "")
+		c.Check(ref.Sdk, Equals, "system")
+		c.Check(ref.Workshop, Equals, "")
+		return resolved, nil
+	})
+	manager := SecretManager{
+		backend:  backend,
+		repo:     repo,
+		resolver: resolver,
+	}
 	err = manager.doGetSecret(task, &taskTomb)
 
 	c.Check(err, IsNil)
+	c.Check(taskTomb.Alive(), Equals, true)
 	st.Lock()
 	defer st.Unlock()
 	c.Check(task.Status(), Equals, state.AbortStatus)
-	c.Check(st.Cached(secretResultKey(task.ID())), DeepEquals,
-		[]byte("workshop-placeholder-secret"))
+	cached, ok := st.Cached(secretResultKey(task.ID())).(secrets.Secret)
+	c.Assert(ok, Equals, true)
+	value, err := io.ReadAll(cached)
+	c.Assert(err, IsNil)
+	c.Check(string(value), Equals, "provider-api-token")
 }
 
 // TestGetSecretCancelledContext checks retrieval returns the context error
@@ -347,9 +393,8 @@ func (s *managerSuite) TestGetSecretCancelledContext(c *C) {
 	}
 	manager := SecretManager{}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err := manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(errors.Is(err, context.Canceled), Equals, true)
 }
 
@@ -386,14 +431,13 @@ func (s *managerSuite) TestGetSecretExpiredContext(c *C) {
 	}
 	manager := SecretManager{}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err := manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(errors.Is(err, context.DeadlineExceeded), Equals, true)
 }
 
 // TestGetSecretUndoneAfterFailure checks the runner invokes the registered
-// undo handler when a subsequent task fails in the same change.
+// undo handler to close the secret when a subsequent task fails.
 func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 	st := state.New(nil)
 	runner := state.NewTaskRunner(st)
@@ -406,8 +450,10 @@ func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 		Interface: "secret",
 		Name:      "api-key",
 		Sdk: &sdk.Info{
-			Name: "ollama", ProjectId: "test-project",
-			Type: sdk.Regular, Workshop: "test-workshop",
+			Name:      "ollama",
+			ProjectId: "test-project",
+			Type:      sdk.Regular,
+			Workshop:  "test-workshop",
 		},
 	}
 	slot := &sdk.SlotInfo{
@@ -417,7 +463,10 @@ func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 		},
 		Interface: "secret",
 		Name:      "api-key",
-		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+		Sdk: &sdk.Info{
+			Name: "system",
+			Type: sdk.System,
+		},
 	}
 	c.Assert(repo.AddPlug(plug), IsNil)
 	c.Assert(repo.AddSlot(slot), IsNil)
@@ -441,7 +490,19 @@ func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 			},
 		}, nil
 	})
-	New(runner, backend, repo, nil)
+	resolved := secrets.NewSecret([]byte("provider-api-token"))
+	defer resolved.Close()
+	resolver := secretResolver(func(
+		_ context.Context,
+		ref sdk.SlotRef,
+	) (secrets.Secret, error) {
+		c.Check(ref.Name, Equals, "api-key")
+		c.Check(ref.ProjectId, Equals, "")
+		c.Check(ref.Sdk, Equals, "system")
+		c.Check(ref.Workshop, Equals, "")
+		return resolved, nil
+	})
+	New(runner, backend, repo, resolver)
 	task := newSecretTask(c, st)
 	runner.AddHandler("fail", func(*state.Task, *tomb.Tomb) error {
 		return errors.New("subsequent task failed")
@@ -458,9 +519,15 @@ func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 
 	st.Lock()
 	c.Check(task.Status(), Equals, state.DoneStatus)
-	c.Check(st.Cached(secretResultKey(task.ID())), DeepEquals,
-		[]byte("workshop-placeholder-secret"))
+	cached, ok := st.Cached(secretResultKey(task.ID())).(secrets.Secret)
+	c.Check(ok, Equals, true)
 	st.Unlock()
+	// Leave unread bytes so the final read distinguishes undo from consumption.
+	value := make([]byte, 1)
+	n, err := cached.Read(value)
+	c.Assert(err, IsNil)
+	c.Check(n, Equals, 1)
+	c.Check(string(value), Equals, "p")
 
 	err = runner.Ensure()
 	c.Assert(err, IsNil)
@@ -481,14 +548,18 @@ func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 	c.Check(task.Change().Err(), ErrorMatches,
 		"(?s).*subsequent task failed.*")
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
+	_, readErr := resolved.Read(make([]byte, 1))
+	c.Check(readErr, Equals, io.EOF)
 }
 
-// TestUndoGetSecretRemovesResult checks undo discards a cached secret.
+// TestUndoGetSecretRemovesResult checks undo closes and removes a cached secret.
 func (s *managerSuite) TestUndoGetSecretRemovesResult(c *C) {
 	st := state.New(nil)
 	task := newSecretTask(c, st)
+	cached := secrets.NewSecret([]byte("provider-api-token"))
+	defer cached.Close()
 	st.Lock()
-	st.Cache(secretResultKey(task.ID()), []byte("workshop-placeholder-secret"))
+	st.Cache(secretResultKey(task.ID()), cached)
 	st.Unlock()
 	var taskTomb tomb.Tomb
 	manager := SecretManager{}
@@ -496,18 +567,22 @@ func (s *managerSuite) TestUndoGetSecretRemovesResult(c *C) {
 	err := manager.undoGetSecret(task, &taskTomb)
 
 	c.Check(err, IsNil)
+	_, readErr := cached.Read(make([]byte, 1))
+	c.Check(readErr, Equals, io.EOF)
 	st.Lock()
 	defer st.Unlock()
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
 }
 
-// TestUndoGetSecretWithoutResult checks undo succeeds when the caller has
-// already removed the cached result, even if the undo tomb is cancelled.
+// TestUndoGetSecretWithoutResult checks undo leaves a caller-owned secret open
+// after cache removal, even if the undo tomb is cancelled.
 func (s *managerSuite) TestUndoGetSecretWithoutResult(c *C) {
 	st := state.New(nil)
 	task := newSecretTask(c, st)
+	owned := secrets.NewSecret([]byte("provider-api-token"))
+	defer owned.Close()
 	st.Lock()
-	st.Cache(secretResultKey(task.ID()), []byte("workshop-placeholder-secret"))
+	st.Cache(secretResultKey(task.ID()), owned)
 	st.Cache(secretResultKey(task.ID()), nil)
 	st.Unlock()
 	var taskTomb tomb.Tomb
@@ -517,9 +592,200 @@ func (s *managerSuite) TestUndoGetSecretWithoutResult(c *C) {
 	err := manager.undoGetSecret(task, &taskTomb)
 
 	c.Check(err, IsNil)
+	value, err := io.ReadAll(owned)
+	c.Assert(err, IsNil)
+	c.Check(string(value), Equals, "provider-api-token")
 	st.Lock()
 	defer st.Unlock()
 	c.Check(st.Cached(secretResultKey(task.ID())), IsNil)
+}
+
+// TestGetSecretMultipleSlots rejects ambiguous connections before resolution.
+func (s *managerSuite) TestGetSecretMultipleSlots(c *C) {
+	repo := interfaces.NewRepository()
+	iface, err := interfaces.ByName("secret")
+	c.Assert(err, IsNil)
+	c.Assert(repo.AddInterface(iface), IsNil)
+	plug := &sdk.PlugInfo{
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk: &sdk.Info{
+			Name:      "ollama",
+			ProjectId: "test-project",
+			Type:      sdk.Regular,
+			Workshop:  "test-workshop",
+		},
+	}
+	firstSlot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{
+				"service": "ollama",
+			},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "first-api-key",
+		Sdk: &sdk.Info{
+			Name: "system",
+			Type: sdk.System,
+		},
+	}
+	secondSlot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{
+				"service": "other-ollama",
+			},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "second-api-key",
+		Sdk: &sdk.Info{
+			Name: "system",
+			Type: sdk.System,
+		},
+	}
+	c.Assert(repo.AddPlug(plug), IsNil)
+	c.Assert(repo.AddSlot(firstSlot), IsNil)
+	c.Assert(repo.AddSlot(secondSlot), IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(plug, firstSlot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(plug, secondSlot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, IsNil)
+	backend := workshopBackendFunc(func(
+		context.Context,
+		string,
+	) (*workshop.Workshop, error) {
+		return &workshop.Workshop{
+			Name: "test-workshop",
+			Sdks: map[string]workshop.SdkInstallation{
+				"ollama": {
+					Setup: sdk.Setup{
+						Name: "ollama",
+					},
+				},
+			},
+		}, nil
+	})
+	resolver := secretResolver(func(
+		context.Context,
+		sdk.SlotRef,
+	) (secrets.Secret, error) {
+		return secrets.Secret{}, errors.New("unexpected resolution")
+	})
+	manager := SecretManager{
+		backend:  backend,
+		repo:     repo,
+		resolver: resolver,
+	}
+	ref := sdk.PlugRef{
+		Name:      "api-key",
+		ProjectId: "test-project",
+		Sdk:       "ollama",
+		Workshop:  "test-workshop",
+	}
+
+	_, err = manager.getSecret(context.Background(), ref)
+
+	c.Check(err, ErrorMatches, "secret plug is connected to multiple slots")
+}
+
+// TestGetSecretResolverError checks wrapped resolver errors retain their
+// identity.
+func (s *managerSuite) TestGetSecretResolverError(c *C) {
+	repo := interfaces.NewRepository()
+	iface, err := interfaces.ByName("secret")
+	c.Assert(err, IsNil)
+	c.Assert(repo.AddInterface(iface), IsNil)
+	plug := &sdk.PlugInfo{
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk: &sdk.Info{
+			Name:      "ollama",
+			ProjectId: "test-project",
+			Type:      sdk.Regular,
+			Workshop:  "test-workshop",
+		},
+	}
+	slot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{
+				"service": "ollama",
+			},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "host-api-key",
+		Sdk: &sdk.Info{
+			Name: "system",
+			Type: sdk.System,
+		},
+	}
+	c.Assert(repo.AddPlug(plug), IsNil)
+	c.Assert(repo.AddSlot(slot), IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(plug, slot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, IsNil)
+	backend := workshopBackendFunc(func(
+		context.Context,
+		string,
+	) (*workshop.Workshop, error) {
+		return &workshop.Workshop{
+			Name: "test-workshop",
+			Sdks: map[string]workshop.SdkInstallation{
+				"ollama": {
+					Setup: sdk.Setup{
+						Name: "ollama",
+					},
+				},
+			},
+		}, nil
+	})
+	resolverErr := errors.New("provider unavailable")
+	resolver := secretResolver(func(
+		_ context.Context,
+		ref sdk.SlotRef,
+	) (secrets.Secret, error) {
+		c.Check(ref.Name, Equals, "host-api-key")
+		c.Check(ref.ProjectId, Equals, "")
+		c.Check(ref.Sdk, Equals, "system")
+		c.Check(ref.Workshop, Equals, "")
+		return secrets.Secret{}, resolverErr
+	})
+	manager := SecretManager{
+		backend:  backend,
+		repo:     repo,
+		resolver: resolver,
+	}
+	ref := sdk.PlugRef{
+		Name:      "api-key",
+		ProjectId: "test-project",
+		Sdk:       "ollama",
+		Workshop:  "test-workshop",
+	}
+
+	_, err = manager.getSecret(context.Background(), ref)
+
+	c.Check(errors.Is(err, resolverErr), Equals, true)
 }
 
 // TestNewRegistersGetSecret checks construction registers the get-secret

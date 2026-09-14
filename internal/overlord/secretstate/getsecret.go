@@ -21,14 +21,17 @@ import (
 
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
 // GetSecret schedules retrieval for a previously authorised secret consumer
 // and waits for its result. The caller must not hold the state lock, and the
-// state engine must be running. Results are consumed from the in-memory cache.
-// Cancellation aborts the change and discards any cached result. Results
-// published after cancellation are discarded when the task is undone.
+// state engine must be running. On success, ownership transfers from the
+// in-memory cache to the caller, which must consume or close the secret.
+// On error, the returned value can be discarded without further cleanup.
+// Cancellation aborts unfinished changes and closes any cached result.
+// Results published after cancellation are closed and removed by task undo.
 //
 // The following errors may be expected:
 //   - [context.Canceled]: the request was cancelled.
@@ -38,20 +41,22 @@ func GetSecret(
 	st *state.State,
 	project workshop.Project,
 	ref sdk.PlugRef,
-) ([]byte, error) {
+) (secrets.Secret, error) {
 	err := ctx.Err()
 	if err != nil {
-		return nil, err
+		return secrets.Secret{}, err
 	}
 
 	user, ok := ctx.Value(workshop.ContextUser).(string)
 	if !ok || user == "" {
-		return nil, errors.New("secret request has no user")
+		return secrets.Secret{}, errors.New("secret request has no user")
 	}
 
 	err = validateGetSecretArgs(project, ref)
 	if err != nil {
-		return nil, fmt.Errorf("validating get secret request arguments: %w", err)
+		return secrets.Secret{}, fmt.Errorf(
+			"validating get secret request arguments: %w", err,
+		)
 	}
 
 	summary := fmt.Sprintf("Retrieve secret %q", ref.ShortRef())
@@ -78,9 +83,16 @@ func GetSecret(
 
 	st.Lock()
 	defer st.Unlock()
-	// Remove any cached result before returning and unlocking the state.
-	// If an aborted handler publishes later, its undo handler removes it.
-	defer st.Cache(resultKey, nil)
+	// Successful retrieval removes the entry to transfer ownership. Any
+	// result still cached on return is abandoned and closed under the lock.
+	// If an aborted handler publishes later, its undo handler closes it.
+	defer func() {
+		value, ok := st.Cached(resultKey).(secrets.Secret)
+		if ok {
+			_ = value.Close()
+		}
+		st.Cache(resultKey, nil)
+	}()
 
 	// Prefer cancellation if it raced with task completion. The runner
 	// handles undo if retrieval succeeds despite the abort.
@@ -92,12 +104,12 @@ func GetSecret(
 			change.Abort()
 			st.EnsureBefore(0)
 		}
-		return nil, err
+		return secrets.Secret{}, err
 	}
 
 	err = change.Err()
 	if err != nil {
-		return nil, fmt.Errorf(
+		return secrets.Secret{}, fmt.Errorf(
 			"checking secret retrieval change %s: %w",
 			change.ID(),
 			err,
@@ -106,7 +118,7 @@ func GetSecret(
 
 	status := task.Status()
 	if status != state.DoneStatus {
-		return nil, fmt.Errorf(
+		return secrets.Secret{}, fmt.Errorf(
 			"secret task %s in change %s finished with unexpected status %s",
 			task.ID(),
 			change.ID(),
@@ -114,15 +126,16 @@ func GetSecret(
 		)
 	}
 
-	value, ok := st.Cached(resultKey).([]byte)
+	value, ok := st.Cached(resultKey).(secrets.Secret)
 	if !ok {
-		return nil, fmt.Errorf(
+		return secrets.Secret{}, fmt.Errorf(
 			"secret task %s in change %s completed without a result",
 			task.ID(),
 			change.ID(),
 		)
 	}
 
+	st.Cache(resultKey, nil)
 	return value, nil
 }
 

@@ -17,16 +17,19 @@ package secretstate
 import (
 	"context"
 	"errors"
+	"io"
 
 	. "gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/sdk"
+
+	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
-// TestGetSecretCancelledAfterValidation checks cancellation during lookup
-// prevents returning even a valid, connected secret's placeholder.
+// TestGetSecretCancelledAfterValidation checks that cancellation during
+// workshop lookup reaches the resolver and its error is preserved.
 func (s *managerSuite) TestGetSecretCancelledAfterValidation(c *C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -78,11 +81,20 @@ func (s *managerSuite) TestGetSecretCancelledAfterValidation(c *C) {
 			},
 		}, nil
 	})
-	manager := SecretManager{backend: backend, repo: repo}
+	resolver := secretResolver(func(
+		ctx context.Context,
+		_ sdk.SlotRef,
+	) (secrets.Secret, error) {
+		return secrets.Secret{}, ctx.Err()
+	})
+	manager := SecretManager{
+		backend:  backend,
+		repo:     repo,
+		resolver: resolver,
+	}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(errors.Is(err, context.Canceled), Equals, true)
 }
 
@@ -120,9 +132,8 @@ func (s *managerSuite) TestGetSecretDisconnectedPlug(c *C) {
 	})
 	manager := SecretManager{backend: backend, repo: repo}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(err, ErrorMatches,
 		`secret plug is not connected`)
 }
@@ -161,9 +172,8 @@ func (s *managerSuite) TestGetSecretPlugNotDeclared(c *C) {
 	})
 	manager := SecretManager{backend: backend, repo: repo}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(err, ErrorMatches, `requested plug is not declared by sdk`)
 }
 
@@ -189,9 +199,8 @@ func (s *managerSuite) TestGetSecretSDKNotInstalled(c *C) {
 	})
 	manager := SecretManager{backend: backend}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err := manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(err, ErrorMatches,
 		`requested sdk is not installed in workshop`)
 }
@@ -273,13 +282,28 @@ func (s *managerSuite) TestGetSecretScopedSuccess(c *C) {
 			},
 		}, nil
 	})
-	manager := SecretManager{backend: backend, repo: repo}
+	resolved := secrets.NewSecret([]byte("provider-api-token"))
+	defer resolved.Close()
+	resolver := secretResolver(func(
+		context.Context,
+		sdk.SlotRef,
+	) (secrets.Secret, error) {
+		return resolved, nil
+	})
+	manager := SecretManager{
+		backend:  backend,
+		repo:     repo,
+		resolver: resolver,
+	}
 
 	value, err := manager.getSecret(ctx, ref)
 
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
+	defer value.Close()
 	c.Check(calls, Equals, 1)
-	c.Check(value, DeepEquals, []byte("workshop-placeholder-secret"))
+	data, err := io.ReadAll(value)
+	c.Assert(err, IsNil)
+	c.Check(string(data), Equals, "provider-api-token")
 }
 
 // TestGetSecretWorkshopResolutionFailure checks backend errors are wrapped
@@ -300,9 +324,8 @@ func (s *managerSuite) TestGetSecretWorkshopResolutionFailure(c *C) {
 	})
 	manager := SecretManager{backend: backend}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err := manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(err, ErrorMatches,
 		"resolving workshop: workshop unavailable")
 	c.Check(errors.Is(err, lookupErr), Equals, true)
@@ -342,9 +365,8 @@ func (s *managerSuite) TestGetSecretWrongInterface(c *C) {
 	})
 	manager := SecretManager{backend: backend, repo: repo}
 
-	value, err := manager.getSecret(ctx, ref)
+	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(value, IsNil)
 	c.Check(err, ErrorMatches,
 		`requested plug does not use the secret interface`)
 }

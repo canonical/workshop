@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	. "gopkg.in/check.v1"
@@ -26,13 +27,14 @@ import (
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
 // getSecretResult carries retrieval completion without blocking its goroutine.
 type getSecretResult struct {
 	err   error
-	value []byte
+	value secrets.Secret
 }
 
 // getSecretSuite checks synchronous retrieval through the task runner.
@@ -99,7 +101,7 @@ func (s *getSecretSuite) TearDownTest(c *C) {
 	s.runner.Stop()
 }
 
-// TestCancelledAfterCompletion checks cancellation discards a completed result
+// TestCancelledAfterCompletion checks cancellation closes a completed result
 // without aborting the ready change or making it unready.
 func (s *getSecretSuite) TestCancelledAfterCompletion(c *C) {
 	project := workshop.Project{
@@ -117,12 +119,14 @@ func (s *getSecretSuite) TestCancelledAfterCompletion(c *C) {
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 	results := s.start(ctx, project, ref)
 	task := s.awaitTask(c)
+	cached := secrets.NewSecret([]byte("provider-api-token"))
+	defer cached.Close()
 
 	s.st.Lock()
 	// Complete and cancel under one lock so GetSecret observes both before
 	// it can consume the result, regardless of which select case wakes it.
 	task.SetStatus(state.DoingStatus)
-	s.st.Cache(secretResultKey(task.ID()), []byte("workshop-placeholder-secret"))
+	s.st.Cache(secretResultKey(task.ID()), cached)
 	task.SetStatus(state.DoneStatus)
 	c.Check(task.Change().IsReady(), Equals, true)
 	cancel()
@@ -130,7 +134,8 @@ func (s *getSecretSuite) TestCancelledAfterCompletion(c *C) {
 
 	result := <-results
 	c.Check(errors.Is(result.err, context.Canceled), Equals, true)
-	c.Check(result.value, IsNil)
+	_, err := cached.Read(make([]byte, 1))
+	c.Check(err, Equals, io.EOF)
 
 	s.st.Lock()
 	defer s.st.Unlock()
@@ -159,9 +164,8 @@ func (s *getSecretSuite) TestCancelledBeforeScheduling(c *C) {
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 	cancel()
 
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 	c.Check(errors.Is(err, context.Canceled), Equals, true)
-	c.Check(value, IsNil)
 
 	s.st.Lock()
 	defer s.st.Unlock()
@@ -190,15 +194,18 @@ func (s *getSecretSuite) TestCancelledWhileQueued(c *C) {
 	results := s.start(ctx, project, ref)
 	task := s.awaitTask(c)
 
+	cached := secrets.NewSecret([]byte("stale"))
+	defer cached.Close()
 	s.st.Lock()
 	c.Check(task.Status(), Equals, state.DoStatus)
-	s.st.Cache(secretResultKey(task.ID()), []byte("stale"))
+	s.st.Cache(secretResultKey(task.ID()), cached)
 	s.st.Unlock()
 	cancel()
 
 	result := <-results
 	c.Check(errors.Is(result.err, context.Canceled), Equals, true)
-	c.Check(result.value, IsNil)
+	_, readErr := cached.Read(make([]byte, 1))
+	c.Check(readErr, Equals, io.EOF)
 	s.awaitEnsure(c)
 
 	err := s.runner.Ensure()
@@ -227,10 +234,9 @@ func (s *getSecretSuite) TestMissingUser(c *C) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 
 	c.Check(err, ErrorMatches, "secret request has no user")
-	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
@@ -253,12 +259,11 @@ func (s *getSecretSuite) TestMismatchedProject(c *C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 
 	c.Check(err, ErrorMatches,
 		"validating get secret request arguments: "+
 			"plug reference project ID does not match project ID")
-	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
@@ -280,11 +285,10 @@ func (s *getSecretSuite) TestMissingPlug(c *C) {
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 
 	c.Check(err, ErrorMatches,
 		"validating get secret request arguments: plug name is missing")
-	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
@@ -307,12 +311,11 @@ func (s *getSecretSuite) TestMissingPlugProjectID(c *C) {
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 
 	c.Check(err, ErrorMatches,
 		"validating get secret request arguments: "+
 			"plug reference project ID is missing")
-	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
@@ -334,11 +337,10 @@ func (s *getSecretSuite) TestMissingProjectID(c *C) {
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 
 	c.Check(err, ErrorMatches,
 		"validating get secret request arguments: project ID is missing")
-	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
@@ -360,11 +362,10 @@ func (s *getSecretSuite) TestMissingProjectPath(c *C) {
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 
 	c.Check(err, ErrorMatches,
 		"validating get secret request arguments: project path is missing")
-	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
@@ -386,11 +387,10 @@ func (s *getSecretSuite) TestMissingSDK(c *C) {
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 
 	c.Check(err, ErrorMatches,
 		"validating get secret request arguments: sdk name is missing")
-	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
@@ -412,11 +412,10 @@ func (s *getSecretSuite) TestMissingWorkshop(c *C) {
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 
-	value, err := GetSecret(ctx, s.st, project, ref)
+	_, err := GetSecret(ctx, s.st, project, ref)
 
 	c.Check(err, ErrorMatches,
 		"validating get secret request arguments: workshop name is missing")
-	c.Check(value, IsNil)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), HasLen, 0)
@@ -443,8 +442,10 @@ func (s *getSecretSuite) TestSuccess(c *C) {
 		Interface: "secret",
 		Name:      "api-key",
 		Sdk: &sdk.Info{
-			Name: "ollama", ProjectId: "test-project",
-			Type: sdk.Regular, Workshop: "test-workshop",
+			Name:      "ollama",
+			ProjectId: "test-project",
+			Type:      sdk.Regular,
+			Workshop:  "test-workshop",
 		},
 	}
 	slot := &sdk.SlotInfo{
@@ -454,7 +455,10 @@ func (s *getSecretSuite) TestSuccess(c *C) {
 		},
 		Interface: "secret",
 		Name:      "api-key",
-		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+		Sdk: &sdk.Info{
+			Name: "system",
+			Type: sdk.System,
+		},
 	}
 	c.Assert(repo.AddPlug(plug), IsNil)
 	c.Assert(repo.AddSlot(slot), IsNil)
@@ -478,7 +482,19 @@ func (s *getSecretSuite) TestSuccess(c *C) {
 			},
 		}, nil
 	})
-	New(s.runner, backend, repo, nil)
+	resolved := secrets.NewSecret([]byte("provider-api-token"))
+	defer resolved.Close()
+	resolver := secretResolver(func(
+		_ context.Context,
+		ref sdk.SlotRef,
+	) (secrets.Secret, error) {
+		c.Check(ref.Name, Equals, "api-key")
+		c.Check(ref.ProjectId, Equals, "")
+		c.Check(ref.Sdk, Equals, "system")
+		c.Check(ref.Workshop, Equals, "")
+		return resolved, nil
+	})
+	New(s.runner, backend, repo, resolver)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -513,8 +529,11 @@ func (s *getSecretSuite) TestSuccess(c *C) {
 	c.Assert(err, IsNil)
 	s.runner.Wait()
 	result := <-results
-	c.Check(result.err, IsNil)
-	c.Check(result.value, DeepEquals, []byte("workshop-placeholder-secret"))
+	c.Assert(result.err, IsNil)
+	defer result.value.Close()
+	value, err := io.ReadAll(result.value)
+	c.Assert(err, IsNil)
+	c.Check(string(value), Equals, "provider-api-token")
 
 	s.st.Lock()
 	defer s.st.Unlock()
@@ -549,7 +568,6 @@ func (s *getSecretSuite) TestSuccessWithoutResult(c *C) {
 	c.Assert(err, IsNil)
 	s.runner.Wait()
 	result := <-results
-	c.Check(result.value, IsNil)
 
 	s.st.Lock()
 	defer s.st.Unlock()
@@ -583,13 +601,16 @@ func (s *getSecretSuite) TestUnexpectedStatus(c *C) {
 	results := s.start(ctx, project, ref)
 	task := s.awaitTask(c)
 
+	cached := secrets.NewSecret([]byte("stale"))
+	defer cached.Close()
 	s.st.Lock()
-	s.st.Cache(secretResultKey(task.ID()), []byte("stale"))
+	s.st.Cache(secretResultKey(task.ID()), cached)
 	task.Change().Abort()
 	s.st.Unlock()
 	result := <-results
 
-	c.Check(result.value, IsNil)
+	_, readErr := cached.Read(make([]byte, 1))
+	c.Check(readErr, Equals, io.EOF)
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Assert(task.Status(), Equals, state.HoldStatus)
@@ -618,12 +639,14 @@ func (s *getSecretSuite) TestTaskFailure(c *C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+	cached := secrets.NewSecret([]byte("stale"))
+	defer cached.Close()
 	s.runner.AddHandler("get-secret", func(
 		task *state.Task,
 		_ *tomb.Tomb,
 	) error {
 		s.st.Lock()
-		s.st.Cache(secretResultKey(task.ID()), []byte("stale"))
+		s.st.Cache(secretResultKey(task.ID()), cached)
 		s.st.Unlock()
 		return errors.New("secret provider unavailable")
 	}, nil)
@@ -634,7 +657,8 @@ func (s *getSecretSuite) TestTaskFailure(c *C) {
 	c.Assert(err, IsNil)
 	s.runner.Wait()
 	result := <-results
-	c.Check(result.value, IsNil)
+	_, readErr := cached.Read(make([]byte, 1))
+	c.Check(readErr, Equals, io.EOF)
 
 	s.st.Lock()
 	defer s.st.Unlock()

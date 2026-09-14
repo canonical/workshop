@@ -19,12 +19,15 @@ import (
 	"errors"
 	"fmt"
 
+	"slices"
+
 	"gopkg.in/tomb.v2"
 
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/overlord/handlersetup"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -35,8 +38,9 @@ type SecretManager struct {
 	resolver SecretResolver
 }
 
-// secretResultKey identifies a task's []byte result in the non-persisted state
-// cache. The consumer must remove the entry after reading the result.
+// secretResultKey identifies a task's [secrets.Secret] in the non-persisted
+// state cache. Removing the entry transfers ownership to the consumer;
+// abandoned results must be closed.
 type secretResultKey string
 
 // TaskHandlerRegistrar registers handlers for secret operation tasks.
@@ -121,8 +125,7 @@ func (m SecretManager) Ensure() error {
 	return nil
 }
 
-// getSecret validates the consumer and its connection before returning a
-// placeholder until provider support is implemented.
+// getSecret validates the consumer and resolves its connected slot's secret.
 //
 // The following errors may be expected:
 //   - [context.Canceled]: the retrieval was cancelled.
@@ -130,27 +133,29 @@ func (m SecretManager) Ensure() error {
 func (m SecretManager) getSecret(
 	ctx context.Context,
 	ref sdk.PlugRef,
-) ([]byte, error) {
+) (secrets.Secret, error) {
 	err := ctx.Err()
 	if err != nil {
-		return nil, err
+		return secrets.Secret{}, err
 	}
 
 	wp, err := m.backend.Workshop(ctx, ref.Workshop)
 	if err != nil {
-		return nil, fmt.Errorf("resolving workshop: %w", err)
+		return secrets.Secret{}, fmt.Errorf("resolving workshop: %w", err)
 	}
 	if _, ok := wp.Sdks[ref.Sdk]; !ok {
-		return nil, errors.New("requested sdk is not installed in workshop")
+		return secrets.Secret{}, errors.New(
+			"requested sdk is not installed in workshop",
+		)
 	}
 
 	plug := m.repo.Plug(ref.ProjectId, ref.Workshop, ref.Sdk, ref.Name)
 	if plug == nil {
-		return nil, errors.New("requested plug is not declared by sdk")
+		return secrets.Secret{}, errors.New("requested plug is not declared by sdk")
 	}
 
 	if plug.Interface != "secret" {
-		return nil, errors.New(
+		return secrets.Secret{}, errors.New(
 			"requested plug does not use the secret interface",
 		)
 	}
@@ -162,17 +167,33 @@ func (m SecretManager) getSecret(
 		ref.Name,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("resolving secret plug connections: %w", err)
-	}
-	if len(connections) == 0 {
-		return nil, errors.New("secret plug is not connected")
+		return secrets.Secret{}, fmt.Errorf(
+			"resolving secret plug connections: %w", err,
+		)
 	}
 
-	err = ctx.Err()
-	if err != nil {
-		return nil, err
+	connections = slices.DeleteFunc(
+		connections,
+		func(connection *interfaces.ConnRef) bool {
+			return !connection.ConnectedToPlug(ref)
+		},
+	)
+
+	if len(connections) == 0 {
+		return secrets.Secret{}, errors.New("secret plug is not connected")
 	}
-	return []byte("workshop-placeholder-secret"), nil
+
+	if len(connections) > 1 {
+		return secrets.Secret{}, errors.New(
+			"secret plug is connected to multiple slots",
+		)
+	}
+
+	secret, err := m.resolver.Resolve(ctx, connections[0].SlotRef)
+	if err != nil {
+		return secrets.Secret{}, fmt.Errorf("resolving secret: %w", err)
+	}
+	return secret, nil
 }
 
 // New creates a secret manager and registers its task handlers.
@@ -191,8 +212,8 @@ func New(
 	return manager
 }
 
-// undoGetSecret removes a result published by an aborted retrieval.
-// Removing an already-consumed or absent result is harmless.
+// undoGetSecret closes and removes a result published by an aborted retrieval.
+// Results already transferred to the caller are absent and left untouched.
 func (m SecretManager) undoGetSecret(
 	task *state.Task,
 	_ *tomb.Tomb,
@@ -201,6 +222,11 @@ func (m SecretManager) undoGetSecret(
 	st.Lock()
 	defer st.Unlock()
 
-	st.Cache(secretResultKey(task.ID()), nil)
+	key := secretResultKey(task.ID())
+	value, ok := st.Cached(key).(secrets.Secret)
+	if ok {
+		_ = value.Close()
+	}
+	st.Cache(key, nil)
 	return nil
 }

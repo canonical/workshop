@@ -19,8 +19,13 @@ import (
 	"time"
 
 	"github.com/canonical/workshop/internal/overlord/state"
+	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
+
+// secretResolver delegates secret resolution to a test callback.
+type secretResolver func(context.Context, sdk.SlotRef) (secrets.Secret, error)
 
 // secretStateBackend signals ensure requests without blocking the state lock.
 type secretStateBackend struct {
@@ -64,6 +69,14 @@ func (b *secretStateBackend) EnsureBefore(delay time.Duration) {
 	case b.ensureBefore <- delay:
 	default:
 	}
+}
+
+// Resolve delegates retrieval to the test's callback.
+func (f secretResolver) Resolve(
+	ctx context.Context,
+	ref sdk.SlotRef,
+) (secrets.Secret, error) {
+	return f(ctx, ref)
 }
 
 // Workshop delegates lookup to the test's callback.
