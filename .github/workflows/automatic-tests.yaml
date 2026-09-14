@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - scratch/vm-testing
     paths-ignore:
       - 'docs/**'
   schedule:
