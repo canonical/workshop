@@ -256,6 +256,12 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		}
 		files = append(files, file)
 
+		if file.Base == "ubuntu@20.04" {
+			a.state.Lock()
+			a.state.Warnf(`workshops with "base: ubuntu@20.04" are no longer supported; refresh to 22.04+ before the next release of Workshop`)
+			a.state.Unlock()
+		}
+
 		if file.Confinement != workshop.ConfinementContainer && !refresh && !osutil.GetenvBool("WORKSHOP_EXPERIMENTAL_VMS") {
 			confinement, err := file.Confinement.MarshalText()
 			if err == nil {

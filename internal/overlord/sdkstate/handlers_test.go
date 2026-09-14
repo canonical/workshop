@@ -191,7 +191,7 @@ func (s *sdkStateSuite) SetUpTest(c *check.C) {
 	s.installedAt = time.Date(2023, 04, 25, 1, 2, 3, 0, time.UTC)
 	s.restoreInstallTime = testutil.FakeFunc(func() time.Time { return s.installedAt }, &workshop.InstallTimeNow)
 
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04", Sdks: []workshop.SdkRecord{
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04", Sdks: []workshop.SdkRecord{
 		{Name: "test", Channel: "latest/stable"},
 		{Name: "test-broken", Channel: "latest/stable"},
 	}}
@@ -199,7 +199,7 @@ func (s *sdkStateSuite) SetUpTest(c *check.C) {
 	err = s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
-	wf2 := &workshop.File{Name: "ws2", Base: "ubuntu@20.04", Sdks: []workshop.SdkRecord{
+	wf2 := &workshop.File{Name: "ws2", Base: "ubuntu@24.04", Sdks: []workshop.SdkRecord{
 		{Name: "test", Channel: "latest/stable"},
 	}}
 	err = s.backend.LaunchOrRebuildWorkshop(s.ctx, wf2, snapshot)

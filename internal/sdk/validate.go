@@ -164,7 +164,7 @@ func Validate(sdk *Info) error {
 	}
 
 	if sdk.Base != "" && !slices.Contains(AllowedBases, sdk.Base) {
-		return fmt.Errorf("invalid SDK base %q; supported bases: %s", sdk.Base, strings.Join(AllowedBases, ", "))
+		return fmt.Errorf("invalid SDK base %q; valid bases: %s", sdk.Base, strings.Join(AllowedBases, ", "))
 	}
 	if !slices.Contains([]string{"", "all"}, sdk.Arch) && !slices.Contains(arch.AllowedArchitectures, sdk.Arch) {
 		arches := strings.Join(arch.AllowedArchitectures, ", ")

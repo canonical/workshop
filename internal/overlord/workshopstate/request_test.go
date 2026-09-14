@@ -92,7 +92,7 @@ func (s *requestSuite) TearDownTest(c *check.C) {
 }
 
 var workshopTemplate = `name: %s
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   {{- range . }}
   - name: {{ .Name}}
@@ -101,7 +101,7 @@ sdks:
 `
 
 var sdkTemplate = `name: %s
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 
 func (s *requestSuite) importSdkVolume(c *check.C, meta sdk.Meta) {
@@ -132,7 +132,7 @@ func (s *requestSuite) launchWorkshopWithSDKs(c *check.C, ws string, sdks []work
 	err = os.WriteFile(path, workshopFile.Bytes(), 0644)
 	c.Assert(err, check.IsNil)
 
-	wf := workshop.File{Name: ws, Base: "ubuntu@20.04", Sdks: sdks}
+	wf := workshop.File{Name: ws, Base: "ubuntu@24.04", Sdks: sdks}
 	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	err = s.backend.LaunchOrRebuildWorkshop(s.ctx, &wf, snapshot)
 	c.Assert(err, check.IsNil)

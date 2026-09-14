@@ -25,7 +25,7 @@ The NAME argument sets the workshop name. The command creates a named
 workshop file at .workshop/<NAME>.yaml. This fails if a workshop with
 the same name already exists.
 
-The supported bases are ubuntu@20.04, ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
+The supported bases are ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
 
 SDKs are specified as a comma-separated list. Each SDK entry can optionally
 include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.26/stable").

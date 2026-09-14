@@ -111,7 +111,7 @@ var (
 )
 
 func (s *healthSuite) launchWorkshopWithSDKs(c *check.C, sdks []workshop.SdkRecord, hooks map[string]map[string]string) *workshop.Workshop {
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04", Sdks: sdks}
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04", Sdks: sdks}
 	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Check(err, check.IsNil)
@@ -252,10 +252,10 @@ func (s *healthSuite) TestWorkshopHealthOperationInProgress(c *check.C) {
 	chg := s.state.NewChange("launch", "test")
 	chg.Set("project-id", s.project.ProjectId)
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	task := s.state.NewTask("create-workshop", "test task")
-	task.Set("workshop-file", "name: ws\nbase: ubuntu@20.04\n")
+	task.Set("workshop-file", "name: ws\nbase: ubuntu@24.04\n")
 	setWorkshopProject("ws", s.project, task)
 	chg.AddTask(task)
 
@@ -280,11 +280,11 @@ func (s *healthSuite) TestWorkshopHealthOperationWaitingWithNotes(c *check.C) {
 	chg := s.state.NewChange("refresh", "test")
 	chg.Set("project-id", s.project.ProjectId)
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.SetStatus(state.WaitStatus)
 	task := s.state.NewTask("create-workshop", "test task")
-	task.Set("workshop-file", "name: ws\nbase: ubuntu@20.04\n")
+	task.Set("workshop-file", "name: ws\nbase: ubuntu@24.04\n")
 	setWorkshopProject("ws", s.project, task)
 	chg.AddTask(task)
 
@@ -350,11 +350,11 @@ func (s *healthSuite) TestCheckStatusPending(c *check.C) {
 	chg := s.state.NewChange("refresh", "test")
 	chg.Set("project-id", s.project.ProjectId)
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.SetStatus(state.DoingStatus)
 	task := s.state.NewTask("create-workshop", "test task")
-	task.Set("workshop-file", "name: ws\nbase: ubuntu@20.04\n")
+	task.Set("workshop-file", "name: ws\nbase: ubuntu@24.04\n")
 	setWorkshopProject("ws", s.project, task)
 	chg.AddTask(task)
 
@@ -384,11 +384,11 @@ func (s *healthSuite) TestCheckStatusWaiting(c *check.C) {
 	chg := s.state.NewChange("refresh", "test")
 	chg.Set("project-id", s.project.ProjectId)
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.SetStatus(state.WaitStatus)
 	task := s.state.NewTask("create-workshop", "test task")
-	task.Set("workshop-file", "name: ws\nbase: ubuntu@20.04\n")
+	task.Set("workshop-file", "name: ws\nbase: ubuntu@24.04\n")
 	setWorkshopProject("ws", s.project, task)
 	chg.AddTask(task)
 

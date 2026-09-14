@@ -16,12 +16,11 @@
       "type": "string",
       "description": "Base operating system image for the workshop. Must be one of the supported Ubuntu releases. SDKs with a declared base must match the workshop base; SDKs without a base are accepted on any workshop.",
       "enum": [
-        "ubuntu@20.04",
         "ubuntu@22.04",
         "ubuntu@24.04",
         "ubuntu@26.04"
       ],
-      "errorMessage": "The base must be one of the supported values: ubuntu@20.04, ubuntu@22.04, ubuntu@24.04, ubuntu@26.04."
+      "errorMessage": "The base must be one of the supported values: ubuntu@22.04, ubuntu@24.04, ubuntu@26.04."
     },
     "confinement": {
       "type": "string",

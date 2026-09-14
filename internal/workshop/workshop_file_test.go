@@ -71,7 +71,7 @@ func (f *workshopFile) createSingleWFile(c *check.C, filename, yaml string) {
 
 func (f *workshopFile) TestWorkshopFileParse(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: system
   - name: huggingface
@@ -94,7 +94,7 @@ actions:
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(err, check.Equals, nil)
 	c.Assert(file.Name, check.Equals, "xbert-gpu")
-	c.Assert(file.Base, check.Equals, "ubuntu@20.04")
+	c.Assert(file.Base, check.Equals, "ubuntu@24.04")
 	c.Assert(file.Confinement, check.Equals, workshop.ConfinementContainer)
 	c.Assert(file.Sdks[0], check.DeepEquals, workshop.SdkRecord{Name: "system", Source: sdk.SystemSource})
 	c.Assert(file.Sdks[1], check.DeepEquals, workshop.SdkRecord{Name: "huggingface"})
@@ -148,17 +148,17 @@ actions:
 
 func (f *workshopFile) TestSingleWorkshopFile(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 	f.createSingleWFile(c, "workshop.yaml", yaml)
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(err, check.IsNil)
-	c.Assert(file, check.DeepEquals, &workshop.File{Name: "xbert-gpu", Base: "ubuntu@20.04"})
+	c.Assert(file, check.DeepEquals, &workshop.File{Name: "xbert-gpu", Base: "ubuntu@24.04"})
 }
 
 func (f *workshopFile) TestSingleWorkshopFileAmbiguous(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 	f.createSingleWFile(c, "workshop.yaml", yaml)
 	f.createSingleWFile(c, ".workshop.yaml", yaml)
@@ -171,7 +171,7 @@ base: ubuntu@20.04
 
 func (f *workshopFile) TestSingleWorkshopFileWrongName(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 	f.createSingleWFile(c, "workshop.yaml", yaml)
 	file, err := f.project.Workshop("xbert")
@@ -189,7 +189,7 @@ func (f *workshopFile) TestSingleWorkshopFileError(c *check.C) {
 
 func (f *workshopFile) TestConfinement(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 confinement: container
 `
 	f.createSingleWFile(c, "workshop.yaml", yaml)
@@ -206,7 +206,7 @@ confinement: container
 
 func (f *workshopFile) TestConfinementError(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 confinement: classic
 `
 	f.createSingleWFile(c, "workshop.yaml", yaml)
@@ -231,7 +231,7 @@ base: ubuntu@22.04
 
 func (f *workshopFile) TestWorkshopNamesDifferent(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 	f.createWFile(c, "xbert", yaml)
 	file, err := f.project.Workshop("xbert")
@@ -241,7 +241,7 @@ base: ubuntu@20.04
 
 func (f *workshopFile) TestWorkshopInvalidName(c *check.C) {
 	yaml := `name: 99-xbert
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 	f.createWFile(c, "99-xbert", yaml)
 	file, err := f.project.Workshop("99-xbert")
@@ -251,7 +251,7 @@ base: ubuntu@20.04
 
 func (f *workshopFile) TestWorkshopLongName(c *check.C) {
 	yaml := `name: xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 	f.createWFile(c, "xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40", yaml)
 	file, err := f.project.Workshop("xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40")
@@ -259,7 +259,7 @@ base: ubuntu@20.04
 	c.Check(file.Name, check.Equals, "xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40")
 
 	yaml = `name: xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40x
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 	f.createWFile(c, "xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40x", yaml)
 	file, err = f.project.Workshop("xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40x")
@@ -269,17 +269,17 @@ base: ubuntu@20.04
 
 func (f *workshopFile) TestWorkshopUnsupportedBase(c *check.C) {
 	yaml := `name: xbert-gpu
-base: foo@20.04
+base: foo@24.04
 `
 	f.createWFile(c, "xbert-gpu", yaml)
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(file, check.IsNil)
-	c.Assert(err, check.ErrorMatches, `base "foo@20.04" not supported`)
+	c.Assert(err, check.ErrorMatches, `base "foo@24.04" not supported`)
 }
 
 func (f *workshopFile) TestWorkshopFileDuplicateSdks(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: cuda
     channel: latest/stable
@@ -292,7 +292,7 @@ sdks:
 	c.Assert(err, check.ErrorMatches, `"cuda" SDK must only be included once`)
 
 	yaml = `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: cuda
     channel: latest/stable
@@ -306,7 +306,7 @@ sdks:
 
 func (f *workshopFile) TestWorkshopFileReservedNames(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: agent
     channel: latest/stable
@@ -317,7 +317,7 @@ sdks:
 	c.Assert(file, check.IsNil)
 
 	yaml = `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: project-agent
 `
@@ -327,7 +327,7 @@ sdks:
 	c.Assert(file, check.IsNil)
 
 	yaml = `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: project-project-foo
 `
@@ -337,7 +337,7 @@ sdks:
 	c.Assert(file, check.IsNil)
 
 	yaml = `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: project-try-foo
 `
@@ -349,7 +349,7 @@ sdks:
 
 func (f *workshopFile) TestWorkshopUnsupportedChannel(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: cuda
     channel: latest/foo
@@ -362,7 +362,7 @@ sdks:
 
 func (f *workshopFile) TestShortcuts(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -386,7 +386,7 @@ sdks:
 
 func (f *workshopFile) TestBindPlug(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -410,7 +410,7 @@ sdks:
 
 func (f *workshopFile) TestPlugDefinedButNotBound(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -434,7 +434,7 @@ sdks:
 
 func (f *workshopFile) TestPlugDefinedAndBoundFails(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -452,7 +452,7 @@ sdks:
 
 func (f *workshopFile) TestBindPlugNoSdk(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -472,7 +472,7 @@ sdks:
 
 func (f *workshopFile) TestBindPlugSystemSdk(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: system
   - name: etl-sdk
@@ -486,7 +486,7 @@ sdks:
 	c.Check(err, check.ErrorMatches, `cannot bind to system SDK plug "system:cache"`)
 
 	yaml = `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: system
     plugs:
@@ -502,7 +502,7 @@ sdks:
 
 func (f *workshopFile) TestBindPlugToItself(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -517,7 +517,7 @@ sdks:
 
 func (f *workshopFile) TestBindPlugToBoundPlug(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: one
     channel: latest/stable
@@ -539,7 +539,7 @@ sdks:
 
 func (f *workshopFile) TestBindPlugInvalidPlugRef(c *check.C) {
 	templ := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: etl-sdk
     channel: latest/stable
@@ -566,7 +566,7 @@ sdks:
 
 func (f *workshopFile) TestBindToAlreadyBoundPlug(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -588,7 +588,7 @@ sdks:
 
 func (f *workshopFile) TestIndirectBindToAlreadyBoundPlug(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -610,7 +610,7 @@ sdks:
 
 func (f *workshopFile) TestHostSdkSlot(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: system
     slots:
@@ -626,7 +626,7 @@ sdks:
 
 func (f *workshopFile) TestWorkshopConnectionsOK(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -649,7 +649,7 @@ connections:
 
 func (f *workshopFile) TestWorkshopConnectionsInvalidRefs(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -668,7 +668,7 @@ connections:
 
 func (f *workshopFile) TestWorkshopConnectionsSlotSdkNotInTheList(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -685,7 +685,7 @@ connections:
 
 func (f *workshopFile) TestWorkshopConnectionsPlugSdkNotInTheList(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -702,7 +702,7 @@ connections:
 
 func (f *workshopFile) TestWorkshopConnectionsImplicitHostSdkPlugSlot(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable
@@ -719,7 +719,7 @@ connections:
 
 func (f *workshopFile) TestWorkshopConnectionsBoundPlugCannotBeConnected(c *check.C) {
 	yaml := `name: xbert-gpu
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   - name: data-sdk
     channel: latest/stable

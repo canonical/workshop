@@ -283,7 +283,7 @@ func (f *wsOps) TestLxdBackendWorkshopStashRemove(c *check.C) {
 
 var testsdk = `name: test-sdk
 title: title
-base: ubuntu@20.04
+base: ubuntu@24.04
 version: '0.1.2'
 summary: summary
 description: SDK
@@ -594,7 +594,7 @@ func (f *wsOps) TestLxdBackendDownloadBaseImageNotFound(c *check.C) {
 func (f *wsOps) TestLxdBackendDownloadProtocolNotSupported(c *check.C) {
 	defer lxdbackend.FakeImageServer("https://cloud-images.ubuntu.com/minimal/releases")()
 
-	image := workshop.BaseImage{Name: "ubuntu@20.04", Confinement: workshop.ConfinementContainer, Fingerprint: ""}
+	image := workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: ""}
 	_, err := f.bd.GetBase(f.ctx, image.Name, workshop.ConfinementContainer)
 	c.Check(err, check.ErrorMatches, `unknown image server URL prefix \(supported: simplestreams, lxd\)`)
 	err = f.bd.DownloadBase(f.ctx, image, nil)

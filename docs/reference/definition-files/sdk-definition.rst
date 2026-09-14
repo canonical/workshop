@@ -96,8 +96,7 @@ Top-level fields
    * - :samp:`base`
      - string
      - Base operating system image the SDK targets.
-       One of :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`, :samp:`ubuntu@24.04`,
-       or :samp:`ubuntu@26.04`.
+       One of :samp:`ubuntu@22.04`, :samp:`ubuntu@24.04`, or :samp:`ubuntu@26.04`.
        Omit for SDKs that work on any supported base.
 
    * - :samp:`title`

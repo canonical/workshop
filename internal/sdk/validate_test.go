@@ -258,7 +258,7 @@ base: ubuntu@21.04
 	c.Assert(err, check.IsNil)
 
 	err = sdk.Validate(info)
-	c.Check(err, check.ErrorMatches, `invalid SDK base "ubuntu@21.04"; supported bases: ubuntu@20.04, ubuntu@22.04, ubuntu@24.04, ubuntu@26.04`)
+	c.Check(err, check.ErrorMatches, `invalid SDK base "ubuntu@21.04"; valid bases: ubuntu@20.04, ubuntu@22.04, ubuntu@24.04, ubuntu@26.04`)
 }
 
 func (s *ValidateSuite) TestIllegalSdkArch(c *check.C) {

@@ -60,8 +60,7 @@ Top-level fields
    * - :samp:`base` (required)
      - string
      - Base operating system image.
-       One of :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`, :samp:`ubuntu@24.04`,
-       or :samp:`ubuntu@26.04`.
+       One of :samp:`ubuntu@22.04`, :samp:`ubuntu@24.04`, or :samp:`ubuntu@26.04`.
 
        SDKs that declare a :samp:`base` must use the same value;
        SDKs without a :samp:`base` are accepted on any workshop.
