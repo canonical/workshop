@@ -371,6 +371,9 @@ func v1PostConnections(c *Command, r *http.Request, _ *userState) Response {
 			ts, connErr := ifacestate.Connect(st, plugW, slotW, connRef)
 			if connErr != nil {
 				if _, ok := connErr.(*ifacestate.ErrAlreadyConnected); !ok {
+					if rsp := changeConflictResponse(connErr); rsp != nil {
+						return rsp
+					}
 					return statusBadRequest("%w", connErr)
 				}
 			} else {
@@ -420,6 +423,9 @@ func v1PostConnections(c *Command, r *http.Request, _ *userState) Response {
 		}
 	}
 	if err != nil {
+		if rsp := changeConflictResponse(err); rsp != nil {
+			return rsp
+		}
 		return statusBadRequest("%w", err)
 	}
 
