@@ -14,11 +14,48 @@
 
 package secretstate
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/canonical/workshop/internal/overlord/state"
+	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/secrets"
+	"github.com/canonical/workshop/internal/workshop"
+)
+
+// secretResolver delegates secret resolution to a test callback.
+type secretResolver func(context.Context, sdk.SlotRef) (secrets.Secret, error)
 
 // secretStateBackend signals ensure requests without blocking the state lock.
 type secretStateBackend struct {
 	ensureBefore chan time.Duration
+}
+
+// taskHandlerRegistrar records task registration without running tasks.
+type taskHandlerRegistrar struct {
+	calls int
+	do    state.HandlerFunc
+	kind  string
+	undo  state.HandlerFunc
+}
+
+// workshopBackendFunc supplies workshop lookup behaviour without a backend.
+type workshopBackendFunc func(
+	context.Context,
+	string,
+) (*workshop.Workshop, error)
+
+// AddHandler records the supplied task kind and handlers.
+func (r *taskHandlerRegistrar) AddHandler(
+	kind string,
+	do state.HandlerFunc,
+	undo state.HandlerFunc,
+) {
+	r.calls++
+	r.do = do
+	r.kind = kind
+	r.undo = undo
 }
 
 // Checkpoint discards state snapshots in retrieval tests.
@@ -32,4 +69,20 @@ func (b *secretStateBackend) EnsureBefore(delay time.Duration) {
 	case b.ensureBefore <- delay:
 	default:
 	}
+}
+
+// Resolve delegates retrieval to the test's callback.
+func (f secretResolver) Resolve(
+	ctx context.Context,
+	ref sdk.SlotRef,
+) (secrets.Secret, error) {
+	return f(ctx, ref)
+}
+
+// Workshop delegates lookup to the test's callback.
+func (f workshopBackendFunc) Workshop(
+	ctx context.Context,
+	name string,
+) (*workshop.Workshop, error) {
+	return f(ctx, name)
 }
