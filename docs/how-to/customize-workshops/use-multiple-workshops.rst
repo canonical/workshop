@@ -244,6 +244,8 @@ refresh the workshops to pick up the change:
    $ workshop refresh frontend backend
 
 
+.. _how_use_multiple_workshops_networking:
+
 Cross-workshop networking
 -------------------------
 

@@ -87,6 +87,8 @@ Previous versions
 - `SDKcraft 0.1.14 <https://github.com/canonical/sdkcraft/releases/tag/0.1.14>`_
 
 
+.. _release_policy:
+
 Release policy and schedule
 ---------------------------
 

@@ -67,7 +67,7 @@ AI agents
 ---------
 
 |ws_markup| exposes documentation in LLM-readable form
-and ships two agentic skills that wrap its CLIs
+and ships three agentic skills that wrap its CLIs
 for coding agents:
 
 .. toctree::

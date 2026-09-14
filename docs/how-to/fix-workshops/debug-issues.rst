@@ -121,6 +121,8 @@ this time supplying the change ID as the argument:
 The SDK-specific reason can be addressed individually.
 
 
+.. _how_debug_wait_on_error:
+
 Wait on error
 -------------
 

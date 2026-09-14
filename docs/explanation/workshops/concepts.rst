@@ -576,6 +576,8 @@ This mechanism avoids the need to maintain helper scripts manually,
 ensuring instead that they are stored with the rest of the workshop's metadata.
 
 
+.. _exp_workshop_backward_compat:
+
 Backward compatibility
 ----------------------
 

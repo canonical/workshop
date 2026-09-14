@@ -170,6 +170,8 @@ but continues to exist as a LXD storage volume
 until garbage collection.
 
 
+.. _ref_workshop_forward_compat:
+
 Forward compatibility
 ---------------------
 
@@ -178,6 +180,8 @@ To downgrade the snap,
 remove it and then reinstall it from scratch.
 Removing the snap removes all workshops and SDKs.
 
+
+.. _ref_workshop_storage_pools:
 
 Storage pools and drivers
 -------------------------

@@ -106,6 +106,8 @@ different SDK channels,
 or any other axis you encode in the workshop name.
 
 
+.. _how_run_workshops_in_github_actions_cache:
+
 Cache SDK data across runs
 --------------------------
 
@@ -175,6 +177,8 @@ The action exposes the following inputs:
      - Mount plugs to cache across runs,
        one :samp:`<SDK>:<PLUG>` entry per line.
 
+
+.. _how_run_workshops_in_github_actions_security:
 
 Security considerations
 -----------------------
