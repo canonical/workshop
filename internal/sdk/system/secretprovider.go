@@ -16,32 +16,41 @@ package system
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/secrets"
 )
 
 // SecretProvider returns a placeholder for system SDK secret slots until
 // retrieval from the user's Secret Service over D-Bus is implemented.
-type SecretProvider struct{}
-
-// NewSecretProvider creates a system SDK secret provider.
-func NewSecretProvider() SecretProvider {
-	return SecretProvider{}
+type SecretProvider struct {
+	slots SecretSlotLookup
 }
 
-// Resolve implements [secrets.Provider] with a placeholder secret value.
-// The source configuration is not used until Secret Service lookup is added.
-//
-// The following errors may be expected:
-//   - [context.Canceled]: the request was cancelled.
-//   - [context.DeadlineExceeded]: the request deadline expired.
-func (SecretProvider) Resolve(
+// NewSecretProvider creates a system SDK secret provider using slots to read
+// typed slot configuration.
+func NewSecretProvider(slots SecretSlotLookup) SecretProvider {
+	return SecretProvider{slots: slots}
+}
+
+// Resolve looks up slot configuration before returning a placeholder secret.
+// The caller must consume or close the returned secret.
+func (p SecretProvider) Resolve(
 	ctx context.Context,
-	_ secrets.Source,
-) ([]byte, error) {
+	slot sdk.SlotRef,
+) (secrets.Secret, error) {
 	err := ctx.Err()
 	if err != nil {
-		return nil, err
+		return secrets.Secret{}, err
 	}
-	return []byte("workshop-placeholder-secret"), nil
+
+	// Require valid slot configuration even while retrieval is a placeholder.
+	_, err = p.slots.Lookup(ctx, slot)
+	if err != nil {
+		return secrets.Secret{}, fmt.Errorf(
+			"looking up secret slot configuration: %w", err,
+		)
+	}
+	return secrets.NewSecret([]byte("workshop-placeholder-secret")), nil
 }
