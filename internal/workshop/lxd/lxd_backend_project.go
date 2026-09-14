@@ -314,7 +314,7 @@ func (s *Backend) pruneProjects(client lxd.InstanceServer, ctx context.Context, 
 
 func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, projectId string) (path string, err error) {
 	args := lxd.GetInstancesArgs{
-		InstanceType: api.InstanceTypeAny,
+		InstanceType: api.InstanceTypeContainer,
 		Filters:      []string{"config.user.workshop.project-id=" + projectId},
 	}
 	workshops, err := conn.GetInstances(args)
