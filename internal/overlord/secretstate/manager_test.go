@@ -115,7 +115,7 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 			},
 		}, nil
 	})
-	New(runner, backend, repo)
+	New(runner, backend, repo, nil)
 
 	st.Lock()
 	task := st.NewTask("get-secret", "Retrieve a workshop secret")
@@ -160,7 +160,7 @@ func (s *managerSuite) TestGetSecretCachesResult(c *C) {
 func (s *managerSuite) TestGetSecretMissingPlug(c *C) {
 	st := state.New(nil)
 	runner := &taskHandlerRegistrar{}
-	New(runner, nil, nil)
+	New(runner, nil, nil, nil)
 	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
@@ -183,7 +183,7 @@ func (s *managerSuite) TestGetSecretMissingPlug(c *C) {
 func (s *managerSuite) TestGetSecretMissingProject(c *C) {
 	st := state.New(nil)
 	runner := &taskHandlerRegistrar{}
-	New(runner, nil, nil)
+	New(runner, nil, nil, nil)
 	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
@@ -206,7 +206,7 @@ func (s *managerSuite) TestGetSecretMissingProject(c *C) {
 func (s *managerSuite) TestGetSecretMissingSDK(c *C) {
 	st := state.New(nil)
 	runner := &taskHandlerRegistrar{}
-	New(runner, nil, nil)
+	New(runner, nil, nil, nil)
 	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
@@ -229,7 +229,7 @@ func (s *managerSuite) TestGetSecretMissingSDK(c *C) {
 func (s *managerSuite) TestGetSecretMissingUser(c *C) {
 	st := state.New(nil)
 	runner := &taskHandlerRegistrar{}
-	New(runner, nil, nil)
+	New(runner, nil, nil, nil)
 	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
@@ -252,7 +252,7 @@ func (s *managerSuite) TestGetSecretMissingUser(c *C) {
 func (s *managerSuite) TestGetSecretMissingWorkshop(c *C) {
 	st := state.New(nil)
 	runner := &taskHandlerRegistrar{}
-	New(runner, nil, nil)
+	New(runner, nil, nil, nil)
 	c.Assert(runner.do, NotNil)
 	task := newSecretTask(c, st)
 
@@ -441,7 +441,7 @@ func (s *managerSuite) TestGetSecretUndoneAfterFailure(c *C) {
 			},
 		}, nil
 	})
-	New(runner, backend, repo)
+	New(runner, backend, repo, nil)
 	task := newSecretTask(c, st)
 	runner.AddHandler("fail", func(*state.Task, *tomb.Tomb) error {
 		return errors.New("subsequent task failed")
@@ -527,7 +527,7 @@ func (s *managerSuite) TestUndoGetSecretWithoutResult(c *C) {
 func (s *managerSuite) TestNewRegistersGetSecret(c *C) {
 	runner := &taskHandlerRegistrar{}
 
-	manager := New(runner, nil, nil)
+	manager := New(runner, nil, nil, nil)
 
 	c.Check(manager.Ensure(), IsNil)
 	c.Check(runner.calls, Equals, 1)

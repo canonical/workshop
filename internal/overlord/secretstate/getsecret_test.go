@@ -77,7 +77,7 @@ func (s *getSecretSuite) SetUpTest(c *C) {
 	}
 	s.st = state.New(s.backend)
 	s.runner = state.NewTaskRunner(s.st)
-	New(s.runner, nil, nil)
+	New(s.runner, nil, nil, nil)
 }
 
 // start launches retrieval with a buffered completion channel.
@@ -478,7 +478,7 @@ func (s *getSecretSuite) TestSuccess(c *C) {
 			},
 		}, nil
 	})
-	New(s.runner, backend, repo)
+	New(s.runner, backend, repo, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

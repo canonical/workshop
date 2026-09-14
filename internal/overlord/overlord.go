@@ -170,7 +170,17 @@ func New(dir string, restartHandler restart.Handler) (*Overlord, error) {
 	o.sdkmgr = sdkstate.New(s, o.runner, o.ifacemgr.Repository())
 	o.addManager(o.sdkmgr)
 
-	o.secretmgr = secretstate.New(o.runner)
+	s.Lock()
+	workshopBackend := workshop.WorkshopBackend(s)
+	s.Unlock()
+
+	secretResolver := makeSecretResolver(o.ifacemgr.Repository())
+	o.secretmgr = secretstate.New(
+		o.runner,
+		workshopBackend,
+		o.ifacemgr.Repository(),
+		secretResolver,
+	)
 	o.addManager(o.secretmgr)
 
 	// the shared task runner should be added last!

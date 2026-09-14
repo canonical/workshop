@@ -30,8 +30,9 @@ import (
 
 // SecretManager registers and handles secret operation tasks.
 type SecretManager struct {
-	backend WorkshopBackend
-	repo    *interfaces.Repository
+	backend  WorkshopBackend
+	repo     *interfaces.Repository
+	resolver SecretResolver
 }
 
 // secretResultKey identifies a task's []byte result in the non-persisted state
@@ -179,8 +180,13 @@ func New(
 	runner TaskHandlerRegistrar,
 	backend WorkshopBackend,
 	repo *interfaces.Repository,
+	resolver SecretResolver,
 ) SecretManager {
-	manager := SecretManager{backend: backend, repo: repo}
+	manager := SecretManager{
+		backend:  backend,
+		repo:     repo,
+		resolver: resolver,
+	}
 	runner.AddHandler("get-secret", manager.doGetSecret, manager.undoGetSecret)
 	return manager
 }
