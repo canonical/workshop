@@ -19,7 +19,6 @@ execute: |
   EOF
   cp ../run-ollama.py .
   workshop_exec launch
-  lxc storage set workshop size=20GB
 
   # ----------------------------------------------------------------------------
 

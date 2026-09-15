@@ -1,6 +1,15 @@
 summary: Check workshop stop
+
+environment:
+  CONFINEMENT/ctr: container
+  CONFINEMENT/vm: virtual-machine
+
 prepare: |  
   . "$TESTSLIB"/utils.sh
+  envsubst '${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
+  # TODO: remove the next line once VMs support SDKs
+  [ "${CONFINEMENT}" = container ] || (head --lines=-2 workshop.yaml | sponge workshop.yaml)
+  chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch
 restore: |
   . "$TESTSLIB"/utils.sh

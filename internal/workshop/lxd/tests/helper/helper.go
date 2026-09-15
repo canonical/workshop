@@ -98,7 +98,7 @@ func CleanupLxdProject(c *check.C, client lxd.InstanceServer, project string) {
 		}
 	}
 
-	args := lxd.GetInstancesArgs{InstanceType: api.InstanceTypeContainer}
+	args := lxd.GetInstancesArgs{InstanceType: api.InstanceTypeAny}
 	instances, err := cli.GetInstances(args)
 	c.Check(err, check.IsNil)
 	for _, i := range instances {
@@ -132,7 +132,7 @@ func CreateTestContext(username, projectId string) context.Context {
 }
 
 func LaunchTestWorkshop(c *check.C, ctx context.Context, bd workshop.Backend, dir string) {
-	image, err := bd.GetBase(ctx, "ubuntu@24.04")
+	image, err := bd.GetBase(ctx, "ubuntu@24.04", workshop.ConfinementContainer)
 	c.Assert(err, check.IsNil)
 	err = bd.DownloadBase(ctx, image, nil)
 	c.Assert(err, check.IsNil)
@@ -161,7 +161,7 @@ printf '%s\n' "$@"
 	_, _, err = bd.CreateOrLoadProject(ctx, dir)
 	c.Assert(err, check.IsNil)
 
-	snapshot := workshop.BaseOnly(bd.FormatRevision(), image.Name, image.Fingerprint)
+	snapshot := workshop.BaseOnly(bd.FormatRevision(), image.Name, workshop.ConfinementContainer, image.Fingerprint)
 	err = bd.LaunchOrRebuildWorkshop(ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -189,7 +189,7 @@ func ExecOutput(ctx context.Context, bd workshop.Backend, name string, args work
 		return "", err
 	}
 	if err := exectx.WaitExecution(ctx); err != nil {
-		return "", fmt.Errorf("%w\n%s", err, stderr.String())
+		return stdout.String(), fmt.Errorf("%w\n%s", err, stderr.String())
 	}
 	return stdout.String(), err
 }

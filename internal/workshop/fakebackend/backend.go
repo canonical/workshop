@@ -121,7 +121,7 @@ type FakeWorkshopBackend struct {
 	WorkshopFsCalls    []*FsCall
 
 	baseLock             sync.Mutex
-	GetBaseCallback      func(ctx context.Context, base string) (workshop.BaseImage, error)
+	GetBaseCallback      func(ctx context.Context, base string, confinement workshop.Confinement) (workshop.BaseImage, error)
 	DownloadBaseCallback func(ctx context.Context, image workshop.BaseImage, report *progress.Reporter) error
 	DownloadBaseCalls    []*DownloadCall
 
@@ -624,14 +624,14 @@ func (s *FakeWorkshopBackend) userProject(ctx context.Context) (string, string, 
 	return userName, projectId, nil
 }
 
-func (b *FakeWorkshopBackend) GetBase(ctx context.Context, base string) (workshop.BaseImage, error) {
+func (b *FakeWorkshopBackend) GetBase(ctx context.Context, base string, confinement workshop.Confinement) (workshop.BaseImage, error) {
 	b.baseLock.Lock()
 	defer b.baseLock.Unlock()
 
 	if b.GetBaseCallback != nil {
-		return b.GetBaseCallback(ctx, base)
+		return b.GetBaseCallback(ctx, base, confinement)
 	}
-	return workshop.BaseImage{Name: base, Fingerprint: "fakeimage123"}, nil
+	return workshop.BaseImage{Name: base, Confinement: confinement, Fingerprint: "fakeimage123"}, nil
 }
 
 func (b *FakeWorkshopBackend) DownloadBase(ctx context.Context, image workshop.BaseImage, report *progress.Reporter) error {

@@ -195,7 +195,7 @@ func (s *sdkStateSuite) SetUpTest(c *check.C) {
 		{Name: "test", Channel: "latest/stable"},
 		{Name: "test-broken", Channel: "latest/stable"},
 	}}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	err = s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -456,7 +456,7 @@ func (s *sdkStateSuite) TestRetrieveSystemSdkSuccess(c *check.C) {
 	setWorkshopProject("ws", s.project, t)
 	chg.Set("user", "testuser")
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseOnly(sdk.R(1), "ubuntu@22.04", "fakeimage123"))
+	chg.Set("ws_new_base", workshop.BaseOnly(sdk.R(1), "ubuntu@22.04", workshop.ConfinementContainer, "fakeimage123"))
 	chg.Set("ws_new_sdks", []sdk.Setup{newSdk})
 	chg.AddTask(t)
 
@@ -506,7 +506,7 @@ func (s *sdkStateSuite) TestSnapshotSdkTwice(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"}
 	sdks := []sdk.Setup{{
 		Name:     "test",
 		Channel:  "latest/stable",
@@ -601,7 +601,7 @@ func (s *sdkStateSuite) TestSnapshotSkippedPostResume(c *check.C) {
 	chg.Set("user", "testuser")
 	chg.Set("project-id", s.project.ProjectId)
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", sdks)
 	chg.Set("wait-setup", conflict.ChangeSetup{Mode: conflict.ChangeWaitOnError.String()})
 	chg.AddTask(t1)

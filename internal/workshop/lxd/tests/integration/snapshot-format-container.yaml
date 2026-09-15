@@ -1,21 +1,18 @@
 # When updating this file, please carefully consider whether the snapshot
 # format revision number needs to be bumped. This file is used by the
-# snapshotSuite.TestLxdBackendSnapshotFormat test. It records the writable
-# parts of workshops and snapshots at each step from launch to snapshot.
-# Changes to this file may or may not influence the snapshot format. For
-# instance cloud-init.user-data is likely to modify files and therefore change
-# the snapshot format. Other options like boot.autostart are omitted from
-# snapshots and have no effect.
+# snapshotSuite.TestLxdBackendSnapshotFormatContainer test. It records the
+# writable parts of workshops and snapshots at each step from launch to
+# snapshot. Changes to this file may or may not influence the snapshot format.
+# For instance boot.autostart isn't snapshotted and has no side effects.
 launched:
   architecture: ''
   config:
     boot.autostart: 'false'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: '4cf587533327b22c997544bfaade54d028486c2ca359810fb8d2c66e87e0e7e2b7a20176b1c31284edd4cd28ed166780'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -50,12 +47,11 @@ started:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: '4cf587533327b22c997544bfaade54d028486c2ca359810fb8d2c66e87e0e7e2b7a20176b1c31284edd4cd28ed166780'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -90,12 +86,11 @@ sdk-attached:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: '4cf587533327b22c997544bfaade54d028486c2ca359810fb8d2c66e87e0e7e2b7a20176b1c31284edd4cd28ed166780'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -142,12 +137,11 @@ sdk-mounted:
   architecture: ''
   config:
     boot.autostart: 'true'
-    raw.idmap: |-
+    raw.idmap: |
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
     security.nesting: 'true'
-    cloud-init.user-data: '4cf587533327b22c997544bfaade54d028486c2ca359810fb8d2c66e87e0e7e2b7a20176b1c31284edd4cd28ed166780'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
