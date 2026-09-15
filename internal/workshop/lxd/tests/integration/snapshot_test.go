@@ -636,9 +636,12 @@ func (s *snapshotSuite) idmappedMount(c *check.C, source filesystem, target stri
 // Luckily we already relabeled the rootfs, so we can use that to mount it
 // after udev has created the appropriate symlinks.
 func (s *snapshotSuite) mountVMRootFS(c *check.C, source filesystem, name, path string) *revert.Reverter {
+	rev := revert.New()
+	defer rev.Fail()
+
 	conn, err := s.bd.LxdClient(s.ctx)
 	c.Assert(err, check.IsNil)
-	defer conn.Disconnect()
+	rev.Add(conn.Disconnect)
 
 	inst, etag1, err := conn.GetInstance(lxdbackend.InstanceName(name, s.project.ProjectId))
 	c.Assert(err, check.IsNil)
@@ -649,9 +652,6 @@ func (s *snapshotSuite) mountVMRootFS(c *check.C, source filesystem, name, path 
 	op, err := conn.UpdateStoragePoolVolume(vol.Pool, vol.Type, vol.Name, vol.Writable(), etag2)
 	c.Assert(err, check.IsNil)
 	c.Assert(op.WaitContext(s.ctx), check.IsNil)
-
-	rev := revert.New()
-	defer rev.Fail()
 
 	inst.Devices["root_"+source.name] = map[string]string{
 		"type":        "disk",

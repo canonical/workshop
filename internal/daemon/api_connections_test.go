@@ -77,7 +77,7 @@ slots:
 )
 
 func (s *apiSuite) workshopFile(ws string, sdks []*sdk.Info) *workshop.File {
-	file := &workshop.File{Name: ws, Base: "ubuntu@20.04"}
+	file := &workshop.File{Name: ws, Base: "ubuntu@24.04"}
 	for _, s := range sdks {
 		file.Sdks = append(file.Sdks, workshop.SdkRecord{
 			Name:    s.Name,

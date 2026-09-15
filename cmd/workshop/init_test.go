@@ -39,6 +39,7 @@ func (s *workshopInit) TestInitBaseUsage(c *check.C) {
 	cmd := s.makeCmd(projectDir)
 
 	bases := slices.Clone(workshop.SupportedBases)
+	bases = slices.DeleteFunc(bases, func(b string) bool { return b == "ubuntu@20.04" })
 	bases[len(bases)-1] = "and " + bases[len(bases)-1]
 	line := fmt.Sprintf("\nThe supported bases are %s.\n", strings.Join(bases, ", "))
 

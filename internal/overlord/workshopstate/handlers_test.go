@@ -42,7 +42,7 @@ import (
 )
 
 var wsFocal = `name: ws
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 
 var wsJammy = `name: ws
@@ -155,7 +155,7 @@ func (s *workshopHandlers) TestStopPeriodicProgressUpdate(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 	s.createWFile(c, "ws", wsFocal)
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04"}
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04"}
 	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Check(err, check.IsNil)
@@ -194,7 +194,7 @@ func (s *workshopHandlers) TestUndoStash(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04", Sdks: []workshop.SdkRecord{
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04", Sdks: []workshop.SdkRecord{
 		{Name: "test", Channel: "latest/stable"},
 		{Name: "test2", Channel: "latest/stable"},
 	}}
@@ -229,12 +229,12 @@ func (s *workshopHandlers) TestRemoveWorkshop(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 	wFiles := []*workshop.File{{
-		Name: "ws", Base: "ubuntu@20.04",
+		Name: "ws", Base: "ubuntu@24.04",
 		Sdks: []workshop.SdkRecord{
 			{Name: "test", Channel: "latest/stable"},
 			{Name: "test2", Channel: "latest/stable"},
 		}}, {
-		Name: "another-ws", Base: "ubuntu@20.04",
+		Name: "another-ws", Base: "ubuntu@24.04",
 		Sdks: []workshop.SdkRecord{
 			{Name: "test", Channel: "latest/stable"},
 			{Name: "test2", Channel: "latest/stable"},
