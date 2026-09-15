@@ -63,3 +63,7 @@ Create a workshop using a specific base:
 
    Comma-separated list of SDKs (e.g., "go,uv/latest/stable").
 
+--vm
+
+   Use a virtual machine instead of a container.
+
