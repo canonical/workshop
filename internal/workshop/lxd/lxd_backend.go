@@ -1411,6 +1411,7 @@ users:
 bootcmd:
 - |
   set -e
+
   maybe_groupadd() {
       # Ignore GID not unique (exit code 4) or group name not unique (exit code 9)
       groupadd -g "$1" -r "$2" || case $? in 4|9) ;; *) return $? ;; esac
@@ -1424,7 +1425,16 @@ bootcmd:
   maybe_groupadd 110 render-compat-110
   maybe_groupadd 990 render-compat-990
   maybe_groupadd 992 render-compat-992
-- chmod 0600 /etc/ssh/ssh_host_ed25519_key
+
+  chmod 0600 /etc/ssh/ssh_host_ed25519_key
+
+  # Suppress snapd's snap store catalog refresh on first boot.
+  mkdir -p /var/cache/snapd
+  touch /var/cache/snapd/names
+
+  # Skip pollinate.service.
+  mkdir -p /var/cache/pollinate
+  touch /var/cache/pollinate/seeded
 apt:
   conf: |
     # Installed by workshop
