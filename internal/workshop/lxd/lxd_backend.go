@@ -1447,8 +1447,6 @@ apt:
 
     # Bypass confirmation prompts
     APT::Get::Assume-Yes "1";
-grub_dpkg:
-  enabled: false
 ssh_deletekeys: false
 ssh_genkeytypes: [ed25519]
 write_files:
@@ -1464,6 +1462,13 @@ write_files:
     content: |
       HostCertificate /etc/ssh/ssh_host_ed25519_key-cert.pub
       TrustedUserCAKeys /etc/ssh/ssh_ca_ed25519_key.pub
+  # LXD rewrites templated files as 0644 on VMs (lxd-agent, and the qemu
+  # driver's own template pass). cloud-init only runs once, so the bootcmd
+  # chmod doesn't survive a rebuild from a snapshot.
+  - path: /etc/systemd/system/ssh.service.d/70-workshop-hostkey.conf
+    content: |
+      [Service]
+      ExecStartPre=/usr/bin/chmod 0600 /etc/ssh/ssh_host_ed25519_key
   - path: /etc/systemd/system/workshop-waitready.service
     content: |
       [Unit]
@@ -1494,6 +1499,18 @@ write_files:
       insmod smbios
       smbios --type 1 --get-uuid 8 --set workshop_machine_id
       export workshop_machine_id
+{{- end}}
+{{- if .HasInitramfsTools}}
+  - path: /etc/initramfs-tools/conf.d/70-workshop.conf
+    content: |
+      # The generic initramfs loads every storage driver, so a VM spends ~0.3s
+      # probing six SATA ports it does not have and ~0.1s benchmarking raid6.
+      # A dep initramfs carries only the modules this machine needs. Devices
+      # added after it is built, such as virtiofs mounts, are not needed to
+      # mount the root filesystem, so they can stay out of it.
+      MODULES=dep
+{{- end}}
+{{- if .HasGRUB}}
   - path: /etc/default/grub.d/70-workshop.cfg
     content: |
       GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:+$GRUB_CMDLINE_LINUX }"'systemd.machine_id=${workshop_machine_id}'
@@ -1516,6 +1533,10 @@ runcmd:
   # sets $XDG_RUNTIME_DIR and more. Interfaces such as desktop rely on both of these to be present.
   # This does not introduce any additional modification beyond what a login session would normally create.
   - loginctl enable-linger workshop
+{{- if .HasInitramfsTools}}
+  # Only takes effect on the next boot, which is why the snapshot is taken after it.
+  - update-initramfs -u
+{{- end}}
 {{- if .HasGRUB}}
   - update-grub
 {{- end}}
@@ -1532,17 +1553,19 @@ runcmd:
 		startTimeout = startTimeoutVM
 	}
 	dot := struct {
-		FsFreezePath     string
-		HasGRUB          bool
-		StartTimeout     int64
-		WorkshopCtlPath  string
-		WorkshopStateDir string
+		FsFreezePath      string
+		HasGRUB           bool
+		HasInitramfsTools bool
+		StartTimeout      int64
+		WorkshopCtlPath   string
+		WorkshopStateDir  string
 	}{
-		FsFreezePath:     fsFreezePath,
-		HasGRUB:          file.Confinement == workshop.ConfinementVirtualMachine,
-		StartTimeout:     startTimeout.Nanoseconds(),
-		WorkshopCtlPath:  filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
-		WorkshopStateDir: dirs.WorkshopStateDir,
+		FsFreezePath:      fsFreezePath,
+		HasGRUB:           file.Confinement == workshop.ConfinementVirtualMachine,
+		HasInitramfsTools: file.Confinement == workshop.ConfinementVirtualMachine,
+		StartTimeout:      startTimeout.Nanoseconds(),
+		WorkshopCtlPath:   filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
+		WorkshopStateDir:  dirs.WorkshopStateDir,
 	}
 	t := template.Must(template.New("cloud-config").Funcs(funcs).Parse(cloudConfigTemplate))
 	if err := t.Execute(&cloudConfig, dot); err != nil {
@@ -1583,6 +1606,12 @@ runcmd:
 	} else {
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
+
+		// OVMF waits three seconds in its boot menu before starting the boot
+		// entry, which is 2.5s of every VM start that nobody is there to use.
+		// The timeout is only read from fw_cfg when the menu is enabled, so
+		// enabling it is what lets us set it to zero.
+		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
 
 		// LXD would otherwise give the VM one core and 1 GiB, which is not
 		// enough to run a development environment.

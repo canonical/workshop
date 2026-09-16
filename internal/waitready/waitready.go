@@ -64,8 +64,17 @@ func WaitReady() error {
 	}
 	defer server.Disconnect()
 
-	if err := server.UpdateState(api.DevLXDPut{State: api.Started.String()}); err != nil {
+	state, err := server.GetState()
+	if err != nil {
 		return err
+	}
+
+	// Don't regress the instance back to Started if a previous run already
+	// marked it Ready and systemd restarted the unit.
+	if state.State != api.Ready.String() {
+		if err := server.UpdateState(api.DevLXDPut{State: api.Started.String()}); err != nil {
+			return err
+		}
 	}
 
 	if err := waitReady(ctx); err != nil {
