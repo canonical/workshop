@@ -60,3 +60,11 @@ const (
 	PoolReserve    = poolReserve
 	CloneFootprint = cloneFootprint
 )
+
+var HostProjectPath = hostProjectPath
+
+func FakeMountInfo(path string) (restore func()) {
+	old := mountinfoPath
+	mountinfoPath = path
+	return func() { mountinfoPath = old }
+}
