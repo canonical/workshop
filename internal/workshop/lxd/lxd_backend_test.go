@@ -114,7 +114,7 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "253fb59c4cfa1ce4d2e9fa42ce608ec000134d729a055676f8f6c69ab73e10e00659893b9fb892f8a9ab2fa926f130f8")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "12be4063aea56e29044cb7b2b2093a48587cbed8c80e55bf5a36e246cfef50facb173031f4c4c445632a33f753a4d04a")
 }
 
 var vmFile = `name: test
@@ -153,7 +153,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "e4914ed35938505809af89f6652e7f3981ccbe2e10fef2fbda862dd3b5d78a1c1a8526b5bdee4db695d24997722bf73b")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "ad349bb4f92cd9d4054fd8c124c4999c6ad486e68fdce0c30746d604d35f8a3f824af1fb3f429c335177025f5a016b51")
 }
 
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {

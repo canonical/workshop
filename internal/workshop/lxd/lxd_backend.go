@@ -1432,6 +1432,15 @@ write_files:
     content: |
       HostCertificate /etc/ssh/ssh_host_ed25519_key-cert.pub
       TrustedUserCAKeys /etc/ssh/ssh_ca_ed25519_key.pub
+  # Workaround https://github.com/canonical/lxd/issues/19055. We handle the
+  # initial permissions in bootcmd, but subsequent boots from a VM snapshot
+  # can reset the permissions back to 0644.
+  - path: /etc/systemd/system/ssh.service.d/70-workshop.conf
+    content: |
+      [Service]
+      ExecStartPre=
+      ExecStartPre=/usr/bin/chmod 0600 /etc/ssh/ssh_host_ed25519_key
+      ExecStartPre=/usr/sbin/sshd -t
   - path: /etc/systemd/system/workshop-waitready.service
     content: |
       [Unit]
