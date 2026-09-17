@@ -23,6 +23,7 @@ import (
 	"context"
 
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 // SecurityBackend abstracts interactions between the interface system and the
@@ -45,6 +46,9 @@ type SecurityBackend interface {
 	//
 	// This method should be called during the process of removing an sdk.
 	Remove(context context.Context, sdkRef sdk.Ref) error
+
+	// NewSandbox returns context used in early interface compatibility checks.
+	NewSandbox(w *workshop.Workshop) Sandbox
 
 	// NewSpecification returns a new specification associated with this backend.
 	NewSpecification(user string, sdk string) (Specification, error)

@@ -94,3 +94,18 @@ slots:
 	expectedDevice := &workshop.Gpu{Name: plug.Name}
 	c.Assert(deviceSpec.Profile.Gpu, check.DeepEquals, expectedDevice)
 }
+
+func (s *gpuSuite) TestGpuInterfaceRequiresContainer(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+ gpu:
+  interface: gpu
+`, s.projectId, "ws", "consumer", "gpu")
+
+	container := &lxd_device.Instance{Confinement: workshop.ConfinementContainer}
+	c.Check(container.SupportsPlug(s.iface, plug), check.IsNil)
+
+	vm := &lxd_device.Instance{Confinement: workshop.ConfinementVirtualMachine}
+	c.Check(vm.SupportsPlug(s.iface, plug), check.ErrorMatches, `gpu interface only available to containers`)
+}

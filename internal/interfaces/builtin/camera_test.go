@@ -92,3 +92,18 @@ slots:
 	expectedDevice := &workshop.Camera{Name: "camera"}
 	c.Assert(deviceSpec.Profile.Camera, check.DeepEquals, expectedDevice)
 }
+
+func (s *cameraSuite) TestCameraInterfaceRequiresContainer(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+ camera:
+  interface: camera
+`, s.projectId, "ws", "consumer", "camera")
+
+	container := &lxd_device.Instance{Confinement: workshop.ConfinementContainer}
+	c.Check(container.SupportsPlug(s.iface, plug), check.IsNil)
+
+	vm := &lxd_device.Instance{Confinement: workshop.ConfinementVirtualMachine}
+	c.Check(vm.SupportsPlug(s.iface, plug), check.ErrorMatches, `camera interface only available to containers`)
+}

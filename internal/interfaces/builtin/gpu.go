@@ -20,6 +20,8 @@
 package builtin
 
 import (
+	"errors"
+
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/interfaces/lxd_device"
 	"github.com/canonical/workshop/internal/sdk"
@@ -68,6 +70,13 @@ func (iface *gpuInterface) StaticInfo() interfaces.StaticInfo {
 func (iface *gpuInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool {
 	// allow what declarations allowed
 	return true
+}
+
+func (iface *gpuInterface) LxdDeviceSupportsPlug(instance *lxd_device.Instance, plug *sdk.PlugInfo) error {
+	if instance.Confinement != workshop.ConfinementContainer {
+		return errors.New("gpu interface only available to containers")
+	}
+	return nil
 }
 
 func (iface *gpuInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {

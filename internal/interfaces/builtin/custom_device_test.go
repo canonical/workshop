@@ -301,3 +301,19 @@ plugs:
 	c.Check(plug.Attrs["vendorid"], check.Equals, "ef01")
 	c.Check(plug.Attrs["productid"], check.Equals, "abcd")
 }
+
+func (s *customDeviceSuite) TestCustomDeviceInterfaceRequiresContainer(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+  mydevice:
+    interface: custom-device
+    subsystem: accel
+`, s.projectId, "ws", "consumer", "mydevice")
+
+	container := &lxd_device.Instance{Confinement: workshop.ConfinementContainer}
+	c.Check(container.SupportsPlug(s.iface, plug), check.IsNil)
+
+	vm := &lxd_device.Instance{Confinement: workshop.ConfinementVirtualMachine}
+	c.Check(vm.SupportsPlug(s.iface, plug), check.ErrorMatches, `custom-device interface only available to containers`)
+}

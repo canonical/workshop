@@ -43,6 +43,11 @@ type TestInterface struct {
 	// BeforePrepareSlotCallback is the callback invoked inside BeforePrepareSlot()
 	BeforePrepareSlotCallback func(slot *sdk.SlotInfo) error
 
+	// SupportsPlugCallback is the called invoked inside SupportsPlug()
+	SupportsPlugCallback func(iface *TestInterface, wp *workshop.Workshop, plug *sdk.PlugInfo) error
+	// SupportsSlotCallback is the called invoked inside SupportsSlot()
+	SupportsSlotCallback func(iface *TestInterface, wp *workshop.Workshop, slot *sdk.SlotInfo) error
+
 	BeforeConnectPlugCallback func(plug *interfaces.ConnectedPlug) error
 	BeforeConnectSlotCallback func(slot *interfaces.ConnectedSlot) error
 
@@ -85,6 +90,20 @@ func (t *TestInterface) BeforePreparePlug(plug *sdk.PlugInfo) error {
 func (t *TestInterface) BeforePrepareSlot(slot *sdk.SlotInfo) error {
 	if t.BeforePrepareSlotCallback != nil {
 		return t.BeforePrepareSlotCallback(slot)
+	}
+	return nil
+}
+
+func (t *TestInterface) SupportsPlug(sandbox *TestSandbox, plug *sdk.PlugInfo) error {
+	if t.SupportsPlugCallback != nil {
+		return t.SupportsPlugCallback(t, sandbox.Workshop, plug)
+	}
+	return nil
+}
+
+func (t *TestInterface) SupportsSlot(sandbox *TestSandbox, slot *sdk.SlotInfo) error {
+	if t.SupportsSlotCallback != nil {
+		return t.SupportsSlotCallback(t, sandbox.Workshop, slot)
 	}
 	return nil
 }

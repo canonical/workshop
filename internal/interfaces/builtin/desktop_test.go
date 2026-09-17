@@ -329,3 +329,18 @@ slots:
 
 	c.Assert(deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot), check.ErrorMatches, "desktop interface requires local X server")
 }
+
+func (s *desktopSuite) TestDesktopInterfaceRequiresContainer(c *check.C) {
+	plug := builtin.MockPlug(c, `name: consumer
+base: ubuntu@22.04
+plugs:
+ desktop:
+  interface: desktop
+`, s.projectId, "ws", "consumer", "desktop")
+
+	container := &lxd_device.Instance{Confinement: workshop.ConfinementContainer}
+	c.Check(container.SupportsPlug(s.iface, plug), check.IsNil)
+
+	vm := &lxd_device.Instance{Confinement: workshop.ConfinementVirtualMachine}
+	c.Check(vm.SupportsPlug(s.iface, plug), check.ErrorMatches, `desktop interface only available to containers`)
+}
