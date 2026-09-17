@@ -9,6 +9,7 @@ launched:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'false'
+    boot.mode: uefi-nosecureboot
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -44,6 +45,7 @@ started:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
+    boot.mode: uefi-nosecureboot
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -79,6 +81,7 @@ sdk-attached:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
+    boot.mode: uefi-nosecureboot
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -126,6 +129,7 @@ sdk-mounted:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
+    boot.mode: uefi-nosecureboot
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
