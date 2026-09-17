@@ -1499,7 +1499,14 @@ runcmd:
   # This does not introduce any additional modification beyond what a login session would normally create.
   - loginctl enable-linger workshop
 {{- if .HasGRUB}}
-  - update-grub
+# Instead of running update-grub (it's slow, and changes root=LABEL=... to
+# root=UUID=...), perform the 70-workshop.cfg changes directly. If the user
+# later runs update-grub, these changes will be preserved.
+  - >
+    sed -i -e '/^[[:space:]]*linux[[:space:]]/ {
+      s/$/ systemd.machine_id=${workshop_machine_id}/;
+      /[[:space:]]recovery[[:space:]]/! s/$/ quiet/
+    }' /boot/grub/grub.cfg
 {{- end}}
 {{- if .RebuildInitRAMFS}}
   - update-initramfs -u
