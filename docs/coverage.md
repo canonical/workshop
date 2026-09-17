@@ -161,6 +161,15 @@
                 <td><a href="reference/definition-files/_interfaces/tunnel.rst#L9">[tunnel.rst]</a><br><a href="reference/sdks.rst#L328">[sdks.rst]</a></td>
                 <td>SK033</td>
             </tr><tr>
+                <td>virtualization interface</td>
+                <td>interface</td>
+                <td>concept</td>
+                <td></td>
+                <td></td>
+                <td><a href="explanation/interfaces/virtualization-interface.rst#L12">[virtualization-interface.rst]</a></td>
+                <td></td>
+                <td></td>
+            </tr><tr>
                 <td>in-project SDK</td>
                 <td>project</td>
                 <td>concept</td>
