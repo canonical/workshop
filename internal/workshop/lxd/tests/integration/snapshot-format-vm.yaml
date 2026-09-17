@@ -17,6 +17,7 @@ launched:
       gid 1000000-1000999 0-999
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
+    raw.qemu: '-boot menu=on,splash-time=0'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -53,6 +54,7 @@ started:
       gid 1000000-1000999 0-999
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
+    raw.qemu: '-boot menu=on,splash-time=0'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -89,6 +91,7 @@ sdk-attached:
       gid 1000000-1000999 0-999
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
+    raw.qemu: '-boot menu=on,splash-time=0'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -137,6 +140,7 @@ sdk-mounted:
       gid 1000000-1000999 0-999
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
+    raw.qemu: '-boot menu=on,splash-time=0'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
