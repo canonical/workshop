@@ -153,7 +153,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "ad349bb4f92cd9d4054fd8c124c4999c6ad486e68fdce0c30746d604d35f8a3f824af1fb3f429c335177025f5a016b51")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "37348fe821e6d6bf10c6846ab2fc4cb8f00b6b36e52de57aea7d05e22d1ca7cf115d702e6f21add6da062e2839191a38")
 }
 
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {

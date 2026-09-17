@@ -1458,12 +1458,8 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 {{- if .HasGRUB}}
-  - path: /etc/grub.d/70_workshop
-    permissions: '0755'
+  - path: /boot/grub/custom.cfg
     content: |
-      #!/bin/sh
-      exec tail --lines=+4 "$0"
-
       # Extract SMBIOS UUID and store it in a GRUB variable. We use it to set
       # the systemd.machine_id kernel parameter to the LXD UUID, which forces
       # systemd to use it. By default it prefers reading the machine ID from
@@ -1474,6 +1470,7 @@ write_files:
   - path: /etc/default/grub.d/70-workshop.cfg
     content: |
       GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:+$GRUB_CMDLINE_LINUX }"'systemd.machine_id=${workshop_machine_id}'
+      GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT:+$GRUB_CMDLINE_LINUX_DEFAULT }quiet"
 {{- end}}
 runcmd:
   # Project directory is required for 'workshop exec'.
