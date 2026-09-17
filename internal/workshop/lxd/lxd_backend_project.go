@@ -20,18 +20,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
+	"syscall"
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
+	"golang.org/x/sys/unix"
 
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/workshop"
 )
+
+var mountinfoPath = "/proc/self/mountinfo"
 
 func lxdProjectConfig(username string) map[string]string {
 	return map[string]string{
@@ -263,6 +269,11 @@ func (s *Backend) pruneProjects(client lxd.InstanceServer, ctx context.Context, 
 	removed := make([]workshop.Project, 0, len(projects))
 	modified := false
 
+	mounts, err := osutil.LoadMountInfo(mountinfoPath)
+	if err != nil {
+		return nil, false, err
+	}
+
 	for _, prj := range projects {
 		if prj.Exists() {
 			pruned = append(pruned, prj)
@@ -272,7 +283,7 @@ func (s *Backend) pruneProjects(client lxd.InstanceServer, ctx context.Context, 
 		// If got here then there is no project directory for the projectId
 		// anymore. It can mean moving or deletion happened in the past. Try
 		// to recover the new project path.
-		path, err := s.projectFsRoot(client, ctx, prj.ProjectId)
+		path, err := s.projectFsRoot(client, ctx, mounts, prj.ProjectId)
 		if err != nil {
 			return nil, false, err
 		}
@@ -312,7 +323,7 @@ func (s *Backend) pruneProjects(client lxd.InstanceServer, ctx context.Context, 
 	return pruned, modified, nil
 }
 
-func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, projectId string) (path string, err error) {
+func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, mounts []*osutil.MountInfoEntry, projectId string) (path string, err error) {
 	args := lxd.GetInstancesArgs{
 		InstanceType: api.InstanceTypeContainer,
 		Filters:      []string{"config.user.workshop.project-id=" + projectId},
@@ -336,7 +347,7 @@ func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, pr
 			ExecArgs: workshop.ExecArgs{
 				UserId:  0,
 				GroupId: 0,
-				Command: []string{"findmnt", "--json", "--mountpoint", "/project", "--output", "fsroot"},
+				Command: []string{"findmnt", "--json", "--mountpoint", "/project", "--output", "maj:min,fsroot"},
 				WorkDir: "/",
 			},
 			ExecControls: workshop.ExecControls{
@@ -365,7 +376,8 @@ func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, pr
 
 		output := struct {
 			Filesystems []struct {
-				Fsroot string `json:"fsroot"`
+				Superblock string `json:"maj:min"`
+				Fsroot     string `json:"fsroot"`
 			} `json:"filesystems"`
 		}{}
 		if err = json.Unmarshal(outbuf.Bytes(), &output); err != nil {
@@ -375,14 +387,66 @@ func (s *Backend) projectFsRoot(conn lxd.InstanceServer, ctx context.Context, pr
 			logger.Debugf("cannot check %q bind-mounts: exactly one source required", i.Name)
 			continue
 		}
-		currentPath := output.Filesystems[0].Fsroot
 
-		/* check if the path is not deleted, i.e. the project directory still exists on the host */
-		if ok, isDir, err := osutil.ExistsIsDir(currentPath); ok && isDir {
-			return currentPath, nil
-		} else if err != nil && !osutil.IsDirNotExist(err) {
+		currentPath, err := hostProjectPath(mounts, projectId, output.Filesystems[0].Superblock, output.Filesystems[0].Fsroot)
+		if err != nil {
 			return "", err
 		}
+		if currentPath != "" {
+			return currentPath, nil
+		}
+	}
+	return "", nil
+}
+
+// hostProjectPath locates the project directory given the root of the
+// '/project' bind mount, as reported from inside a workshop.
+//
+// fsRoot is relative to the root of the superblock holding the project, so it
+// is a valid host path only when that filesystem happens to be mounted at "/".
+// Device numbers are not namespaced, unlike paths, so devID identifies the
+// filesystem to rebase fsRoot onto.
+//
+// Returns an empty path if the directory cannot be found.
+func hostProjectPath(mounts []*osutil.MountInfoEntry, projectId, superblock, fsroot string) (string, error) {
+	if !filepath.IsAbs(fsroot) || strings.HasSuffix(fsroot, "//deleted") {
+		return "", nil
+	}
+
+	for _, m := range mounts {
+		if fmt.Sprintf("%d:%d", m.DevMajor, m.DevMinor) != superblock {
+			continue
+		}
+		rel, ok := strings.CutPrefix(fsroot, strings.TrimSuffix(m.Root, "/"))
+		if !ok || (rel != "" && !strings.HasPrefix(rel, "/")) {
+			continue
+		}
+
+		path := filepath.Join(m.MountDir, rel)
+		info, err := os.Stat(path)
+		if err != nil {
+			if osutil.IsDirNotExist(err) {
+				continue
+			}
+			return "", err
+		}
+		if !info.IsDir() {
+			continue
+		}
+
+		// A filesystem mounted over the path, or a symlink leading out of it,
+		// resolves to a directory on a different superblock.
+		st, ok := info.Sys().(*syscall.Stat_t)
+		if !ok || fmt.Sprintf("%d:%d", unix.Major(st.Dev), unix.Minor(st.Dev)) != superblock {
+			continue
+		}
+
+		// The lock file travels with the directory, so it tells the project
+		// apart from anything else that now sits at the same path.
+		if id, err := os.ReadFile(workshop.LockPath(path)); err == nil && string(id) != projectId {
+			continue
+		}
+		return path, nil
 	}
 	return "", nil
 }

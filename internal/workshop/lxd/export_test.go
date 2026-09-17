@@ -14,6 +14,8 @@
 
 package lxdbackend
 
+import "github.com/canonical/workshop/internal/testutil"
+
 type CNAME = cname
 
 var (
@@ -41,3 +43,9 @@ var (
 	CauseDocker          = causeDocker
 	CauseUFW             = causeUFW
 )
+
+var HostProjectPath = hostProjectPath
+
+func FakeMountInfo(path string) func() {
+	return testutil.FakeFunc(path, &mountinfoPath)
+}
