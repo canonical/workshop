@@ -1403,6 +1403,8 @@ bootcmd:
   maybe_groupadd 990 render-compat-990
   maybe_groupadd 992 render-compat-992
 - chmod 0600 /etc/ssh/ssh_host_ed25519_key
+# Delay snap catalog refresh.
+- install -D --mode=0644 /dev/null /var/cache/snapd/names
 apt:
   conf: |
     # Installed by workshop
