@@ -1475,6 +1475,14 @@ write_files:
     content: |
       GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:+$GRUB_CMDLINE_LINUX }"'systemd.machine_id=${workshop_machine_id}'
 {{- end}}
+{{- if .RebuildInitRAMFS}}
+  # Removing unnecessary modules can speed up boot times, but rebuilding the
+  # initramfs slows down the first boot, and runs the risk of making the VM
+  # unbootable. Removing QEMU devices has a similar effect without the issues.
+  - path: /etc/initramfs-tools/conf.d/70-workshop.conf
+    content: |
+      MODULES=dep
+{{- end}}
 runcmd:
   # Project directory is required for 'workshop exec'.
   - install --directory --mode=755 /project /usr/local/bin /usr/local/lib/workshop {{shquote .WorkshopStateDir}}
@@ -1496,6 +1504,9 @@ runcmd:
 {{- if .HasGRUB}}
   - update-grub
 {{- end}}
+{{- if .RebuildInitRAMFS}}
+  - update-initramfs -u
+{{- end}}
 `[1:]
 
 	var cloudConfig strings.Builder
@@ -1511,12 +1522,14 @@ runcmd:
 	dot := struct {
 		FsFreezePath     string
 		HasGRUB          bool
+		RebuildInitRAMFS bool
 		StartTimeout     int64
 		WorkshopCtlPath  string
 		WorkshopStateDir string
 	}{
 		FsFreezePath:     fsFreezePath,
 		HasGRUB:          file.Confinement == workshop.ConfinementVirtualMachine,
+		RebuildInitRAMFS: false,
 		StartTimeout:     startTimeout.Nanoseconds(),
 		WorkshopCtlPath:  filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
 		WorkshopStateDir: dirs.WorkshopStateDir,
