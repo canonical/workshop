@@ -1563,6 +1563,9 @@ runcmd:
 
 		// Speeds up boot, and allows SDKs to install unsigned kernel modules.
 		cfg["boot.mode"] = "uefi-nosecureboot"
+
+		// Skip 3s pause in firmware boot menu.
+		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
 	}
 
 	return cfg, nil
