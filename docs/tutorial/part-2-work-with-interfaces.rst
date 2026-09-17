@@ -96,17 +96,19 @@ you can remount to a directory in your home:
 .. @artefact workshop remount
 
 .. code-block:: console
-   :emphasize-lines: 16-19
+   :emphasize-lines: 18-21
 
    $ mkdir -p ~/.ollama/models
    $ workshop remount dev/ollama:models ~/.ollama/models
    $ workshop info
 
-     name:     dev
-     base:     ubuntu@24.04
-     project:  /home/user/ollama-python-project
-     status:   ready
-     notes:    -
+     name:         dev
+     base:         ubuntu@24.04
+     project:      ~/ollama-python-project
+     hostname:     dev.ollama-python-project.wp
+     status:       ready
+     confinement:  container
+     notes:        -
      sdks:
        system:
          installed:  (1)
@@ -115,7 +117,7 @@ you can remount to a directory in your home:
          installed:  0.9.6  2025-11-19  (214)
          mounts:
            models:
-             host-source:      /home/user/.ollama/models
+             host-source:      ~/.ollama/models
              workshop-target:  /home/workshop/.ollama/models
 
 

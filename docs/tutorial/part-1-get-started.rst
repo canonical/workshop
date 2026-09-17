@@ -311,11 +311,13 @@ to see what went into your workshop:
 
    $ workshop info
 
-     name:     dev
-     base:     ubuntu@22.04
-     project:  /home/user/ollama-python-project
-     status:   ready
-     notes:    -
+     name:         dev
+     base:         ubuntu@22.04
+     project:      ~/ollama-python-project
+     hostname:     dev.ollama-python-project.wp
+     status:       ready
+     confinement:  container
+     notes:        -
      sdks:
        system:
          installed:  (1)

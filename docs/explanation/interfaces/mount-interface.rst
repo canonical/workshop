@@ -133,15 +133,17 @@ This means a source directory is mounted to the target:
 .. @artefact workshop info
 
 .. code-block:: console
-   :emphasize-lines: 13
+   :emphasize-lines: 15
 
    $ workshop info ws
 
-     name:     ws
-     base:     ubuntu@22.04
-     project:  /home/user/workshops/ws
-     status:   ready
-     notes:    -
+     name:         ws
+     base:         ubuntu@22.04
+     project:      ~/workshops/ws
+     hostname:     ws.ws.wp
+     status:       ready
+     confinement:  container
+     notes:        -
      sdks:
        mount-sdk:
          tracking:   latest/edge

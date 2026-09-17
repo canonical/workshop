@@ -442,7 +442,12 @@ each in its own subdirectory of the same suite:
    summary: SDK installs and reports healthy
    execute: |
      workshop launch --verbose --wait-on-error
-     workshop info | grep -E 'status:\s+okay'
+     workshop info | grep -E 'status:\s+ready'
+
+
+A workshop only reaches :samp:`ready`
+once every :samp:`check-health` hook has reported :samp:`okay`,
+so the status check doubles as a health assertion.
 
 
 Iterate

@@ -191,13 +191,16 @@ provided by :samp:`service-sdk`.
 
    $ workshop info dev
 
-     name:     dev
-     base:     ubuntu@22.04
-     project:  /home/user/workshop/dev
-     status:   ready
-     notes:    -
+     name:         dev
+     base:         ubuntu@22.04
+     project:      ~/workshop/dev
+     hostname:     dev.dev.wp
+     status:       ready
+     confinement:  container
+     notes:        -
      sdks:
        system:
+         installed:  (1)
          tunnels:
            app:
              from:  0.0.0.0:8081/tcp

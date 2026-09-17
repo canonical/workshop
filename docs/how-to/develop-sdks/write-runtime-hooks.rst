@@ -245,10 +245,13 @@ Confirm:
 
    $ workshop info dev
 
-     name:     dev
-     base:     ubuntu@22.04
-     project:  /home/user/workshop/dev
-     status:   ready
+     name:         dev
+     base:         ubuntu@22.04
+     project:      ~/workshop/dev
+     hostname:     dev.dev.wp
+     status:       ready
+     confinement:  container
+     ...
 
 
 :samp:`save-state` and :samp:`restore-state` only run

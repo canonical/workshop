@@ -55,11 +55,13 @@ Then find the workshop hostname:
 
    $ workshop info
 
-   name:      dev
-   base:      ubuntu@24.04
-   project:   ~/my-project
-   hostname:  dev.my-project.wp
-   ...
+     name:         dev
+     base:         ubuntu@24.04
+     project:      ~/my-project
+     hostname:     dev.my-project.wp
+     status:       ready
+     confinement:  container
+     ...
 
 
 Use the hostname from the :command:`workshop info` output
