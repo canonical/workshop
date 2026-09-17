@@ -14,6 +14,8 @@
 
 package lxdbackend
 
+import "github.com/canonical/workshop/internal/testutil"
+
 type CNAME = cname
 
 var (
@@ -55,4 +57,10 @@ func MockStoragePool(name, driver string) (restore func()) {
 	oldName, oldDriver := storagePool, storagePoolDriver
 	storagePool, storagePoolDriver = name, driver
 	return func() { storagePool, storagePoolDriver = oldName, oldDriver }
+}
+
+var HostProjectPath = hostProjectPath
+
+func FakeMountInfo(path string) func() {
+	return testutil.FakeFunc(path, &mountinfoPath)
 }
