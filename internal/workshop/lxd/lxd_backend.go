@@ -1566,6 +1566,21 @@ runcmd:
 
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
+
+		// Remove devices to speed up firmware and udev.
+		cfg["raw.qemu.conf"] = `
+[device "qemu_gpu"]
+[device "qemu_usb"]
+[device "qemu_spice-usb1"]
+[device "qemu_spice-usb2"]
+[device "qemu_spice-usb3"]
+[device "qemu_tablet"]
+
+[machine]
+i8042 = "off"
+hpet = "off"
+sata = "off"
+`[1:]
 	}
 
 	return cfg, nil

@@ -18,6 +18,18 @@ launched:
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
     raw.qemu: '-boot menu=on,splash-time=0'
+    raw.qemu.conf: |
+      [device "qemu_gpu"]
+      [device "qemu_usb"]
+      [device "qemu_spice-usb1"]
+      [device "qemu_spice-usb2"]
+      [device "qemu_spice-usb3"]
+      [device "qemu_tablet"]
+
+      [machine]
+      i8042 = "off"
+      hpet = "off"
+      sata = "off"
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -55,6 +67,18 @@ started:
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
     raw.qemu: '-boot menu=on,splash-time=0'
+    raw.qemu.conf: |
+      [device "qemu_gpu"]
+      [device "qemu_usb"]
+      [device "qemu_spice-usb1"]
+      [device "qemu_spice-usb2"]
+      [device "qemu_spice-usb3"]
+      [device "qemu_tablet"]
+
+      [machine]
+      i8042 = "off"
+      hpet = "off"
+      sata = "off"
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -92,6 +116,18 @@ sdk-attached:
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
     raw.qemu: '-boot menu=on,splash-time=0'
+    raw.qemu.conf: |
+      [device "qemu_gpu"]
+      [device "qemu_usb"]
+      [device "qemu_spice-usb1"]
+      [device "qemu_spice-usb2"]
+      [device "qemu_spice-usb3"]
+      [device "qemu_tablet"]
+
+      [machine]
+      i8042 = "off"
+      hpet = "off"
+      sata = "off"
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -141,6 +177,18 @@ sdk-mounted:
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
     raw.qemu: '-boot menu=on,splash-time=0'
+    raw.qemu.conf: |
+      [device "qemu_gpu"]
+      [device "qemu_usb"]
+      [device "qemu_spice-usb1"]
+      [device "qemu_spice-usb2"]
+      [device "qemu_spice-usb3"]
+      [device "qemu_tablet"]
+
+      [machine]
+      i8042 = "off"
+      hpet = "off"
+      sata = "off"
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
