@@ -66,16 +66,14 @@ var cloudConfigTemplate = sync.OnceValues(parseCloudConfigTemplate)
 // template of the workshop described by file.
 func makeCloudConfigVars(file *workshop.File) cloudConfigVars {
 	var fsFreezePath string
-	startTimeout := startTimeoutContainer
 	if file.Runtime != workshop.RuntimeLXDContainer {
 		fsFreezePath = dirs.FsFreezePath
-		startTimeout = startTimeoutVM
 	}
 	return cloudConfigVars{
-		FsFreezePath:   fsFreezePath,
-		HasGRUB:        file.Runtime == workshop.RuntimeLXDVM,
+		FsFreezePath: fsFreezePath,
+		HasGRUB:      file.Runtime == workshop.RuntimeLXDVM,
 		ShmemHugePages: file.Runtime == workshop.RuntimeLXDVM,
-		StartTimeout:   startTimeout.Nanoseconds(),
+		StartTimeout: waitreadyStallTimeout.Nanoseconds(),
 		WorkshopCtlPath: filepath.Join(
 			dirs.WorkshopGuestBinDir,
 			filepath.Base(dirs.WorkshopCtlPath),
