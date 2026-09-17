@@ -15,6 +15,7 @@
 package lxdbackend
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"embed"
@@ -67,8 +68,37 @@ const (
 	// workshops, exported for use by other packages (e.g. firewall checks).
 	NetworkBridgeName = networkName
 
-	startTimeoutContainer = 5 * time.Minute
-	startTimeoutVM        = 10 * time.Minute
+	// waitreadyStallTimeout bounds how long a boot may make no observable
+	// progress, not how long it may take. The guest applies it between systemd
+	// job completions, so it only needs to cover the slowest single unit rather
+	// than a whole boot. The longest gap measures around three seconds here,
+	// but CI nests a workshop inside a spread VM inside a runner VM, so the
+	// budget allows for being orders of magnitude slower than that.
+	waitreadyStallTimeout = 10 * time.Minute
+
+	// startProbeInterval is how often a start that has seen no lifecycle event
+	// asks the guest whether it is still working.
+	startProbeInterval = 30 * time.Second
+
+	// startContactTimeout bounds how long a start may go without the guest
+	// confirming that it is working. Nothing before the LXD agent starts is
+	// visible to us, as VM consoles are a live socket rather than a log, so a
+	// workshop wedged in firmware looks exactly like one that is booting
+	// slowly. Under CI's nesting the agent stays out of reach for most of a
+	// boot that can run for over fifteen minutes.
+	startContactTimeout = 30 * time.Minute
+)
+
+// guestProgress is what the guest can tell us about a boot in progress.
+type guestProgress int
+
+const (
+	// guestUnknown means the guest could not be asked, or has not started
+	// waiting yet. Before the agent appears, and on a first boot before
+	// cloud-init has enabled the unit, this is the normal state.
+	guestUnknown guestProgress = iota
+	guestWorking
+	guestStopped
 )
 
 var (
@@ -693,13 +723,8 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 		return fmt.Errorf("context key project-id not found")
 	}
 
-	inst, _, err := conn.GetInstance(InstanceName(name, projectId))
-	if err != nil {
+	if _, _, err := conn.GetInstance(InstanceName(name, projectId)); err != nil {
 		return err
-	}
-	timeout := startTimeoutContainer
-	if inst.Type != string(api.InstanceTypeContainer) {
-		timeout = startTimeoutVM
 	}
 
 	rev := revert.New()
@@ -718,7 +743,7 @@ func (s *Backend) startWorkshop(conn lxd.InstanceServer, ctx context.Context, na
 		return err
 	}
 
-	if err := s.awaitReadyEvent(conn, ctx, name, timeout); err != nil {
+	if err := s.awaitReadyEvent(conn, ctx, name, startContactTimeout); err != nil {
 		return err
 	}
 
@@ -742,8 +767,14 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 	instance := InstanceName(name, projectId)
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
+	// The probe only runs when no lifecycle event has arrived, and a guest that
+	// reports progress keeps the start alive indefinitely.
+	probe := time.NewTicker(startProbeInterval)
+	defer probe.Stop()
+
+	// Nothing about the boot is visible until the guest can be asked, so that
+	// wait is bounded separately from the boot itself.
+	contact := time.Now().Add(timeout)
 
 	listener, err := conn.GetEvents()
 	if err != nil {
@@ -775,6 +806,31 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 		select {
 		case event := <-events:
 			ready, err = s.isReadyEvent(event, instance)
+		case <-probe.C:
+			ready, err = s.isInstanceReady(conn, instance)
+			if err != nil {
+				return err
+			}
+			if ready {
+				return nil
+			}
+			switch s.waitreadyProgress(conn, ctx, name) {
+			case guestStopped:
+				// waitready can exit just as the probe runs, so the flag gets
+				// the last word before the start is failed.
+				ready, err = s.isInstanceReady(conn, instance)
+				if err != nil {
+					return err
+				}
+				if ready {
+					return nil
+				}
+				return fmt.Errorf("workshop %q stopped making progress", name)
+			case guestUnknown:
+				if time.Now().After(contact) {
+					return fmt.Errorf("workshop %q did not report progress within %s", name, timeout)
+				}
+			}
 		case <-ctx.Done():
 			ready, err := s.isInstanceReady(conn, instance)
 			if err == nil && ready {
@@ -782,6 +838,56 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 			}
 			return ctx.Err()
 		}
+	}
+}
+
+// waitreadyProgress asks the guest whether its waitready unit is still working.
+// waitready applies a stall timeout of its own and fails the unit when it
+// expires, so a unit that is still running means the guest considers the boot
+// to be advancing.
+func (s *Backend) waitreadyProgress(conn lxd.InstanceServer, ctx context.Context, name string) guestProgress {
+	var stdout bytes.Buffer
+	exectx, err := s.execCommand(conn, ctx, name, &workshop.Execution{
+		ExecArgs: workshop.ExecArgs{
+			Command: []string{"systemctl", "show", "-p", "ActiveState", "-p", "NRestarts", "workshop-waitready.service"},
+		},
+		ExecControls: workshop.ExecControls{
+			Stdout: &stdout,
+		},
+	})
+	if err != nil {
+		return guestUnknown
+	}
+
+	if err := exectx.WaitExecution(ctx); err != nil {
+		return guestUnknown
+	}
+
+	// systemd does not report these in the order they were requested.
+	props := map[string]string{}
+	for line := range strings.SplitSeq(strings.TrimSpace(stdout.String()), "\n") {
+		key, value, ok := strings.Cut(strings.TrimSpace(line), "=")
+		if ok {
+			props[key] = value
+		}
+	}
+
+	// waitready gives up by exiting non-zero, which systemd turns into a
+	// restart. Counting those stops a guest that is stalled but still dutifully
+	// restarting from extending the wait forever.
+	if props["NRestarts"] != "0" {
+		return guestStopped
+	}
+
+	switch props["ActiveState"] {
+	case "active", "activating", "reloading":
+		return guestWorking
+	case "failed":
+		return guestStopped
+	default:
+		// systemd reports a unit it has never heard of as inactive, which is
+		// what a first boot looks like until runcmd enables it.
+		return guestUnknown
 	}
 }
 
@@ -1502,10 +1608,8 @@ runcmd:
 		"shquote": shlex.Quote,
 	}
 	var fsFreezePath string
-	startTimeout := startTimeoutContainer
 	if file.Runtime != workshop.RuntimeLXDContainer {
 		fsFreezePath = dirs.FsFreezePath
-		startTimeout = startTimeoutVM
 	}
 	dot := struct {
 		FsFreezePath     string
@@ -1516,7 +1620,7 @@ runcmd:
 	}{
 		FsFreezePath:     fsFreezePath,
 		HasGRUB:          file.Runtime == workshop.RuntimeLXDVM,
-		StartTimeout:     startTimeout.Nanoseconds(),
+		StartTimeout:     waitreadyStallTimeout.Nanoseconds(),
 		WorkshopCtlPath:  filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
 		WorkshopStateDir: dirs.WorkshopStateDir,
 	}

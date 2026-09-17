@@ -30,7 +30,11 @@ import (
 	"github.com/canonical/workshop/internal/systemd"
 )
 
-var Timeout = 5 * time.Minute
+// Timeout bounds how long the boot may make no observable progress, not how
+// long it may take in total. A slow but advancing boot is never interrupted.
+// The host overrides this via WORKSHOP_WAITREADY_TIMEOUT_NS; it only applies
+// when waitready is run by hand.
+var Timeout = 10 * time.Minute
 
 // IsWaitreadyInvocation reports whether the process was invoked via a symlink
 // named waitready. This allows multiple logically unrelated commands to be
@@ -51,7 +55,10 @@ func WaitReady() error {
 		timeout = time.Duration(timeoutNS) * time.Nanosecond
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	// The deadline is enforced per stall rather than over the whole boot, so
+	// it cannot be applied to the context. A hung connect is instead bounded
+	// by systemd, which kills the unit if it never reports READY=1.
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	server, err := lxd.ConnectDevLXDWithContext(ctx, "/dev/lxd/sock", nil)
@@ -68,7 +75,7 @@ func WaitReady() error {
 		return err
 	}
 
-	if err := waitReady(ctx); err != nil {
+	if err := waitReady(ctx, timeout); err != nil {
 		return err
 	}
 
@@ -82,22 +89,28 @@ func maybeSdNotifyReady() error {
 	return systemd.SdNotify("READY=1")
 }
 
-func waitReady(ctx context.Context) error {
+func waitReady(ctx context.Context, timeout time.Duration) error {
 	conn, err := dbus.ConnectSystemBus()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	signal := make(chan *dbus.Signal, 8)
+	// JobRemoved arrives once per unit that finishes starting, so it is a
+	// steady stream while the boot advances and stops when it stalls. The
+	// buffer is sized for that stream: godbus delivers overflow from a new
+	// goroutine per signal rather than dropping it.
+	signal := make(chan *dbus.Signal, 256)
 	conn.Signal(signal)
 
-	options := []dbus.MatchOption{
-		dbus.WithMatchInterface("org.freedesktop.systemd1.Manager"),
-		dbus.WithMatchMember("StartupFinished"),
-	}
-	if err := conn.AddMatchSignalContext(ctx, options...); err != nil {
-		return err
+	for _, member := range []string{"StartupFinished", "JobRemoved"} {
+		options := []dbus.MatchOption{
+			dbus.WithMatchInterface("org.freedesktop.systemd1.Manager"),
+			dbus.WithMatchMember(member),
+		}
+		if err := conn.AddMatchSignalContext(ctx, options...); err != nil {
+			return err
+		}
 	}
 
 	manager := conn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
@@ -118,6 +131,9 @@ func waitReady(ctx context.Context) error {
 		return nil
 	}
 
+	stall := time.NewTimer(timeout)
+	defer stall.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -126,10 +142,23 @@ func waitReady(ctx context.Context) error {
 			if sig == nil {
 				return errors.New("bus connection closed unexpectedly")
 			}
-			if sig.Name != "org.freedesktop.systemd1.Manager.StartupFinished" {
-				continue
+			switch sig.Name {
+			case "org.freedesktop.systemd1.Manager.StartupFinished":
+				return nil
+			case "org.freedesktop.systemd1.Manager.JobRemoved":
+				stall.Reset(timeout)
 			}
-			return nil
+		case <-stall.C:
+			// Signals are queued, so systemd may have finished booting while
+			// this one was still behind a backlog of JobRemoved signals.
+			ready, err := isReady(manager)
+			if err != nil {
+				return err
+			}
+			if ready {
+				return nil
+			}
+			return fmt.Errorf("boot made no progress for %s", timeout)
 		}
 	}
 }
