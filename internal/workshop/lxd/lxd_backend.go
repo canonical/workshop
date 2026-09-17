@@ -460,7 +460,7 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 	req := api.InstancesPost{
 		InstancePut: api.InstancePut{
 			Config:  config,
-			Devices: defaultDevices(usr, projectId, file.Name, file.Runtime),
+			Devices: defaultDevices(usr, projectId, file.Name, file.Runtime, vmRootDiskSize(conn, file.Runtime)),
 		},
 		Name: InstanceName(file.Name, projectId),
 		Type: instanceType(file.Runtime),
@@ -1423,10 +1423,16 @@ func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {
 	return ConnectLxd(ctx)
 }
 
-func defaultDevices(usr *user.User, pid, w string, runtime workshop.Runtime) map[string]map[string]string {
+func defaultDevices(usr *user.User, pid, w string, runtime workshop.Runtime, rootSize uint64) map[string]map[string]string {
 	devices := map[string]map[string]string{
 		"root":             {"type": "disk", "pool": storagePool, "path": "/"},
 		"workshop.network": {"type": "nic", "network": networkName, "name": "eth0"},
+	}
+
+	// Only VMs get a root disk quota; a container's root filesystem simply
+	// grows into the pool.
+	if runtime == workshop.RuntimeLXDVM && rootSize > 0 {
+		devices["root"]["size"] = strconv.FormatUint(rootSize, 10)
 	}
 
 	mounts, proxies := workshop.DefaultDevices(pid, w)
@@ -1725,6 +1731,10 @@ i8042 = "off"
 hpet = "off"
 sata = "off"
 `[1:]
+
+		// LXD would otherwise give the VM one core and 1 GiB, which is not
+		// enough to run a development environment.
+		maps.Copy(cfg, vmLimitsConfig())
 	}
 
 	return cfg, nil

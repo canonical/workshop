@@ -44,6 +44,14 @@ var (
 	CauseUFW             = causeUFW
 )
 
+// Exported for testing VM resource defaults.
+var (
+	DefaultVMLimits       = defaultVMLimits
+	VMLimitsConfig        = vmLimitsConfig
+	DefaultVMRootDiskSize = defaultVMRootDiskSize
+	DefaultDevices        = defaultDevices
+)
+
 var HostProjectPath = hostProjectPath
 
 func FakeMountInfo(path string) func() {
