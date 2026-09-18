@@ -9,6 +9,7 @@ launched:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'false'
+    boot.mode: uefi-nosecureboot
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -16,6 +17,19 @@ launched:
       gid 1000000-1000999 0-999
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
+    raw.qemu: '-boot menu=on,splash-time=0'
+    raw.qemu.conf: |
+      [device "qemu_gpu"]
+      [device "qemu_usb"]
+      [device "qemu_spice-usb1"]
+      [device "qemu_spice-usb2"]
+      [device "qemu_spice-usb3"]
+      [device "qemu_tablet"]
+
+      [machine]
+      i8042 = "off"
+      hpet = "off"
+      sata = "off"
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -44,6 +58,7 @@ started:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
+    boot.mode: uefi-nosecureboot
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -51,6 +66,19 @@ started:
       gid 1000000-1000999 0-999
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
+    raw.qemu: '-boot menu=on,splash-time=0'
+    raw.qemu.conf: |
+      [device "qemu_gpu"]
+      [device "qemu_usb"]
+      [device "qemu_spice-usb1"]
+      [device "qemu_spice-usb2"]
+      [device "qemu_spice-usb3"]
+      [device "qemu_tablet"]
+
+      [machine]
+      i8042 = "off"
+      hpet = "off"
+      sata = "off"
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -79,6 +107,7 @@ sdk-attached:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
+    boot.mode: uefi-nosecureboot
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -86,6 +115,19 @@ sdk-attached:
       gid 1000000-1000999 0-999
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
+    raw.qemu: '-boot menu=on,splash-time=0'
+    raw.qemu.conf: |
+      [device "qemu_gpu"]
+      [device "qemu_usb"]
+      [device "qemu_spice-usb1"]
+      [device "qemu_spice-usb2"]
+      [device "qemu_spice-usb3"]
+      [device "qemu_tablet"]
+
+      [machine]
+      i8042 = "off"
+      hpet = "off"
+      sata = "off"
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -126,6 +168,7 @@ sdk-mounted:
   config:
     agent.nic_config: 'true'
     boot.autostart: 'true'
+    boot.mode: uefi-nosecureboot
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -133,6 +176,19 @@ sdk-mounted:
       gid 1000000-1000999 0-999
       gid 1000 1000
       gid 1001001-1000999999 1001-999999999
+    raw.qemu: '-boot menu=on,splash-time=0'
+    raw.qemu.conf: |
+      [device "qemu_gpu"]
+      [device "qemu_usb"]
+      [device "qemu_spice-usb1"]
+      [device "qemu_spice-usb2"]
+      [device "qemu_spice-usb3"]
+      [device "qemu_tablet"]
+
+      [machine]
+      i8042 = "off"
+      hpet = "off"
+      sata = "off"
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
