@@ -15,6 +15,7 @@
 package ifacestate_test
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/interfaces/builtin"
+	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/overlord/ifacestate"
 	"github.com/canonical/workshop/internal/overlord/ifacestate/schema"
@@ -43,6 +45,7 @@ type interfaceHandlersSuite struct {
 	user                    *user.User
 	restoreSimple           func()
 	restoreDeny             func()
+	restoreSandboxSpecific  func()
 	restoreSecurityBackends func()
 	restoreUserLookup       func()
 	restoreUserEnv          func()
@@ -89,6 +92,19 @@ slots:
     interface: mock-network
   slot-ssh:
     interface: mock-ssh-agent
+`,
+}
+
+var producerSandboxSpecific = sdk.Meta{
+	Setup: producer.Setup,
+	SdkYAML: `name: producer
+base: ubuntu@22.04
+slots:
+  slot:
+    interface: mock-gpu
+    requires: virtual-machine
+  slot-supported:
+    interface: mock-gpu
 `,
 }
 
@@ -171,6 +187,20 @@ plugs:
 `,
 }
 
+var consumerSandboxSpecific = sdk.Meta{
+	Setup: consumer.Setup,
+	SdkYAML: `name: consumer
+base: ubuntu@22.04
+plugs:
+  plug:
+    interface: mock-gpu
+    requires: virtual-machine
+  plug-supported:
+    interface: mock-gpu
+    requires: container
+`,
+}
+
 var consumer2 = sdk.Meta{
 	Setup: sdk.Setup{
 		Name:      "consumer2",
@@ -226,6 +256,7 @@ func (s *interfaceHandlersSuite) SetUpTest(c *check.C) {
 	s.interfaceManagerSuite.SetUpTest(c)
 	s.restoreSimple = builtin.MockInterface(simpleIface{name: "mock-network"})
 	s.restoreDeny = builtin.MockInterface(denyAutoIface{name: "mock-ssh-agent"})
+	s.restoreSandboxSpecific = builtin.MockInterface(sandboxSpecificIface{name: "mock-gpu"})
 
 	// Real UID and GID are required to create source directories on remount.
 	// TODO: make filesystem operations more secure (e.g. drop privileges if possible) and easy to test.
@@ -263,6 +294,7 @@ func (s *interfaceHandlersSuite) SetUpTest(c *check.C) {
 func (s *interfaceHandlersSuite) TearDownTest(c *check.C) {
 	s.restoreSimple()
 	s.restoreDeny()
+	s.restoreSandboxSpecific()
 	s.restoreSecurityBackends()
 	s.restoreUserEnv()
 	s.restoreUserLookup()
@@ -293,6 +325,35 @@ type denyAutoIface struct {
 
 func (di denyAutoIface) Name() string                                            { return di.name }
 func (di denyAutoIface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool { return false }
+
+type sandboxSpecificIface struct {
+	name string
+}
+
+func (di sandboxSpecificIface) Name() string                                            { return di.name }
+func (di sandboxSpecificIface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool { return true }
+func (di sandboxSpecificIface) SupportsPlug(sandbox *ifacetest.TestSandbox, plug *sdk.PlugInfo) error {
+	return checkRequirement(sandbox, plug)
+}
+func (di sandboxSpecificIface) SupportsSlot(sandbox *ifacetest.TestSandbox, slot *sdk.SlotInfo) error {
+	return checkRequirement(sandbox, slot)
+}
+
+func checkRequirement(sandbox *ifacetest.TestSandbox, attrs interfaces.Attrer) error {
+	var requires string
+	err1 := attrs.Attr("requires", &requires)
+	confinement, err2 := sandbox.Workshop.File.Confinement.MarshalText()
+	if _, ok := errors.AsType[*sdk.AttributeNotFoundError](err1); ok {
+		return nil
+	} else if err := cmp.Or(err1, err2); err != nil {
+		return err
+	}
+
+	if string(confinement) != requires {
+		return fmt.Errorf("%q confinement required", requires)
+	}
+	return nil
+}
 
 func (s *interfaceHandlersSuite) newAutoconnectChange(sk string) *state.Change {
 	chg := s.state.NewChange("sample", "...")
@@ -498,6 +559,55 @@ func (s *interfaceHandlersSuite) TestAutoconnectBindMasterPlugNotFound(c *check.
 	ref, err := repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
 	c.Check(ref, check.HasLen, 0)
 	c.Check(err, check.IsNil)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectSkipsUnsupported(c *check.C) {
+	// Setup
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producerSandboxSpecific})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producerSandboxSpecific.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumerSandboxSpecific})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerSandboxSpecific.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Assert(chg.Err(), check.IsNil)
+
+	// Validate
+	ref, err := repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug")
+	c.Assert(err, check.IsNil)
+	c.Check(ref, check.HasLen, 0)
+
+	ref, err = repo.Connected(s.prj.ProjectId, "ws", "consumer", "plug-supported")
+	c.Assert(err, check.IsNil)
+	c.Check(ref, check.HasLen, 1)
+
+	ref, err = repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
+	c.Assert(err, check.IsNil)
+	c.Check(ref, check.HasLen, 0)
+
+	ref, err = repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot-supported")
+	c.Assert(err, check.IsNil)
+	c.Check(ref, check.HasLen, 1)
+
+	var conns map[string]any
+	err = s.state.Get("conns", &conns)
+	c.Assert(err, check.IsNil)
+	c.Check(conns, check.DeepEquals, map[string]any{
+		"42424242/ws/consumer:plug-supported 42424242/ws-producer/producer:slot-supported": map[string]any{
+			"interface":   "mock-gpu",
+			"auto":        true,
+			"plug-static": map[string]any{"requires": "container"},
+		},
+	})
 }
 
 func (s *interfaceHandlersSuite) TestAutoconnectBackendSetupFail(c *check.C) {
@@ -2334,6 +2444,38 @@ func (s *interfaceHandlersSuite) TestConnectSuccessSetupBackend(c *check.C) {
 
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 2)
 	c.Assert(s.secBackend.RemoveCalls, check.HasLen, 0)
+}
+
+func (s *interfaceHandlersSuite) TestConnectUnsupportedFails(c *check.C) {
+	// Setup
+	s.launchWorkshop(c, "ws", []sdk.Meta{consumerSandboxSpecific, producerSandboxSpecific})
+	repo := s.mgr.Repository()
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, consumerSandboxSpecific.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producerSandboxSpecific.SdkYAML, s.prj.ProjectId, "ws")), check.IsNil)
+
+	// Execute
+	chg := s.connectChange("ws", false, false)
+	s.settle(c)
+
+	// Validate
+	s.state.Lock()
+	err := chg.Err()
+	s.state.Unlock()
+	c.Check(err, check.ErrorMatches, `(?s).*\("virtual-machine" confinement required\)`)
+
+	// Setup (to check slot instead)
+	repo.Plug(s.prj.ProjectId, "ws", "consumer", "plug").Attrs["requires"] = "container"
+	repo.Slot(s.prj.ProjectId, "ws", "producer", "slot").Attrs["requires"] = "microvm"
+
+	// Execute
+	chg = s.connectChange("ws", false, false)
+	s.settle(c)
+
+	// Validate
+	s.state.Lock()
+	err = chg.Err()
+	s.state.Unlock()
+	c.Check(err, check.ErrorMatches, `(?s).*\("microvm" confinement required\)`)
 }
 
 func (s *interfaceHandlersSuite) TestConnectDisconnectsIfBackedSetupFailed(c *check.C) {

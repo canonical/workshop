@@ -221,10 +221,8 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 	mountProject := st.NewTask("mount-project", fmt.Sprintf("Mount project directory %q", project.Path))
 	addTaskSet(state.NewTaskSet(mountProject))
 
-	if manifest.File.Confinement == workshop.ConfinementContainer {
-		connect := autoconnectSdks(st, manifest.File.Name, manifest.Sdks)
-		addTaskSet(connect)
-	}
+	connect := autoconnectSdks(st, manifest.File.Name, manifest.Sdks)
+	addTaskSet(connect)
 
 	setupProject := runHooks(st, manifest.Sdks, 0, hookstate.SetupProject)
 	addTaskSet(setupProject)
@@ -435,7 +433,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	install := installSdks(st, newSdks)
 	addTaskSet(install)
 
-	if option == conflict.RefreshUpdate && latest.File.Confinement == workshop.ConfinementContainer {
+	if option == conflict.RefreshUpdate {
 		restoreConns := st.NewTask("restore-conns", fmt.Sprintf("Restore %q undesired connections", latest.File.Name))
 		restoreConns.Set("discard-conns-task", discard.ID())
 		addTaskSet(state.NewTaskSet(restoreConns))
@@ -447,10 +445,8 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	mountProject := st.NewTask("mount-project", fmt.Sprintf("Mount project directory %q", project.Path))
 	addTaskSet(state.NewTaskSet(mountProject))
 
-	if latest.File.Confinement == workshop.ConfinementContainer {
-		connect := autoconnectSdks(st, latest.File.Name, latest.Sdks)
-		addTaskSet(connect)
-	}
+	connect := autoconnectSdks(st, latest.File.Name, latest.Sdks)
+	addTaskSet(connect)
 
 	setupProject := runHooks(st, latest.Sdks, 0, hookstate.SetupProject)
 	addTaskSet(setupProject)

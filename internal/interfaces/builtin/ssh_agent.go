@@ -20,6 +20,7 @@
 package builtin
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -71,6 +72,13 @@ func (iface *sshAgentInterface) StaticInfo() interfaces.StaticInfo {
 
 func (iface *sshAgentInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool {
 	return true
+}
+
+func (iface *sshAgentInterface) LxdDeviceSupportsPlug(instance *lxd_device.Instance, plug *sdk.PlugInfo) error {
+	if instance.Confinement != workshop.ConfinementContainer {
+		return errors.New("ssh-agent interface only available to containers")
+	}
+	return nil
 }
 
 func (iface *sshAgentInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {

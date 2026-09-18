@@ -888,6 +888,30 @@ func (b *Backend) NewSpecification(user string, sdk string) (interfaces.Specific
 	return NewSpecification(user, sdk)
 }
 
+type Instance struct {
+	Confinement workshop.Confinement
+}
+
+func (b *Backend) NewSandbox(w *workshop.Workshop) interfaces.Sandbox {
+	return &Instance{Confinement: w.File.Confinement}
+}
+
+// SupportsPlug checks if the given plug makes sense to connect.
+func (i *Instance) SupportsPlug(iface interfaces.Interface, plug *sdk.PlugInfo) error {
+	if iface, ok := iface.(PlugSupporter); ok {
+		return iface.LxdDeviceSupportsPlug(i, plug)
+	}
+	return nil
+}
+
+// SupportsSlot checks if the given slot makes sense to connect.
+func (i *Instance) SupportsSlot(iface interfaces.Interface, slot *sdk.SlotInfo) error {
+	if iface, ok := iface.(SlotSupporter); ok {
+		return iface.LxdDeviceSupportsSlot(i, slot)
+	}
+	return nil
+}
+
 func MockWorkshopFs(f func(conn lxd.InstanceServer, pid, w string) (fsutil.Fs, error)) func() {
 	old := workshopFs
 	workshopFs = f

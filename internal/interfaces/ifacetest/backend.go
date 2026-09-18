@@ -26,6 +26,7 @@ import (
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 // TestSecurityBackend is a security backend intended for testing.
@@ -48,6 +49,10 @@ type TestSecurityBackend struct {
 type TestSetupCall struct {
 	// SdkInfo is a copy of the sdkRef argument to a particular call to Setup
 	SdkRef sdk.Ref
+}
+
+type TestSandbox struct {
+	Workshop *workshop.Workshop
 }
 
 // Initialize does nothing.
@@ -90,6 +95,32 @@ func (b *TestSecurityBackend) NewSpecification(user string, sdk string) (interfa
 		return nil, err
 	}
 	return &Specification{user: usr, sdk: sdk}, nil
+}
+
+func (b *TestSecurityBackend) NewSandbox(w *workshop.Workshop) interfaces.Sandbox {
+	return &TestSandbox{Workshop: w}
+}
+
+func (s *TestSandbox) SupportsPlug(iface interfaces.Interface, plug *sdk.PlugInfo) error {
+	type supporter interface {
+		SupportsPlug(*TestSandbox, *sdk.PlugInfo) error
+	}
+	i, ok := iface.(supporter)
+	if ok {
+		return i.SupportsPlug(s, plug)
+	}
+	return nil
+}
+
+func (s *TestSandbox) SupportsSlot(iface interfaces.Interface, slot *sdk.SlotInfo) error {
+	type supporter interface {
+		SupportsSlot(*TestSandbox, *sdk.SlotInfo) error
+	}
+	i, ok := iface.(supporter)
+	if ok {
+		return i.SupportsSlot(s, slot)
+	}
+	return nil
 }
 
 func (b *TestSecurityBackend) SandboxFeatures() []string {

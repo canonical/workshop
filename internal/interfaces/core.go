@@ -241,6 +241,15 @@ func StaticInfoOf(iface Interface) (si StaticInfo) {
 	return si
 }
 
+// Sandbox describes the environment a plug or slot exists in, according to a
+// security backend.
+type Sandbox interface {
+	// SupportsPlug checks if the given plug makes sense to connect.
+	SupportsPlug(iface Interface, plug *sdk.PlugInfo) error
+	// SupportsPlug checks if the given slot makes sense to connect.
+	SupportsSlot(iface Interface, slot *sdk.SlotInfo) error
+}
+
 // Specification describes interactions between backends and interfaces.
 type Specification interface {
 	// AddPermanentSlot records side-effects of having a slot.

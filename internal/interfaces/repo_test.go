@@ -31,6 +31,7 @@ import (
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 type RepositorySuite struct {
@@ -953,6 +954,18 @@ const testSecurity SecuritySystem = "test"
 
 var testInterface = &ifacetest.TestInterface{
 	InterfaceName: "interface",
+	SupportsPlugCallback: func(iface *ifacetest.TestInterface, w *workshop.Workshop, plug *sdk.PlugInfo) error {
+		if w.File.Confinement != workshop.ConfinementContainer {
+			return fmt.Errorf("%s interface only available to containers", iface.Name())
+		}
+		return nil
+	},
+	SupportsSlotCallback: func(iface *ifacetest.TestInterface, w *workshop.Workshop, slot *sdk.SlotInfo) error {
+		if w.File.Confinement != workshop.ConfinementContainer {
+			return fmt.Errorf("%s interface only available to containers", iface.Name())
+		}
+		return nil
+	},
 	TestPermanentPlugCallback: func(spec *ifacetest.Specification, plug *sdk.PlugInfo) error {
 		spec.AddSnippet("static plug snippet")
 		return nil
@@ -969,6 +982,44 @@ var testInterface = &ifacetest.TestInterface{
 		spec.AddSnippet("connection-specific slot snippet")
 		return nil
 	},
+}
+
+func (s *RepositorySuite) TestSupportsPlug(c *C) {
+	repo := s.emptyRepo
+	backend := &ifacetest.TestSecurityBackend{BackendName: testSecurity}
+	c.Assert(repo.AddBackend(backend), IsNil)
+
+	file := &workshop.File{
+		Name: "ws",
+		Base: "ubuntu@22.04",
+		Sdks: []workshop.SdkRecord{{Name: "consumer"}},
+	}
+	wp := &workshop.Workshop{File: file}
+
+	c.Check(s.emptyRepo.WorkshopSupportsPlug(wp, s.plug), ErrorMatches, `unknown interface "interface"`)
+	c.Assert(repo.AddInterface(testInterface), IsNil)
+	c.Check(s.emptyRepo.WorkshopSupportsPlug(wp, s.plug), IsNil)
+	wp.File.Confinement = workshop.ConfinementVirtualMachine
+	c.Check(s.emptyRepo.WorkshopSupportsPlug(wp, s.plug), ErrorMatches, `interface interface only available to containers`)
+}
+
+func (s *RepositorySuite) TestSupportsSlot(c *C) {
+	repo := s.emptyRepo
+	backend := &ifacetest.TestSecurityBackend{BackendName: testSecurity}
+	c.Assert(repo.AddBackend(backend), IsNil)
+
+	file := &workshop.File{
+		Name: "ws",
+		Base: "ubuntu@22.04",
+		Sdks: []workshop.SdkRecord{{Name: "producer"}},
+	}
+	wp := &workshop.Workshop{File: file}
+
+	c.Check(s.emptyRepo.WorkshopSupportsSlot(wp, s.slot), ErrorMatches, `unknown interface "interface"`)
+	c.Assert(repo.AddInterface(testInterface), IsNil)
+	c.Check(s.emptyRepo.WorkshopSupportsSlot(wp, s.slot), IsNil)
+	wp.File.Confinement = workshop.ConfinementVirtualMachine
+	c.Check(s.emptyRepo.WorkshopSupportsSlot(wp, s.slot), ErrorMatches, `interface interface only available to containers`)
 }
 
 func (s *RepositorySuite) TestSdkSpecification(c *C) {
