@@ -1,7 +1,11 @@
 summary: Ensure that launch for multiple workshops works correctly
 restore: |
   . "$TESTSLIB"/utils.sh
-  workshop_exec remove ws-one ws-two ws-three
+  # TODO: remove simultaneously once LXD 6.10 is available. Currently VMs hold
+  # a reference to all mounted filesystems, so have to be removed before the
+  # container filesystems can be removed (unless ws-two is launched first).
+  workshop_exec remove ws-two
+  workshop_exec remove ws-one ws-three
 execute: |
   . "$TESTSLIB"/utils.sh
 
