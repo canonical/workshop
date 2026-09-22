@@ -4,8 +4,8 @@ environment:
   BASE/ctr22,vm22: ubuntu@22.04
   BASE/ctr24,vm24: ubuntu@24.04
   BASE/ctr26,vm26: ubuntu@26.04
-  CONFINEMENT/ctr22,ctr24,ctr26: container
-  CONFINEMENT/vm22,vm24,vm26: virtual-machine
+  RUNTIME/ctr22,ctr24,ctr26: lxd-container
+  RUNTIME/vm22,vm24,vm26: lxd-vm
 
 warn-timeout: 10m
 
@@ -14,8 +14,8 @@ prepare: |
 
   timedatectl set-timezone Pacific/Auckland
 
-  echo "Test launch for $BASE ${CONFINEMENT}s"
-  envsubst '${BASE}${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
+  echo "Test launch for $BASE ${RUNTIME}s"
+  envsubst '${BASE}${RUNTIME}' < workshop.yaml.in > workshop.yaml
   chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch ws
 restore: |
@@ -38,7 +38,7 @@ execute: |
   stat --format='%u %g' build-artifact | MATCH '^1001001 1001001$'
 
   # ensure the workshop has a socket for workshopctl
-  if [ "$CONFINEMENT" = container ]; then
+  if [ "$RUNTIME" = lxd-container ]; then
     workshop_exec exec ws test -S /var/lib/workshop/run/workshop.socket.untrusted
   fi
 

@@ -1,8 +1,8 @@
 summary: Ensure that workshop autostart behavior performs correctly
 
 environment:
-  CONFINEMENT/ctr: container
-  CONFINEMENT/vm: virtual-machine
+  RUNTIME/ctr: lxd-container
+  RUNTIME/vm: lxd-vm
 
 debug: |
   resolvectl status workshopbr0 || true
@@ -11,7 +11,7 @@ debug: |
   journalctl -xeu snap.workshop.configure-dns.service || true
 prepare: |
   . "$TESTSLIB"/utils.sh
-  envsubst '${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
+  envsubst '${RUNTIME}' < workshop.yaml.in > workshop.yaml
   chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch
 restore: |

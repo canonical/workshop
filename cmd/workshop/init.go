@@ -13,13 +13,16 @@ import (
 	"github.com/canonical/workshop/internal/workshop"
 )
 
-var defaultBase = "ubuntu@24.04"
+var (
+	defaultBase    = "ubuntu@24.04"
+	defaultRuntime = "lxd-container"
+)
 
 type CmdInit struct {
-	root *CmdRoot
-	sdks []string
-	base string
-	vm   bool
+	root    *CmdRoot
+	sdks    []string
+	base    string
+	runtime string
 }
 
 func (c *CmdInit) Command() *cobra.Command {
@@ -36,6 +39,7 @@ workshop file at .workshop/<NAME>.yaml. This fails if a workshop with
 the same name already exists.
 
 The supported bases are ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
+The supported runtimes are lxd-container (the default) and lxd-vm.
 
 SDKs are specified as a comma-separated list. Each SDK entry can optionally
 include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.26/stable").
@@ -54,7 +58,7 @@ $ workshop init dev --base ubuntu@22.04 --sdks go`,
 
 	cmd.Flags().StringSliceVar(&c.sdks, "sdks", nil, `Comma-separated list of SDKs (e.g., "go,uv/latest/stable").`)
 	cmd.Flags().StringVar(&c.base, "base", defaultBase, "Base image for the workshop.")
-	cmd.Flags().BoolVar(&c.vm, "vm", false, "Use a virtual machine instead of a container.")
+	cmd.Flags().StringVar(&c.runtime, "runtime", defaultRuntime, `Sandbox technology to use.`)
 
 	return cmd
 }
@@ -68,16 +72,14 @@ func (c *CmdInit) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	confinement := workshop.ConfinementContainer
-	if c.vm {
-		confinement = workshop.ConfinementVirtualMachine
+	wfile := &workshop.File{
+		Name: name,
+		Base: c.base,
+		Sdks: sdks,
 	}
 
-	wfile := &workshop.File{
-		Name:        name,
-		Base:        c.base,
-		Confinement: confinement,
-		Sdks:        sdks,
+	if err := wfile.Runtime.UnmarshalText([]byte(c.runtime)); err != nil {
+		return err
 	}
 
 	if err := workshop.ValidateFile(wfile); err != nil {

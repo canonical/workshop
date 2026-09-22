@@ -1,14 +1,14 @@
 summary: Check workshop start
 
 environment:
-  CONFINEMENT/ctr: container
-  CONFINEMENT/vm: virtual-machine
+  RUNTIME/ctr: lxd-container
+  RUNTIME/vm: lxd-vm
 
 prepare: |
   . "$TESTSLIB"/utils.sh
-  envsubst '${CONFINEMENT}' < workshop.yaml.in > workshop.yaml
+  envsubst '${RUNTIME}' < workshop.yaml.in > workshop.yaml
   # TODO: remove the next line once VMs support SDKs
-  [ "${CONFINEMENT}" = container ] || (head --lines=-2 workshop.yaml | sponge workshop.yaml)
+  [ "${RUNTIME}" = lxd-container ] || (head --lines=-2 workshop.yaml | sponge workshop.yaml)
   chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch
 restore: |

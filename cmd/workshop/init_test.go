@@ -25,8 +25,9 @@ func (s *workshopInit) SetUpTest(c *check.C) {
 
 func (s *workshopInit) makeCmd(projectDir string) *CmdInit {
 	return &CmdInit{
-		root: &CmdRoot{cwd: projectDir},
-		base: defaultBase,
+		root:    &CmdRoot{cwd: projectDir},
+		base:    defaultBase,
+		runtime: defaultRuntime,
 	}
 }
 
@@ -86,10 +87,10 @@ base: ubuntu@24.04
 `)
 }
 
-func (s *workshopInit) TestInitVM(c *check.C) {
+func (s *workshopInit) TestInitRuntime(c *check.C) {
 	projectDir := c.MkDir()
 	cmd := s.makeCmd(projectDir)
-	cmd.vm = true
+	cmd.runtime = "lxd-vm"
 
 	err := s.run(cmd, "dev")
 	c.Assert(err, check.IsNil)
@@ -97,7 +98,7 @@ func (s *workshopInit) TestInitVM(c *check.C) {
 	path := workshop.Filepath(projectDir, "dev")
 	c.Check(path, testutil.FileEquals, `name: dev
 base: ubuntu@24.04
-confinement: virtual-machine
+runtime: lxd-vm
 `)
 }
 
@@ -453,9 +454,10 @@ func (s *workshopInit) TestInitProjectFlagOverride(c *check.C) {
 
 	// Use --project flag (simulated via root.prj).
 	cmd := &CmdInit{
-		root: &CmdRoot{cwd: otherDir, prj: projectDir},
-		sdks: []string{"go"},
-		base: defaultBase,
+		root:    &CmdRoot{cwd: otherDir, prj: projectDir},
+		sdks:    []string{"go"},
+		base:    defaultBase,
+		runtime: defaultRuntime,
 	}
 
 	err := s.run(cmd, "dev")

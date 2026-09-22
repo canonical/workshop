@@ -1,8 +1,8 @@
 summary: Check workshop remove
 
 environment:
-  CONFINEMENT/ctr: container
-  CONFINEMENT/vm: virtual-machine
+  RUNTIME/ctr: lxd-container
+  RUNTIME/vm: lxd-vm
 
 restore: |
   . "$TESTSLIB"/utils.sh
@@ -13,7 +13,7 @@ execute: |
   . "$TESTSLIB"/utils.sh
 
   echo "Launch a workshop"
-  envsubst '${CONFINEMENT}' < .workshop/ws-remove.yaml.in > .workshop/ws-remove.yaml
+  envsubst '${RUNTIME}' < .workshop/ws-remove.yaml.in > .workshop/ws-remove.yaml
   chown ubuntu:ubuntu .workshop/ws-remove.yaml
   workshop_exec launch ws-remove
 
@@ -34,7 +34,7 @@ execute: |
   workshop_exec list | MATCH "^ws-remove[[:space:]]+Off[[:space:]]+-$"
 
   # TODO: remove the next line once VMs support SDKs
-  [ "${CONFINEMENT}" = container ] || exit 0
+  [ "${RUNTIME}" = lxd-container ] || exit 0
 
   echo "Check the workshop can be removed and SDKs disconnected"
   workshop_exec launch ws-remove-mount

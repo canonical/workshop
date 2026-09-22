@@ -1,6 +1,6 @@
 name: ws
 base: ${BASE}
-confinement: ${CONFINEMENT}
+runtime: ${RUNTIME}
 actions:
   check-apt: |
     dry_run() {

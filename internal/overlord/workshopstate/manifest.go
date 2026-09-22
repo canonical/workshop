@@ -262,15 +262,15 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 			a.state.Unlock()
 		}
 
-		if file.Confinement != workshop.ConfinementContainer && !refresh && !osutil.GetenvBool("WORKSHOP_EXPERIMENTAL_VMS") {
-			confinement, err := file.Confinement.MarshalText()
+		if file.Runtime != workshop.RuntimeLXDContainer && !refresh && !osutil.GetenvBool("WORKSHOP_EXPERIMENTAL_VMS") {
+			runtime, err := file.Runtime.MarshalText()
 			if err == nil {
-				err = fmt.Errorf("confinement %q is experimental\nTo opt in: %q", confinement, "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd")
+				err = fmt.Errorf("runtime %q is experimental\nTo opt in: %q", runtime, "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd")
 			}
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
 
-		image, err := a.backend.GetBase(ctx, file.Base, file.Confinement)
+		image, err := a.backend.GetBase(ctx, file.Base, file.Runtime)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
@@ -280,7 +280,7 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
-		if file.Confinement == workshop.ConfinementContainer || workshop.WorkshopVMsSupportSDKs.Load() {
+		if file.Runtime == workshop.RuntimeLXDContainer || workshop.WorkshopVMsSupportSDKs.Load() {
 			sdks = slices.Insert(sdks, 0, systemMeta.Setup)
 		}
 		storeSdks = append(storeSdks, sdks)
@@ -302,13 +302,13 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 				return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 			}
 
-			if cur.File.Confinement != files[i].Confinement {
-				c1, err1 := cur.File.Confinement.MarshalText()
-				c2, err2 := files[i].Confinement.MarshalText()
+			if cur.File.Runtime != files[i].Runtime {
+				r1, err1 := cur.File.Runtime.MarshalText()
+				r2, err2 := files[i].Runtime.MarshalText()
 				if err := cmp.Or(err1, err2); err != nil {
 					return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 				}
-				return nil, nil, fmt.Errorf("cannot %s %q: confinement changed from %q to %q", action, name, c1, c2)
+				return nil, nil, fmt.Errorf("cannot %s %q: runtime changed from %q to %q", action, name, r1, r2)
 			}
 
 			current = append(current, *cur)
@@ -324,7 +324,7 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		format := a.backend.FormatRevision()
 		installOrder := sdkInstallOrder(files[i])
 		sdks := ordered(installOrder, storeSdks[i], localSdks)
-		if files[i].Confinement != workshop.ConfinementContainer && len(sdks) > 0 && !workshop.WorkshopVMsSupportSDKs.Load() {
+		if files[i].Runtime != workshop.RuntimeLXDContainer && len(sdks) > 0 && !workshop.WorkshopVMsSupportSDKs.Load() {
 			return nil, nil, fmt.Errorf("cannot %s %q: SDKs are currently unavailable for virtual machines", action, name)
 		}
 		latest = append(latest, Manifest{File: files[i], Format: format, Image: images[i], Sdks: sdks})

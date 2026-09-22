@@ -430,10 +430,10 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 	req := api.InstancesPost{
 		InstancePut: api.InstancePut{
 			Config:  config,
-			Devices: defaultDevices(usr, projectId, file.Name, file.Confinement),
+			Devices: defaultDevices(usr, projectId, file.Name, file.Runtime),
 		},
 		Name: InstanceName(file.Name, projectId),
-		Type: instanceType(file.Confinement),
+		Type: instanceType(file.Runtime),
 	}
 
 	if !snapshot.IsBase() {
@@ -448,11 +448,11 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 		return err
 	}
 
-	return s.adjustInstanceTemplates(conn, req.Name, file.Confinement)
+	return s.adjustInstanceTemplates(conn, req.Name, file.Runtime)
 }
 
-func instanceType(confinement workshop.Confinement) api.InstanceType {
-	if confinement == workshop.ConfinementVirtualMachine {
+func instanceType(runtime workshop.Runtime) api.InstanceType {
+	if runtime == workshop.RuntimeLXDVM {
 		return api.InstanceTypeVM
 	}
 	return api.InstanceTypeContainer
@@ -540,7 +540,7 @@ var instanceTemplates embed.FS
 // from an image (although the instance-id is different for 22.04 and up), but
 // when rebuilding a workshop from a snapshot, it results in both the hostname
 // and instance-id being taken from the snapshot.
-func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string, confinement workshop.Confinement) error {
+func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string, runtime workshop.Runtime) error {
 	fromImage := []string{"create"}
 	fromSnapshot := []string{"create", "copy"}
 
@@ -575,7 +575,7 @@ func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string, 
 			Properties: map[string]string{"domain": networkDomain},
 		},
 	}
-	if confinement == workshop.ConfinementContainer {
+	if runtime == workshop.RuntimeLXDContainer {
 		templates["/etc/machine-id"] = &api.ImageMetadataTemplate{
 			When:     fromSnapshot,
 			Template: "machine-id.tpl",
@@ -1126,7 +1126,7 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, p wo
 
 	image := workshop.BaseImage{
 		Name:        f.Base,
-		Confinement: f.Confinement,
+		Runtime:     f.Runtime,
 		Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 	}
 
@@ -1317,7 +1317,7 @@ func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {
 	return ConnectLxd(ctx)
 }
 
-func defaultDevices(usr *user.User, pid, w string, confinement workshop.Confinement) map[string]map[string]string {
+func defaultDevices(usr *user.User, pid, w string, runtime workshop.Runtime) map[string]map[string]string {
 	devices := map[string]map[string]string{
 		"root":             {"type": "disk", "pool": storagePool, "path": "/"},
 		"workshop.network": {"type": "nic", "network": networkName, "name": "eth0"},
@@ -1329,7 +1329,7 @@ func defaultDevices(usr *user.User, pid, w string, confinement workshop.Confinem
 	}
 
 	// LXD VMs have only limited support for proxy devices.
-	if confinement == workshop.ConfinementContainer {
+	if runtime == workshop.RuntimeLXDContainer {
 		for _, proxy := range proxies {
 			devices[proxy.Name] = proxyToLxdDevice(usr, proxy)
 		}
@@ -1504,7 +1504,7 @@ runcmd:
 	}
 	var fsFreezePath string
 	startTimeout := startTimeoutContainer
-	if file.Confinement != workshop.ConfinementContainer {
+	if file.Runtime != workshop.RuntimeLXDContainer {
 		fsFreezePath = dirs.FsFreezePath
 		startTimeout = startTimeoutVM
 	}
@@ -1516,7 +1516,7 @@ runcmd:
 		WorkshopStateDir string
 	}{
 		FsFreezePath:     fsFreezePath,
-		HasGRUB:          file.Confinement == workshop.ConfinementVirtualMachine,
+		HasGRUB:          file.Runtime == workshop.RuntimeLXDVM,
 		StartTimeout:     startTimeout.Nanoseconds(),
 		WorkshopCtlPath:  filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
 		WorkshopStateDir: dirs.WorkshopStateDir,
@@ -1531,7 +1531,7 @@ runcmd:
 		return nil, err
 	}
 
-	idmapSet, err := workshopIdmap(file.Confinement, userid, groupid)
+	idmapSet, err := workshopIdmap(file.Runtime, userid, groupid)
 	if err != nil {
 		return nil, err
 	}
@@ -1549,7 +1549,7 @@ runcmd:
 		"user.workshop.base-fingerprint": baseFingerprint,
 	}
 
-	if file.Confinement == workshop.ConfinementContainer {
+	if file.Runtime == workshop.RuntimeLXDContainer {
 		cfg["security.nesting"] = "true"
 		// LXC appears to have a race condition wherein a proxy device mounted in
 		// a dynamically created directory has the potential to be 'masked' by this
@@ -1565,7 +1565,7 @@ runcmd:
 	return cfg, nil
 }
 
-func workshopIdmap(confinement workshop.Confinement, userid, groupid string) (*idmap.IdmapSet, error) {
+func workshopIdmap(runtime workshop.Runtime, userid, groupid string) (*idmap.IdmapSet, error) {
 	hostUid, err1 := strconv.ParseInt(userid, 10, 64)
 	nsUid, err2 := strconv.ParseInt(workshop.User.Uid, 10, 64)
 	hostGid, err3 := strconv.ParseInt(groupid, 10, 64)
@@ -1579,7 +1579,7 @@ func workshopIdmap(confinement workshop.Confinement, userid, groupid string) (*i
 	}
 
 	idmapSet := &idmap.IdmapSet{}
-	if confinement != workshop.ConfinementContainer {
+	if runtime != workshop.RuntimeLXDContainer {
 		// TODO: query LXD for the default idmap somehow. The current
 		// implementation only works because the LXD snap runs in a mount
 		// namespace where /etc/ is a tmpfs, so it effectively ignores

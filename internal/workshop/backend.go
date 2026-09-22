@@ -104,15 +104,15 @@ type SdkVolume struct {
 type BaseImage struct {
 	// Base name (e.g. ubuntu@24.04).
 	Name string `json:"name"`
-	// Type of sandbox used to run the image (e.g. container).
-	Confinement Confinement `json:"confinement"`
+	// Type of sandbox used to run the image (e.g. lxd-container).
+	Runtime Runtime `json:"runtime"`
 	// Base image identifier, typically a hash.
 	Fingerprint string `json:"fingerprint"`
 }
 
 type BaseImageManager interface {
 	// Lookup the latest image for the given base.
-	GetBase(ctx context.Context, base string, confinement Confinement) (BaseImage, error)
+	GetBase(ctx context.Context, base string, runtime Runtime) (BaseImage, error)
 	// Download the given base image.
 	DownloadBase(ctx context.Context, image BaseImage, report *progress.Reporter) error
 }
@@ -143,8 +143,8 @@ func (s Snapshot) IsBasedOn(other Snapshot) bool {
 }
 
 // BaseOnly identifies a "snapshot" which consists of a base image only.
-func BaseOnly(format sdk.Revision, name string, confinement Confinement, fingerprint string) Snapshot {
-	return Snapshot{Format: format, Image: BaseImage{Name: name, Confinement: confinement, Fingerprint: fingerprint}}
+func BaseOnly(format sdk.Revision, name string, runtime Runtime, fingerprint string) Snapshot {
+	return Snapshot{Format: format, Image: BaseImage{Name: name, Runtime: runtime, Fingerprint: fingerprint}}
 }
 
 // SdkSnapshot identifies a snapshot consisting of a base image and a sequence

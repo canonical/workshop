@@ -121,11 +121,11 @@ var snapshotFormatContainer []byte
 var snapshotFormatVM []byte
 
 func (s *snapshotSuite) TestLxdBackendSnapshotFormatContainer(c *check.C) {
-	s.testSnapshotFormat(c, workshop.ConfinementContainer, snapshotFormatContainer)
+	s.testSnapshotFormat(c, workshop.RuntimeLXDContainer, snapshotFormatContainer)
 }
 
 func (s *snapshotSuite) TestLxdBackendSnapshotFormatVM(c *check.C) {
-	s.testSnapshotFormat(c, workshop.ConfinementVirtualMachine, snapshotFormatVM)
+	s.testSnapshotFormat(c, workshop.RuntimeLXDVM, snapshotFormatVM)
 }
 
 // Attempt to specify the filesystem layout of a snapshot. Changes to this may
@@ -135,26 +135,26 @@ func (s *snapshotSuite) TestLxdBackendSnapshotFormatVM(c *check.C) {
 // copied to snapshots, they can influence the filesystem before the snapshot
 // is taken (e.g. cloud-config). Direct changes to the filesystem and other
 // backend-agnostic conventions are covered by `apiSuite.TestSnapshotFormat`.
-func (s *snapshotSuite) testSnapshotFormat(c *check.C, confinement workshop.Confinement, formatYAML []byte) {
+func (s *snapshotSuite) testSnapshotFormat(c *check.C, runtime workshop.Runtime, formatYAML []byte) {
 	var format map[string]any
 	err := yaml.Unmarshal(formatYAML, &format)
 	c.Assert(err, check.IsNil)
 
 	// Launch workshop.
-	image, err := s.bd.GetBase(s.ctx, "ubuntu@24.04", confinement)
+	image, err := s.bd.GetBase(s.ctx, "ubuntu@24.04", runtime)
 	c.Assert(err, check.IsNil)
 	err = s.bd.DownloadBase(s.ctx, image, nil)
 	c.Assert(err, check.IsNil)
 	wf := &workshop.File{
-		Name:        "test",
-		Base:        "ubuntu@24.04",
-		Confinement: confinement,
+		Name:    "test",
+		Base:    "ubuntu@24.04",
+		Runtime: runtime,
 		Sdks: []workshop.SdkRecord{
 			{Name: "store-sdk", Channel: "latest/stable"},
 			{Name: "local-sdk", Source: sdk.ProjectSource},
 		},
 	}
-	snapshot := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, confinement, image.Fingerprint)
+	snapshot := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, runtime, image.Fingerprint)
 
 	remove := s.launchWorkshop(c, wf, snapshot)
 	defer remove()
@@ -323,44 +323,44 @@ func (s *snapshotSuite) snapshotFormat(c *check.C, snapshot workshop.Snapshot) a
 }
 
 func (s *snapshotSuite) TestLxdBackendSnapshotDiffContainer22(c *check.C) {
-	s.snapshotDiff(c, "ubuntu@22.04", workshop.ConfinementContainer)
+	s.snapshotDiff(c, "ubuntu@22.04", workshop.RuntimeLXDContainer)
 }
 func (s *snapshotSuite) TestLxdBackendSnapshotDiffContainer24(c *check.C) {
-	s.snapshotDiff(c, "ubuntu@24.04", workshop.ConfinementContainer)
+	s.snapshotDiff(c, "ubuntu@24.04", workshop.RuntimeLXDContainer)
 }
 func (s *snapshotSuite) TestLxdBackendSnapshotDiffContainer26(c *check.C) {
-	s.snapshotDiff(c, "ubuntu@26.04", workshop.ConfinementContainer)
+	s.snapshotDiff(c, "ubuntu@26.04", workshop.RuntimeLXDContainer)
 }
 func (s *snapshotSuite) TestLxdBackendSnapshotDiffVM22(c *check.C) {
-	s.snapshotDiff(c, "ubuntu@22.04", workshop.ConfinementVirtualMachine)
+	s.snapshotDiff(c, "ubuntu@22.04", workshop.RuntimeLXDVM)
 }
 func (s *snapshotSuite) TestLxdBackendSnapshotDiffVM24(c *check.C) {
-	s.snapshotDiff(c, "ubuntu@24.04", workshop.ConfinementVirtualMachine)
+	s.snapshotDiff(c, "ubuntu@24.04", workshop.RuntimeLXDVM)
 }
 func (s *snapshotSuite) TestLxdBackendSnapshotDiffVM26(c *check.C) {
-	s.snapshotDiff(c, "ubuntu@26.04", workshop.ConfinementVirtualMachine)
+	s.snapshotDiff(c, "ubuntu@26.04", workshop.RuntimeLXDVM)
 }
 
 // Launches 2 workshops from scratch and another from a snapshot of the first,
 // then checks that the third workshop is indistinguishable from the other two.
-func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement workshop.Confinement) {
+func (s *snapshotSuite) snapshotDiff(c *check.C, base string, runtime workshop.Runtime) {
 	if os.Geteuid() != 0 {
 		c.Skip("requires root to mount and compare workshop filesystems")
 	}
 
 	// Download base image.
-	image, err := s.bd.GetBase(s.ctx, base, confinement)
+	image, err := s.bd.GetBase(s.ctx, base, runtime)
 	c.Assert(err, check.IsNil)
 	err = s.bd.DownloadBase(s.ctx, image, nil)
 	c.Assert(err, check.IsNil)
 
 	// Launch original workshop.
 	originFile := &workshop.File{
-		Name:        "origin",
-		Base:        base,
-		Confinement: confinement,
+		Name:    "origin",
+		Base:    base,
+		Runtime: runtime,
 	}
-	baseOnly := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, confinement, image.Fingerprint)
+	baseOnly := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, runtime, image.Fingerprint)
 	remove := s.launchWorkshop(c, originFile, baseOnly)
 	defer remove()
 
@@ -374,15 +374,15 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement worksh
 		IsVolume: true,
 	}}
 	err1 := s.bd.TakeSnapshot(s.ctx, "origin", originSnapshot)
-	originRootFS, err2 := s.workshopRootFS("origin", confinement)
+	originRootFS, err2 := s.workshopRootFS("origin", runtime)
 	err3 := s.bd.StopWorkshop(s.ctx, "origin", false)
 	c.Assert(cmp.Or(err1, err2, err3), check.IsNil)
 
 	// Launch a completely independent workshop.
 	siblingFile := &workshop.File{
-		Name:        "sibling",
-		Base:        base,
-		Confinement: confinement,
+		Name:    "sibling",
+		Base:    base,
+		Runtime: runtime,
 	}
 	remove = s.launchWorkshop(c, siblingFile, baseOnly)
 	defer remove()
@@ -390,15 +390,15 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement worksh
 	// Start independent workshop to run cloud-init.
 	err = s.bd.StartWorkshop(s.ctx, "sibling")
 	c.Assert(err, check.IsNil)
-	siblingRootFS, err1 := s.workshopRootFS("sibling", confinement)
+	siblingRootFS, err1 := s.workshopRootFS("sibling", runtime)
 	err2 = s.bd.StopWorkshop(s.ctx, "sibling", false)
 	c.Assert(cmp.Or(err1, err2), check.IsNil)
 
 	// Launch clone of the first workshop.
 	cloneFile := &workshop.File{
-		Name:        "clone",
-		Base:        base,
-		Confinement: confinement,
+		Name:    "clone",
+		Base:    base,
+		Runtime: runtime,
 	}
 	remove = s.launchWorkshop(c, cloneFile, originSnapshot)
 	defer remove()
@@ -413,15 +413,15 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement worksh
 		IsVolume: false,
 	})
 	err1 = s.bd.TakeSnapshot(s.ctx, "clone", cloneSnapshot)
-	cloneRootFS, err2 := s.workshopRootFS("clone", confinement)
+	cloneRootFS, err2 := s.workshopRootFS("clone", runtime)
 	err3 = s.bd.StopWorkshop(s.ctx, "clone", false)
 	c.Assert(cmp.Or(err1, err2, err3), check.IsNil)
 
 	// Launch another independent workshop.
 	wf := &workshop.File{
-		Name:        "test",
-		Base:        base,
-		Confinement: confinement,
+		Name:    "test",
+		Base:    base,
+		Runtime: runtime,
 	}
 	remove = s.launchWorkshop(c, wf, baseOnly)
 	defer remove()
@@ -471,7 +471,7 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement worksh
 		// Restart it to give services a chance to run.
 		err = s.bd.StartWorkshop(s.ctx, "origin")
 		c.Assert(err, check.IsNil)
-		originRootFS, err1 := s.workshopRootFS("origin", confinement)
+		originRootFS, err1 := s.workshopRootFS("origin", runtime)
 		err2 = s.bd.StopWorkshop(s.ctx, "origin", false)
 		c.Assert(cmp.Or(err1, err2), check.IsNil)
 
@@ -492,8 +492,8 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, confinement worksh
 }
 
 type filesystem struct {
-	name        string
-	confinement workshop.Confinement
+	name    string
+	runtime workshop.Runtime
 
 	Fstype string `json:"fstype"`
 	Source string `json:"source"`
@@ -505,7 +505,7 @@ type filesystem struct {
 // returns the source ZFS dataset, and the subdirectory of the rootfs within
 // that. For VMs, it relabels the filesystem to make it easier to locate when
 // mounting the parent block device in another VM.
-func (s *snapshotSuite) workshopRootFS(name string, confinement workshop.Confinement) (filesystem, error) {
+func (s *snapshotSuite) workshopRootFS(name string, runtime workshop.Runtime) (filesystem, error) {
 	args := workshop.ExecArgs{
 		Command: []string{"findmnt", "--json", "--mountpoint=/", "--nofsroot", "--output=fsroot,fstype,source"},
 		WorkDir: "/",
@@ -528,8 +528,8 @@ func (s *snapshotSuite) workshopRootFS(name string, confinement workshop.Confine
 
 	rootfs := filesystems.Filesystems[0]
 	rootfs.name = name
-	rootfs.confinement = confinement
-	if confinement == workshop.ConfinementContainer {
+	rootfs.runtime = runtime
+	if runtime == workshop.RuntimeLXDContainer {
 		return rootfs, nil
 	}
 
@@ -547,7 +547,7 @@ func (s *snapshotSuite) workshopRootFS(name string, confinement workshop.Confine
 }
 
 func (s *snapshotSuite) mountRootFS(c *check.C, source filesystem, name, path string) *revert.Reverter {
-	if source.confinement == workshop.ConfinementContainer {
+	if source.runtime == workshop.RuntimeLXDContainer {
 		return s.mountContainerRootFS(c, source, name, path)
 	}
 	return s.mountVMRootFS(c, source, name, path)

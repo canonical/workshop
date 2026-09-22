@@ -41,7 +41,7 @@ func (m *workshopInfo) SetUpTest(c *check.C) {
 var mockWorkshopWithSdks = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",
-    "confinement":"container",
+    "runtime":"lxd-container",
     "project-id":"42424242",
     "status":"Error",
     "hostname":"ws.sdkcraft.wp",
@@ -95,13 +95,13 @@ func (m *workshopInfo) TestWorkshopInfo(c *check.C) {
 
 	err = cmd.Run(cmd.Command(), nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(m.stdout.String(), check.Matches, fmt.Sprintf(`name:         ws
-base:         ubuntu@22.04
-project:      %s
-hostname:     ws\.sdkcraft\.wp
-status:       error
-confinement:  container
-notes:        missing-project
+	c.Assert(m.stdout.String(), check.Matches, fmt.Sprintf(`name:      ws
+base:      ubuntu@22.04
+project:   %s
+hostname:  ws\.sdkcraft\.wp
+status:    error
+runtime:   lxd-container
+notes:     missing-project
 sdks:
   go:
     tracking:   latest/edge
@@ -116,7 +116,7 @@ sdks:
 var mockWorkshopWithHealth = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",
-    "confinement":"container",
+    "runtime":"lxd-container",
     "project-id":"42424242",
     "status":"Pending",
     "notes":["workshop-note"],
@@ -155,12 +155,12 @@ func (m *workshopInfo) TestWorkshopInfoWithSdkHealthReport(c *check.C) {
 
 	err := cmd.Run(cmd.Command(), []string{workshop})
 	c.Assert(err, check.IsNil)
-	c.Assert(m.stdout.String(), check.Matches, fmt.Sprintf(`name:         ws
-base:         ubuntu@22.04
-project:      %s
-status:       pending
-confinement:  container
-notes:        workshop-note,try-later
+	c.Assert(m.stdout.String(), check.Matches, fmt.Sprintf(`name:     ws
+base:     ubuntu@22.04
+project:  %s
+status:   pending
+runtime:  lxd-container
+notes:    workshop-note,try-later
 sdks:
   go:
     tracking:   latest/edge
@@ -173,7 +173,7 @@ sdks:
 var mockWorkshopWithMounts = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",
-    "confinement":"container",
+    "runtime":"lxd-container",
     "project-id":"42424242",
     "status":"Ready",
     "sdks":[{
@@ -205,12 +205,12 @@ var mockWorkshopWithMounts = `{"type":"sync","status-code":200,"status":"OK","re
     }]
 }}`
 
-var mockWorkshopWithMountsOutput = `name:         ws
-base:         ubuntu@22.04
-project:      %s
-status:       ready
-confinement:  container
-notes:        %s
+var mockWorkshopWithMountsOutput = `name:     ws
+base:     ubuntu@22.04
+project:  %s
+status:   ready
+runtime:  lxd-container
+notes:    %s
 sdks:
   go:
     tracking:   latest/edge
@@ -313,7 +313,7 @@ var mockWorkshopWithTunnels = `{
   "result": {
     "name": "ws",
     "base": "ubuntu@22.04",
-    "confinement": "container",
+    "runtime": "lxd-container",
     "project-id": "42424242",
     "status": "Ready",
     "sdks": [
@@ -399,12 +399,12 @@ func (m *workshopInfo) TestWorkshopInfoWithSdkTunnels(c *check.C) {
 
 	err = cmd.Run(cmd.Command(), []string{workshop})
 	c.Assert(err, check.IsNil)
-	c.Assert(m.stdout.String(), check.Matches, fmt.Sprintf(`name:         ws
-base:         ubuntu@22.04
-project:      %s
-status:       ready
-confinement:  container
-notes:        --
+	c.Assert(m.stdout.String(), check.Matches, fmt.Sprintf(`name:     ws
+base:     ubuntu@22.04
+project:  %s
+status:   ready
+runtime:  lxd-container
+notes:    --
 sdks:
   system:
     installed:  \(1\)

@@ -22,14 +22,14 @@
       ],
       "errorMessage": "The base must be one of the supported values: ubuntu@22.04, ubuntu@24.04, ubuntu@26.04."
     },
-    "confinement": {
+    "runtime": {
       "type": "string",
       "description": "Type of sandboxing to use to run the workshop.",
       "enum": [
-        "container",
-        "virtual-machine"
+        "lxd-container",
+        "lxd-vm"
       ],
-      "errorMessage": "The confinement must be one of the supported values: container, virtual-machine."
+      "errorMessage": "The runtime must be one of the supported values: lxd-container, lxd-vm."
     },
     "sdks": {
       "type": "array",
