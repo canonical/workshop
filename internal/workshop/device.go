@@ -116,16 +116,21 @@ type Gpu struct {
 	Name string
 }
 
+type Virtualization struct {
+	Name string `json:"name"`
+}
+
 type SdkProfile struct {
 	Sdk string
 
-	Camera        *Camera
-	CustomDevices []CustomDevice
-	Mounts        map[string]Mount
-	Tunnels       []Tunnel
-	Agent         *SshAgent
-	Gpu           *Gpu
-	Desktop       *Desktop
+	Camera         *Camera
+	CustomDevices  []CustomDevice
+	Mounts         map[string]Mount
+	Tunnels        []Tunnel
+	Agent          *SshAgent
+	Gpu            *Gpu
+	Desktop        *Desktop
+	Virtualization *Virtualization
 }
 
 func NewSdkProfile(sdkName string) SdkProfile {
