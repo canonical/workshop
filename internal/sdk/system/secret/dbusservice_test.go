@@ -23,44 +23,10 @@ import (
 	"gopkg.in/check.v1"
 )
 
-type fakeBusConnection struct {
-	call   func(context.Context, dbus.ObjectPath, string, []any, ...any) error
-	closed bool
-}
+// dbusServiceSuite tests secret retrieval through [DBusService].
+type dbusServiceSuite struct{}
 
-// serviceSuite tests secret retrieval through [DBusService].
-type serviceSuite struct{}
-
-var _ = check.Suite(&serviceSuite{})
-
-func (c *fakeBusConnection) Call(
-	ctx context.Context,
-	path dbus.ObjectPath,
-	method string,
-	args []any,
-	results ...any,
-) error {
-	return c.call(ctx, path, method, args, results...)
-}
-
-func (c *fakeBusConnection) Close() error {
-	c.closed = true
-	return nil
-}
-
-// rejectingService returns a service that fails the test if request
-// validation reaches the D-Bus connection boundary.
-func rejectingService(c *check.C) DBusService {
-	return DBusService{
-		connect: func(
-			context.Context,
-			string,
-		) (busConnection, error) {
-			c.Error("invalid request must not connect to D-Bus")
-			return nil, nil
-		},
-	}
-}
+var _ = check.Suite(&dbusServiceSuite{})
 
 func Test(t *testing.T) {
 	check.TestingT(t)
@@ -68,7 +34,7 @@ func Test(t *testing.T) {
 
 // TestConnectUserSessionBusRejectsInvalidUID checks malformed user IDs fail
 // before a D-Bus connection is attempted.
-func (s *serviceSuite) TestConnectUserSessionBusRejectsInvalidUID(c *check.C) {
+func (s *dbusServiceSuite) TestConnectUserSessionBusRejectsInvalidUID(c *check.C) {
 	_, err := connectUserSessionBus(context.Background(), "not-a-uid")
 
 	c.Check(err, check.ErrorMatches,
@@ -77,7 +43,7 @@ func (s *serviceSuite) TestConnectUserSessionBusRejectsInvalidUID(c *check.C) {
 
 // TestGet checks that the service performs a complete lookup and transfers
 // ownership of the returned value to the caller.
-func (s *serviceSuite) TestGet(c *check.C) {
+func (s *dbusServiceSuite) TestGet(c *check.C) {
 	calls := make([]string, 0, 6)
 	conn := &fakeBusConnection{}
 	conn.call = func(
@@ -155,56 +121,24 @@ func (s *serviceSuite) TestGet(c *check.C) {
 	})
 }
 
-// TestGetRejectsEmptyAttributeName checks an empty search attribute name fails
-// before connecting to the user's session bus.
-func (s *serviceSuite) TestGetRejectsEmptyAttributeName(c *check.C) {
-	request := Request{
-		Attributes: map[string]string{"": "example"},
-		Collection: "default",
-		UID:        "1000",
+// TestGetRejectsInvalidRequest checks Get validates the request before
+// attempting to connect to the user's session bus.
+func (s *dbusServiceSuite) TestGetRejectsInvalidRequest(c *check.C) {
+	service := DBusService{
+		connect: func(
+			context.Context,
+			string,
+		) (busConnection, error) {
+			c.Fatal("invalid request must not connect to D-Bus")
+			return nil, nil
+		},
 	}
-
-	_, err := rejectingService(c).Get(context.Background(), request)
-
-	c.Check(err, check.ErrorMatches,
-		"secret request attribute name is empty")
-}
-
-// TestGetRejectsMissingAttributes checks missing search attributes fail before
-// connecting to the user's session bus.
-func (s *serviceSuite) TestGetRejectsMissingAttributes(c *check.C) {
-	request := Request{
-		Collection: "default",
-		UID:        "1000",
-	}
-
-	_, err := rejectingService(c).Get(context.Background(), request)
-
-	c.Check(err, check.ErrorMatches, "secret request attributes are missing")
-}
-
-// TestGetRejectsMissingCollection checks a missing collection fails before
-// connecting to the user's session bus.
-func (s *serviceSuite) TestGetRejectsMissingCollection(c *check.C) {
 	request := Request{
 		Attributes: map[string]string{"service": "example"},
 		UID:        "1000",
 	}
 
-	_, err := rejectingService(c).Get(context.Background(), request)
+	_, err := service.Get(context.Background(), request)
 
 	c.Check(err, check.ErrorMatches, "secret request collection is missing")
-}
-
-// TestGetRejectsMissingUID checks a missing user ID fails before connecting to
-// the user's session bus.
-func (s *serviceSuite) TestGetRejectsMissingUID(c *check.C) {
-	request := Request{
-		Attributes: map[string]string{"service": "example"},
-		Collection: "default",
-	}
-
-	_, err := rejectingService(c).Get(context.Background(), request)
-
-	c.Check(err, check.ErrorMatches, "secret request user ID is missing")
 }

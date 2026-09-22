@@ -14,31 +14,31 @@
 
 package secret
 
-// Error is a stable Secret Service error suitable for matching with errors.Is.
-type Error string
+// constError is a constant Secret Service error suitable for [errors.Is].
+type constError string
 
 const (
 	// ErrorCollectionAmbiguous indicates that more than one collection has the
 	// requested label.
-	ErrorCollectionAmbiguous = Error("secret service collection is ambiguous")
+	ErrorCollectionAmbiguous constError = "secret service collection is ambiguous"
 
 	// ErrorCollectionLocked indicates that the requested collection is locked.
-	ErrorCollectionLocked = Error("secret service collection is locked")
+	ErrorCollectionLocked constError = "secret service collection is locked"
 
 	// ErrorCollectionNotFound indicates that the requested collection does not
 	// exist.
-	ErrorCollectionNotFound = Error("secret service collection not found")
+	ErrorCollectionNotFound constError = "secret service collection not found"
 
 	// ErrorMultipleSecrets indicates that more than one secret matches the
 	// requested attributes.
-	ErrorMultipleSecrets = Error("multiple secrets match the request")
+	ErrorMultipleSecrets constError = "multiple secrets match the request"
 
 	// ErrorSecretNotFound indicates that no secret matches the requested
 	// attributes.
-	ErrorSecretNotFound = Error("secret not found")
+	ErrorSecretNotFound constError = "secret not found"
 )
 
 // Error implements the error interface.
-func (e Error) Error() string {
+func (e constError) Error() string {
 	return string(e)
 }
