@@ -212,7 +212,7 @@ runtime: classic
 	f.createSingleWFile(c, "workshop.yaml", yaml)
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Check(file, check.IsNil)
-	c.Check(err, check.ErrorMatches, `invalid file ".*": invalid runtime: "classic"`)
+	c.Check(err, check.ErrorMatches, `invalid file ".*": invalid runtime "classic"; valid runtimes: lxd-container, lxd-vm`)
 }
 
 func (f *workshopFile) TestWorkshopFileDuplicate(c *check.C) {

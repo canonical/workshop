@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/canonical/workshop/cmd/internal/cmdutil"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -59,6 +60,9 @@ $ workshop init dev --base ubuntu@22.04 --sdks go`,
 	cmd.Flags().StringSliceVar(&c.sdks, "sdks", nil, `Comma-separated list of SDKs (e.g., "go,uv/latest/stable").`)
 	cmd.Flags().StringVar(&c.base, "base", defaultBase, "Base image for the workshop.")
 	cmd.Flags().StringVar(&c.runtime, "runtime", defaultRuntime, `Sandbox technology to use.`)
+
+	_ = cmd.RegisterFlagCompletionFunc("base", cmdutil.CompleteChoices(workshop.SupportedBases...))
+	_ = cmd.RegisterFlagCompletionFunc("runtime", cmdutil.CompleteChoices(workshop.SupportedRuntimes...))
 
 	return cmd
 }
