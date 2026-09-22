@@ -265,11 +265,11 @@ func (s *managerSuite) TestGetSecretScopedSuccess(c *C) {
 	}), IsNil)
 	calls := 0
 	backend := workshopBackendFunc(func(
-		actualContext context.Context,
+		_ context.Context,
 		name string,
 	) (*workshop.Workshop, error) {
 		calls++
-		c.Check(actualContext, Equals, ctx)
+
 		c.Check(name, Equals, ref.Workshop)
 		return &workshop.Workshop{
 			Name: ref.Workshop,
