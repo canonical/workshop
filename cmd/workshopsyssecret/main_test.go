@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-
 	"testing"
 
 	"gopkg.in/check.v1"
