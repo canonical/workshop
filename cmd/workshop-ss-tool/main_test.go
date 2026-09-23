@@ -28,7 +28,7 @@ import (
 	"github.com/canonical/workshop/internal/secrets"
 )
 
-// commandSuite tests workshopsyssecret request handling and JSON responses.
+// commandSuite tests workshop-ss-tool request handling and JSON responses.
 type commandSuite struct{}
 
 var _ = check.Suite(&commandSuite{})

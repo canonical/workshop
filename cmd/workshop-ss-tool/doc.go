@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-// Command workshopsyssecret retrieves one secret from the host Secret Service.
+// Command workshop-ss-tool retrieves one secret from the host Secret Service.
 // It reads the first JSON-encoded [Request] from stdin:
 //
 //	{"collection":"default","attributes":{"app":"example"}}
@@ -36,7 +36,7 @@
 // response-write failures produce unstructured errors. For exit status 2,
 // callers must discard any partial stdout. Never log secret responses.
 //
-// The caller must launch workshopsyssecret as the intended user. The command
+// The caller must launch workshop-ss-tool as the intended user. The command
 // uses its effective UID and does not switch credentials. The user's session
 // bus and Secret Service must already be available. The command resolves the
 // collection, checks its lock state and retrieves the unique matching secret

@@ -29,7 +29,7 @@ import (
 	"github.com/canonical/workshop/internal/secrets"
 )
 
-// Request defines the workshopsyssecret command's JSON input for a lookup
+// Request defines the workshop-ss-tool command's JSON input for a lookup
 // against a user's host Secret Service.
 type Request struct {
 	Attributes map[string]string `json:"attributes"`
