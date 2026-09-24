@@ -180,7 +180,7 @@ func (s *Backend) Snapshot(ctx context.Context, snapshot workshop.Snapshot) (*wo
 	workshops := map[string][]string{}
 
 	usedBy, err := conn.GetInstances(lxd.GetInstancesArgs{
-		InstanceType: instanceType(snapshot.Image.Confinement),
+		InstanceType: instanceType(snapshot.Image.Runtime),
 		Filters:      []string{fmt.Sprintf("config.user.workshop.snapshot-%v=%s", len(snapshot.Sdks), name)},
 	})
 	if err != nil {
@@ -194,7 +194,7 @@ func (s *Backend) Snapshot(ctx context.Context, snapshot workshop.Snapshot) (*wo
 
 	// Check for stashed workshops as well.
 	usedBy, err = snapshotConn.GetInstances(lxd.GetInstancesArgs{
-		InstanceType: instanceType(snapshot.Image.Confinement),
+		InstanceType: instanceType(snapshot.Image.Runtime),
 		Filters:      []string{fmt.Sprintf("config.user.workshop.snapshot-%v=%s", len(snapshot.Sdks), name)},
 	})
 	if err != nil {
@@ -228,9 +228,9 @@ func identifySnapshot(inst *api.Instance) (*workshop.Snapshot, error) {
 		return nil, err
 	}
 
-	confinement := workshop.ConfinementContainer
+	runtime := workshop.RuntimeLXDContainer
 	if inst.Type == string(api.InstanceTypeVM) {
-		confinement = workshop.ConfinementVirtualMachine
+		runtime = workshop.RuntimeLXDVM
 	}
 
 	sdks := make([]sdk.ContentID, len(inst.Devices))
@@ -264,7 +264,7 @@ func identifySnapshot(inst *api.Instance) (*workshop.Snapshot, error) {
 		Format: format,
 		Image: workshop.BaseImage{
 			Name:        inst.Config[workshop.ConfigWorkshopBase],
-			Confinement: confinement,
+			Runtime:     runtime,
 			Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 		},
 		Sdks: sdks[:length],
@@ -279,13 +279,13 @@ func compareSnapshots(name string, actual, expected workshop.Snapshot) error {
 	if actual.Image.Name != expected.Image.Name {
 		return fmt.Errorf("%q snapshot has %q base; required: %q", name, actual.Image.Name, expected.Image.Name)
 	}
-	if actual.Image.Confinement != expected.Image.Confinement {
-		c1, err1 := actual.Image.Confinement.MarshalText()
-		c2, err2 := expected.Image.Confinement.MarshalText()
+	if actual.Image.Runtime != expected.Image.Runtime {
+		r1, err1 := actual.Image.Runtime.MarshalText()
+		r2, err2 := expected.Image.Runtime.MarshalText()
 		if err := cmp.Or(err1, err2); err != nil {
 			return fmt.Errorf("%q snapshot: %w", name, err)
 		}
-		return fmt.Errorf("%q snapshot has %q confinement; required: %q", name, c1, c2)
+		return fmt.Errorf("%q snapshot has %q runtime; required: %q", name, r1, r2)
 	}
 	if actual.Image.Fingerprint != expected.Image.Fingerprint {
 		return fmt.Errorf("%q snapshot has %q base fingerprint; required: %q", name, actual.Image.Fingerprint, expected.Image.Fingerprint)
@@ -965,13 +965,13 @@ func (s *Backend) HashSnapshot(snapshot workshop.Snapshot) (string, error) {
 		return "", err
 	}
 
-	confinement, err := snapshot.Image.Confinement.MarshalText()
+	runtime, err := snapshot.Image.Runtime.MarshalText()
 	if err != nil {
 		return "", err
 	}
 
 	hash := sha3.New384()
-	if _, err := fmt.Fprintf(hash, "%s %s %s\x00%s", snapshot.Format, snapshot.Image.Name, confinement, digest); err != nil {
+	if _, err := fmt.Fprintf(hash, "%s %s %s\x00%s", snapshot.Format, snapshot.Image.Name, runtime, digest); err != nil {
 		return "", err
 	}
 

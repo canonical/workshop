@@ -119,16 +119,16 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 
 var vmFile = `name: test
 base: ubuntu@22.04
-confinement: virtual-machine
+runtime: lxd-vm
 `
 
 func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// Setup
 	b := &lxdbackend.Backend{}
 	file := &workshop.File{
-		Name:        "test",
-		Base:        "ubuntu@22.04",
-		Confinement: workshop.ConfinementVirtualMachine,
+		Name:    "test",
+		Base:    "ubuntu@22.04",
+		Runtime: workshop.RuntimeLXDVM,
 	}
 
 	// Execute

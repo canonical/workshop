@@ -221,7 +221,7 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 	mountProject := st.NewTask("mount-project", fmt.Sprintf("Mount project directory %q", project.Path))
 	addTaskSet(state.NewTaskSet(mountProject))
 
-	if manifest.File.Confinement == workshop.ConfinementContainer {
+	if manifest.File.Runtime == workshop.RuntimeLXDContainer {
 		connect := autoconnectSdks(st, manifest.File.Name, manifest.Sdks)
 		addTaskSet(connect)
 	}
@@ -229,7 +229,7 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 	setupProject := runHooks(st, manifest.Sdks, 0, hookstate.SetupProject)
 	addTaskSet(setupProject)
 
-	if manifest.File.Confinement == workshop.ConfinementContainer {
+	if manifest.File.Runtime == workshop.RuntimeLXDContainer {
 		checkHealth := runHooks(st, manifest.Sdks, checkHealthTimeout, hookstate.CheckHealth)
 		addTaskSet(checkHealth)
 	}
@@ -406,7 +406,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	stop := st.NewTask("stop-workshop", fmt.Sprintf("Stop %q workshop", latest.File.Name))
 	// Using force is fine for containers, but for VMs it can lead to (usually
 	// repairable) filesystem integrity issues, which are copied to the stash.
-	stop.Set("force", current.File.Confinement == workshop.ConfinementContainer)
+	stop.Set("force", current.File.Runtime == workshop.RuntimeLXDContainer)
 	addTaskSet(state.NewTaskSet(stop))
 
 	// Unmount SDKs and remove plugs and slots from interfaces repository.
@@ -435,7 +435,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	install := installSdks(st, newSdks)
 	addTaskSet(install)
 
-	if option == conflict.RefreshUpdate && latest.File.Confinement == workshop.ConfinementContainer {
+	if option == conflict.RefreshUpdate && latest.File.Runtime == workshop.RuntimeLXDContainer {
 		restoreConns := st.NewTask("restore-conns", fmt.Sprintf("Restore %q undesired connections", latest.File.Name))
 		restoreConns.Set("discard-conns-task", discard.ID())
 		addTaskSet(state.NewTaskSet(restoreConns))
@@ -447,7 +447,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	mountProject := st.NewTask("mount-project", fmt.Sprintf("Mount project directory %q", project.Path))
 	addTaskSet(state.NewTaskSet(mountProject))
 
-	if latest.File.Confinement == workshop.ConfinementContainer {
+	if latest.File.Runtime == workshop.RuntimeLXDContainer {
 		connect := autoconnectSdks(st, latest.File.Name, latest.Sdks)
 		addTaskSet(connect)
 	}
@@ -458,7 +458,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	restoreState := runHooks(st, restoreSdks, 0, hookstate.RestoreState)
 	addTaskSet(restoreState)
 
-	if latest.File.Confinement == workshop.ConfinementContainer {
+	if latest.File.Runtime == workshop.RuntimeLXDContainer {
 		checkHealth := runHooks(st, latest.Sdks, 0, hookstate.CheckHealth)
 		addTaskSet(checkHealth)
 	}

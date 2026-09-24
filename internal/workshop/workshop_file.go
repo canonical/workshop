@@ -33,7 +33,8 @@ import (
 const MAX_WORKSHOP_NAME_LENGTH = 40
 
 var (
-	SupportedBases = sdk.AllowedBases
+	SupportedBases    = sdk.AllowedBases
+	SupportedRuntimes = []string{"lxd-container", "lxd-vm"}
 
 	workshopName = regexp.MustCompile(`^[a-z](?:-?[a-z0-9])*$`)
 	actionName   = workshopName
@@ -209,32 +210,32 @@ type Connection struct {
 
 type Action string
 
-type Confinement int
+type Runtime int
 
 const (
-	ConfinementContainer Confinement = iota
-	ConfinementVirtualMachine
+	RuntimeLXDContainer Runtime = iota
+	RuntimeLXDVM
 )
 
-func (c Confinement) MarshalText() ([]byte, error) {
-	switch c {
-	case ConfinementContainer:
-		return []byte("container"), nil
-	case ConfinementVirtualMachine:
-		return []byte("virtual-machine"), nil
+func (r Runtime) MarshalText() ([]byte, error) {
+	switch r {
+	case RuntimeLXDContainer:
+		return []byte("lxd-container"), nil
+	case RuntimeLXDVM:
+		return []byte("lxd-vm"), nil
 	default:
-		return nil, fmt.Errorf("invalid confinement: %v", int(c))
+		return nil, fmt.Errorf("invalid runtime: %v", int(r))
 	}
 }
 
-func (c *Confinement) UnmarshalText(text []byte) error {
+func (r *Runtime) UnmarshalText(text []byte) error {
 	switch string(text) {
-	case "container":
-		*c = ConfinementContainer
-	case "virtual-machine":
-		*c = ConfinementVirtualMachine
+	case "lxd-container":
+		*r = RuntimeLXDContainer
+	case "lxd-vm":
+		*r = RuntimeLXDVM
 	default:
-		return fmt.Errorf("invalid confinement: %q", string(text))
+		return fmt.Errorf("invalid runtime %q; valid runtimes: %s", string(text), strings.Join(SupportedRuntimes, ", "))
 	}
 	return nil
 }
@@ -242,7 +243,7 @@ func (c *Confinement) UnmarshalText(text []byte) error {
 type File struct {
 	Name        string            `yaml:"name"`
 	Base        string            `yaml:"base"`
-	Confinement Confinement       `yaml:"confinement,omitempty"`
+	Runtime     Runtime           `yaml:"runtime,omitempty"`
 	Sdks        []SdkRecord       `yaml:"sdks,omitempty"`
 	Connections []Connection      `yaml:"connections,omitempty"`
 	Actions     map[string]Action `yaml:"actions,omitempty"`

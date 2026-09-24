@@ -7,7 +7,7 @@
 File:
   Name: string
   Base: string
-  Confinement: workshop.Confinement
+  Runtime: workshop.Runtime
   Sdks: '[]workshop.SdkRecord'
   Actions:
   Connections:
@@ -30,7 +30,7 @@ Workshop:
   Hostname:
 BaseImage:
   Name: string
-  Confinement: workshop.Confinement
+  Runtime: workshop.Runtime
   Fingerprint: string
 SdkInstallation:
   Setup: sdk.Setup

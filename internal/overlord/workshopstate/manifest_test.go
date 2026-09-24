@@ -217,7 +217,7 @@ func (s *manifestSuite) createWFile(c *check.C, ws, base string, sdks []workshop
 
 func (s *manifestSuite) launchWorkshopWithSDKs(c *check.C, ws, base string, sdks []workshop.SdkRecord) *workshop.Workshop {
 	wf := s.createWFile(c, ws, base, sdks)
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.ConfinementContainer, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -250,7 +250,7 @@ func (s *manifestSuite) TestLaunchOK(c *check.C) {
 		Sdks: sdks,
 	})
 
-	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	c.Check(manifests[1].Image, check.Equals, manifests[0].Image)
 
 	systemSdk, err := system.SystemSdkMeta()
@@ -308,7 +308,7 @@ func (s *manifestSuite) TestRefreshOK(c *check.C) {
 	c.Check(latest[0].File, check.DeepEquals, current[0].File)
 	c.Check(current[0].Format, check.Equals, sdk.R(1))
 	c.Check(latest[0].Format, check.Equals, sdk.R(2))
-	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	c.Check(latest[0].Image, check.Equals, current[0].Image)
 
 	// Check base was updated for test-2.
@@ -325,7 +325,7 @@ func (s *manifestSuite) TestRefreshOK(c *check.C) {
 	c.Check(current[1].Format, check.Equals, sdk.R(1))
 	c.Check(latest[1].Format, check.Equals, sdk.R(2))
 	c.Check(current[1].Image, check.Equals, current[0].Image)
-	c.Check(latest[1].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	c.Check(latest[1].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 
 	// Check current SDKs are loaded from running workshop.
 	c.Check(current[0].Sdks, check.DeepEquals, []sdk.Setup{oldSdk.Setup})
@@ -376,7 +376,7 @@ func (s *manifestSuite) TestRefreshRestoreOK(c *check.C) {
 		Base: "ubuntu@24.04",
 		Sdks: sdks,
 	})
-	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	c.Check(current[0].Sdks, check.DeepEquals, []sdk.Setup{oldSdk.Setup})
 }
 
@@ -442,19 +442,19 @@ func (s *manifestSuite) TestRefreshRequiresStatusReady(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `cannot refresh "test-2": not running`)
 }
 
-func (s *manifestSuite) TestRefreshRequiresSameConfinement(c *check.C) {
+func (s *manifestSuite) TestRefreshRequiresSameRuntime(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
 	s.launchWorkshopWithSDKs(c, "test", "ubuntu@24.04", nil)
 	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "test"), os.O_APPEND|os.O_WRONLY, 0644)
 	c.Assert(err, check.IsNil)
-	_, err = f.WriteString("confinement: virtual-machine\n")
+	_, err = f.WriteString("runtime: lxd-vm\n")
 	c.Assert(f.Close(), check.IsNil)
 	c.Assert(err, check.IsNil)
 
 	_, _, err = s.manager.RefreshManifests(s.ctx, s.project, []string{"test"}, conflict.RefreshUpdate)
-	c.Check(err, check.ErrorMatches, `cannot refresh "test": confinement changed from "container" to "virtual-machine"`)
+	c.Check(err, check.ErrorMatches, `cannot refresh "test": runtime changed from "lxd-container" to "lxd-vm"`)
 }
 
 func (s *manifestSuite) TestRestoreRequiresCurrentFormat(c *check.C) {
@@ -519,7 +519,7 @@ func (s *manifestSuite) TestLaunchRequiresBase(c *check.C) {
 
 	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", nil)
 
-	restoreBase := testutil.FakeFunc(func(ctx context.Context, base string, confinement workshop.Confinement) (workshop.BaseImage, error) {
+	restoreBase := testutil.FakeFunc(func(ctx context.Context, base string, runtime workshop.Runtime) (workshop.BaseImage, error) {
 		return workshop.BaseImage{}, errors.New("contrived error")
 	}, &s.backend.GetBaseCallback)
 	defer restoreBase()
@@ -579,7 +579,7 @@ func (s *manifestSuite) TestLaunchValidRequest(c *check.C) {
 		Base: "ubuntu@24.04",
 		Sdks: sdks,
 	})
-	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Confinement: workshop.ConfinementContainer, Fingerprint: "fakeimage123"})
+	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 
 	systemSdk, err := system.SystemSdkMeta()
 	c.Assert(err, check.IsNil)
@@ -1126,7 +1126,7 @@ func (s *manifestSuite) TestLaunchRejectsVMsWithSDKs(c *check.C) {
 	s.createWFile(c, "test", "ubuntu@24.04", sdks)
 	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "test"), os.O_APPEND|os.O_WRONLY, 0644)
 	c.Assert(err, check.IsNil)
-	_, err = f.WriteString("confinement: virtual-machine\n")
+	_, err = f.WriteString("runtime: lxd-vm\n")
 	c.Assert(f.Close(), check.IsNil)
 	c.Assert(err, check.IsNil)
 
@@ -1141,6 +1141,6 @@ func (s *manifestSuite) TestLaunchRejectsVMsWithSDKs(c *check.C) {
 
 	os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS")
 	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
-	c.Check(err, check.ErrorMatches, `cannot launch "test": confinement "virtual-machine" is experimental
+	c.Check(err, check.ErrorMatches, `cannot launch "test": runtime "lxd-vm" is experimental
 To opt in: "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd"`)
 }
