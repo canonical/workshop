@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package system_test
+package system
 
 import (
 	"context"
@@ -26,13 +26,11 @@ import (
 
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
-	"github.com/canonical/workshop/internal/sdk/system"
-	"github.com/canonical/workshop/internal/sdk/system/secret"
 	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
-// secretProviderSuite tests secret retrieval by [system.SecretProvider].
+// secretProviderSuite tests secret retrieval by [SecretProvider].
 type secretProviderSuite struct{}
 
 var _ = check.Suite(&secretProviderSuite{})
@@ -51,13 +49,13 @@ func (s *secretProviderSuite) TestResolve(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		ref sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		called = true
 		c.Check(ref.ProjectId, check.Equals, "test-project")
 		c.Check(ref.Workshop, check.Equals, "backend")
 		c.Check(ref.Sdk, check.Equals, "system")
 		c.Check(ref.Name, check.Equals, "api-key")
-		return system.SecretSlotConfig{
+		return SecretSlotConfig{
 			Attributes: map[string]string{
 				"service": "ollama",
 			},
@@ -75,16 +73,16 @@ func (s *secretProviderSuite) TestResolve(c *check.C) {
 	defer value.Close()
 	service := secretService(func(
 		_ context.Context,
-		request secret.Request,
+		request Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, Request{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 			UID:        "1001",
 		})
 		return value, nil
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "alice")
 
 	resolved, err := provider.Resolve(ctx, slot)
@@ -106,11 +104,11 @@ func (s *secretProviderSuite) TestResolveCancelled(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		_ sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Error("cancelled request must not look up slot configuration")
-		return system.SecretSlotConfig{}, nil
+		return SecretSlotConfig{}, nil
 	})
-	provider := system.NewSecretProvider(slots, nil)
+	provider := NewSecretProvider(slots, nil)
 
 	slot := sdk.SlotRef{Name: "api-key", Sdk: "system"}
 
@@ -127,11 +125,11 @@ func (s *secretProviderSuite) TestResolveExpired(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		_ sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Error("expired request must not look up slot configuration")
-		return system.SecretSlotConfig{}, nil
+		return SecretSlotConfig{}, nil
 	})
-	provider := system.NewSecretProvider(slots, nil)
+	provider := NewSecretProvider(slots, nil)
 
 	slot := sdk.SlotRef{Name: "api-key", Sdk: "system"}
 
@@ -149,9 +147,9 @@ func (s *secretProviderSuite) TestResolveServiceCancelled(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		ref sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Check(ref, check.DeepEquals, slot)
-		return system.SecretSlotConfig{
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -165,16 +163,16 @@ func (s *secretProviderSuite) TestResolveServiceCancelled(c *check.C) {
 	})()
 	service := secretService(func(
 		_ context.Context,
-		request secret.Request,
+		request Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, Request{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 			UID:        "1001",
 		})
 		return secrets.Secret{}, fmt.Errorf("service: %w", context.Canceled)
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "alice")
 
 	resolved, err := provider.Resolve(ctx, slot)
@@ -193,9 +191,9 @@ func (s *secretProviderSuite) TestResolveServiceCollectionAmbiguous(c *check.C) 
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		ref sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Check(ref, check.DeepEquals, slot)
-		return system.SecretSlotConfig{
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -209,23 +207,23 @@ func (s *secretProviderSuite) TestResolveServiceCollectionAmbiguous(c *check.C) 
 	})()
 	service := secretService(func(
 		_ context.Context,
-		request secret.Request,
+		request Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, Request{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 			UID:        "1001",
 		})
 		return secrets.Secret{}, fmt.Errorf(
-			"service: %w", secret.ErrorCollectionAmbiguous,
+			"service: %w", ErrorCollectionAmbiguous,
 		)
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "alice")
 
 	resolved, err := provider.Resolve(ctx, slot)
 
-	c.Check(errors.Is(err, secret.ErrorCollectionAmbiguous), check.Equals, true)
+	c.Check(errors.Is(err, ErrorCollectionAmbiguous), check.Equals, true)
 	c.Check(errors.Is(err, secrets.ErrorSecretNotFound), check.Equals, false)
 	c.Check(resolved, check.DeepEquals, secrets.Secret{})
 }
@@ -240,9 +238,9 @@ func (s *secretProviderSuite) TestResolveServiceCollectionLocked(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		ref sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Check(ref, check.DeepEquals, slot)
-		return system.SecretSlotConfig{
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -256,18 +254,18 @@ func (s *secretProviderSuite) TestResolveServiceCollectionLocked(c *check.C) {
 	})()
 	service := secretService(func(
 		_ context.Context,
-		request secret.Request,
+		request Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, Request{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 			UID:        "1001",
 		})
 		return secrets.Secret{}, fmt.Errorf(
-			"service: %w", secret.ErrorCollectionLocked,
+			"service: %w", ErrorCollectionLocked,
 		)
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "alice")
 
 	resolved, err := provider.Resolve(ctx, slot)
@@ -286,9 +284,9 @@ func (s *secretProviderSuite) TestResolveServiceCollectionNotFound(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		ref sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Check(ref, check.DeepEquals, slot)
-		return system.SecretSlotConfig{
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -302,18 +300,18 @@ func (s *secretProviderSuite) TestResolveServiceCollectionNotFound(c *check.C) {
 	})()
 	service := secretService(func(
 		_ context.Context,
-		request secret.Request,
+		request Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, Request{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 			UID:        "1001",
 		})
 		return secrets.Secret{}, fmt.Errorf(
-			"service: %w", secret.ErrorCollectionNotFound,
+			"service: %w", ErrorCollectionNotFound,
 		)
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "alice")
 
 	resolved, err := provider.Resolve(ctx, slot)
@@ -332,9 +330,9 @@ func (s *secretProviderSuite) TestResolveServiceMultipleSecrets(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		ref sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Check(ref, check.DeepEquals, slot)
-		return system.SecretSlotConfig{
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -348,18 +346,18 @@ func (s *secretProviderSuite) TestResolveServiceMultipleSecrets(c *check.C) {
 	})()
 	service := secretService(func(
 		_ context.Context,
-		request secret.Request,
+		request Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, Request{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 			UID:        "1001",
 		})
 		return secrets.Secret{}, fmt.Errorf(
-			"service: %w", secret.ErrorMultipleSecrets,
+			"service: %w", ErrorMultipleSecrets,
 		)
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "alice")
 
 	resolved, err := provider.Resolve(ctx, slot)
@@ -378,9 +376,9 @@ func (s *secretProviderSuite) TestResolveServiceSecretNotFound(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		ref sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Check(ref, check.DeepEquals, slot)
-		return system.SecretSlotConfig{
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -394,18 +392,18 @@ func (s *secretProviderSuite) TestResolveServiceSecretNotFound(c *check.C) {
 	})()
 	service := secretService(func(
 		_ context.Context,
-		request secret.Request,
+		request Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, Request{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 			UID:        "1001",
 		})
 		return secrets.Secret{}, fmt.Errorf(
-			"service: %w", secret.ErrorSecretNotFound,
+			"service: %w", ErrorSecretNotFound,
 		)
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "alice")
 
 	resolved, err := provider.Resolve(ctx, slot)
@@ -424,9 +422,9 @@ func (s *secretProviderSuite) TestResolveServiceUnknownError(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		ref sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
+	) (SecretSlotConfig, error) {
 		c.Check(ref, check.DeepEquals, slot)
-		return system.SecretSlotConfig{
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -441,16 +439,16 @@ func (s *secretProviderSuite) TestResolveServiceUnknownError(c *check.C) {
 	serviceErr := errors.New("session bus unavailable")
 	service := secretService(func(
 		_ context.Context,
-		request secret.Request,
+		request Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, Request{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 			UID:        "1001",
 		})
 		return secrets.Secret{}, fmt.Errorf("service: %w", serviceErr)
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	ctx := context.WithValue(context.Background(), workshop.ContextUser, "alice")
 
 	resolved, err := provider.Resolve(ctx, slot)
@@ -465,8 +463,8 @@ func (s *secretProviderSuite) TestResolveUnknownUser(c *check.C) {
 	slots := secretSlotLookup(func(
 		context.Context,
 		sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
-		return system.SecretSlotConfig{
+	) (SecretSlotConfig, error) {
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -474,7 +472,7 @@ func (s *secretProviderSuite) TestResolveUnknownUser(c *check.C) {
 	defer osutil.FakeUserLookup(func(name string) (*user.User, error) {
 		return nil, fmt.Errorf("lookup: %w", user.UnknownUserError(name))
 	})()
-	provider := system.NewSecretProvider(slots, nil)
+	provider := NewSecretProvider(slots, nil)
 	slot := sdk.SlotRef{
 		Name: "api-key", ProjectId: "test-project",
 		Sdk: "system", Workshop: "backend",
@@ -492,8 +490,8 @@ func (s *secretProviderSuite) TestResolveUserLookupFailure(c *check.C) {
 	slots := secretSlotLookup(func(
 		context.Context,
 		sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
-		return system.SecretSlotConfig{
+	) (SecretSlotConfig, error) {
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
@@ -502,7 +500,7 @@ func (s *secretProviderSuite) TestResolveUserLookupFailure(c *check.C) {
 	defer osutil.FakeUserLookup(func(string) (*user.User, error) {
 		return nil, lookupErr
 	})()
-	provider := system.NewSecretProvider(slots, nil)
+	provider := NewSecretProvider(slots, nil)
 	slot := sdk.SlotRef{
 		Name: "api-key", ProjectId: "test-project",
 		Sdk: "system", Workshop: "backend",
@@ -521,20 +519,20 @@ func (s *secretProviderSuite) TestResolveMissingUser(c *check.C) {
 	slots := secretSlotLookup(func(
 		context.Context,
 		sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
-		return system.SecretSlotConfig{
+	) (SecretSlotConfig, error) {
+		return SecretSlotConfig{
 			Attributes: map[string]string{"service": "ollama"},
 			Collection: "default",
 		}, nil
 	})
 	service := secretService(func(
 		context.Context,
-		secret.Request,
+		Request,
 	) (secrets.Secret, error) {
 		c.Fatal("missing user must not request a secret")
 		return secrets.Secret{}, nil
 	})
-	provider := system.NewSecretProvider(slots, service)
+	provider := NewSecretProvider(slots, service)
 	slot := sdk.SlotRef{
 		Name:      "api-key",
 		ProjectId: "test-project",
@@ -553,10 +551,10 @@ func (s *secretProviderSuite) TestResolveLookupFailure(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		_ sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
-		return system.SecretSlotConfig{}, lookupErr
+	) (SecretSlotConfig, error) {
+		return SecretSlotConfig{}, lookupErr
 	})
-	provider := system.NewSecretProvider(slots, nil)
+	provider := NewSecretProvider(slots, nil)
 	slot := sdk.SlotRef{Name: "api-key", Sdk: "system"}
 
 	_, err := provider.Resolve(context.Background(), slot)
@@ -570,10 +568,10 @@ func (s *secretProviderSuite) TestResolveLookupCancelled(c *check.C) {
 	slots := secretSlotLookup(func(
 		_ context.Context,
 		_ sdk.SlotRef,
-	) (system.SecretSlotConfig, error) {
-		return system.SecretSlotConfig{}, context.Canceled
+	) (SecretSlotConfig, error) {
+		return SecretSlotConfig{}, context.Canceled
 	})
-	provider := system.NewSecretProvider(slots, nil)
+	provider := NewSecretProvider(slots, nil)
 	slot := sdk.SlotRef{Name: "api-key", Sdk: "system"}
 
 	_, err := provider.Resolve(context.Background(), slot)

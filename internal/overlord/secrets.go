@@ -16,8 +16,8 @@ package overlord
 
 import (
 	"github.com/canonical/workshop/internal/sdk"
-	"github.com/canonical/workshop/internal/sdk/system"
 	"github.com/canonical/workshop/internal/secrets"
+	"github.com/canonical/workshop/internal/secrets/provider/system"
 )
 
 // makeSecretResolver builds the resolver with the built-in secret providers.

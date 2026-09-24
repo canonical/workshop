@@ -24,8 +24,8 @@ import (
 
 	"gopkg.in/check.v1"
 
-	"github.com/canonical/workshop/internal/sdk/system/secret"
 	"github.com/canonical/workshop/internal/secrets"
+	"github.com/canonical/workshop/internal/secrets/provider/system"
 )
 
 // commandSuite tests workshop-ss-tool request handling and JSON responses.
@@ -46,9 +46,9 @@ func (s *commandSuite) TestRun(c *check.C) {
 
 	service := stubService(func(
 		_ context.Context,
-		request secret.Request,
+		request system.Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{
+		c.Check(request, check.DeepEquals, system.Request{
 			Attributes: map[string]string{"app": "example"},
 			Collection: "default",
 			UID:        "1001",
@@ -79,7 +79,7 @@ func (s *commandSuite) TestRunCancellation(c *check.C) {
 	cancel()
 	service := stubService(func(
 		gotContext context.Context,
-		_ secret.Request,
+		_ system.Request,
 	) (secrets.Secret, error) {
 		return secrets.Secret{}, gotContext.Err()
 	})
@@ -100,9 +100,9 @@ func (s *commandSuite) TestRunInvalidRequest(c *check.C) {
 	validationErr := errors.New("secret request collection is missing")
 	service := stubService(func(
 		_ context.Context,
-		request secret.Request,
+		request system.Request,
 	) (secrets.Secret, error) {
-		c.Check(request, check.DeepEquals, secret.Request{UID: "1001"})
+		c.Check(request, check.DeepEquals, system.Request{UID: "1001"})
 		return secrets.Secret{}, validationErr
 	})
 	value, err := run(context.Background(), "1001", service, Request{})
@@ -117,7 +117,7 @@ func (s *commandSuite) TestRunServiceError(c *check.C) {
 	serviceErr := errors.New("service unavailable")
 	service := stubService(func(
 		context.Context,
-		secret.Request,
+		system.Request,
 	) (secrets.Secret, error) {
 		return secrets.Secret{}, serviceErr
 	})
@@ -136,7 +136,7 @@ func (s *commandSuite) TestRunServiceError(c *check.C) {
 // and omits the zero-value secret.
 func (s *commandSuite) TestResponseError(c *check.C) {
 	data, err := json.Marshal(Response{
-		Error: secret.ErrorSecretNotFound.Error(),
+		Error: system.ErrorSecretNotFound.Error(),
 	})
 
 	c.Assert(err, check.IsNil)
@@ -222,68 +222,68 @@ func (s *commandSuite) TestMarshalJSONConsumesSecret(c *check.C) {
 // TestMakeResponseFromErrorCollectionAmbiguous checks an ambiguous collection
 // becomes a canonical response error rather than a returned error.
 func (s *commandSuite) TestMakeResponseFromErrorCollectionAmbiguous(c *check.C) {
-	response, err := makeResponseFromError(secret.ErrorCollectionAmbiguous)
+	response, err := makeResponseFromError(system.ErrorCollectionAmbiguous)
 
 	c.Check(err, check.IsNil)
 	c.Check(response, check.Equals, Response{
-		Error: secret.ErrorCollectionAmbiguous.Error(),
+		Error: system.ErrorCollectionAmbiguous.Error(),
 	})
 }
 
 // TestMakeResponseFromErrorCollectionLocked checks a locked collection becomes
 // a canonical response error rather than a returned error.
 func (s *commandSuite) TestMakeResponseFromErrorCollectionLocked(c *check.C) {
-	response, err := makeResponseFromError(secret.ErrorCollectionLocked)
+	response, err := makeResponseFromError(system.ErrorCollectionLocked)
 
 	c.Check(err, check.IsNil)
 	c.Check(response, check.Equals, Response{
-		Error: secret.ErrorCollectionLocked.Error(),
+		Error: system.ErrorCollectionLocked.Error(),
 	})
 }
 
 // TestMakeResponseFromErrorCollectionNotFound checks a missing collection
 // becomes a canonical response error rather than a returned error.
 func (s *commandSuite) TestMakeResponseFromErrorCollectionNotFound(c *check.C) {
-	response, err := makeResponseFromError(secret.ErrorCollectionNotFound)
+	response, err := makeResponseFromError(system.ErrorCollectionNotFound)
 
 	c.Check(err, check.IsNil)
 	c.Check(response, check.Equals, Response{
-		Error: secret.ErrorCollectionNotFound.Error(),
+		Error: system.ErrorCollectionNotFound.Error(),
 	})
 }
 
 // TestMakeResponseFromErrorMultipleSecrets checks ambiguous secret matches
 // become a canonical response error rather than a returned error.
 func (s *commandSuite) TestMakeResponseFromErrorMultipleSecrets(c *check.C) {
-	response, err := makeResponseFromError(secret.ErrorMultipleSecrets)
+	response, err := makeResponseFromError(system.ErrorMultipleSecrets)
 
 	c.Check(err, check.IsNil)
 	c.Check(response, check.Equals, Response{
-		Error: secret.ErrorMultipleSecrets.Error(),
+		Error: system.ErrorMultipleSecrets.Error(),
 	})
 }
 
 // TestMakeResponseFromErrorSecretNotFound checks a missing secret becomes a
 // canonical response error rather than a returned error.
 func (s *commandSuite) TestMakeResponseFromErrorSecretNotFound(c *check.C) {
-	response, err := makeResponseFromError(secret.ErrorSecretNotFound)
+	response, err := makeResponseFromError(system.ErrorSecretNotFound)
 
 	c.Check(err, check.IsNil)
 	c.Check(response, check.Equals, Response{
-		Error: secret.ErrorSecretNotFound.Error(),
+		Error: system.ErrorSecretNotFound.Error(),
 	})
 }
 
 // TestMakeResponseFromErrorWrapped checks a wrapped recognised error is
 // identified and its wrapping context is excluded from the response.
 func (s *commandSuite) TestMakeResponseFromErrorWrapped(c *check.C) {
-	lookupErr := fmt.Errorf("lookup: %w", secret.ErrorSecretNotFound)
+	lookupErr := fmt.Errorf("lookup: %w", system.ErrorSecretNotFound)
 
 	response, err := makeResponseFromError(lookupErr)
 
 	c.Check(err, check.IsNil)
 	c.Check(response, check.Equals, Response{
-		Error: secret.ErrorSecretNotFound.Error(),
+		Error: system.ErrorSecretNotFound.Error(),
 	})
 }
 
@@ -292,9 +292,9 @@ func (s *commandSuite) TestMakeResponseFromErrorWrapped(c *check.C) {
 func (s *commandSuite) TestRunRecognisedError(c *check.C) {
 	service := stubService(func(
 		context.Context,
-		secret.Request,
+		system.Request,
 	) (secrets.Secret, error) {
-		return secrets.Secret{}, secret.ErrorSecretNotFound
+		return secrets.Secret{}, system.ErrorSecretNotFound
 	})
 	request := Request{
 		Attributes: map[string]string{"app": "example"},
@@ -305,7 +305,7 @@ func (s *commandSuite) TestRunRecognisedError(c *check.C) {
 
 	c.Check(err, check.IsNil)
 	c.Check(response, check.Equals, Response{
-		Error: secret.ErrorSecretNotFound.Error(),
+		Error: system.ErrorSecretNotFound.Error(),
 	})
 }
 
@@ -321,7 +321,7 @@ func (s *commandSuite) TestMakeResponseFromErrorNil(c *check.C) {
 // TestMakeResponseFromErrorUnknown checks an unrecognised error remains
 // identifiable with an empty response, even if its text matches a known error.
 func (s *commandSuite) TestMakeResponseFromErrorUnknown(c *check.C) {
-	unknown := errors.New(secret.ErrorSecretNotFound.Error())
+	unknown := errors.New(system.ErrorSecretNotFound.Error())
 
 	response, err := makeResponseFromError(unknown)
 
@@ -336,7 +336,7 @@ func (s *commandSuite) TestResponseErrorPartialWrite(c *check.C) {
 	output := &failingWriter{err: writeErr, limit: 5}
 
 	err := json.NewEncoder(output).Encode(Response{
-		Error: secret.ErrorSecretNotFound.Error(),
+		Error: system.ErrorSecretNotFound.Error(),
 	})
 
 	c.Check(errors.Is(err, writeErr), check.Equals, true)
@@ -351,7 +351,7 @@ func (s *commandSuite) TestResponseErrorWriteFailure(c *check.C) {
 	output := &failingWriter{err: writeErr, limit: 0}
 
 	err := json.NewEncoder(output).Encode(Response{
-		Error: secret.ErrorSecretNotFound.Error(),
+		Error: system.ErrorSecretNotFound.Error(),
 	})
 
 	c.Check(errors.Is(err, writeErr), check.Equals, true)

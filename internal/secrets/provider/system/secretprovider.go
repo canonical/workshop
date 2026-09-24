@@ -22,7 +22,6 @@ import (
 
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
-	"github.com/canonical/workshop/internal/sdk/system/secret"
 	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
@@ -40,16 +39,16 @@ type SecretService interface {
 	// Implementations must honour context cancellation.
 	//
 	// The following errors may be expected:
-	//   - [secret.ErrorCollectionAmbiguous] when multiple collections have the
+	//   - [ErrorCollectionAmbiguous] when multiple collections have the
 	//     requested label.
-	//   - [secret.ErrorCollectionLocked] when the requested collection is locked.
-	//   - [secret.ErrorCollectionNotFound] when the requested collection does
+	//   - [ErrorCollectionLocked] when the requested collection is locked.
+	//   - [ErrorCollectionNotFound] when the requested collection does
 	//     not exist.
-	//   - [secret.ErrorMultipleSecrets] when multiple secrets match the
+	//   - [ErrorMultipleSecrets] when multiple secrets match the
 	//     requested attributes.
-	//   - [secret.ErrorSecretNotFound] when no secret matches the requested
+	//   - [ErrorSecretNotFound] when no secret matches the requested
 	//     attributes.
-	Get(context.Context, secret.Request) (secrets.Secret, error)
+	Get(context.Context, Request) (secrets.Secret, error)
 }
 
 // NewSecretProvider creates a provider using slots for configuration and service
@@ -107,29 +106,29 @@ func (p SecretProvider) Resolve(
 		)
 	}
 
-	value, err := p.service.Get(ctx, secret.Request{
+	value, err := p.service.Get(ctx, Request{
 		Attributes: config.Attributes,
 		Collection: config.Collection,
 		UID:        account.Uid,
 	})
 	switch {
-	case errors.Is(err, secret.ErrorCollectionLocked):
+	case errors.Is(err, ErrorCollectionLocked):
 		return secrets.Secret{}, fmt.Errorf(
 			"retrieving system secret: %w",
 			secrets.ErrorProviderLocked,
 		)
-	case errors.Is(err, secret.ErrorCollectionNotFound):
+	case errors.Is(err, ErrorCollectionNotFound):
 		return secrets.Secret{}, fmt.Errorf(
 			"retrieving system secret from missing collection %q: %w",
 			config.Collection,
 			secrets.ErrorSecretNotFound,
 		)
-	case errors.Is(err, secret.ErrorMultipleSecrets):
+	case errors.Is(err, ErrorMultipleSecrets):
 		return secrets.Secret{}, fmt.Errorf(
 			"retrieving system secret: %w",
 			secrets.ErrorMultipleSecrets,
 		)
-	case errors.Is(err, secret.ErrorSecretNotFound):
+	case errors.Is(err, ErrorSecretNotFound):
 		return secrets.Secret{}, fmt.Errorf(
 			"retrieving system secret: %w",
 			secrets.ErrorSecretNotFound,

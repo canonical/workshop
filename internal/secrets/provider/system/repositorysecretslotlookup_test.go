@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package system_test
+package system
 
 import (
 	"context"
@@ -20,7 +20,6 @@ import (
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/sdk"
-	"github.com/canonical/workshop/internal/sdk/system"
 )
 
 // repositorySecretSlotLookupSuite tests repository-backed secret slot lookup.
@@ -47,7 +46,7 @@ func (s *repositorySecretSlotLookupSuite) TestEmptyAttributes(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(err, check.ErrorMatches, "secret slot attributes must not be empty")
@@ -73,7 +72,7 @@ func (s *repositorySecretSlotLookupSuite) TestEmptyCollection(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(err, check.ErrorMatches, "secret slot collection must not be empty")
@@ -99,7 +98,7 @@ func (s *repositorySecretSlotLookupSuite) TestInvalidCollectionType(c *check.C) 
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(err, check.ErrorMatches, "secret slot collection must be a string")
@@ -122,7 +121,7 @@ func (s *repositorySecretSlotLookupSuite) TestMissingAttributes(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(
@@ -151,11 +150,11 @@ func (s *repositorySecretSlotLookupSuite) TestMissingCollection(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	config, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Assert(err, check.IsNil)
-	c.Check(config, check.DeepEquals, system.SecretSlotConfig{
+	c.Check(config, check.DeepEquals, SecretSlotConfig{
 		Attributes: map[string]string{
 			"service": "github",
 		},
@@ -166,7 +165,7 @@ func (s *repositorySecretSlotLookupSuite) TestMissingCollection(c *check.C) {
 // Lookup forwards all reference components and reports a missing slot.
 func (s *repositorySecretSlotLookupSuite) TestMissingSlot(c *check.C) {
 	repo := &slotRepository{}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 	ref := sdk.SlotRef{
 		ProjectId: "test-project",
 		Workshop:  "backend",
@@ -200,7 +199,7 @@ func (s *repositorySecretSlotLookupSuite) TestNilAttributeValue(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(
@@ -223,7 +222,7 @@ func (s *repositorySecretSlotLookupSuite) TestNilSDK(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 	ref := sdk.SlotRef{
 		ProjectId: "test-project",
 		Workshop:  "backend",
@@ -254,7 +253,7 @@ func (s *repositorySecretSlotLookupSuite) TestNonMapAttributes(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(
@@ -287,7 +286,7 @@ func (s *repositorySecretSlotLookupSuite) TestNonStringAttributeValue(
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(
@@ -317,7 +316,7 @@ func (s *repositorySecretSlotLookupSuite) TestNonSystemSDK(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(err, check.ErrorMatches,
@@ -345,8 +344,8 @@ func (s *repositorySecretSlotLookupSuite) TestAnyMapIsCopied(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
-	expected := system.SecretSlotConfig{
+	lookup := NewRepositorySecretSlotLookup(repo)
+	expected := SecretSlotConfig{
 		Attributes: map[string]string{
 			"service": "github",
 			"account": "workshop-developer",
@@ -392,8 +391,8 @@ func (s *repositorySecretSlotLookupSuite) TestStringMapIsCopied(c *check.C) {
 		},
 	}
 	repo.slot = slot
-	lookup := system.NewRepositorySecretSlotLookup(repo)
-	expected := system.SecretSlotConfig{
+	lookup := NewRepositorySecretSlotLookup(repo)
+	expected := SecretSlotConfig{
 		Attributes: map[string]string{
 			"service": "github",
 			"account": "workshop-developer",
@@ -434,7 +433,7 @@ func (s *repositorySecretSlotLookupSuite) TestWhitespaceCollection(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(err, check.ErrorMatches, "secret slot collection must not be empty")
@@ -460,7 +459,7 @@ func (s *repositorySecretSlotLookupSuite) TestWrongInterface(c *check.C) {
 		},
 	}
 	repo := &slotRepository{slot: slot}
-	lookup := system.NewRepositorySecretSlotLookup(repo)
+	lookup := NewRepositorySecretSlotLookup(repo)
 
 	_, err := lookup.Lookup(context.Background(), slot.Ref())
 	c.Check(err, check.ErrorMatches, "slot does not use the secret interface")

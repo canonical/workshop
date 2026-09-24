@@ -25,8 +25,8 @@ import (
 	"os/signal"
 	"strconv"
 
-	"github.com/canonical/workshop/internal/sdk/system/secret"
 	"github.com/canonical/workshop/internal/secrets"
+	"github.com/canonical/workshop/internal/secrets/provider/system"
 )
 
 // Request defines the workshop-ss-tool command's JSON input for a lookup
@@ -59,7 +59,7 @@ type SecretService interface {
 	// Get retrieves the unique secret matching the request for its user ID.
 	// On success, ownership transfers to the caller, which must consume or
 	// close the secret. It must honour context cancellation.
-	Get(context.Context, secret.Request) (secrets.Secret, error)
+	Get(context.Context, system.Request) (secrets.Secret, error)
 }
 
 const (
@@ -74,25 +74,25 @@ const (
 // a nil error.
 func makeResponseFromError(err error) (Response, error) {
 	switch {
-	case errors.Is(err, secret.ErrorCollectionAmbiguous):
+	case errors.Is(err, system.ErrorCollectionAmbiguous):
 		return Response{
-			Error: secret.ErrorCollectionAmbiguous.Error(),
+			Error: system.ErrorCollectionAmbiguous.Error(),
 		}, nil
-	case errors.Is(err, secret.ErrorCollectionLocked):
+	case errors.Is(err, system.ErrorCollectionLocked):
 		return Response{
-			Error: secret.ErrorCollectionLocked.Error(),
+			Error: system.ErrorCollectionLocked.Error(),
 		}, nil
-	case errors.Is(err, secret.ErrorCollectionNotFound):
+	case errors.Is(err, system.ErrorCollectionNotFound):
 		return Response{
-			Error: secret.ErrorCollectionNotFound.Error(),
+			Error: system.ErrorCollectionNotFound.Error(),
 		}, nil
-	case errors.Is(err, secret.ErrorMultipleSecrets):
+	case errors.Is(err, system.ErrorMultipleSecrets):
 		return Response{
-			Error: secret.ErrorMultipleSecrets.Error(),
+			Error: system.ErrorMultipleSecrets.Error(),
 		}, nil
-	case errors.Is(err, secret.ErrorSecretNotFound):
+	case errors.Is(err, system.ErrorSecretNotFound):
 		return Response{
-			Error: secret.ErrorSecretNotFound.Error(),
+			Error: system.ErrorSecretNotFound.Error(),
 		}, nil
 	default:
 		return Response{}, err
@@ -115,7 +115,7 @@ func main() {
 	res, err := run(
 		ctx,
 		strconv.Itoa(os.Geteuid()),
-		secret.NewDBusService(),
+		system.NewDBusService(),
 		request,
 	)
 	ctxStop()
@@ -161,7 +161,7 @@ func run(
 	service SecretService,
 	request Request,
 ) (Response, error) {
-	secretVal, err := service.Get(ctx, secret.Request{
+	secretVal, err := service.Get(ctx, system.Request{
 		Attributes: request.Attributes,
 		Collection: request.Collection,
 		UID:        uid,

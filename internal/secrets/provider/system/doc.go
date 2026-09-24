@@ -12,31 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package secret
-
-import (
-	"context"
-
-	"github.com/godbus/dbus/v5"
-)
-
-// fakeBusConnection records D-Bus calls without a real session bus.
-type fakeBusConnection struct {
-	call   func(context.Context, dbus.ObjectPath, string, []any, ...any) error
-	closed bool
-}
-
-func (c *fakeBusConnection) Call(
-	ctx context.Context,
-	path dbus.ObjectPath,
-	method string,
-	args []any,
-	results ...any,
-) error {
-	return c.call(ctx, path, method, args, results...)
-}
-
-func (c *fakeBusConnection) Close() error {
-	c.closed = true
-	return nil
-}
+// Package system provides the system SDK secret provider and retrieves secrets
+// from the host Secret Service, either directly over D-Bus or through a
+// user-scoped command.
+package system

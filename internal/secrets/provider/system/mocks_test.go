@@ -12,28 +12,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package system_test
+package system
 
 import (
 	"context"
 
+	"github.com/godbus/dbus/v5"
+
 	"github.com/canonical/workshop/internal/sdk"
-	"github.com/canonical/workshop/internal/sdk/system"
-	"github.com/canonical/workshop/internal/sdk/system/secret"
 	"github.com/canonical/workshop/internal/secrets"
 )
+
+// fakeBusConnection records D-Bus calls without a real session bus.
+type fakeBusConnection struct {
+	call   func(context.Context, dbus.ObjectPath, string, []any, ...any) error
+	closed bool
+}
 
 // secretService delegates secret retrieval to a test-defined function.
 type secretService func(
 	context.Context,
-	secret.Request,
+	Request,
 ) (secrets.Secret, error)
 
 // secretSlotLookup delegates slot lookup to a test-defined function.
 type secretSlotLookup func(
 	context.Context,
 	sdk.SlotRef,
-) (system.SecretSlotConfig, error)
+) (SecretSlotConfig, error)
 
 // slotRepository records repository requests and returns a configured slot.
 type slotRepository struct {
@@ -41,10 +47,25 @@ type slotRepository struct {
 	slot *sdk.SlotInfo
 }
 
+func (c *fakeBusConnection) Call(
+	ctx context.Context,
+	path dbus.ObjectPath,
+	method string,
+	args []any,
+	results ...any,
+) error {
+	return c.call(ctx, path, method, args, results...)
+}
+
+func (c *fakeBusConnection) Close() error {
+	c.closed = true
+	return nil
+}
+
 // Get calls the test-defined secret retrieval function.
 func (s secretService) Get(
 	ctx context.Context,
-	request secret.Request,
+	request Request,
 ) (secrets.Secret, error) {
 	return s(ctx, request)
 }
@@ -53,7 +74,7 @@ func (s secretService) Get(
 func (l secretSlotLookup) Lookup(
 	ctx context.Context,
 	slot sdk.SlotRef,
-) (system.SecretSlotConfig, error) {
+) (SecretSlotConfig, error) {
 	return l(ctx, slot)
 }
 
