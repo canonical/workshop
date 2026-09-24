@@ -346,11 +346,7 @@ func (s *Backend) TakeSnapshot(ctx context.Context, name string, snapshot worksh
 	if inst.Devices == nil {
 		inst.Devices = map[string]map[string]string{}
 	}
-	usesZFS, err := poolUsesZFS(conn)
-	if err != nil {
-		return err
-	}
-	if err := mergeDevices(inst.Devices, snapshot.Sdks, name, usesZFS); err != nil {
+	if err := mergeDevices(inst.Devices, snapshot.Sdks, name, poolUsesZFS()); err != nil {
 		return err
 	}
 
@@ -738,11 +734,7 @@ func (s *Backend) copyInstance(src, dst lxd.InstanceServer, srcName, dstName str
 
 	req := *srcInst
 
-	usesZFS, err := poolUsesZFS(dst)
-	if err != nil {
-		return err
-	}
-	if usesZFS {
+	if poolUsesZFS() {
 		req.Devices = maps.Clone(req.Devices)
 		root := maps.Clone(req.Devices["root"])
 		if req.Devices == nil || root == nil {

@@ -144,22 +144,28 @@ func driverInfo(names ...string) []api.ServerStorageDriverInfo {
 	return infos
 }
 
-// preferredDriver keeps ZFS whenever LXD reports it, and falls back to Btrfs
-// otherwise. Detection now trusts LXD's supported-drivers list (which LXD
-// builds by trying to load each driver's module) rather than probing modules.
+// preferredDriver keeps ZFS whenever LXD reports it, falls back to Btrfs
+// otherwise, and errors when neither is supported. It trusts LXD's
+// supported-drivers list (which LXD builds by trying to load each driver's
+// module) rather than probing modules.
 func (f *LxdBeTests) TestPreferredDriver(c *check.C) {
-	c.Check(lxdbackend.PreferredDriver(driverInfo("zfs", "btrfs", "dir")), check.Equals, "zfs")
-	c.Check(lxdbackend.PreferredDriver(driverInfo("btrfs", "zfs")), check.Equals, "zfs")
+	driver, err := lxdbackend.PreferredDriver(driverInfo("zfs", "btrfs", "dir"))
+	c.Check(err, check.IsNil)
+	c.Check(driver, check.Equals, "zfs")
 
-	c.Check(lxdbackend.PreferredDriver(driverInfo("btrfs", "dir")), check.Equals, "btrfs")
-	c.Check(lxdbackend.PreferredDriver(driverInfo("dir")), check.Equals, "btrfs")
-	c.Check(lxdbackend.PreferredDriver(nil), check.Equals, "btrfs")
-}
+	driver, err = lxdbackend.PreferredDriver(driverInfo("btrfs", "zfs"))
+	c.Check(err, check.IsNil)
+	c.Check(driver, check.Equals, "zfs")
 
-func (f *LxdBeTests) TestDriverSupported(c *check.C) {
-	supported := driverInfo("zfs", "btrfs")
-	c.Check(lxdbackend.DriverSupported(supported, "zfs"), check.Equals, true)
-	c.Check(lxdbackend.DriverSupported(supported, "btrfs"), check.Equals, true)
-	c.Check(lxdbackend.DriverSupported(supported, "lvm"), check.Equals, false)
-	c.Check(lxdbackend.DriverSupported(nil, "zfs"), check.Equals, false)
+	driver, err = lxdbackend.PreferredDriver(driverInfo("btrfs", "dir"))
+	c.Check(err, check.IsNil)
+	c.Check(driver, check.Equals, "btrfs")
+
+	driver, err = lxdbackend.PreferredDriver(driverInfo("dir"))
+	c.Check(err, check.ErrorMatches, "suitable storage backend not found.*")
+	c.Check(driver, check.Equals, "")
+
+	driver, err = lxdbackend.PreferredDriver(nil)
+	c.Check(err, check.ErrorMatches, "suitable storage backend not found.*")
+	c.Check(driver, check.Equals, "")
 }

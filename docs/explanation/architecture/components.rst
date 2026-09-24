@@ -259,7 +259,7 @@ Storage backends
 ~~~~~~~~~~~~~~~~
 
 |ws_markup| uses ZFS for storage where it detects that ZFS is available,
-with automatic Btrfs fallback otherwise,
+with automatic btrfs fallback otherwise,
 for example on Windows Subsystem for Linux (WSL).
 Storage is managed via LXD and requires a minimum pool size of 5 GiB.
 
