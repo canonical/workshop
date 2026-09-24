@@ -30,7 +30,7 @@ Integrate with development workflows
 ------------------------------------
 
 Workshops are intended to integrate with version control, CI/CD,
-and AI-powered development workflows:
+and other development workflows:
 
 .. toctree::
    :maxdepth: 1
@@ -38,5 +38,4 @@ and AI-powered development workflows:
    Manage Python environments <manage-python-environments>
    Run GitHub Actions locally <run-github-actions-locally>
    Run workshops in GitHub Actions <run-workshops-in-github-actions>
-   Use workshops with AI agents <use-workshops-with-ai-agents>
    Use workshops with Git <use-git>

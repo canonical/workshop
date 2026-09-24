@@ -372,8 +372,7 @@ Tool integrations
 
    .. slice:: AI agents
 
-      :ref:`Use with AI agents <how_use_workshops_with_ai_agents>` domain
-      :ref:`AI agent reference <ref_ai_agents>`
+      :ref:`AI agent reference <ref_ai_agents>` domain
       :ref:`use-workshop skill <ref_ai_use_workshop_skill>`
       :ref:`onboard-workshop skill <ref_ai_onboard_workshop_skill>`
       :ref:`design-sdk skill <ref_ai_design_sdk_skill>`
@@ -445,9 +444,8 @@ Use cases
 
    .. slice:: AI agents
 
-      :ref:`Use with AI agents <how_use_workshops_with_ai_agents>` domain
-      :ref:`Parallel agent runs <how_ai_agents_parallel_runs>`
-      :ref:`Role-based coding <how_ai_agents_role_based>`
+      :ref:`AI agent reference <ref_ai_agents>` domain
+      :ref:`Multi-workshop patterns <exp_multi_workshop_patterns>`
 
    .. slice:: AI/ML and data science
 

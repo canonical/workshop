@@ -46,7 +46,6 @@ elif
 enum
 env
 envvar
-Evals
 errcheck
 esac
 fi
@@ -113,13 +112,11 @@ moby
 modularization
 modularize
 monorepo
-multiagent
 multibase
 Multibase
 multiline
 Multipass
 multistage
-multistep
 multiworkshop
 nftables
 nonblocking
@@ -129,7 +126,6 @@ nondefault
 nonexistent
 nonexisting
 nonfunctional
-noninteractive
 nonoperational
 nonprivileged
 nonroot
@@ -194,7 +190,6 @@ stateDiagram
 stderr
 stdin
 stdout
-subagents
 subcommand
 subcommands
 subdirectory

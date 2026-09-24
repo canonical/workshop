@@ -260,7 +260,6 @@ Explanation:
 How-to guides:
 
 - :ref:`how_forward_ports`
-- :ref:`how_use_workshops_with_ai_agents`
 
 Reference:
 
