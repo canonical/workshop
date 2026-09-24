@@ -1,10 +1,10 @@
 .. _exp_ssh_interface:
 
 .. meta::
-   :description: Documentation of the SSH interface that allows workshops to
-                 securely use the host's SSH agent, keys, and configuration for
-                 accessing private repositories and remote machines from within
-                 isolated environments.
+   :description: Documentation of the SSH interface that gives workshops
+                 access to the host's SSH agent for accessing private
+                 repositories and remote machines without copying private keys
+                 into the workshop.
 
 SSH interface
 =============
@@ -14,7 +14,9 @@ SSH interface
 The SSH interface
 provides access to the host system's SSH agent
 from inside the workshop,
-allowing it to securely use the host's SSH keys and configuration.
+allowing it to authenticate with the identities the agent holds.
+The private keys stay with the agent on the host,
+and the host's SSH configuration files aren't shared with the workshop.
 
 By using the interface,
 the SDK publisher allows the workshop to connect to the host's SSH agent,
@@ -76,7 +78,7 @@ Establishing a connection means
 a proxy Unix domain socket has been created
 and a corresponding :envvar:`$SSH_AUTH_SOCK` value
 has been set for the :samp:`workshop` user,
-so the host's SSH identities and configuration
+so the identities held by the host's SSH agent
 are available inside the workshop.
 
 To check if the interface is connected:
@@ -92,7 +94,7 @@ To check if the interface is connected:
      ssh-agent  ws/ssh-sdk:ssh-agent  ws/system:ssh-agent  manual
 
 
-This means the host's SSH identities and configuration
+This means the host's SSH identities
 are available inside the workshop:
 
 .. @artefact workshop shell
@@ -109,6 +111,14 @@ are available inside the workshop:
      4096 SHA256:cb19/bE/6irqhII1KbQqRmo1royWi58qcUD9MEn/9fE user@example.com (RSA)
 
 
+While the interface is connected,
+any process in the workshop can ask the host's SSH agent
+to authenticate with these identities,
+not just the SDK that declares the plug.
+Disconnect the interface when you don't need it,
+especially before an autonomous coding agent starts working in the workshop.
+
+
 See also
 --------
 
@@ -118,6 +128,7 @@ Explanation:
 - :ref:`exp_plugs_slots`
 - :ref:`exp_sdk_definition`
 - :ref:`exp_workshop_definition`
+- :ref:`security_coding_agents`
 
 
 Reference:

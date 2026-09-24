@@ -318,8 +318,9 @@ An SSH plug in the definition must specify the plug name and the interface:
         interface: ssh-agent
 
 
-This proxies the host's SSH keys and configuration inside the workshop
-via a Unix domain socket.
+This proxies the host's SSH agent into the workshop
+via a Unix domain socket;
+private keys and SSH configuration files stay on the host.
 
 
 .. _ref_tunnel_interface:
