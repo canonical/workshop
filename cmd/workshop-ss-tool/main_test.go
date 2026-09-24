@@ -56,7 +56,7 @@ func (s *commandSuite) TestRun(c *check.C) {
 		return value, nil
 	})
 
-	request := Request{
+	request := system.DelegatedDBusRequest{
 		Attributes: map[string]string{"app": "example"},
 		Collection: "default",
 	}
@@ -83,14 +83,14 @@ func (s *commandSuite) TestRunCancellation(c *check.C) {
 	) (secrets.Secret, error) {
 		return secrets.Secret{}, gotContext.Err()
 	})
-	request := Request{
+	request := system.DelegatedDBusRequest{
 		Attributes: map[string]string{"app": "example"},
 		Collection: "default",
 	}
 
 	value, err := run(ctx, "1001", service, request)
 
-	c.Check(value, check.Equals, Response{})
+	c.Check(value, check.Equals, system.DelegatedDBusResponse{})
 	c.Check(errors.Is(err, context.Canceled), check.Equals, true)
 }
 
@@ -105,9 +105,14 @@ func (s *commandSuite) TestRunInvalidRequest(c *check.C) {
 		c.Check(request, check.DeepEquals, system.Request{UID: "1001"})
 		return secrets.Secret{}, validationErr
 	})
-	value, err := run(context.Background(), "1001", service, Request{})
+	value, err := run(
+		context.Background(),
+		"1001",
+		service,
+		system.DelegatedDBusRequest{},
+	)
 
-	c.Check(value, check.Equals, Response{})
+	c.Check(value, check.Equals, system.DelegatedDBusResponse{})
 	c.Check(errors.Is(err, validationErr), check.Equals, true)
 }
 
@@ -121,7 +126,7 @@ func (s *commandSuite) TestRunServiceError(c *check.C) {
 	) (secrets.Secret, error) {
 		return secrets.Secret{}, serviceErr
 	})
-	request := Request{
+	request := system.DelegatedDBusRequest{
 		Attributes: map[string]string{"app": "example"},
 		Collection: "default",
 	}
@@ -129,94 +134,7 @@ func (s *commandSuite) TestRunServiceError(c *check.C) {
 	got, err := run(context.Background(), "1001", service, request)
 
 	c.Check(errors.Is(err, serviceErr), check.Equals, true)
-	c.Check(got, check.Equals, Response{})
-}
-
-// TestResponseError checks an error response uses a lowercase string field
-// and omits the zero-value secret.
-func (s *commandSuite) TestResponseError(c *check.C) {
-	data, err := json.Marshal(Response{
-		Error: system.ErrorSecretNotFound.Error(),
-	})
-
-	c.Assert(err, check.IsNil)
-	var response map[string]string
-	err = json.Unmarshal(data, &response)
-	c.Assert(err, check.IsNil)
-	c.Check(response, check.DeepEquals, map[string]string{
-		"error": "secret not found",
-	})
-}
-
-// TestResponseSecretBinary checks arbitrary bytes are encoded as base64
-// without an error field, consuming the secret.
-func (s *commandSuite) TestResponseSecretBinary(c *check.C) {
-	value := secrets.NewSecret([]byte{'a', 0, 0xff, '\n'})
-	defer value.Close()
-
-	data, err := json.Marshal(Response{
-		Secret: SecretResponseValue{value},
-	})
-	defer clear(data)
-	c.Assert(err, check.IsNil)
-	var response map[string]string
-	err = json.Unmarshal(data, &response)
-	c.Assert(err, check.IsNil)
-	c.Check(response, check.DeepEquals, map[string]string{
-		"secret": "YQD/Cg==",
-	})
-
-	var remaining [1]byte
-	n, err := value.Read(remaining[:])
-	c.Check(n, check.Equals, 0)
-	c.Check(errors.Is(err, io.EOF), check.Equals, true)
-}
-
-// TestResponseSecretEmpty checks an empty secret is encoded as an empty
-// string, rather than omitted or accompanied by an error field.
-func (s *commandSuite) TestResponseSecretEmpty(c *check.C) {
-	value := secrets.NewSecret([]byte{})
-	defer value.Close()
-
-	data, err := json.Marshal(Response{
-		Secret: SecretResponseValue{value},
-	})
-	defer clear(data)
-	c.Assert(err, check.IsNil)
-	c.Check(string(data), check.Equals, `{"secret":""}`)
-}
-
-// TestResponseSecretNilBytes checks a secret constructed from nil bytes is
-// encoded as an empty string, not null or an omitted field.
-func (s *commandSuite) TestResponseSecretNilBytes(c *check.C) {
-	value := secrets.NewSecret(nil)
-	defer value.Close()
-
-	data, err := json.Marshal(Response{
-		Secret: SecretResponseValue{value},
-	})
-	defer clear(data)
-	c.Assert(err, check.IsNil)
-	c.Check(string(data), check.Equals, `{"secret":""}`)
-}
-
-// TestMarshalJSONConsumesSecret checks a copied wrapper shares consumption
-// and cannot marshal the original bytes a second time.
-func (s *commandSuite) TestMarshalJSONConsumesSecret(c *check.C) {
-	value := secrets.NewSecret([]byte("hello"))
-	defer value.Close()
-	responseValue := SecretResponseValue{value}
-	copyValue := responseValue
-
-	first, err := responseValue.MarshalJSON()
-	defer clear(first)
-	c.Assert(err, check.IsNil)
-	c.Check(string(first), check.Equals, `"aGVsbG8="`)
-
-	second, err := copyValue.MarshalJSON()
-	defer clear(second)
-	c.Assert(err, check.IsNil)
-	c.Check(string(second), check.Equals, `""`)
+	c.Check(got, check.Equals, system.DelegatedDBusResponse{})
 }
 
 // TestMakeResponseFromErrorCollectionAmbiguous checks an ambiguous collection
@@ -225,7 +143,7 @@ func (s *commandSuite) TestMakeResponseFromErrorCollectionAmbiguous(c *check.C) 
 	response, err := makeResponseFromError(system.ErrorCollectionAmbiguous)
 
 	c.Check(err, check.IsNil)
-	c.Check(response, check.Equals, Response{
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{
 		Error: system.ErrorCollectionAmbiguous.Error(),
 	})
 }
@@ -236,7 +154,7 @@ func (s *commandSuite) TestMakeResponseFromErrorCollectionLocked(c *check.C) {
 	response, err := makeResponseFromError(system.ErrorCollectionLocked)
 
 	c.Check(err, check.IsNil)
-	c.Check(response, check.Equals, Response{
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{
 		Error: system.ErrorCollectionLocked.Error(),
 	})
 }
@@ -247,7 +165,7 @@ func (s *commandSuite) TestMakeResponseFromErrorCollectionNotFound(c *check.C) {
 	response, err := makeResponseFromError(system.ErrorCollectionNotFound)
 
 	c.Check(err, check.IsNil)
-	c.Check(response, check.Equals, Response{
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{
 		Error: system.ErrorCollectionNotFound.Error(),
 	})
 }
@@ -258,7 +176,7 @@ func (s *commandSuite) TestMakeResponseFromErrorMultipleSecrets(c *check.C) {
 	response, err := makeResponseFromError(system.ErrorMultipleSecrets)
 
 	c.Check(err, check.IsNil)
-	c.Check(response, check.Equals, Response{
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{
 		Error: system.ErrorMultipleSecrets.Error(),
 	})
 }
@@ -269,7 +187,7 @@ func (s *commandSuite) TestMakeResponseFromErrorSecretNotFound(c *check.C) {
 	response, err := makeResponseFromError(system.ErrorSecretNotFound)
 
 	c.Check(err, check.IsNil)
-	c.Check(response, check.Equals, Response{
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{
 		Error: system.ErrorSecretNotFound.Error(),
 	})
 }
@@ -282,7 +200,7 @@ func (s *commandSuite) TestMakeResponseFromErrorWrapped(c *check.C) {
 	response, err := makeResponseFromError(lookupErr)
 
 	c.Check(err, check.IsNil)
-	c.Check(response, check.Equals, Response{
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{
 		Error: system.ErrorSecretNotFound.Error(),
 	})
 }
@@ -296,7 +214,7 @@ func (s *commandSuite) TestRunRecognisedError(c *check.C) {
 	) (secrets.Secret, error) {
 		return secrets.Secret{}, system.ErrorSecretNotFound
 	})
-	request := Request{
+	request := system.DelegatedDBusRequest{
 		Attributes: map[string]string{"app": "example"},
 		Collection: "default",
 	}
@@ -304,7 +222,7 @@ func (s *commandSuite) TestRunRecognisedError(c *check.C) {
 	response, err := run(context.Background(), "1001", service, request)
 
 	c.Check(err, check.IsNil)
-	c.Check(response, check.Equals, Response{
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{
 		Error: system.ErrorSecretNotFound.Error(),
 	})
 }
@@ -315,7 +233,7 @@ func (s *commandSuite) TestMakeResponseFromErrorNil(c *check.C) {
 	response, err := makeResponseFromError(nil)
 
 	c.Check(err, check.IsNil)
-	c.Check(response, check.Equals, Response{})
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{})
 }
 
 // TestMakeResponseFromErrorUnknown checks an unrecognised error remains
@@ -326,7 +244,7 @@ func (s *commandSuite) TestMakeResponseFromErrorUnknown(c *check.C) {
 	response, err := makeResponseFromError(unknown)
 
 	c.Check(errors.Is(err, unknown), check.Equals, true)
-	c.Check(response, check.Equals, Response{})
+	c.Check(response, check.Equals, system.DelegatedDBusResponse{})
 }
 
 // TestResponseErrorPartialWrite checks a partial error-response write returns
@@ -335,7 +253,7 @@ func (s *commandSuite) TestResponseErrorPartialWrite(c *check.C) {
 	writeErr := errors.New("output pipe closed")
 	output := &failingWriter{err: writeErr, limit: 5}
 
-	err := json.NewEncoder(output).Encode(Response{
+	err := json.NewEncoder(output).Encode(system.DelegatedDBusResponse{
 		Error: system.ErrorSecretNotFound.Error(),
 	})
 
@@ -350,7 +268,7 @@ func (s *commandSuite) TestResponseErrorWriteFailure(c *check.C) {
 	writeErr := errors.New("output pipe closed")
 	output := &failingWriter{err: writeErr, limit: 0}
 
-	err := json.NewEncoder(output).Encode(Response{
+	err := json.NewEncoder(output).Encode(system.DelegatedDBusResponse{
 		Error: system.ErrorSecretNotFound.Error(),
 	})
 
@@ -366,8 +284,8 @@ func (s *commandSuite) TestResponseSecretPartialWrite(c *check.C) {
 	writeErr := errors.New("output pipe closed")
 	output := &failingWriter{err: writeErr, limit: 5}
 
-	err := json.NewEncoder(output).Encode(Response{
-		Secret: SecretResponseValue{value},
+	err := json.NewEncoder(output).Encode(system.DelegatedDBusResponse{
+		Secret: system.SecretResponseValue{Secret: value},
 	})
 
 	c.Check(errors.Is(err, writeErr), check.Equals, true)
@@ -387,8 +305,8 @@ func (s *commandSuite) TestResponseSecretWriteFailure(c *check.C) {
 	writeErr := errors.New("output pipe closed")
 	output := &failingWriter{err: writeErr, limit: 0}
 
-	err := json.NewEncoder(output).Encode(Response{
-		Secret: SecretResponseValue{value},
+	err := json.NewEncoder(output).Encode(system.DelegatedDBusResponse{
+		Secret: system.SecretResponseValue{Secret: value},
 	})
 
 	c.Check(errors.Is(err, writeErr), check.Equals, true)

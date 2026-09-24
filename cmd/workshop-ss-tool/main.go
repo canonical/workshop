@@ -15,12 +15,10 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"strconv"
@@ -28,31 +26,6 @@ import (
 	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/secrets/provider/system"
 )
-
-// Request defines the workshop-ss-tool command's JSON input for a lookup
-// against a user's host Secret Service.
-type Request struct {
-	Attributes map[string]string `json:"attributes"`
-	Collection string            `json:"collection"`
-}
-
-// Response carries either a secret on success or a recognised lookup error.
-// Error contains the canonical service error message, without wrapping context.
-// A zero-value Secret is omitted; a retrieved secret is encoded as a base64
-// JSON string, including an empty string for a successfully retrieved empty
-// value.
-type Response struct {
-	Error  string              `json:"error,omitempty"`
-	Secret SecretResponseValue `json:"secret,omitzero"`
-}
-
-// SecretResponseValue exposes a [secrets.Secret] as a base64 JSON string.
-// Marshalling consumes the secret, including through copies of this value.
-// Callers must close the embedded secret if they abandon the response without
-// marshalling it or if marshalling fails before the secret is fully consumed.
-type SecretResponseValue struct {
-	secrets.Secret
-}
 
 // SecretService provides the host secret lookups required by the command.
 type SecretService interface {
@@ -68,34 +41,35 @@ const (
 )
 
 // makeResponseFromError converts recognised lookup errors, including wrapped
-// errors, into a [Response] containing the canonical service error message.
+// errors, into a [system.DelegatedDBusResponse] with the canonical error
+// message.
 // Recognised errors return a nil error; unrecognised errors are returned
 // unchanged with an empty response. A nil input returns an empty response and
 // a nil error.
-func makeResponseFromError(err error) (Response, error) {
+func makeResponseFromError(err error) (system.DelegatedDBusResponse, error) {
 	switch {
 	case errors.Is(err, system.ErrorCollectionAmbiguous):
-		return Response{
+		return system.DelegatedDBusResponse{
 			Error: system.ErrorCollectionAmbiguous.Error(),
 		}, nil
 	case errors.Is(err, system.ErrorCollectionLocked):
-		return Response{
+		return system.DelegatedDBusResponse{
 			Error: system.ErrorCollectionLocked.Error(),
 		}, nil
 	case errors.Is(err, system.ErrorCollectionNotFound):
-		return Response{
+		return system.DelegatedDBusResponse{
 			Error: system.ErrorCollectionNotFound.Error(),
 		}, nil
 	case errors.Is(err, system.ErrorMultipleSecrets):
-		return Response{
+		return system.DelegatedDBusResponse{
 			Error: system.ErrorMultipleSecrets.Error(),
 		}, nil
 	case errors.Is(err, system.ErrorSecretNotFound):
-		return Response{
+		return system.DelegatedDBusResponse{
 			Error: system.ErrorSecretNotFound.Error(),
 		}, nil
 	default:
-		return Response{}, err
+		return system.DelegatedDBusResponse{}, err
 	}
 }
 
@@ -103,7 +77,7 @@ func main() {
 	decoder := json.NewDecoder(os.Stdin)
 	decoder.DisallowUnknownFields()
 
-	var request Request
+	var request system.DelegatedDBusRequest
 	err := decoder.Decode(&request)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "decoding secret request: %v\n", err)
@@ -133,34 +107,18 @@ func main() {
 	}
 }
 
-// MarshalJSON implements [json.Marshaler] by consuming the secret and encoding
-// its bytes as a base64 JSON string. Reads clear consumed bytes, and the
-// temporary buffer is cleared on return. The encoded result remains sensitive.
-// Repeated calls cannot reproduce the original value after it is consumed.
-// This method does not close the secret; callers must close any unread remainder
-// if marshalling fails.
-func (s SecretResponseValue) MarshalJSON() ([]byte, error) {
-	buf := bytes.Buffer{}
-	defer func() { clear(buf.Bytes()) }()
-
-	_, err := io.Copy(&buf, s.Secret)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(buf.Bytes())
-}
-
 // run resolves request for the supplied effective user ID and returns a
-// [Response]. A successful lookup transfers ownership of the response's secret
-// to the caller, which must consume or close it. Recognised lookup errors
-// populate the response's Error field and return a nil error. Unrecognised
-// service errors are returned unchanged with an empty response.
+// [system.DelegatedDBusResponse]. A successful lookup transfers ownership of
+// the response's secret to the caller, which must consume or close it.
+// Recognised lookup errors populate the response's Error field and return a
+// nil error. Unrecognised service errors are returned unchanged with an empty
+// response.
 func run(
 	ctx context.Context,
 	uid string,
 	service SecretService,
-	request Request,
-) (Response, error) {
+	request system.DelegatedDBusRequest,
+) (system.DelegatedDBusResponse, error) {
 	secretVal, err := service.Get(ctx, system.Request{
 		Attributes: request.Attributes,
 		Collection: request.Collection,
@@ -171,7 +129,7 @@ func run(
 		return makeResponseFromError(err)
 	}
 
-	return Response{
-		Secret: SecretResponseValue{secretVal},
+	return system.DelegatedDBusResponse{
+		Secret: system.SecretResponseValue{Secret: secretVal},
 	}, nil
 }
