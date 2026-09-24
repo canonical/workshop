@@ -16,26 +16,62 @@ package system
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os/user"
 
+	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/sdk/system/secret"
 	"github.com/canonical/workshop/internal/secrets"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
-// SecretProvider returns a placeholder for system SDK secret slots until
-// retrieval from the user's Secret Service over D-Bus is implemented.
+// SecretProvider resolves system SDK secret slots through a host secret service.
 type SecretProvider struct {
-	slots SecretSlotLookup
+	service SecretService
+	slots   SecretSlotLookup
 }
 
-// NewSecretProvider creates a system SDK secret provider using slots to read
-// typed slot configuration.
-func NewSecretProvider(slots SecretSlotLookup) SecretProvider {
-	return SecretProvider{slots: slots}
+// SecretService retrieves host secrets for the system SDK secret provider.
+type SecretService interface {
+	// Get retrieves the secret matching the request for its user ID.
+	// The caller must consume or close the returned secret.
+	// Implementations must honour context cancellation.
+	//
+	// The following errors may be expected:
+	//   - [secret.ErrorCollectionAmbiguous] when multiple collections have the
+	//     requested label.
+	//   - [secret.ErrorCollectionLocked] when the requested collection is locked.
+	//   - [secret.ErrorCollectionNotFound] when the requested collection does
+	//     not exist.
+	//   - [secret.ErrorMultipleSecrets] when multiple secrets match the
+	//     requested attributes.
+	//   - [secret.ErrorSecretNotFound] when no secret matches the requested
+	//     attributes.
+	Get(context.Context, secret.Request) (secrets.Secret, error)
 }
 
-// Resolve looks up slot configuration before returning a placeholder secret.
-// The caller must consume or close the returned secret.
+// NewSecretProvider creates a provider using slots for configuration and service
+// for secret retrieval.
+func NewSecretProvider(
+	slots SecretSlotLookup,
+	service SecretService,
+) SecretProvider {
+	return SecretProvider{service: service, slots: slots}
+}
+
+// Resolve looks up slot configuration and retrieves its secret for the host
+// user identified by [workshop.ContextUser]. The caller must consume or close
+// the returned secret.
+//
+// The following errors may be expected:
+//   - [secrets.ErrorMultipleSecrets] when multiple secrets match the request.
+//   - [secrets.ErrorProviderLocked] when the requested collection is locked.
+//   - [secrets.ErrorSecretNotFound] when the requested collection does not
+//     exist or no secret matches the request.
+//   - [secrets.ErrorUserNotFound] when the context user is missing, empty or
+//     not a string, or the named user does not exist.
 func (p SecretProvider) Resolve(
 	ctx context.Context,
 	slot sdk.SlotRef,
@@ -45,12 +81,61 @@ func (p SecretProvider) Resolve(
 		return secrets.Secret{}, err
 	}
 
-	// Require valid slot configuration even while retrieval is a placeholder.
-	_, err = p.slots.Lookup(ctx, slot)
+	config, err := p.slots.Lookup(ctx, slot)
 	if err != nil {
 		return secrets.Secret{}, fmt.Errorf(
 			"looking up secret slot configuration: %w", err,
 		)
 	}
-	return secrets.NewSecret([]byte("workshop-placeholder-secret")), nil
+
+	username, ok := ctx.Value(workshop.ContextUser).(string)
+	if !ok || username == "" {
+		return secrets.Secret{}, secrets.ErrorUserNotFound
+	}
+
+	account, err := osutil.UserLookup(username)
+	_, unknownUser := errors.AsType[user.UnknownUserError](err)
+	if unknownUser {
+		return secrets.Secret{}, fmt.Errorf(
+			"looking up secret request user %q: %w",
+			username,
+			secrets.ErrorUserNotFound,
+		)
+	} else if err != nil {
+		return secrets.Secret{}, fmt.Errorf(
+			"looking up secret request user %q: %w", username, err,
+		)
+	}
+
+	value, err := p.service.Get(ctx, secret.Request{
+		Attributes: config.Attributes,
+		Collection: config.Collection,
+		UID:        account.Uid,
+	})
+	switch {
+	case errors.Is(err, secret.ErrorCollectionLocked):
+		return secrets.Secret{}, fmt.Errorf(
+			"retrieving system secret: %w",
+			secrets.ErrorProviderLocked,
+		)
+	case errors.Is(err, secret.ErrorCollectionNotFound):
+		return secrets.Secret{}, fmt.Errorf(
+			"retrieving system secret from missing collection %q: %w",
+			config.Collection,
+			secrets.ErrorSecretNotFound,
+		)
+	case errors.Is(err, secret.ErrorMultipleSecrets):
+		return secrets.Secret{}, fmt.Errorf(
+			"retrieving system secret: %w",
+			secrets.ErrorMultipleSecrets,
+		)
+	case errors.Is(err, secret.ErrorSecretNotFound):
+		return secrets.Secret{}, fmt.Errorf(
+			"retrieving system secret: %w",
+			secrets.ErrorSecretNotFound,
+		)
+	case err != nil:
+		return secrets.Secret{}, fmt.Errorf("retrieving system secret: %w", err)
+	}
+	return value, nil
 }

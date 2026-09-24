@@ -19,7 +19,15 @@ import (
 
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/sdk/system"
+	"github.com/canonical/workshop/internal/sdk/system/secret"
+	"github.com/canonical/workshop/internal/secrets"
 )
+
+// secretService delegates secret retrieval to a test-defined function.
+type secretService func(
+	context.Context,
+	secret.Request,
+) (secrets.Secret, error)
 
 // secretSlotLookup delegates slot lookup to a test-defined function.
 type secretSlotLookup func(
@@ -31,6 +39,14 @@ type secretSlotLookup func(
 type slotRepository struct {
 	refs []sdk.SlotRef
 	slot *sdk.SlotInfo
+}
+
+// Get calls the test-defined secret retrieval function.
+func (s secretService) Get(
+	ctx context.Context,
+	request secret.Request,
+) (secrets.Secret, error) {
+	return s(ctx, request)
 }
 
 // Lookup calls the test-defined lookup function.

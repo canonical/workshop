@@ -13,5 +13,5 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 // Package secret retrieves secrets from the host Secret Service for the system
-// SDK.
+// SDK, either directly over D-Bus or through a user-scoped command.
 package secret
