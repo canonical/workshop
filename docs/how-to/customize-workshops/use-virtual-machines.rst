@@ -15,11 +15,17 @@ How to use virtual machines
 .. @artefact workshop info
 
 A workshop runs in an LXD container unless its definition says otherwise.
-|ws_markup| can instead run it as a full virtual machine,
+|ws_markup| can instead run it as a full virtual machine
+with a kernel of its own,
 which draws a harder boundary than a container can.
-Reach for a virtual machine when you want that boundary
-around an AI agent working in the project,
+Reach for a virtual machine when you want that boundary,
 or when the workshop itself has to run LXD containers and virtual machines.
+The boundary stops at the kernel:
+the project directory, including its :file:`.git` directory,
+is still mounted read-write,
+and outbound network access is still open,
+so a virtual machine doesn't protect the project
+from a coding agent that works in it.
 
 .. warning::
 
@@ -312,11 +318,11 @@ Explanation:
 How-to guides:
 
 - :ref:`how_use_multiple_workshops`
-- :ref:`how_use_workshops_with_ai_agents`
 
 
 Reference:
 
+- :ref:`ref_ai_agents`
 - :ref:`ref_workshop_connect`
 - :ref:`ref_workshop_definition`
 - :ref:`ref_workshop_info`
