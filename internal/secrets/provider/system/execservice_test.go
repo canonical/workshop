@@ -52,8 +52,8 @@ func (s *execServiceSuite) TestDecodeExecResponseError(c *check.C) {
 	value, err := decodeExecResponse(strings.NewReader(
 		`{"secret":"YQD/Cg==","error":"secret not found"}`,
 	))
-	defer value.Close()
 	c.Check(errors.Is(err, ErrorSecretNotFound), check.Equals, true)
+	defer value.Close()
 	c.Check(value, check.Equals, secrets.Secret{})
 }
 
@@ -65,8 +65,8 @@ func (s *execServiceSuite) TestDecodeExecResponseInvalidBase64(
 	value, err := decodeExecResponse(strings.NewReader(
 		`{"secret":"YQD/!"}`,
 	))
-	defer value.Close()
 	c.Check(errors.Is(err, base64.CorruptInputError(4)), check.Equals, true)
+	defer value.Close()
 	c.Check(value, check.Equals, secrets.Secret{})
 }
 
@@ -76,8 +76,8 @@ func (s *execServiceSuite) TestDecodeExecResponseSuccess(c *check.C) {
 	value, err := decodeExecResponse(strings.NewReader(
 		`{"secret":"YQD/Cg=="}`,
 	))
-	defer value.Close()
 	c.Assert(err, check.IsNil)
+	defer value.Close()
 
 	contents, err := io.ReadAll(value)
 	defer clear(contents)

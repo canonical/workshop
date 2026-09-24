@@ -52,7 +52,7 @@ func (s SecretResponseValue) MarshalJSON() ([]byte, error) {
 // as an owned empty secret, matching the decoding behaviour of a byte slice.
 // The caller retains ownership of the sensitive JSON input.
 func (s *SecretResponseValue) UnmarshalJSON(data []byte) error {
-	_ = s.Secret.Close()
+	_ = s.Close()
 	s.Secret = secrets.Secret{}
 
 	var value []byte
