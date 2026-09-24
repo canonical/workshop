@@ -16,6 +16,7 @@ package system
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -27,6 +28,8 @@ import (
 	"syscall"
 
 	"gopkg.in/check.v1"
+
+	"github.com/canonical/workshop/internal/secrets"
 )
 
 // execServiceSuite tests delegated lookups without D-Bus or account lookups.
@@ -41,6 +44,45 @@ func (s *execServiceSuite) SetUpSuite(c *check.C) {
 	executable, err := os.Executable()
 	c.Assert(err, check.IsNil)
 	s.executable = executable
+}
+
+// TestDecodeExecResponseError checks a lookup error takes precedence over a
+// supplied secret and returns a zero secret.
+func (s *execServiceSuite) TestDecodeExecResponseError(c *check.C) {
+	value, err := decodeExecResponse(strings.NewReader(
+		`{"secret":"YQD/Cg==","error":"secret not found"}`,
+	))
+	defer value.Close()
+	c.Check(errors.Is(err, ErrorSecretNotFound), check.Equals, true)
+	c.Check(value, check.Equals, secrets.Secret{})
+}
+
+// TestDecodeExecResponseInvalidBase64 checks decoding preserves the base64
+// error and returns no secret.
+func (s *execServiceSuite) TestDecodeExecResponseInvalidBase64(
+	c *check.C,
+) {
+	value, err := decodeExecResponse(strings.NewReader(
+		`{"secret":"YQD/!"}`,
+	))
+	defer value.Close()
+	c.Check(errors.Is(err, base64.CorruptInputError(4)), check.Equals, true)
+	c.Check(value, check.Equals, secrets.Secret{})
+}
+
+// TestDecodeExecResponseSuccess checks the decoder transfers a readable secret
+// to its caller rather than closing it before returning.
+func (s *execServiceSuite) TestDecodeExecResponseSuccess(c *check.C) {
+	value, err := decodeExecResponse(strings.NewReader(
+		`{"secret":"YQD/Cg=="}`,
+	))
+	defer value.Close()
+	c.Assert(err, check.IsNil)
+
+	contents, err := io.ReadAll(value)
+	defer clear(contents)
+	c.Check(err, check.IsNil)
+	c.Check(contents, check.DeepEquals, []byte{'a', 0, 0xff, '\n'})
 }
 
 // TestGetCommandFailure excludes stdout while exposing stderr and exit status.

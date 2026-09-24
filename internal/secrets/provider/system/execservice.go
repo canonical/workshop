@@ -41,12 +41,13 @@ type DelegatedDBusRequest struct {
 }
 
 // DelegatedDBusResponse carries the result of a delegated D-Bus secret lookup.
-// A non-empty Error indicates failure. Secret contains the decoded secret
-// bytes, represented as base64 in JSON, and may be empty on success.
-// The recipient owns the secret bytes and must consume or clear them.
+// A non-empty Error indicates failure. Secret is represented as base64 in
+// JSON and may be empty on success. A zero-value Secret is omitted, while an
+// owned empty secret is encoded as an empty string. Marshalling consumes the
+// secret; recipients must consume or close any decoded secret.
 type DelegatedDBusResponse struct {
-	Error  string `json:"error"`
-	Secret []byte `json:"secret"`
+	Error  string              `json:"error,omitempty"`
+	Secret SecretResponseValue `json:"secret,omitzero"`
 }
 
 // ExecService retrieves secrets by running workshop-ss-tool as the requested
@@ -172,14 +173,14 @@ func decodeExecResponse(input io.Reader) (secrets.Secret, error) {
 	var response DelegatedDBusResponse
 	err := json.NewDecoder(input).Decode(&response)
 	if err != nil {
-		clear(response.Secret)
+		_ = response.Secret.Close()
 		return secrets.Secret{}, fmt.Errorf("decoding secret response: %w", err)
 	}
 
 	if response.Error == "" {
-		return secrets.NewSecret(response.Secret), nil
+		return response.Secret.Secret, nil
 	}
-	clear(response.Secret)
+	_ = response.Secret.Close()
 
 	return secrets.Secret{}, constError(response.Error)
 }
