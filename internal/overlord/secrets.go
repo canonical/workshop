@@ -21,11 +21,17 @@ import (
 )
 
 // makeSecretResolver builds the resolver with the built-in secret providers.
-func makeSecretResolver(repo system.SlotRepository) secrets.Resolver {
+func makeSecretResolver(
+	repo system.SlotRepository,
+) (secrets.Resolver, error) {
+	service, err := system.MakeExecService()
+	if err != nil {
+		return secrets.Resolver{}, err
+	}
 	slots := system.NewRepositorySecretSlotLookup(repo)
-	provider := system.NewSecretProvider(slots)
+	provider := system.NewSecretProvider(slots, service)
 
 	return secrets.NewResolver(map[string]secrets.Provider{
 		sdk.System.String(): provider,
-	})
+	}), nil
 }

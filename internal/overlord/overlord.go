@@ -174,7 +174,10 @@ func New(dir string, restartHandler restart.Handler) (*Overlord, error) {
 	workshopBackend := workshop.WorkshopBackend(s)
 	s.Unlock()
 
-	secretResolver := makeSecretResolver(o.ifacemgr.Repository())
+	secretResolver, err := makeSecretResolver(o.ifacemgr.Repository())
+	if err != nil {
+		return nil, fmt.Errorf("creating secret resolver: %w", err)
+	}
 	o.secretmgr = secretstate.New(
 		o.runner,
 		workshopBackend,
