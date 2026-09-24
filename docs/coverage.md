@@ -194,7 +194,7 @@
                 <td><a href="tutorial/part-1-get-started.rst#L138">[part-1-get-started.rst]</a></td>
                 <td></td>
                 <td></td>
-                <td><a href="reference/cli/sdk-find.rst#L10">[sdk-find.rst]</a></td>
+                <td><a href="reference/ai-agents.rst#L182">[ai-agents.rst]</a><br><a href="reference/cli/sdk-find.rst#L10">[sdk-find.rst]</a></td>
                 <td></td>
             </tr><tr>
                 <td>sdk info</td>
@@ -203,7 +203,7 @@
                 <td><a href="tutorial/part-1-get-started.rst#L156">[part-1-get-started.rst]</a></td>
                 <td></td>
                 <td></td>
-                <td><a href="reference/cli/sdk-info.rst#L10">[sdk-info.rst]</a></td>
+                <td><a href="reference/ai-agents.rst#L183">[ai-agents.rst]</a><br><a href="reference/cli/sdk-info.rst#L10">[sdk-info.rst]</a></td>
                 <td>SK048</td>
             </tr><tr>
                 <td>sdk list</td>

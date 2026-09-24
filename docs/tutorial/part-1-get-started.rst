@@ -145,13 +145,20 @@ and check its publisher and current version:
 
    $ sdk find ollama
 
-     NAME    VERSION  PUBLISHER     SUMMARY
-     ollama  0.20.2   Canonical     Get up and running with large language models
+     NAME                      VERSION    PUBLISHER       SUMMARY
+     ...
+     ollama                    0.33.2     Canonical✓      Get up and running with large language models
 
+
+The :samp:`✓` after the publisher's name marks a verified publisher.
 
 The query also matches an SDK's title, summary, description, or publisher,
 so a broader keyword like :command:`sdk find ai`
-can surface AI-related SDKs on the Store.
+can surface AI-related SDKs on the Store,
+and :command:`sdk find agent` lists coding agents packaged as SDKs.
+Before running an agent in a workshop,
+learn :ref:`how to assess agent SDKs <ref_ai_agent_sdks>`
+and :ref:`what a workshop does and doesn't protect <security_coding_agents>`.
 
 .. @artefact sdk info
 
@@ -163,22 +170,24 @@ inspect its details:
    $ sdk info ollama
 
      name:       ollama
-     publisher:  Canonical (canonical)
+     publisher:  Canonical✓
      license:    MIT
      website:    https://github.com/canonical/ollama-sdk
 
      Get up and running with Llama 3.3, ...
 
      CHANNELS
-       CHANNEL        VERSION  BUILD       BASE          REV   SIZE
-       latest/stable  0.20.2   2026-04-15  ubuntu@24.04    7  2.27GB
-                                           ubuntu@22.04    8  2.27GB
+       CHANNEL           VERSION  BUILD       BASE          REV     SIZE
+       latest/stable     0.33.2   2026-09-03  ubuntu@26.04  149   1.47GB
+                                              ubuntu@24.04  147   1.47GB
+                                              ubuntu@22.04  148   1.47GB
        ...
-       cpu/stable     0.20.2   2026-04-15  ubuntu@24.04    2  15.22MB
-                                           ubuntu@22.04    5  15.22MB
-       cpu/candidate  ^
-       cpu/beta       ^
-       cpu/edge       ^
+       cpu/stable        0.34.3   2026-09-23  ubuntu@26.04  163  17.38MB
+                                              ubuntu@24.04  164  17.38MB
+                                              ubuntu@22.04  165  17.38MB
+       cpu/candidate     ↑
+       cpu/beta          ↑
+       cpu/edge          ↑
 
 
 The :samp:`CHANNELS` table lists each track

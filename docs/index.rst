@@ -373,6 +373,7 @@ Tool integrations
    .. slice:: AI agents
 
       :ref:`AI agent reference <ref_ai_agents>` domain
+      :ref:`Agent SDKs <ref_ai_agent_sdks>`
       :ref:`Coding-agent security <security_coding_agents>`
       :ref:`use-workshop skill <ref_ai_use_workshop_skill>`
       :ref:`onboard-workshop skill <ref_ai_onboard_workshop_skill>`
@@ -447,6 +448,7 @@ Use cases
    .. slice:: AI agents
 
       :ref:`AI agent reference <ref_ai_agents>` domain
+      :ref:`Find and assess agent SDKs <ref_ai_agent_sdks>`
       :ref:`Multi-workshop patterns <exp_multi_workshop_patterns>`
       :ref:`Security boundaries for agents <security_coding_agents>`
 
