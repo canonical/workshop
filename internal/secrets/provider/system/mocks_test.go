@@ -16,6 +16,11 @@ package system
 
 import (
 	"context"
+	"io"
+	"os"
+	"os/exec"
+	"strconv"
+	"testing"
 
 	"github.com/godbus/dbus/v5"
 
@@ -27,6 +32,19 @@ import (
 type fakeBusConnection struct {
 	call   func(context.Context, dbus.ObjectPath, string, []any, ...any) error
 	closed bool
+}
+
+// fakeExecCommand runs only the test binary, or fails before process start.
+// Arguments carry responses because ExecService deliberately clears Env.
+type fakeExecCommand struct {
+	args       []string
+	cmd        *exec.Cmd
+	executable string
+	exitCode   int
+	path       string
+	startErr   error
+	stderr     string
+	stdout     string
 }
 
 // secretService delegates secret retrieval to a test-defined function.
@@ -60,6 +78,54 @@ func (c *fakeBusConnection) Call(
 func (c *fakeBusConnection) Close() error {
 	c.closed = true
 	return nil
+}
+
+// Command records command selection and supplies a controlled subprocess.
+func (f *fakeExecCommand) Command(
+	ctx context.Context,
+	name string,
+	args ...string,
+) *exec.Cmd {
+	f.executable = name
+	f.args = args
+	f.cmd = exec.CommandContext(
+		ctx,
+		f.path,
+		"-test.run=^TestExecCommandHelper$",
+		"--",
+		"--exec-service-helper",
+		f.stdout,
+		f.stderr,
+		strconv.Itoa(f.exitCode),
+	)
+	f.cmd.Err = f.startErr
+	return f.cmd
+}
+
+// TestExecCommandHelper supplies protocol output without running command main.
+// Ordinary test runs do nothing; the parent selects helper mode explicitly.
+func TestExecCommandHelper(t *testing.T) {
+	if len(os.Args) != 7 || os.Args[3] != "--exec-service-helper" {
+		return
+	}
+	_, err := io.Copy(io.Discard, os.Stdin)
+	if err != nil {
+		os.Exit(120)
+	}
+	code, err := strconv.Atoi(os.Args[6])
+	if err != nil {
+		os.Exit(121)
+	}
+	_, err = io.WriteString(os.Stdout, os.Args[4])
+	if err != nil {
+		os.Exit(122)
+	}
+	_, err = io.WriteString(os.Stderr, os.Args[5])
+	if err != nil {
+		os.Exit(123)
+	}
+	// Do not let the testing runner append PASS to the protocol response.
+	os.Exit(code)
 }
 
 // Get calls the test-defined secret retrieval function.
