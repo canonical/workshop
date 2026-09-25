@@ -124,7 +124,6 @@ func infoFromYaml(y *sdkYaml) (*Info, error) {
 		Description:   y.Description,
 		License:       y.License,
 		Name:          y.Name,
-		PlugBinds:     make(map[string]PlugRef),
 		Plugs:         make(map[string]*PlugInfo),
 		Slots:         make(map[string]*SlotInfo),
 		Summary:       y.Summary,

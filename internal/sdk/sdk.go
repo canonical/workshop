@@ -190,9 +190,8 @@ type Info struct {
 	Description string
 	License     string
 
-	Plugs     map[string]*PlugInfo
-	PlugBinds map[string]PlugRef
-	Slots     map[string]*SlotInfo
+	Plugs map[string]*PlugInfo
+	Slots map[string]*SlotInfo
 	// Plugs or slots with issues (they are not included in Plugs or Slots)
 	BadInterfaces map[string]string
 }
@@ -206,15 +205,15 @@ func (i *Info) Ref() Ref {
 }
 
 func (i *Info) SetupPlugBinds(binds map[string]PlugRef) error {
-	for name, plug := range binds {
-		if _, ok := i.Plugs[name]; ok {
+	for name, bind := range binds {
+		plug, ok := i.Plugs[name]
+		if !ok {
 			// Check plugs that are bound. The existence of plugs that are
 			// "bound to" it will be checked at the connecting stage, i.e. when
 			// all plugs from all SDKs are in the repository already.
-			i.PlugBinds[name] = plug
-		} else {
 			return fmt.Errorf("plug binding failed: SDK %q has no plug named %q", i.Ref().ShortRef(), name)
 		}
+		plug.Bind = &bind
 	}
 	return nil
 }
@@ -311,7 +310,6 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
 		Description:   sdkYaml.Description,
 		License:       sdkYaml.License,
 		Plugs:         make(map[string]*PlugInfo),
-		PlugBinds:     make(map[string]PlugRef),
 		Slots:         make(map[string]*SlotInfo),
 		BadInterfaces: make(map[string]string),
 	}
@@ -500,6 +498,7 @@ type PlugInfo struct {
 	Interface string
 	Attrs     map[string]any
 	Label     string
+	Bind      *PlugRef
 }
 
 func (plug *PlugInfo) Attr(key string, val any) error {
