@@ -50,11 +50,11 @@ type DelegatedDBusResponse struct {
 	Secret SecretResponseValue `json:"secret,omitzero"`
 }
 
-// ExecService retrieves secrets by running workshop-ss-tool as the requested
+// SecretService retrieves secrets by running workshop-ss-tool as the requested
 // user. Same-user execution inherits the current credentials. Cross-user
 // execution requires permission to set the child's user ID and primary group
 // ID and clear its supplementary groups.
-type ExecService struct {
+type SecretService struct {
 	command            func(context.Context, string, ...string) *exec.Cmd
 	executable         string
 	resolveCredentials func(string) (*syscall.Credential, error)
@@ -75,7 +75,7 @@ const secretCommandName = "workshop-ss-tool"
 //   - [ErrorSecretNotFound]: no secret matches the supplied attributes.
 
 // - [exec.ExitError]: the command exited unsuccessfully.
-func (s ExecService) Get(
+func (s SecretService) Get(
 	ctx context.Context,
 	req Request,
 ) (secrets.Secret, error) {
@@ -144,19 +144,19 @@ func (s ExecService) Get(
 	return decodeExecResponse(&output)
 }
 
-// MakeExecService creates a service using workshop-ss-tool beside the current
+// MakeSecretService creates a service using workshop-ss-tool beside the current
 // executable, as located by [os.Executable]. It returns an error if the current
 // executable's path cannot be determined. It does not search PATH or check
 // whether workshop-ss-tool is installed; execution failures are reported by
-// [ExecService.Get].
-func MakeExecService() (ExecService, error) {
+// [SecretService.Get].
+func MakeSecretService() (SecretService, error) {
 	executable, err := os.Executable()
 	if err != nil {
-		return ExecService{}, fmt.Errorf(
+		return SecretService{}, fmt.Errorf(
 			"determining current executable path: %w", err,
 		)
 	}
-	return ExecService{
+	return SecretService{
 		command: exec.CommandContext,
 		executable: filepath.Join(
 			filepath.Dir(executable),

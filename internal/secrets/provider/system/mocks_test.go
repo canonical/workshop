@@ -35,7 +35,7 @@ type fakeBusConnection struct {
 }
 
 // fakeExecCommand runs only the test binary, or fails before process start.
-// Arguments carry responses because ExecService deliberately clears Env.
+// Arguments carry responses because SecretService deliberately clears Env.
 type fakeExecCommand struct {
 	args       []string
 	cmd        *exec.Cmd
@@ -47,8 +47,8 @@ type fakeExecCommand struct {
 	stdout     string
 }
 
-// secretService delegates secret retrieval to a test-defined function.
-type secretService func(
+// secretGetter delegates secret retrieval to a test-defined function.
+type secretGetter func(
 	context.Context,
 	Request,
 ) (secrets.Secret, error)
@@ -129,7 +129,7 @@ func TestExecCommandHelper(t *testing.T) {
 }
 
 // Get calls the test-defined secret retrieval function.
-func (s secretService) Get(
+func (s secretGetter) Get(
 	ctx context.Context,
 	request Request,
 ) (secrets.Secret, error) {

@@ -26,14 +26,8 @@ import (
 	"github.com/canonical/workshop/internal/workshop"
 )
 
-// SecretProvider resolves system SDK secret slots through a host secret service.
-type SecretProvider struct {
-	service SecretService
-	slots   SecretSlotLookup
-}
-
-// SecretService retrieves host secrets for the system SDK secret provider.
-type SecretService interface {
+// SecretGetter retrieves host secrets for the system SDK secret provider.
+type SecretGetter interface {
 	// Get retrieves the secret matching the request for its user ID.
 	// The caller must consume or close the returned secret.
 	// Implementations must honour context cancellation.
@@ -51,11 +45,17 @@ type SecretService interface {
 	Get(context.Context, Request) (secrets.Secret, error)
 }
 
+// SecretProvider resolves system SDK secret slots through a host secret service.
+type SecretProvider struct {
+	service SecretGetter
+	slots   SecretSlotLookup
+}
+
 // NewSecretProvider creates a provider using slots for configuration and service
 // for secret retrieval.
 func NewSecretProvider(
 	slots SecretSlotLookup,
-	service SecretService,
+	service SecretGetter,
 ) SecretProvider {
 	return SecretProvider{service: service, slots: slots}
 }

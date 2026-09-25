@@ -32,15 +32,15 @@ import (
 	"github.com/canonical/workshop/internal/secrets"
 )
 
-// execServiceSuite tests delegated lookups without D-Bus or account lookups.
-type execServiceSuite struct {
+// secretServiceSuite tests delegated lookups without D-Bus or account lookups.
+type secretServiceSuite struct {
 	executable string
 }
 
-var _ = check.Suite(&execServiceSuite{})
+var _ = check.Suite(&secretServiceSuite{})
 
 // SetUpSuite locates the test executable once for the suite.
-func (s *execServiceSuite) SetUpSuite(c *check.C) {
+func (s *secretServiceSuite) SetUpSuite(c *check.C) {
 	executable, err := os.Executable()
 	c.Assert(err, check.IsNil)
 	s.executable = executable
@@ -48,7 +48,7 @@ func (s *execServiceSuite) SetUpSuite(c *check.C) {
 
 // TestDecodeExecResponseError checks a lookup error takes precedence over a
 // supplied secret and returns a zero secret.
-func (s *execServiceSuite) TestDecodeExecResponseError(c *check.C) {
+func (s *secretServiceSuite) TestDecodeExecResponseError(c *check.C) {
 	value, err := decodeExecResponse(strings.NewReader(
 		`{"secret":"YQD/Cg==","error":"secret not found"}`,
 	))
@@ -59,7 +59,7 @@ func (s *execServiceSuite) TestDecodeExecResponseError(c *check.C) {
 
 // TestDecodeExecResponseInvalidBase64 checks decoding preserves the base64
 // error and returns no secret.
-func (s *execServiceSuite) TestDecodeExecResponseInvalidBase64(
+func (s *secretServiceSuite) TestDecodeExecResponseInvalidBase64(
 	c *check.C,
 ) {
 	value, err := decodeExecResponse(strings.NewReader(
@@ -72,7 +72,7 @@ func (s *execServiceSuite) TestDecodeExecResponseInvalidBase64(
 
 // TestDecodeExecResponseSuccess checks the decoder transfers a readable secret
 // to its caller rather than closing it before returning.
-func (s *execServiceSuite) TestDecodeExecResponseSuccess(c *check.C) {
+func (s *secretServiceSuite) TestDecodeExecResponseSuccess(c *check.C) {
 	value, err := decodeExecResponse(strings.NewReader(
 		`{"secret":"YQD/Cg=="}`,
 	))
@@ -86,14 +86,14 @@ func (s *execServiceSuite) TestDecodeExecResponseSuccess(c *check.C) {
 }
 
 // TestGetCommandFailure excludes stdout while exposing stderr and exit status.
-func (s *execServiceSuite) TestGetCommandFailure(c *check.C) {
+func (s *secretServiceSuite) TestGetCommandFailure(c *check.C) {
 	command := &fakeExecCommand{
 		exitCode: 7,
 		path:     s.executable,
 		stderr:   "delegated lookup failed",
 		stdout:   "private-secret-output",
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -119,13 +119,13 @@ func (s *execServiceSuite) TestGetCommandFailure(c *check.C) {
 }
 
 // TestGetCommandFailureWithoutStderr preserves a start failure for errors.Is.
-func (s *execServiceSuite) TestGetCommandFailureWithoutStderr(c *check.C) {
+func (s *secretServiceSuite) TestGetCommandFailureWithoutStderr(c *check.C) {
 	failure := errors.New("command unavailable")
 	command := &fakeExecCommand{
 		path:     s.executable,
 		startErr: failure,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -150,14 +150,14 @@ func (s *execServiceSuite) TestGetCommandFailureWithoutStderr(c *check.C) {
 	)
 }
 
-// TestGetCredentialsFailure checks that [ExecService.Get] wraps credential
+// TestGetCredentialsFailure checks that [SecretService.Get] wraps credential
 // resolution failures with operation context while preserving the original
 // error for [errors.Is]. No command is constructed when credentials cannot
 // be resolved.
-func (s *execServiceSuite) TestGetCredentialsFailure(c *check.C) {
+func (s *secretServiceSuite) TestGetCredentialsFailure(c *check.C) {
 	failure := errors.New("credentials unavailable")
 	command := &fakeExecCommand{}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return nil, failure
@@ -180,11 +180,11 @@ func (s *execServiceSuite) TestGetCredentialsFailure(c *check.C) {
 	c.Check(command.cmd, check.IsNil)
 }
 
-// TestGetCrossUserCredentials checks that [ExecService.Get] configures a
+// TestGetCrossUserCredentials checks that [SecretService.Get] configures a
 // lookup for another user with the resolved UID and primary GID, without
 // inheriting supplementary groups. An injected start failure prevents any
 // actual credential-changing execution, so the test requires no privileges.
-func (s *execServiceSuite) TestGetCrossUserCredentials(c *check.C) {
+func (s *secretServiceSuite) TestGetCrossUserCredentials(c *check.C) {
 	credentials := &syscall.Credential{
 		Gid: 1234,
 		Uid: uint32(os.Geteuid()) ^ 1,
@@ -194,7 +194,7 @@ func (s *execServiceSuite) TestGetCrossUserCredentials(c *check.C) {
 		path:     s.executable,
 		startErr: failure,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return credentials, nil
@@ -220,12 +220,12 @@ func (s *execServiceSuite) TestGetCrossUserCredentials(c *check.C) {
 }
 
 // TestGetEmptySecret accepts an explicitly empty successful response.
-func (s *execServiceSuite) TestGetEmptySecret(c *check.C) {
+func (s *secretServiceSuite) TestGetEmptySecret(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"error":"","secret":""}`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -248,12 +248,12 @@ func (s *execServiceSuite) TestGetEmptySecret(c *check.C) {
 	c.Check(len(contents), check.Equals, 0)
 }
 
-// TestGetForwardsRequest checks that [ExecService.Get] prepares the configured
+// TestGetForwardsRequest checks that [SecretService.Get] prepares the configured
 // executable with the collection and attributes encoded as JSON on stdin,
 // no command-line arguments and an empty environment. The UID is passed to
 // credential resolution rather than included in the JSON request. An injected
 // start failure allows inspection without launching the command.
-func (s *execServiceSuite) TestGetForwardsRequest(c *check.C) {
+func (s *secretServiceSuite) TestGetForwardsRequest(c *check.C) {
 	request := Request{
 		Attributes: map[string]string{"service": "example", "account": "test"},
 		Collection: "default",
@@ -263,7 +263,7 @@ func (s *execServiceSuite) TestGetForwardsRequest(c *check.C) {
 		path:     s.executable,
 		startErr: errors.New("inspect command without consuming stdin"),
 	}
-	service := ExecService{
+	service := SecretService{
 		command:    command.Command,
 		executable: filepath.Join(c.MkDir(), secretCommandName),
 		resolveCredentials: func(uid string) (*syscall.Credential, error) {
@@ -298,12 +298,12 @@ func (s *execServiceSuite) TestGetForwardsRequest(c *check.C) {
 }
 
 // TestGetMalformedResponse preserves the JSON decoding error.
-func (s *execServiceSuite) TestGetMalformedResponse(c *check.C) {
+func (s *secretServiceSuite) TestGetMalformedResponse(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"secret":`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -325,7 +325,7 @@ func (s *execServiceSuite) TestGetMalformedResponse(c *check.C) {
 }
 
 // TestGetPreservesCancellation retains cancellation and an independent failure.
-func (s *execServiceSuite) TestGetPreservesCancellation(c *check.C) {
+func (s *secretServiceSuite) TestGetPreservesCancellation(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	failure := errors.New("independent start failure")
@@ -333,7 +333,7 @@ func (s *execServiceSuite) TestGetPreservesCancellation(c *check.C) {
 		path:     s.executable,
 		startErr: failure,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: func(
 			ctx context.Context,
 			name string,
@@ -363,14 +363,14 @@ func (s *execServiceSuite) TestGetPreservesCancellation(c *check.C) {
 }
 
 // TestGetRejectsInvalidRequest validates before resolving or executing.
-func (s *execServiceSuite) TestGetRejectsInvalidRequest(c *check.C) {
+func (s *secretServiceSuite) TestGetRejectsInvalidRequest(c *check.C) {
 	request := Request{
 		Attributes: map[string]string{"service": "example", "account": "test"},
 		Collection: " ",
 		UID:        "1000",
 	}
 	command := &fakeExecCommand{}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			c.Fatal("invalid request must not resolve credentials")
@@ -385,11 +385,11 @@ func (s *execServiceSuite) TestGetRejectsInvalidRequest(c *check.C) {
 }
 
 // TestGetRejectsPreCancelledContext stops before resolving or executing.
-func (s *execServiceSuite) TestGetRejectsPreCancelledContext(c *check.C) {
+func (s *secretServiceSuite) TestGetRejectsPreCancelledContext(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	command := &fakeExecCommand{}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			c.Fatal("cancelled request must not resolve credentials")
@@ -409,12 +409,12 @@ func (s *execServiceSuite) TestGetRejectsPreCancelledContext(c *check.C) {
 }
 
 // TestGetResponseCollectionAmbiguous matches the delegated sentinel error.
-func (s *execServiceSuite) TestGetResponseCollectionAmbiguous(c *check.C) {
+func (s *secretServiceSuite) TestGetResponseCollectionAmbiguous(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"error":"secret service collection is ambiguous"}`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -433,12 +433,12 @@ func (s *execServiceSuite) TestGetResponseCollectionAmbiguous(c *check.C) {
 }
 
 // TestGetResponseCollectionLocked matches the delegated sentinel error.
-func (s *execServiceSuite) TestGetResponseCollectionLocked(c *check.C) {
+func (s *secretServiceSuite) TestGetResponseCollectionLocked(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"error":"secret service collection is locked"}`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -457,12 +457,12 @@ func (s *execServiceSuite) TestGetResponseCollectionLocked(c *check.C) {
 }
 
 // TestGetResponseCollectionNotFound matches the delegated sentinel error.
-func (s *execServiceSuite) TestGetResponseCollectionNotFound(c *check.C) {
+func (s *secretServiceSuite) TestGetResponseCollectionNotFound(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"error":"secret service collection not found"}`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -481,12 +481,12 @@ func (s *execServiceSuite) TestGetResponseCollectionNotFound(c *check.C) {
 }
 
 // TestGetResponseMultipleSecrets matches the delegated sentinel error.
-func (s *execServiceSuite) TestGetResponseMultipleSecrets(c *check.C) {
+func (s *secretServiceSuite) TestGetResponseMultipleSecrets(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"error":"multiple secrets match the request"}`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -505,12 +505,12 @@ func (s *execServiceSuite) TestGetResponseMultipleSecrets(c *check.C) {
 }
 
 // TestGetResponseSecretNotFound gives an error precedence over secret bytes.
-func (s *execServiceSuite) TestGetResponseSecretNotFound(c *check.C) {
+func (s *secretServiceSuite) TestGetResponseSecretNotFound(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"error":"secret not found","secret":"c2VjcmV0"}`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -529,12 +529,12 @@ func (s *execServiceSuite) TestGetResponseSecretNotFound(c *check.C) {
 }
 
 // TestGetSameUserInheritsCredentials avoids privileged group changes.
-func (s *execServiceSuite) TestGetSameUserInheritsCredentials(c *check.C) {
+func (s *secretServiceSuite) TestGetSameUserInheritsCredentials(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"error":"","secret":"c2VjcmV0"}`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -555,12 +555,12 @@ func (s *execServiceSuite) TestGetSameUserInheritsCredentials(c *check.C) {
 }
 
 // TestGetSuccessBinary preserves non-text bytes through the JSON protocol.
-func (s *execServiceSuite) TestGetSuccessBinary(c *check.C) {
+func (s *secretServiceSuite) TestGetSuccessBinary(c *check.C) {
 	command := &fakeExecCommand{
 		path:   s.executable,
 		stdout: `{"error":"","secret":"AP8KgAA="}`,
 	}
-	service := ExecService{
+	service := SecretService{
 		command: command.Command,
 		resolveCredentials: func(string) (*syscall.Credential, error) {
 			return &syscall.Credential{
@@ -583,9 +583,9 @@ func (s *execServiceSuite) TestGetSuccessBinary(c *check.C) {
 	c.Check(contents, check.DeepEquals, []byte{0, 255, 10, 128, 0})
 }
 
-// TestMakeExecService selects a sibling executable rather than searching PATH.
-func (s *execServiceSuite) TestMakeExecService(c *check.C) {
-	service, err := MakeExecService()
+// TestMakeSecretService selects a sibling executable rather than searching PATH.
+func (s *secretServiceSuite) TestMakeSecretService(c *check.C) {
+	service, err := MakeSecretService()
 	c.Assert(err, check.IsNil)
 	c.Check(
 		service.executable,
@@ -597,38 +597,38 @@ func (s *execServiceSuite) TestMakeExecService(c *check.C) {
 }
 
 // TestParseExecIDInvalid rejects non-numeric credentials with a syntax error.
-func (s *execServiceSuite) TestParseExecIDInvalid(c *check.C) {
+func (s *secretServiceSuite) TestParseExecIDInvalid(c *check.C) {
 	_, err := parseExecID("not-a-uid")
 	c.Check(errors.Is(err, strconv.ErrSyntax), check.Equals, true)
 }
 
 // TestParseExecIDNegative rejects signed negative credentials.
-func (s *execServiceSuite) TestParseExecIDNegative(c *check.C) {
+func (s *secretServiceSuite) TestParseExecIDNegative(c *check.C) {
 	_, err := parseExecID("-1")
 	c.Check(errors.Is(err, strconv.ErrSyntax), check.Equals, true)
 }
 
 // TestParseExecIDOverflow rejects credentials outside the uint32 range.
-func (s *execServiceSuite) TestParseExecIDOverflow(c *check.C) {
+func (s *secretServiceSuite) TestParseExecIDOverflow(c *check.C) {
 	_, err := parseExecID("4294967296")
 	c.Check(errors.Is(err, strconv.ErrRange), check.Equals, true)
 }
 
 // TestParseExecIDReserved rejects the Unix leave-unchanged credential value.
-func (s *execServiceSuite) TestParseExecIDReserved(c *check.C) {
+func (s *secretServiceSuite) TestParseExecIDReserved(c *check.C) {
 	_, err := parseExecID("4294967295")
 	c.Check(err, check.ErrorMatches, "reserved process credential ID")
 }
 
 // TestParseExecIDValid accepts the highest non-reserved numeric credential.
-func (s *execServiceSuite) TestParseExecIDValid(c *check.C) {
+func (s *secretServiceSuite) TestParseExecIDValid(c *check.C) {
 	id, err := parseExecID("4294967294")
 	c.Assert(err, check.IsNil)
 	c.Check(id, check.Equals, uint32(4294967294))
 }
 
 // TestParseExecIDZero accepts root as a numeric ID without looking it up.
-func (s *execServiceSuite) TestParseExecIDZero(c *check.C) {
+func (s *secretServiceSuite) TestParseExecIDZero(c *check.C) {
 	id, err := parseExecID("0")
 	c.Assert(err, check.IsNil)
 	c.Check(id, check.Equals, uint32(0))

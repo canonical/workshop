@@ -24,7 +24,7 @@ import (
 func makeSecretResolver(
 	repo system.SlotRepository,
 ) (secrets.Resolver, error) {
-	service, err := system.MakeExecService()
+	service, err := system.MakeSecretService()
 	if err != nil {
 		return secrets.Resolver{}, err
 	}

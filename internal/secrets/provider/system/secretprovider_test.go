@@ -71,7 +71,7 @@ func (s *secretProviderSuite) TestResolve(c *check.C) {
 	})()
 	value := secrets.NewSecret([]byte("test-secret"))
 	defer value.Close()
-	service := secretService(func(
+	service := secretGetter(func(
 		_ context.Context,
 		request Request,
 	) (secrets.Secret, error) {
@@ -161,7 +161,7 @@ func (s *secretProviderSuite) TestResolveServiceCancelled(c *check.C) {
 			Uid: "1001", Username: "alice",
 		}, nil
 	})()
-	service := secretService(func(
+	service := secretGetter(func(
 		_ context.Context,
 		request Request,
 	) (secrets.Secret, error) {
@@ -205,7 +205,7 @@ func (s *secretProviderSuite) TestResolveServiceCollectionAmbiguous(c *check.C) 
 			Uid: "1001", Username: "alice",
 		}, nil
 	})()
-	service := secretService(func(
+	service := secretGetter(func(
 		_ context.Context,
 		request Request,
 	) (secrets.Secret, error) {
@@ -252,7 +252,7 @@ func (s *secretProviderSuite) TestResolveServiceCollectionLocked(c *check.C) {
 			Uid: "1001", Username: "alice",
 		}, nil
 	})()
-	service := secretService(func(
+	service := secretGetter(func(
 		_ context.Context,
 		request Request,
 	) (secrets.Secret, error) {
@@ -298,7 +298,7 @@ func (s *secretProviderSuite) TestResolveServiceCollectionNotFound(c *check.C) {
 			Uid: "1001", Username: "alice",
 		}, nil
 	})()
-	service := secretService(func(
+	service := secretGetter(func(
 		_ context.Context,
 		request Request,
 	) (secrets.Secret, error) {
@@ -344,7 +344,7 @@ func (s *secretProviderSuite) TestResolveServiceMultipleSecrets(c *check.C) {
 			Uid: "1001", Username: "alice",
 		}, nil
 	})()
-	service := secretService(func(
+	service := secretGetter(func(
 		_ context.Context,
 		request Request,
 	) (secrets.Secret, error) {
@@ -390,7 +390,7 @@ func (s *secretProviderSuite) TestResolveServiceSecretNotFound(c *check.C) {
 			Uid: "1001", Username: "alice",
 		}, nil
 	})()
-	service := secretService(func(
+	service := secretGetter(func(
 		_ context.Context,
 		request Request,
 	) (secrets.Secret, error) {
@@ -437,7 +437,7 @@ func (s *secretProviderSuite) TestResolveServiceUnknownError(c *check.C) {
 		}, nil
 	})()
 	serviceErr := errors.New("session bus unavailable")
-	service := secretService(func(
+	service := secretGetter(func(
 		_ context.Context,
 		request Request,
 	) (secrets.Secret, error) {
@@ -525,7 +525,7 @@ func (s *secretProviderSuite) TestResolveMissingUser(c *check.C) {
 			Collection: "default",
 		}, nil
 	})
-	service := secretService(func(
+	service := secretGetter(func(
 		context.Context,
 		Request,
 	) (secrets.Secret, error) {
