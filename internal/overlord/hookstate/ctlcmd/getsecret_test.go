@@ -17,15 +17,20 @@ package ctlcmd_test
 import (
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"time"
 
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/interfaces"
+	_ "github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
 	"github.com/canonical/workshop/internal/overlord/secretstate"
 	"github.com/canonical/workshop/internal/overlord/state"
+	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/secrets"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -38,10 +43,13 @@ type getSecretResult struct {
 
 // getSecretSuite tests secret retrieval through the state task runner.
 type getSecretSuite struct {
-	backend *secretStateBackend
-	hookCtx *hookstate.Context
-	runner  *state.TaskRunner
-	st      *state.State
+	backend         *secretStateBackend
+	hookCtx         *hookstate.Context
+	runner          *state.TaskRunner
+	secret          secrets.Secret
+	slotName        string
+	st              *state.State
+	workshopBackend *secretWorkshopBackend
 }
 
 var _ = check.Suite(&getSecretSuite{})
@@ -60,7 +68,7 @@ func (s *getSecretSuite) checkSuccess(
 	s.runner.Wait()
 	result := <-results
 	c.Assert(result.err, check.IsNil)
-	c.Check(string(result.stdout), check.Equals, "workshop-placeholder-secret")
+	c.Check(string(result.stdout), check.Equals, "provider-api-token")
 	c.Check(string(result.stderr), check.Equals, "")
 
 	s.st.Lock()
@@ -79,6 +87,7 @@ func (s *getSecretSuite) checkSuccess(
 	task := tasks[0]
 	c.Check(task.Kind(), check.Equals, "get-secret")
 	c.Check(task.Status(), check.Equals, state.DoneStatus)
+	c.Check(change.Err(), check.IsNil)
 	var project workshop.Project
 	c.Assert(task.Get("project", &project), check.IsNil)
 	c.Check(project, check.DeepEquals, workshop.Project{
@@ -92,7 +101,6 @@ func (s *getSecretSuite) checkSuccess(
 	c.Check(actualPlug, check.Equals, plugName)
 	c.Assert(task.Get("workshop", &workshopName), check.IsNil)
 	c.Check(workshopName, check.Equals, "placeholder-workshop")
-
 }
 
 // SetUpTest wires a real hook context and secret task handler.
@@ -102,8 +110,99 @@ func (s *getSecretSuite) SetUpTest(c *check.C) {
 	}
 	s.st = state.New(s.backend)
 	s.runner = state.NewTaskRunner(s.st)
-	secretstate.New(s.runner)
-	var err error
+	s.workshopBackend = &secretWorkshopBackend{
+		user: "test-user",
+		workshop: &workshop.Workshop{
+			Name: "placeholder-workshop",
+			Project: workshop.Project{
+				Path:      "/project",
+				ProjectId: "placeholder-project",
+			},
+			Sdks: map[string]workshop.SdkInstallation{
+				"ollama": {
+					Setup: sdk.Setup{Name: "ollama", Revision: sdk.R(1)},
+				},
+				"my-sdk": {
+					Setup: sdk.Setup{Name: "my-sdk", Revision: sdk.R(1)},
+				},
+			},
+		},
+	}
+	repo := interfaces.NewRepository()
+	iface, err := interfaces.ByName("secret")
+	c.Assert(err, check.IsNil)
+	c.Assert(repo.AddInterface(iface), check.IsNil)
+	ollamaPlug := &sdk.PlugInfo{
+		Interface: "secret",
+		Name:      "ollama-api-key",
+		Sdk: &sdk.Info{
+			Name:      "ollama",
+			ProjectId: "placeholder-project",
+			Type:      sdk.Regular,
+			Workshop:  "placeholder-workshop",
+		},
+	}
+	mySDKPlug := &sdk.PlugInfo{
+		Interface: "secret",
+		Name:      "api-key",
+		Sdk: &sdk.Info{
+			Name:      "my-sdk",
+			ProjectId: "placeholder-project",
+			Type:      sdk.Regular,
+			Workshop:  "placeholder-workshop",
+		},
+	}
+	ollamaSlot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{"service": "ollama"},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "ollama-api-key",
+		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+	}
+	mySDKSlot := &sdk.SlotInfo{
+		Attrs: map[string]any{
+			"attributes": map[string]any{"service": "my-sdk"},
+			"collection": "default",
+		},
+		Interface: "secret",
+		Name:      "my-sdk-api-key",
+		Sdk:       &sdk.Info{Name: "system", Type: sdk.System},
+	}
+	c.Assert(repo.AddPlug(ollamaPlug), check.IsNil)
+	c.Assert(repo.AddPlug(mySDKPlug), check.IsNil)
+	c.Assert(repo.AddSlot(ollamaSlot), check.IsNil)
+	c.Assert(repo.AddSlot(mySDKSlot), check.IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(ollamaPlug, ollamaSlot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, check.IsNil)
+	_, err = repo.Connect(
+		interfaces.NewConnRef(mySDKPlug, mySDKSlot),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+	c.Assert(err, check.IsNil)
+	resolver := secretResolver(func(
+		_ context.Context,
+		ref sdk.SlotRef,
+	) (secrets.Secret, error) {
+		c.Check(ref.Name, check.Equals, s.slotName)
+		c.Check(ref.ProjectId, check.Equals, "")
+		c.Check(ref.Sdk, check.Equals, "system")
+		c.Check(ref.Workshop, check.Equals, "")
+		return s.secret, nil
+	})
+	secretstate.New(s.runner, s.workshopBackend, repo, resolver)
 	s.hookCtx, err = hookstate.NewContext(
 		nil,
 		s.st,
@@ -138,28 +237,39 @@ func (s *getSecretSuite) TearDownTest(c *check.C) {
 	s.runner.Stop()
 }
 
-// TestGetSecret checks root requests retrieve and consume the task result.
+// TestGetSecret checks root requests retrieve and write the task result.
 func (s *getSecretSuite) TestGetSecret(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 
+	resolved := secrets.NewSecret([]byte("provider-api-token"))
+	defer resolved.Close()
+	s.secret = resolved
+	s.slotName = "ollama-api-key"
+
 	results := s.start(ctx, "ollama.ollama-api-key", 0)
 	s.checkSuccess(c, results, "ollama", "ollama-api-key")
+	_, err := resolved.Read(make([]byte, 1))
+	c.Check(err, check.Equals, io.EOF)
 }
 
 // TestGetSecretCancelled checks request cancellation reaches secretstate
 // without scheduling a task or writing a secret.
 func (s *getSecretSuite) TestGetSecretCancelled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 	cancel()
 
-	result := <-s.start(ctx, "ollama.ollama-api-key", 0)
-	c.Check(errors.Is(result.err, context.Canceled), check.Equals, true)
-	c.Check(string(result.stdout), check.Equals, "")
-	c.Check(string(result.stderr), check.Equals, "")
+	stdout, stderr, err := ctlcmd.Run(
+		ctx,
+		s.hookCtx,
+		[]string{"get-secret", "ollama.ollama-api-key"},
+		0,
+	)
+	c.Check(errors.Is(err, context.Canceled), check.Equals, true)
+	c.Check(string(stdout), check.Equals, "")
+	c.Check(string(stderr), check.Equals, "")
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), check.HasLen, 0)
@@ -217,6 +327,37 @@ func (s *getSecretSuite) TestGetSecretInvalidPlug(c *check.C) {
 	c.Check(strings.Contains(err.Error(), "Private_Key"), check.Equals, false)
 }
 
+// TestGetSecretLookupFailure checks backend failures reach the caller without
+// writing a secret, independently of successful root and non-root requests.
+func (s *getSecretSuite) TestGetSecretLookupFailure(c *check.C) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+	s.workshopBackend.err = errors.New("workshop unavailable")
+
+	results := s.start(ctx, "ollama.ollama-api-key", 0)
+	delay := <-s.backend.ensureBefore
+	c.Check(delay, check.Equals, time.Duration(0))
+	err := s.runner.Ensure()
+	c.Assert(err, check.IsNil)
+	s.runner.Wait()
+	result := <-results
+
+	c.Check(result.err, check.ErrorMatches,
+		"(?s).*resolving workshop: workshop unavailable.*")
+	c.Check(string(result.stdout), check.Equals, "")
+	c.Check(string(result.stderr), check.Equals, "")
+	s.st.Lock()
+	defer s.st.Unlock()
+	changes := s.st.Changes()
+	c.Assert(changes, check.HasLen, 1)
+	tasks := changes[0].Tasks()
+	c.Assert(tasks, check.HasLen, 1)
+	c.Check(tasks[0].Status(), check.Equals, state.ErrorStatus)
+	c.Check(changes[0].Err(), check.ErrorMatches,
+		"(?s).*resolving workshop: workshop unavailable.*")
+}
+
 // TestGetSecretMissingArg checks that get-secret requires a secret
 // identifier argument.
 func (s *getSecretSuite) TestGetSecretMissingArg(c *check.C) {
@@ -257,6 +398,13 @@ func (s *getSecretSuite) TestGetSecretNonRoot(c *check.C) {
 	defer cancel()
 	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
 
+	resolved := secrets.NewSecret([]byte("provider-api-token"))
+	defer resolved.Close()
+	s.secret = resolved
+	s.slotName = "my-sdk-api-key"
+
 	results := s.start(ctx, "my-sdk.api-key", 1000)
 	s.checkSuccess(c, results, "my-sdk", "api-key")
+	_, err := resolved.Read(make([]byte, 1))
+	c.Check(err, check.Equals, io.EOF)
 }

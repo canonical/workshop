@@ -103,7 +103,9 @@ func (s *apiSuite) TestWorkshopCtlRejectsUnknownInstanceID(c *check.C) {
 }
 
 // TestWorkshopCtlAcceptsOwnedInstanceID checks that a request without a hook
-// cookie may run after its instance ID is matched to the requesting user.
+// cookie reaches secret validation after its instance ID is matched to the
+// requesting user. The command still supplies a dummy project, so retrieval
+// must fail rather than return a secret for the authenticated workshop.
 func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 	s.daemon(c)
 	s.addWorkshopWithInstanceID("instance-id")
@@ -126,7 +128,12 @@ func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 
 	rsp := v1PostWorkshopCtl(wctl, req, nil).(*resp)
 
-	c.Check(rsp.Status, check.Equals, http.StatusOK)
+	c.Check(rsp.Status, check.Equals, http.StatusBadRequest)
+	c.Check(rsp.Type, check.Equals, ResponseTypeError)
+	c.Assert(rsp.Result, check.FitsTypeOf, &errorResult{})
+	c.Check(rsp.Result.(*errorResult).Message, check.Matches,
+		"(?s).*resolving workshop: project not found.*")
+
 }
 
 // TestWorkshopCtlRejectsUnknownCookie checks that an invalid cookie produces
