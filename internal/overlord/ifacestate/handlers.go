@@ -443,22 +443,7 @@ func getPlugAndSlotRefs(task *state.Task) (sdk.PlugRef, sdk.SlotRef, error) {
 }
 
 func MaybeBound(w *workshop.Workshop, ref sdk.PlugRef) (sdk.PlugRef, []sdk.PlugRef) {
-	var masters = make(map[sdk.PlugRef][]sdk.PlugRef)
-	var slaves = make(map[sdk.PlugRef]sdk.PlugRef)
-
-	for _, s := range w.File.Sdks {
-		for name, pl := range s.Plugs {
-			if pl.Bind == nil {
-				continue
-			}
-			sk, plug := pl.Bind.Sdk, pl.Bind.Name
-			mkey := sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: sk, Name: plug}
-			skey := sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: s.Name, Name: name}
-			masters[mkey] = append(masters[mkey], skey)
-			slaves[skey] = mkey
-		}
-	}
-
+	masters, slaves := w.Bound()
 	srefs, mok := masters[ref]
 	mref, sok := slaves[ref]
 

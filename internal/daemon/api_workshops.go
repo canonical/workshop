@@ -273,8 +273,8 @@ func workshopToInfoFull(ctx context.Context, username string, w *workshop.Worksh
 		return nil, err
 	}
 
-	mnts := w.Mounts(sdks)
-	tunnels := w.Tunnels(sdks)
+	mnts := w.Mounts()
+	tunnels := w.Tunnels()
 
 	usr, env, err := osutil.UserAndEnv(username)
 	if err != nil {

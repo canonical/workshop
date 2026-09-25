@@ -222,19 +222,27 @@ func (w *Workshop) SdksByInstallOrder() []SdkInstallation {
 	})
 }
 
-// Mounts returns a map of active SDK mounts for the workshop.
-func (w *Workshop) Mounts(sdks []*sdk.Info) map[string][]Mount {
-	if sdks == nil {
-		return nil
-	}
-
-	masters := map[sdk.PlugRef][]PlugRef{}
-	for _, sk := range sdks {
-		for name, m := range sk.PlugBinds {
-			s := PlugRef{Sdk: sk.Name, Name: name}
-			masters[m] = append(masters[m], s)
+func (w *Workshop) Bound() (map[sdk.PlugRef][]sdk.PlugRef, map[sdk.PlugRef]sdk.PlugRef) {
+	masters := make(map[sdk.PlugRef][]sdk.PlugRef)
+	slaves := make(map[sdk.PlugRef]sdk.PlugRef)
+	for _, s := range w.File.Sdks {
+		for name, pl := range s.Plugs {
+			if pl.Bind == nil {
+				continue
+			}
+			sk, plug := pl.Bind.Sdk, pl.Bind.Name
+			mkey := sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: sk, Name: plug}
+			skey := sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: s.Name, Name: name}
+			masters[mkey] = append(masters[mkey], skey)
+			slaves[skey] = mkey
 		}
 	}
+	return masters, slaves
+}
+
+// Mounts returns a map of active SDK mounts for the workshop.
+func (w *Workshop) Mounts() map[string][]Mount {
+	masters, _ := w.Bound()
 
 	mnts := map[string][]Mount{}
 	for _, prof := range w.Profiles {
@@ -256,18 +264,8 @@ func (w *Workshop) Mounts(sdks []*sdk.Info) map[string][]Mount {
 }
 
 // Tunnels returns a map of active SDK tunnels for the workshop.
-func (w *Workshop) Tunnels(sdks []*sdk.Info) map[string][]Tunnel {
-	if sdks == nil {
-		return nil
-	}
-
-	masters := map[sdk.PlugRef][]PlugRef{}
-	for _, sk := range sdks {
-		for name, m := range sk.PlugBinds {
-			s := PlugRef{Sdk: sk.Name, Name: name}
-			masters[m] = append(masters[m], s)
-		}
-	}
+func (w *Workshop) Tunnels() map[string][]Tunnel {
+	masters, _ := w.Bound()
 
 	tunnels := map[string][]Tunnel{}
 	for _, prof := range w.Profiles {
