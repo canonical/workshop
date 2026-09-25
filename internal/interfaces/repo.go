@@ -736,7 +736,7 @@ func (r *Repository) Connections(projectId, workshop, sdk string) ([]*ConnRef, e
 	for _, slotInfo := range r.slots[key] {
 		for plugInfo := range r.slotPlugs[slotInfo] {
 			// self-connection, ignore here as we got it already in the plugs loop above
-			if plugInfo.Sdk == slotInfo.Sdk {
+			if plugInfo.Sdk.Ref() == slotInfo.Sdk.Ref() {
 				continue
 			}
 			connRef := NewConnRef(plugInfo, slotInfo)
@@ -948,27 +948,27 @@ func (r *Repository) RemoveSdk(projectId, workshop, sdkName string) error {
 // DisconnectSdk disconnects all the connections to and from a given sdk.
 //
 // The return value is a list of names that were affected.
-func (r *Repository) DisconnectSdk(projectId, workshop, sdkName string) ([]*sdk.Info, error) {
+func (r *Repository) DisconnectSdk(projectId, workshop, sdkName string) ([]sdk.Ref, error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	key := plugOrSlotKey(projectId, workshop, sdkName)
 
-	seen := make(map[*sdk.Info]bool)
+	seen := make(map[sdk.Ref]bool)
 
 	for _, plug := range r.plugs[key] {
 		for slot := range r.plugSlots[plug] {
 			r.disconnect(plug, slot)
-			seen[plug.Sdk] = true
-			seen[slot.Sdk] = true
+			seen[plug.Sdk.Ref()] = true
+			seen[slot.Sdk.Ref()] = true
 		}
 	}
 
 	for _, slot := range r.slots[key] {
 		for plug := range r.slotPlugs[slot] {
 			r.disconnect(plug, slot)
-			seen[plug.Sdk] = true
-			seen[slot.Sdk] = true
+			seen[plug.Sdk.Ref()] = true
+			seen[slot.Sdk.Ref()] = true
 		}
 	}
 
