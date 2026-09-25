@@ -130,7 +130,10 @@ func ValidateSdkInfo(pid, w, base, sk, sdkYaml string) error {
 	return nil
 }
 
-// Reads information about the installed SDK from its meta file.
+// Reads the SDK's own sdk.yaml and merges in its installation metadata
+// (revision, channel, source, package ID), without applying workshop-file
+// plug/slot overrides or binds. Info.Plugs/Info.Slots hold the SDK's own
+// raw, unconverted plug/slot declarations.
 func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, error) {
 	sk, ok := w.Sdks[sdkName]
 	if !ok {
@@ -144,7 +147,6 @@ func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, erro
 	} else {
 		meta, err = w.metaFromFile(ctx, sk.Setup)
 	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -162,47 +164,11 @@ func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, erro
 	info.Source = sk.Source
 	info.PackageID = sk.PackageID
 
-	// Now add changes defined for this SDK in the workshop file (e.g. plug
-	// binds, slots).
-	idx := slices.IndexFunc(w.File.Sdks, func(sr SdkRecord) bool { return sr.Name == info.Name })
-
-	// system and sketch SDK is an optional entry in a workshop file, so it's not an error
-	// scenario.
-	if idx == -1 && IsImplicitSdk(sdkName) {
-		return info, nil
-	}
-
-	if idx == -1 {
-		return nil, fmt.Errorf("internal error: %q SDK is installed but not declared in the workshop file", info.Name)
-	}
-
-	binds := map[string]sdk.PlugRef{}
-	plugs := map[string]any{}
-	for name, m := range w.File.Sdks[idx].Plugs {
-		if m.Bind == nil {
-			plugs[name] = m.Plug
-		} else {
-			binds[name] = sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: m.Bind.Sdk, Name: m.Bind.Name}
-		}
-	}
-
-	if err = info.SetupWorkshopPlugs(plugs); err != nil {
-		return nil, err
-	}
-
-	if err = info.SetupPlugBinds(binds); err != nil {
-		return nil, err
-	}
-
-	if err = info.SetupWorkshopSlots(w.File.Sdks[idx].Slots); err != nil {
-		return nil, err
-	}
-
 	return info, nil
 }
 
-// Returns a map of SDK info for installed SDKs. The info includes SDK details
-// parsed from its sdk.yaml, such as base, plugs, slots, etc.
+// Returns a list of SDK info for installed SDKs, sourced from each SDK's own
+// sdk.yaml only (no workshop-file plug/slot overrides or binds).
 func (w *Workshop) SdkInfosByInstallOrder(ctx context.Context) ([]*sdk.Info, error) {
 	var infos = make([]*sdk.Info, 0, len(w.Sdks))
 	for _, sdk := range w.SdksByInstallOrder() {
@@ -213,6 +179,93 @@ func (w *Workshop) SdkInfosByInstallOrder(ctx context.Context) ([]*sdk.Info, err
 		infos = append(infos, info)
 	}
 	return infos, nil
+}
+
+// SdkPlugsAndSlots returns the installed SDK's plugs and slots, merged with
+// the workshop-file's overrides and binds for it, and sanitized against
+// known interfaces. The last return value reports plugs/slots that reference
+// unknown interfaces or are otherwise invalid (and were dropped), keyed by
+// name.
+func (w *Workshop) SdkPlugsAndSlots(ctx context.Context, sdkName string) (*sdk.Info, map[string]*sdk.PlugInfo, map[string]*sdk.SlotInfo, map[string]string, error) {
+	info, err := w.SdkInfo(ctx, sdkName)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	ref := info.Ref()
+
+	// Now add changes defined for this SDK in the workshop file (e.g. plug
+	// binds, slots).
+	idx := slices.IndexFunc(w.File.Sdks, func(sr SdkRecord) bool { return sr.Name == info.Name })
+
+	// system and sketch SDK is an optional entry in a workshop file, so it's not an error
+	// scenario.
+	if idx == -1 && IsImplicitSdk(sdkName) {
+		plugs, err := sdk.ParsePlugs(ref, info.Plugs)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		slots, err := sdk.ParseSlots(ref, info.Slots)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		return info, plugs, slots, sdk.SanitizePlugsSlots(plugs, slots), nil
+	}
+
+	if idx == -1 {
+		return nil, nil, nil, nil, fmt.Errorf("internal error: %q SDK is installed but not declared in the workshop file", info.Name)
+	}
+
+	binds := map[string]sdk.PlugRef{}
+	rawPlugs := maps.Clone(info.Plugs)
+	if rawPlugs == nil {
+		rawPlugs = map[string]any{}
+	}
+	for name, m := range w.File.Sdks[idx].Plugs {
+		if m.Bind != nil {
+			binds[name] = sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: m.Bind.Sdk, Name: m.Bind.Name}
+			continue
+		}
+		if _, exist := rawPlugs[name]; exist {
+			return nil, nil, nil, nil, fmt.Errorf("cannot add plug %q to %q SDK: already exists", name, info.Name)
+		}
+		rawPlugs[name] = m.Plug
+	}
+
+	plugs, err := sdk.ParsePlugs(ref, rawPlugs)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	for name, bind := range binds {
+		plug, ok := plugs[name]
+		if !ok {
+			// Check plugs that are bound. The existence of plugs that are
+			// "bound to" it will be checked at the connecting stage, i.e. when
+			// all plugs from all SDKs are in the repository already.
+			return nil, nil, nil, nil, fmt.Errorf("plug binding failed: SDK %q has no plug named %q", ref.ShortRef(), name)
+		}
+		b := bind
+		plug.Bind = &b
+	}
+
+	rawSlots := maps.Clone(info.Slots)
+	if rawSlots == nil {
+		rawSlots = map[string]any{}
+	}
+	for name, data := range w.File.Sdks[idx].Slots {
+		if _, exist := rawSlots[name]; exist {
+			return nil, nil, nil, nil, fmt.Errorf("cannot add slot %q to %q SDK: already exists", name, info.Name)
+		}
+		rawSlots[name] = data
+	}
+
+	slots, err := sdk.ParseSlots(ref, rawSlots)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return info, plugs, slots, sdk.SanitizePlugsSlots(plugs, slots), nil
 }
 
 // Returns the list of SDKs of the workshop sorted by installation order.

@@ -72,10 +72,10 @@ func (s *AllSuite) TestSanitizeErrorsOnInvalidSlotNames(c *C) {
 	})
 	defer restore()
 
-	sdkInfo := sdk.MockInvalidInfo(c, testConsumerInvalidSlotNameYaml)
-	sdk.SanitizePlugsSlots(sdkInfo)
-	c.Assert(sdkInfo.BadInterfaces, HasLen, 1)
-	c.Check(sdk.BadInterfacesSummary(sdkInfo), Matches, `"consumer" SDK has bad plugs or slots: ttyS5 \(invalid slot name: "ttyS5"\)`)
+	sdkInfo, plugs, slots := sdk.MockInvalidInfo(c, testConsumerInvalidSlotNameYaml)
+	badInterfaces := sdk.SanitizePlugsSlots(plugs, slots)
+	c.Assert(badInterfaces, HasLen, 1)
+	c.Check(sdk.BadInterfacesSummary(sdkInfo.Name, badInterfaces), Matches, `"consumer" SDK has bad plugs or slots: ttyS5 \(invalid slot name: "ttyS5"\)`)
 }
 
 func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugNames(c *C) {
@@ -84,8 +84,8 @@ func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugNames(c *C) {
 	})
 	defer restore()
 
-	sdkInfo := sdk.MockInvalidInfo(c, testConsumerInvalidPlugNameYaml)
-	sdk.SanitizePlugsSlots(sdkInfo)
-	c.Assert(sdkInfo.BadInterfaces, HasLen, 1)
-	c.Check(sdk.BadInterfacesSummary(sdkInfo), Matches, `"consumer" SDK has bad plugs or slots: ttyS3 \(invalid plug name: "ttyS3"\)`)
+	sdkInfo, plugs, slots := sdk.MockInvalidInfo(c, testConsumerInvalidPlugNameYaml)
+	badInterfaces := sdk.SanitizePlugsSlots(plugs, slots)
+	c.Assert(badInterfaces, HasLen, 1)
+	c.Check(sdk.BadInterfacesSummary(sdkInfo.Name, badInterfaces), Matches, `"consumer" SDK has bad plugs or slots: ttyS3 \(invalid plug name: "ttyS3"\)`)
 }

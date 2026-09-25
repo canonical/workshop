@@ -89,7 +89,7 @@ func (s *apiSuite) workshopFile(ws string, sdks []*sdk.Info) *workshop.File {
 }
 
 func (s *apiSuite) mockInstalledSDK(c *check.C, yaml string, w string) *workshop.Workshop {
-	info := sdk.MockInfo(c, yaml, s.project.ProjectId, w)
+	info, plugs, slots := sdk.MockInfo(c, yaml, s.project.ProjectId, w)
 	wf := s.workshopFile(w, []*sdk.Info{info})
 	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
@@ -114,19 +114,19 @@ func (s *apiSuite) mockInstalledSDK(c *check.C, yaml string, w string) *workshop
 	err = s.b.InstallSdk(s.ctx, w, meta.Setup)
 	c.Assert(err, check.IsNil)
 
-	c.Assert(s.d.overlord.InterfaceManager().Repository().AddSdk(info), check.IsNil)
+	c.Assert(s.d.overlord.InterfaceManager().Repository().AddSdk(info, plugs, slots), check.IsNil)
 
 	return wp
 }
 
 func (s *apiSuite) mockInstalledSDKBoundPlug(c *check.C, yaml string, w string, from, to string) *workshop.Workshop {
-	info := sdk.MockInfo(c, yaml, s.project.ProjectId, w)
-	info.Plugs[from].Bind = &sdk.PlugRef{
+	info, plugs, slots := sdk.MockInfo(c, yaml, s.project.ProjectId, w)
+	plugs[from].Bind = &sdk.PlugRef{
 		ProjectId: s.project.ProjectId,
 		Workshop:  w,
 		Sdk:       info.Name,
 		Name:      to}
-	c.Assert(s.d.overlord.InterfaceManager().Repository().AddSdk(info), check.IsNil)
+	c.Assert(s.d.overlord.InterfaceManager().Repository().AddSdk(info, plugs, slots), check.IsNil)
 	wf := s.workshopFile(w, []*sdk.Info{info})
 	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)

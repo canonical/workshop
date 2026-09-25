@@ -44,45 +44,46 @@ var (
 	allInterfaces map[string]interfaces.Interface
 )
 
-func SanitizePlugsSlots(sdkInfo *sdk.Info) {
+func SanitizePlugsSlots(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string {
+	badInterfaces := make(map[string]string)
 	var badPlugs []string
 	var badSlots []string
 
-	for plugName, plugInfo := range sdkInfo.Plugs {
+	for plugName, plugInfo := range plugs {
 		iface, ok := allInterfaces[plugInfo.Interface]
 		if !ok {
-			sdkInfo.BadInterfaces[plugName] = fmt.Sprintf("unknown interface %q", plugInfo.Interface)
+			badInterfaces[plugName] = fmt.Sprintf("unknown interface %q", plugInfo.Interface)
 			badPlugs = append(badPlugs, plugName)
 			continue
 		}
 		// Reject plug with invalid name
 		if err := sdk.ValidatePlugName(plugName); err != nil {
-			sdkInfo.BadInterfaces[plugName] = err.Error()
+			badInterfaces[plugName] = err.Error()
 			badPlugs = append(badPlugs, plugName)
 			continue
 		}
 		if err := interfaces.BeforePreparePlug(iface, plugInfo); err != nil {
-			sdkInfo.BadInterfaces[plugName] = err.Error()
+			badInterfaces[plugName] = err.Error()
 			badPlugs = append(badPlugs, plugName)
 			continue
 		}
 	}
 
-	for slotName, slotInfo := range sdkInfo.Slots {
+	for slotName, slotInfo := range slots {
 		iface, ok := allInterfaces[slotInfo.Interface]
 		if !ok {
-			sdkInfo.BadInterfaces[slotName] = fmt.Sprintf("unknown interface %q", slotInfo.Interface)
+			badInterfaces[slotName] = fmt.Sprintf("unknown interface %q", slotInfo.Interface)
 			badSlots = append(badSlots, slotName)
 			continue
 		}
 		// Reject slot with invalid name
 		if err := sdk.ValidateSlotName(slotName); err != nil {
-			sdkInfo.BadInterfaces[slotName] = err.Error()
+			badInterfaces[slotName] = err.Error()
 			badSlots = append(badSlots, slotName)
 			continue
 		}
 		if err := interfaces.BeforePrepareSlot(iface, slotInfo); err != nil {
-			sdkInfo.BadInterfaces[slotName] = err.Error()
+			badInterfaces[slotName] = err.Error()
 			badSlots = append(badSlots, slotName)
 			continue
 		}
@@ -90,11 +91,13 @@ func SanitizePlugsSlots(sdkInfo *sdk.Info) {
 
 	// remove any bad plugs and slots
 	for _, plugName := range badPlugs {
-		delete(sdkInfo.Plugs, plugName)
+		delete(plugs, plugName)
 	}
 	for _, slotName := range badSlots {
-		delete(sdkInfo.Slots, slotName)
+		delete(slots, slotName)
 	}
+
+	return badInterfaces
 }
 
 // Interfaces returns all of the built-in interfaces.

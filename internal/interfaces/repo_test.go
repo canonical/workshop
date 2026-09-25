@@ -79,13 +79,13 @@ plugs:
 
 func (s *RepositorySuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 
-	consumer := sdk.MockInfo(c, consumerYaml, s.projectId, "ws")
-	s.plug = consumer.Plugs["plug"]
-	producer := sdk.MockInfo(c, producerYaml, s.projectId, "ws")
-	s.slot = producer.Slots["slot"]
-	s.plugSelf = producer.Plugs["self"]
+	_, consumerPlugs, _ := sdk.MockInfo(c, consumerYaml, s.projectId, "ws")
+	s.plug = consumerPlugs["plug"]
+	_, producerPlugs, producerSlots := sdk.MockInfo(c, producerYaml, s.projectId, "ws")
+	s.slot = producerSlots["slot"]
+	s.plugSelf = producerPlugs["self"]
 
 	s.emptyRepo = NewRepository()
 	s.testRepo = NewRepository()
@@ -109,20 +109,28 @@ type instanceNameAndYaml struct {
 	Yaml string
 }
 
-func addPlugsSlotsFromInstances(c *C, repo *Repository, projectId string, iys []instanceNameAndYaml) []*sdk.Info {
-	result := make([]*sdk.Info, 0, len(iys))
+// sdkPlugsSlots bundles an SDK's scalar Info together with its plugs and
+// slots, for tests that need to look both up by name afterward.
+type sdkPlugsSlots struct {
+	*sdk.Info
+	Plugs map[string]*sdk.PlugInfo
+	Slots map[string]*sdk.SlotInfo
+}
+
+func addPlugsSlotsFromInstances(c *C, repo *Repository, projectId string, iys []instanceNameAndYaml) []*sdkPlugsSlots {
+	result := make([]*sdkPlugsSlots, 0, len(iys))
 	for _, iy := range iys {
-		info := sdk.MockInfo(c, iy.Yaml, projectId, "ws-"+iy.Name)
+		info, plugs, slots := sdk.MockInfo(c, iy.Yaml, projectId, "ws-"+iy.Name)
 		if iy.Name != "" {
 			c.Assert(sdk.Validate(info), IsNil)
 		}
 
-		result = append(result, info)
-		for _, plugInfo := range info.Plugs {
+		result = append(result, &sdkPlugsSlots{Info: info, Plugs: plugs, Slots: slots})
+		for _, plugInfo := range plugs {
 			err := repo.AddPlug(plugInfo)
 			c.Assert(err, IsNil)
 		}
-		for _, slotInfo := range info.Slots {
+		for _, slotInfo := range slots {
 			err := repo.AddSlot(slotInfo)
 			c.Assert(err, IsNil)
 		}
@@ -284,13 +292,13 @@ func (s *RepositorySuite) TestAddPlugParallelInstance(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(s.testRepo.AllPlugs(""), HasLen, 1)
 
-	consumer := sdk.MockInfo(c, consumerYaml, s.projectId, "ws-instance")
-	err = s.testRepo.AddPlug(consumer.Plugs["plug"])
+	consumer, consumerPlugs, _ := sdk.MockInfo(c, consumerYaml, s.projectId, "ws-instance")
+	err = s.testRepo.AddPlug(consumerPlugs["plug"])
 	c.Assert(err, IsNil)
 	c.Assert(s.testRepo.AllPlugs(""), HasLen, 2)
 
 	c.Assert(s.testRepo.Plug(s.plug.Sdk.ProjectId, s.plug.Sdk.Workshop, s.plug.Sdk.Sdk, s.plug.Name), DeepEquals, s.plug)
-	c.Assert(s.testRepo.Plug(consumer.ProjectId, consumer.Workshop, consumer.Name, "plug"), DeepEquals, consumer.Plugs["plug"])
+	c.Assert(s.testRepo.Plug(consumer.ProjectId, consumer.Workshop, consumer.Name, "plug"), DeepEquals, consumerPlugs["plug"])
 }
 
 // Tests for Repository.Plug()
@@ -638,13 +646,13 @@ func (s *RepositorySuite) TestAddSlotParallelInstance(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(s.testRepo.AllSlots(""), HasLen, 1)
 
-	producer := sdk.MockInfo(c, producerYaml, s.projectId, "ws-instance")
-	err = s.testRepo.AddSlot(producer.Slots["slot"])
+	producer, _, producerSlots := sdk.MockInfo(c, producerYaml, s.projectId, "ws-instance")
+	err = s.testRepo.AddSlot(producerSlots["slot"])
 	c.Assert(err, IsNil)
 	c.Assert(s.testRepo.AllSlots(""), HasLen, 2)
 
 	c.Assert(s.testRepo.Slot(s.slot.Sdk.ProjectId, s.slot.Sdk.Workshop, s.slot.Sdk.Sdk, s.slot.Name), DeepEquals, s.slot)
-	c.Assert(s.testRepo.Slot(producer.ProjectId, producer.Workshop, producer.Name, "slot"), DeepEquals, producer.Slots["slot"])
+	c.Assert(s.testRepo.Slot(producer.ProjectId, producer.Workshop, producer.Name, "slot"), DeepEquals, producerSlots["slot"])
 }
 
 // Tests for Repository.RemoveSlot()
@@ -1125,23 +1133,23 @@ func (s *RepositorySuite) TestAutoConnectCandidatePlugsAndSlots(c *C) {
 	}
 
 	// Add a pair of snaps with plugs/slots using those two interfaces
-	consumer := sdk.MockInfo(c, `
+	consumer, consumerPlugs, consumerSlots := sdk.MockInfo(c, `
 name: consumer
 base: ubuntu@22.04
 plugs:
     auto:
     manual:
 `, s.projectId, "ws")
-	producer := sdk.MockInfo(c, `
+	producer, producerPlugs, producerSlots := sdk.MockInfo(c, `
 name: producer
 base: ubuntu@22.04
 slots:
     auto:
     manual:
 `, s.projectId, "ws")
-	err = repo.AddSdk(producer)
+	err = repo.AddSdk(producer, producerPlugs, producerSlots)
 	c.Assert(err, IsNil)
-	err = repo.AddSdk(consumer)
+	err = repo.AddSdk(consumer, consumerPlugs, consumerSlots)
 	c.Assert(err, IsNil)
 
 	candidateSlots := repo.AutoConnectCandidateSlots(s.projectId, "ws", "consumer", "auto", policyCheck)
@@ -1168,35 +1176,35 @@ func (s *RepositorySuite) TestAutoConnectCandidatePlugsAndSlotsSymmetry(c *C) {
 	}
 
 	// Add a producer sdk for "auto"
-	producer := sdk.MockInfo(c, `
+	producer, _, producerSlots := sdk.MockInfo(c, `
 name: producer
 base: ubuntu@22.04
 slots:
     auto:
 `, s.projectId, "ws")
-	err = repo.AddSdk(producer)
+	err = repo.AddSdk(producer, nil, producerSlots)
 	c.Assert(err, IsNil)
 
 	// Add two consumers snaps for "auto"
-	consumer1 := sdk.MockInfo(c, `
+	consumer1, consumer1Plugs, _ := sdk.MockInfo(c, `
 name: consumer1
 base: ubuntu@22.04
 plugs:
     auto:
 `, s.projectId, "ws")
 
-	err = repo.AddSdk(consumer1)
+	err = repo.AddSdk(consumer1, consumer1Plugs, nil)
 	c.Assert(err, IsNil)
 
 	// Add two consumers snaps for "auto"
-	consumer2 := sdk.MockInfo(c, `
+	consumer2, consumer2Plugs, _ := sdk.MockInfo(c, `
 name: consumer2
 base: ubuntu@22.04
 plugs:
     auto:
 `, s.projectId, "ws")
 
-	err = repo.AddSdk(consumer2)
+	err = repo.AddSdk(consumer2, consumer2Plugs, nil)
 	c.Assert(err, IsNil)
 
 	// Both can auto-connect
@@ -1230,7 +1238,7 @@ var _ = Suite(&AddRemoveSuite{})
 
 func (s *AddRemoveSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 
 	s.repo = NewRepository()
 	err := s.repo.AddInterface(&ifacetest.TestInterface{InterfaceName: "iface"})
@@ -1248,9 +1256,9 @@ func (s *AddRemoveSuite) TearDownTest(c *C) {
 	s.projectId = "42424242"
 }
 
-func (s *AddRemoveSuite) addSdk(c *C, yaml string, projectId string) (*sdk.Info, error) {
-	sdkInfo := sdk.MockInfo(c, yaml, projectId, "ws")
-	return sdkInfo, s.repo.AddSdk(sdkInfo)
+func (s *AddRemoveSuite) addSdk(c *C, yaml string, projectId string) (*sdkPlugsSlots, error) {
+	sdkInfo, plugs, slots := sdk.MockInfo(c, yaml, projectId, "ws")
+	return &sdkPlugsSlots{Info: sdkInfo, Plugs: plugs, Slots: slots}, s.repo.AddSdk(sdkInfo, plugs, slots)
 }
 
 func (s *AddRemoveSuite) TestAddSnapSkipsUnknownInterfaces(c *C) {
@@ -1281,7 +1289,7 @@ var _ = Suite(&DisconnectSdkSuite{})
 
 func (s *DisconnectSdkSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 
 	s.repo = NewRepository()
 
@@ -1290,7 +1298,10 @@ func (s *DisconnectSdkSuite) SetUpTest(c *C) {
 	err = s.repo.AddInterface(&ifacetest.TestInterface{InterfaceName: "iface-b"})
 	c.Assert(err, IsNil)
 
-	s.s1 = sdk.MockInfo(c, `
+	var s1Plugs, s2Plugs, s2InstancePlugs map[string]*sdk.PlugInfo
+	var s1Slots, s2Slots, s2InstanceSlots map[string]*sdk.SlotInfo
+
+	s.s1, s1Plugs, s1Slots = sdk.MockInfo(c, `
 name: s1
 base: ubuntu@22.04
 plugs:
@@ -1298,10 +1309,10 @@ plugs:
 slots:
     iface-b:
 `, "42424242", "ws")
-	err = s.repo.AddSdk(s.s1)
+	err = s.repo.AddSdk(s.s1, s1Plugs, s1Slots)
 	c.Assert(err, IsNil)
 
-	s.s2 = sdk.MockInfo(c, `
+	s.s2, s2Plugs, s2Slots = sdk.MockInfo(c, `
 name: s2
 base: ubuntu@22.04
 plugs:
@@ -1310,9 +1321,9 @@ slots:
     iface-a:
 `, "42424242", "ws")
 	c.Assert(err, IsNil)
-	err = s.repo.AddSdk(s.s2)
+	err = s.repo.AddSdk(s.s2, s2Plugs, s2Slots)
 	c.Assert(err, IsNil)
-	s.s2Instance = sdk.MockInfo(c, `
+	s.s2Instance, s2InstancePlugs, s2InstanceSlots = sdk.MockInfo(c, `
 name: s2-instance
 base: ubuntu@22.04
 plugs:
@@ -1321,7 +1332,7 @@ slots:
     iface-a:
 `, "42424242", "ws")
 	c.Assert(err, IsNil)
-	err = s.repo.AddSdk(s.s2Instance)
+	err = s.repo.AddSdk(s.s2Instance, s2InstancePlugs, s2InstanceSlots)
 	c.Assert(err, IsNil)
 }
 
@@ -1416,7 +1427,7 @@ func makeMountConnectionTestSdks(c *C, projectId, plugMountToken, slotMountToken
 	err := repo.AddInterface(&ifacetest.TestInterface{InterfaceName: "mount", AutoConnectCallback: mountAutoConnect})
 	c.Assert(err, IsNil)
 
-	plugSdk := sdk.MockInfo(c, fmt.Sprintf(`
+	plugSdk, plugSdkPlugs, _ := sdk.MockInfo(c, fmt.Sprintf(`
 name: mount-plug-sdk
 base: ubuntu@22.04
 plugs:
@@ -1424,7 +1435,7 @@ plugs:
     interface: mount
     mount: %s
 `, plugMountToken), projectId, "ws-importer")
-	slotSdk := sdk.MockInfo(c, fmt.Sprintf(`
+	slotSdk, _, slotSdkSlots := sdk.MockInfo(c, fmt.Sprintf(`
 name: mount-slot-sdk
 base: ubuntu@22.04
 slots:
@@ -1433,9 +1444,9 @@ slots:
     mount: %s
 `, slotMountToken), projectId, "ws-exporter")
 
-	err = repo.AddSdk(plugSdk)
+	err = repo.AddSdk(plugSdk, plugSdkPlugs, nil)
 	c.Assert(err, IsNil)
-	err = repo.AddSdk(slotSdk)
+	err = repo.AddSdk(slotSdk, nil, slotSdkSlots)
 	c.Assert(err, IsNil)
 
 	return repo
@@ -1497,10 +1508,10 @@ func (s *RepositorySuite) TestBeforeConnectValidation(c *C) {
 	})
 	c.Assert(err, IsNil)
 
-	s1 := sdk.MockInfo(c, ifacehooksSnap1, s.projectId, "ws-s1")
-	c.Assert(s.emptyRepo.AddSdk(s1), IsNil)
-	s2 := sdk.MockInfo(c, ifacehooksSnap2, s.projectId, "ws-s2")
-	c.Assert(s.emptyRepo.AddSdk(s2), IsNil)
+	s1, s1Plugs, s1Slots := sdk.MockInfo(c, ifacehooksSnap1, s.projectId, "ws-s1")
+	c.Assert(s.emptyRepo.AddSdk(s1, s1Plugs, s1Slots), IsNil)
+	s2, s2Plugs, s2Slots := sdk.MockInfo(c, ifacehooksSnap2, s.projectId, "ws-s2")
+	c.Assert(s.emptyRepo.AddSdk(s2, s2Plugs, s2Slots), IsNil)
 
 	plugDynAttrs := map[string]any{"attr1": "val1"}
 	slotDynAttrs := map[string]any{"attr1": "val1"}
@@ -1533,10 +1544,10 @@ func (s *RepositorySuite) TestBeforeConnectValidationFailure(c *C) {
 	})
 	c.Assert(err, IsNil)
 
-	s1 := sdk.MockInfo(c, ifacehooksSnap1, s.projectId, "ws-s1")
-	c.Assert(s.emptyRepo.AddSdk(s1), IsNil)
-	s2 := sdk.MockInfo(c, ifacehooksSnap2, s.projectId, "ws-s2")
-	c.Assert(s.emptyRepo.AddSdk(s2), IsNil)
+	s1, s1Plugs, s1Slots := sdk.MockInfo(c, ifacehooksSnap1, s.projectId, "ws-s1")
+	c.Assert(s.emptyRepo.AddSdk(s1, s1Plugs, s1Slots), IsNil)
+	s2, s2Plugs, s2Slots := sdk.MockInfo(c, ifacehooksSnap2, s.projectId, "ws-s2")
+	c.Assert(s.emptyRepo.AddSdk(s2, s2Plugs, s2Slots), IsNil)
 
 	plugDynAttrs := map[string]any{"attr1": "val1"}
 	slotDynAttrs := map[string]any{"attr1": "val1"}
@@ -1559,10 +1570,10 @@ func (s *RepositorySuite) TestBeforeConnectValidationPolicyCheckFailure(c *C) {
 	})
 	c.Assert(err, IsNil)
 
-	s1 := sdk.MockInfo(c, ifacehooksSnap1, s.projectId, "ws-s1")
-	c.Assert(s.emptyRepo.AddSdk(s1), IsNil)
-	s2 := sdk.MockInfo(c, ifacehooksSnap2, s.projectId, "ws-s2")
-	c.Assert(s.emptyRepo.AddSdk(s2), IsNil)
+	s1, s1Plugs, s1Slots := sdk.MockInfo(c, ifacehooksSnap1, s.projectId, "ws-s1")
+	c.Assert(s.emptyRepo.AddSdk(s1, s1Plugs, s1Slots), IsNil)
+	s2, s2Plugs, s2Slots := sdk.MockInfo(c, ifacehooksSnap2, s.projectId, "ws-s2")
+	c.Assert(s.emptyRepo.AddSdk(s2, s2Plugs, s2Slots), IsNil)
 
 	plugDynAttrs := map[string]any{"attr1": "val1"}
 	slotDynAttrs := map[string]any{"attr1": "val1"}
@@ -1642,39 +1653,39 @@ func (s *RepositorySuite) TestInfo(c *C) {
 	c.Assert(r.AddInterface(i3), IsNil)
 
 	// Add some test snaps.
-	s1 := sdk.MockInfo(c, `
+	s1, s1Plugs, _ := sdk.MockInfo(c, `
 name: s1
 base: ubuntu@22.04
 plugs:
   i1:
   i2:
 `, s.projectId, "ws")
-	c.Assert(r.AddSdk(s1), IsNil)
+	c.Assert(r.AddSdk(s1, s1Plugs, nil), IsNil)
 
-	s2 := sdk.MockInfo(c, `
+	s2, _, s2Slots := sdk.MockInfo(c, `
 name: s2
 base: ubuntu@22.04
 slots:
   i1:
   i3:
 `, s.projectId, "ws")
-	c.Assert(r.AddSdk(s2), IsNil)
+	c.Assert(r.AddSdk(s2, nil, s2Slots), IsNil)
 
-	s3 := sdk.MockInfo(c, `
+	s3, _, s3Slots := sdk.MockInfo(c, `
 name: system
 base: ubuntu@22.04
 type: system
 slots:
   i2:
 `, s.projectId, "ws")
-	c.Assert(r.AddSdk(s3), IsNil)
-	s4 := sdk.MockInfo(c, `
+	c.Assert(r.AddSdk(s3, nil, s3Slots), IsNil)
+	s4, s4Plugs, _ := sdk.MockInfo(c, `
 name: s4
 base: ubuntu@22.04
 plugs:
   i2:
 `, s.projectId, "ws")
-	c.Assert(r.AddSdk(s4), IsNil)
+	c.Assert(r.AddSdk(s4, s4Plugs, nil), IsNil)
 
 	// Connect a few things for the tests below.
 	_, err := r.Connect(&ConnRef{
@@ -1713,13 +1724,13 @@ plugs:
 	// We can ask for a list of plugs.
 	infos = r.Info(&InfoOptions{Names: []string{"i2"}, Plugs: true})
 	c.Assert(infos, DeepEquals, []*Info{
-		{Name: "i2", Summary: "i2 summary", Plugs: []*sdk.PlugInfo{s1.Plugs["i2"], s4.Plugs["i2"]}},
+		{Name: "i2", Summary: "i2 summary", Plugs: []*sdk.PlugInfo{s1Plugs["i2"], s4Plugs["i2"]}},
 	})
 
 	// We can ask for a list of slots.
 	infos = r.Info(&InfoOptions{Names: []string{"i2"}, Slots: true})
 	c.Assert(infos, DeepEquals, []*Info{
-		{Name: "i2", Summary: "i2 summary", Slots: []*sdk.SlotInfo{s3.Slots["i2"]}},
+		{Name: "i2", Summary: "i2 summary", Slots: []*sdk.SlotInfo{s3Slots["i2"]}},
 	})
 
 	// We can also ask for only those interfaces that have connected plugs or slots.

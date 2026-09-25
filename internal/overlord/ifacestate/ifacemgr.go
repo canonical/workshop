@@ -218,13 +218,12 @@ func (m *InterfaceManager) ensureBackendInit() error {
 					return fmt.Errorf("cannot create internal mounts for %q workshop: %w", workshop.Name, err)
 				}
 
-				infos, err := workshop.SdkInfosByInstallOrder(pctx)
-				if err != nil {
-					return fmt.Errorf("cannot obtain the installed SDKs for %q workshop: %w", workshop.Name, err)
-				}
-
-				for _, info := range infos {
-					if err = m.repo.AddSdk(info); err != nil {
+				for _, sk := range workshop.SdksByInstallOrder() {
+					info, plugs, slots, _, err := workshop.SdkPlugsAndSlots(pctx, sk.Name)
+					if err != nil {
+						return fmt.Errorf("cannot obtain the installed SDKs for %q workshop: %w", workshop.Name, err)
+					}
+					if err = m.repo.AddSdk(info, plugs, slots); err != nil {
 						return fmt.Errorf("cannot register %q SDK interfaces: %w", info.Name, err)
 					}
 				}

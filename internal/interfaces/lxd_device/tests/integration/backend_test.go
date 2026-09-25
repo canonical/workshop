@@ -193,7 +193,7 @@ slots:
 `)
 
 func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 
 	fs, err := f.be.WorkshopFs(f.ctx, "test")
 	c.Assert(err, check.IsNil)
@@ -203,24 +203,28 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
 	c.Assert(err, check.IsNil)
+	cplugs, err := sdk.ParsePlugs(cinfo.Ref(), cinfo.Plugs)
+	c.Assert(err, check.IsNil)
 
 	pinfo, err := sdk.ReadSdkInfo(producer, f.pid, "test")
 	c.Assert(err, check.IsNil)
+	pslots, err := sdk.ParseSlots(pinfo.Ref(), pinfo.Slots)
+	c.Assert(err, check.IsNil)
 
-	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
-	c.Assert(f.repo.AddSdk(pinfo), check.IsNil)
+	c.Assert(f.repo.AddSdk(cinfo, cplugs, nil), check.IsNil)
+	c.Assert(f.repo.AddSdk(pinfo, nil, pslots), check.IsNil)
 
 	connref := &interfaces.ConnRef{
-		PlugRef: cinfo.Plugs["one"].Ref(),
-		SlotRef: pinfo.Slots["slot"].Ref(),
+		PlugRef: cplugs["one"].Ref(),
+		SlotRef: pslots["slot"].Ref(),
 	}
 
 	_, err = f.repo.Connect(connref, nil, nil, nil, nil, nil)
 	c.Assert(err, check.IsNil)
 
 	connref = &interfaces.ConnRef{
-		PlugRef: cinfo.Plugs["two"].Ref(),
-		SlotRef: pinfo.Slots["etc"].Ref(),
+		PlugRef: cplugs["two"].Ref(),
+		SlotRef: pslots["etc"].Ref(),
 	}
 
 	_, err = f.repo.Connect(connref, nil, nil, nil, nil, nil)
@@ -325,20 +329,24 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 }
 
 func (f *backendDeviceSuite) TestSetupHostWorkshopMounts(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
+	c.Assert(err, check.IsNil)
+	cplugs, err := sdk.ParsePlugs(cinfo.Ref(), cinfo.Plugs)
 	c.Assert(err, check.IsNil)
 
 	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test")
 	c.Assert(err, check.IsNil)
+	sslots, err := sdk.ParseSlots(sinfo.Ref(), sinfo.Slots)
+	c.Assert(err, check.IsNil)
 
-	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
-	c.Assert(f.repo.AddSdk(sinfo), check.IsNil)
+	c.Assert(f.repo.AddSdk(cinfo, cplugs, nil), check.IsNil)
+	c.Assert(f.repo.AddSdk(sinfo, nil, sslots), check.IsNil)
 
 	connref := &interfaces.ConnRef{
-		PlugRef: cinfo.Plugs["one"].Ref(),
-		SlotRef: sinfo.Slots["mount"].Ref(),
+		PlugRef: cplugs["one"].Ref(),
+		SlotRef: sslots["mount"].Ref(),
 	}
 
 	_, err = f.repo.Connect(connref, nil, nil, nil, nil, nil)
@@ -369,20 +377,24 @@ func (f *backendDeviceSuite) TestSetupHostWorkshopMounts(c *check.C) {
 }
 
 func (f *backendDeviceSuite) TestSetupUpdateProfile(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
+	c.Assert(err, check.IsNil)
+	cplugs, err := sdk.ParsePlugs(cinfo.Ref(), cinfo.Plugs)
 	c.Assert(err, check.IsNil)
 
 	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test")
 	c.Assert(err, check.IsNil)
+	sslots, err := sdk.ParseSlots(sinfo.Ref(), sinfo.Slots)
+	c.Assert(err, check.IsNil)
 
-	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
-	c.Assert(f.repo.AddSdk(sinfo), check.IsNil)
+	c.Assert(f.repo.AddSdk(cinfo, cplugs, nil), check.IsNil)
+	c.Assert(f.repo.AddSdk(sinfo, nil, sslots), check.IsNil)
 
 	connref := &interfaces.ConnRef{
-		PlugRef: cinfo.Plugs["one"].Ref(),
-		SlotRef: sinfo.Slots["mount"].Ref(),
+		PlugRef: cplugs["one"].Ref(),
+		SlotRef: sslots["mount"].Ref(),
 	}
 
 	_, err = f.repo.Connect(connref, nil, nil, nil, nil, nil)
@@ -408,21 +420,25 @@ func (f *backendDeviceSuite) TestSetupUpdateProfile(c *check.C) {
 }
 
 func (f *backendDeviceSuite) TestSetupSshAgent(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 	defer mockWorkshopRunDir()()
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
 	c.Assert(err, check.IsNil)
+	cplugs, err := sdk.ParsePlugs(cinfo.Ref(), cinfo.Plugs)
+	c.Assert(err, check.IsNil)
 
 	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test")
 	c.Assert(err, check.IsNil)
+	sslots, err := sdk.ParseSlots(sinfo.Ref(), sinfo.Slots)
+	c.Assert(err, check.IsNil)
 
-	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
-	c.Assert(f.repo.AddSdk(sinfo), check.IsNil)
+	c.Assert(f.repo.AddSdk(cinfo, cplugs, nil), check.IsNil)
+	c.Assert(f.repo.AddSdk(sinfo, nil, sslots), check.IsNil)
 
 	connref := &interfaces.ConnRef{
-		PlugRef: cinfo.Plugs["ssh-agent"].Ref(),
-		SlotRef: sinfo.Slots["ssh-agent"].Ref(),
+		PlugRef: cplugs["ssh-agent"].Ref(),
+		SlotRef: sslots["ssh-agent"].Ref(),
 	}
 
 	_, err = f.repo.Connect(connref, nil, nil, nil, nil, nil)
@@ -466,26 +482,30 @@ func (f *backendDeviceSuite) TestSetupSshAgent(c *check.C) {
 }
 
 func (f *backendDeviceSuite) TestSetupMultipleInterfaces(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 	defer mockWorkshopRunDir()()
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
 	c.Assert(err, check.IsNil)
+	cplugs, err := sdk.ParsePlugs(cinfo.Ref(), cinfo.Plugs)
+	c.Assert(err, check.IsNil)
 
 	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test")
 	c.Assert(err, check.IsNil)
+	sslots, err := sdk.ParseSlots(sinfo.Ref(), sinfo.Slots)
+	c.Assert(err, check.IsNil)
 
-	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
-	c.Assert(f.repo.AddSdk(sinfo), check.IsNil)
+	c.Assert(f.repo.AddSdk(cinfo, cplugs, nil), check.IsNil)
+	c.Assert(f.repo.AddSdk(sinfo, nil, sslots), check.IsNil)
 
 	sshConnRef := &interfaces.ConnRef{
-		PlugRef: cinfo.Plugs["ssh-agent"].Ref(),
-		SlotRef: sinfo.Slots["ssh-agent"].Ref(),
+		PlugRef: cplugs["ssh-agent"].Ref(),
+		SlotRef: sslots["ssh-agent"].Ref(),
 	}
 
 	desktopConnRef := &interfaces.ConnRef{
-		PlugRef: cinfo.Plugs["desktop"].Ref(),
-		SlotRef: sinfo.Slots["desktop"].Ref(),
+		PlugRef: cplugs["desktop"].Ref(),
+		SlotRef: sslots["desktop"].Ref(),
 	}
 
 	b := lxd_device.Backend{}

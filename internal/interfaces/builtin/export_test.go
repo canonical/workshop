@@ -53,16 +53,16 @@ func MustInterface(name string) interfaces.Interface {
 }
 
 func MockPlug(c *check.C, yaml string, projectId, workshop, sdkName string, plugName string) *sdk.PlugInfo {
-	info := sdk.MockInfo(c, yaml, projectId, workshop)
-	if plugInfo, ok := info.Plugs[plugName]; ok {
+	_, plugs, _ := sdk.MockInfo(c, yaml, projectId, workshop)
+	if plugInfo, ok := plugs[plugName]; ok {
 		return plugInfo
 	}
 	panic(fmt.Sprintf("cannot find plug %q in sdk %q", plugName, sdkName))
 }
 
 func MockSlot(c *check.C, yaml string, projectId, workshop, sdkName string, slotName string) *sdk.SlotInfo {
-	info := sdk.MockInfo(c, yaml, projectId, workshop)
-	if slotInfo, ok := info.Slots[slotName]; ok {
+	_, _, slots := sdk.MockInfo(c, yaml, projectId, workshop)
+	if slotInfo, ok := slots[slotName]; ok {
 		return slotInfo
 	}
 	panic(fmt.Sprintf("cannot find slot %q in sdk %q", slotName, sdkName))

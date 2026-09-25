@@ -45,7 +45,7 @@ var _ = Suite(&CoreSuite{})
 
 func (s *CoreSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 	s.projectId = "42424242"
 }
 
@@ -145,14 +145,14 @@ func (s *CoreSuite) TestPermanentPlugServiceSnippets(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(iface.Name(), Equals, "mock-service-snippets")
 
-	info := sdk.MockInfo(c, `
+	_, plugs, _ := sdk.MockInfo(c, `
 name: sdk
 base: ubuntu@22.04
 plugs:
   plug:
     interface: mock-service-snippets
 `, s.projectId, "ws")
-	plug := info.Plugs["plug"]
+	plug := plugs["plug"]
 
 	snips, err := interfaces.PermanentPlugServiceSnippets(iface, plug)
 	c.Assert(err, IsNil)
@@ -169,14 +169,14 @@ func (s *CoreSuite) TestPermanentPlugServiceSnippetsSanitizesPlugs(c *C) {
 	r := builtin.MockInterface(ssi)
 	defer r()
 
-	info := sdk.MockInfo(c, `
+	_, plugs, _ := sdk.MockInfo(c, `
 name: sdk
 base: ubuntu@22.04
 plugs:
   plug:
     interface: unclean-service-snippets
 `, s.projectId, "ws")
-	plug := info.Plugs["plug"]
+	plug := plugs["plug"]
 
 	iface, err := interfaces.ByName("unclean-service-snippets")
 	c.Assert(err, IsNil)
@@ -187,14 +187,14 @@ plugs:
 }
 
 func (s *CoreSuite) TestSanitizePlug(c *C) {
-	info := sdk.MockInfo(c, `
+	_, plugs, _ := sdk.MockInfo(c, `
 name: sdk
 base: ubuntu@22.04
 plugs:
   plug:
     interface: iface
 `, s.projectId, "ws")
-	plug := info.Plugs["plug"]
+	plug := plugs["plug"]
 	c.Assert(interfaces.BeforePreparePlug(&ifacetest.TestInterface{
 		InterfaceName: "iface",
 	}, plug), IsNil)
@@ -208,14 +208,14 @@ plugs:
 }
 
 func (s *CoreSuite) TestSanitizeSlot(c *C) {
-	info := sdk.MockInfo(c, `
+	_, _, slots := sdk.MockInfo(c, `
 name: sdk
 base: ubuntu@22.04
 slots:
   slot:
     interface: iface
 `, s.projectId, "ws")
-	slot := info.Slots["slot"]
+	slot := slots["slot"]
 	c.Assert(interfaces.BeforePrepareSlot(&ifacetest.TestInterface{
 		InterfaceName: "iface",
 	}, slot), IsNil)

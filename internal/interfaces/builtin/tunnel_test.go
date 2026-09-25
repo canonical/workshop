@@ -541,7 +541,7 @@ slots:
 }
 
 func (s *tunnelSuite) TestConnectHostToHost(c *check.C) {
-	info := sdk.MockInfo(c, `name: system
+	_, plugs, slots := sdk.MockInfo(c, `name: system
 base: ubuntu@22.04
 type: system
 plugs:
@@ -554,10 +554,10 @@ slots:
     endpoint: 127.0.0.1:54321/tcp
 `, s.projectId, "ws")
 
-	plug := info.Plugs["tunnel-plug"]
+	plug := plugs["tunnel-plug"]
 	connectedPlug := interfaces.NewConnectedPlug(plug, nil, nil)
 
-	slot := info.Slots["tunnel-slot"]
+	slot := slots["tunnel-slot"]
 	connectedSlot := interfaces.NewConnectedSlot(slot, nil, nil)
 
 	deviceSpec, err := lxd_device.NewSpecification(testuser.Username, "system")
@@ -1104,7 +1104,7 @@ slots:
 }
 
 func (s *tunnelSuite) TestAutoConnectHostToHost(c *check.C) {
-	info := sdk.MockInfo(c, `name: system
+	_, plugs, slots := sdk.MockInfo(c, `name: system
 base: ubuntu@22.04
 type: system
 plugs:
@@ -1117,10 +1117,10 @@ slots:
     endpoint: 127.0.0.1:8000/tcp
 `, s.projectId, "ws")
 
-	plug := info.Plugs["web"]
+	plug := plugs["web"]
 	connectedPlug := interfaces.NewConnectedPlug(plug, nil, nil)
 
-	slot := info.Slots["web"]
+	slot := slots["web"]
 	connectedSlot := interfaces.NewConnectedSlot(slot, nil, nil)
 
 	cc := policy.ConnectCandidate{
@@ -1260,7 +1260,7 @@ slots:
 }
 
 func (s *tunnelSuite) TestAutoConnectLocalhost(c *check.C) {
-	info := sdk.MockInfo(c, `name: system
+	_, plugs, _ := sdk.MockInfo(c, `name: system
 base: ubuntu@22.04
 type: system
 plugs:
@@ -1281,8 +1281,8 @@ plugs:
 	iface, err := interfaces.ByName("tunnel")
 	c.Assert(err, check.IsNil)
 
-	c.Check(iface.AutoConnect(info.Plugs["loopback4"], nil), check.Equals, true)
-	c.Check(iface.AutoConnect(info.Plugs["loopback6"], nil), check.Equals, true)
-	c.Check(iface.AutoConnect(info.Plugs["wildcard4"], nil), check.Equals, false)
-	c.Check(iface.AutoConnect(info.Plugs["wildcard6"], nil), check.Equals, false)
+	c.Check(iface.AutoConnect(plugs["loopback4"], nil), check.Equals, true)
+	c.Check(iface.AutoConnect(plugs["loopback6"], nil), check.Equals, true)
+	c.Check(iface.AutoConnect(plugs["wildcard4"], nil), check.Equals, false)
+	c.Check(iface.AutoConnect(plugs["wildcard6"], nil), check.Equals, false)
 }

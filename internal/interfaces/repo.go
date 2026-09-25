@@ -875,9 +875,11 @@ func (r *Repository) SdkSpecification(ctx context.Context, securitySystem Securi
 // Each added plug/slot is validated according to the corresponding interface.
 // Unknown interfaces and plugs/slots that don't validate are not added.
 // Information about those failures are returned to the caller.
-func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
-	err := sdk.Validate(sdkInfo)
-	if err != nil {
+func (r *Repository) AddSdk(sdkInfo *sdk.Info, plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) error {
+	if err := sdk.Validate(sdkInfo); err != nil {
+		return err
+	}
+	if err := sdk.ValidatePlugsAndSlots(plugs, slots); err != nil {
 		return err
 	}
 
@@ -889,17 +891,17 @@ func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
 	if r.plugs[key] != nil || r.slots[key] != nil {
 		return fmt.Errorf("cannot register interfaces for %q SDK more than once", key)
 	}
-	r.plugs[key] = make(map[string]*sdk.PlugInfo, len(sdkInfo.Plugs))
-	r.slots[key] = make(map[string]*sdk.SlotInfo, len(sdkInfo.Slots))
+	r.plugs[key] = make(map[string]*sdk.PlugInfo, len(plugs))
+	r.slots[key] = make(map[string]*sdk.SlotInfo, len(slots))
 
-	for plugName, plugInfo := range sdkInfo.Plugs {
+	for plugName, plugInfo := range plugs {
 		if _, ok := r.ifaces[plugInfo.Interface]; !ok {
 			continue
 		}
 		r.plugs[key][plugName] = plugInfo
 	}
 
-	for slotName, slotInfo := range sdkInfo.Slots {
+	for slotName, slotInfo := range slots {
 		if _, ok := r.ifaces[slotInfo.Interface]; !ok {
 			continue
 		}

@@ -33,7 +33,7 @@ var _ = check.Suite(&ValidateSuite{})
 
 func (s *ValidateSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 	s.projectId = "prj-4242"
 }
 
@@ -215,6 +215,23 @@ aaa-field: first
 
 	_, ok = unknown.Fields["aaa-field"]
 	c.Check(ok, check.Equals, true)
+}
+
+// TestValidateYamlBadInterfaces rejects SDK YAML whose plugs/slots reference
+// unknown interfaces, rather than silently dropping them.
+func (s *ValidateSuite) TestValidateYamlBadInterfaces(c *check.C) {
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string {
+		return map[string]string{"models": `unknown interface "not-a-real-interface"`}
+	})()
+
+	err := sdk.ValidateYaml(strings.NewReader(`name: valid
+base: ubuntu@24.04
+plugs:
+  models:
+    interface: not-a-real-interface
+`))
+
+	c.Check(err, check.ErrorMatches, `"valid" SDK has bad plugs or slots: models \(unknown interface "not-a-real-interface"\)`)
 }
 
 func (s *ValidateSuite) TestIllegalSdkName(c *check.C) {

@@ -94,7 +94,7 @@ func (s *interfaceManagerSuite) SetUpTest(c *check.C) {
 	s.prj = *prj
 	s.ctx = context.WithValue(s.ctx, workshop.ContextProjectId, s.prj.ProjectId)
 
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 }
 
 func (s *interfaceManagerSuite) TearDownTest(c *check.C) {
@@ -450,7 +450,7 @@ func (s *interfaceManagerSuite) TestConnectionStatesUndesired(c *check.C) {
 }
 
 func (s *interfaceManagerSuite) testConnectionStates(c *check.C, auto, undesired bool, expected map[string]ifacestate.ConnectionState) {
-	consumer := sdk.MockInfo(c, `
+	_, consumerPlugs, _ := sdk.MockInfo(c, `
 name: consumer
 base: ubuntu@22.04
 plugs:
@@ -459,7 +459,7 @@ plugs:
         attr1: value1
 `, "pid", "ws")
 
-	producer := sdk.MockInfo(c, `
+	_, _, producerSlots := sdk.MockInfo(c, `
 name: producer
 base: ubuntu@22.04
 slots:
@@ -480,9 +480,9 @@ slots:
 	sc, err := ifacestate.GetConns(st)
 	c.Assert(err, check.IsNil)
 
-	slot := producer.Slots["slot"]
+	slot := producerSlots["slot"]
 	c.Assert(slot, check.NotNil)
-	plug := consumer.Plugs["plug"]
+	plug := consumerPlugs["plug"]
 	c.Assert(plug, check.NotNil)
 	dynamicPlugAttrs := map[string]any{"dynamic-number": 7}
 	dynamicSlotAttrs := map[string]any{"other-number": 9}
