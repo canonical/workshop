@@ -18,9 +18,25 @@ package secrets
 type ConstError string
 
 const (
+	// ErrorMultipleSecrets indicates that more than one secret matches the
+	// request and the provider cannot safely choose one.
+	ErrorMultipleSecrets = ConstError("multiple secrets match the request")
+
+	// ErrorProviderLocked indicates that the backing secret store is locked
+	// and must be unlocked before the secret can be retrieved.
+	ErrorProviderLocked = ConstError("secret provider is locked")
+
 	// ErrorProviderNotFound indicates that no non-nil secret provider is
 	// registered for the requested SDK.
 	ErrorProviderNotFound = ConstError("secret provider not found")
+
+	// ErrorSecretNotFound indicates that the requested secret does not exist
+	// or no entries match the request.
+	ErrorSecretNotFound = ConstError("secret not found")
+
+	// ErrorUserNotFound indicates that the user requesting a secret does not
+	// exist.
+	ErrorUserNotFound = ConstError("secret request user not found")
 )
 
 // Error implements the [error] interface and returns the error message.

@@ -12,6 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-// Package secret retrieves secrets from the host Secret Service for the system
-// SDK.
-package secret
+// Package system provides the system SDK secret provider and retrieves secrets
+// from the host Secret Service, either directly over D-Bus or through a
+// user-scoped command.
+package system

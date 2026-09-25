@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/canonical/workshop/internal/sdk/system/secret"
 	"github.com/canonical/workshop/internal/secrets"
+	"github.com/canonical/workshop/internal/secrets/provider/system"
 )
 
 // failingWriter records up to limit bytes before an output pipe failure.
@@ -32,12 +32,12 @@ type failingWriter struct {
 // stubService delegates lookups to a test without accessing D-Bus.
 type stubService func(
 	context.Context,
-	secret.Request,
+	system.Request,
 ) (secrets.Secret, error)
 
 func (s stubService) Get(
 	ctx context.Context,
-	request secret.Request,
+	request system.Request,
 ) (secrets.Secret, error) {
 	return s(ctx, request)
 }

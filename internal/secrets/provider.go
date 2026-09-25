@@ -29,5 +29,15 @@ type Provider interface {
 	// which must consume or close it. On error, the returned value can be
 	// discarded without reading or closing it; the provider is responsible
 	// for clearing any secret material acquired before failure.
+	//
+	// The following errors may be expected:
+	//   - [ErrorMultipleSecrets] when multiple secrets match the request and
+	//     the provider cannot safely choose one.
+	//   - [ErrorProviderLocked] when the backing secret store must be unlocked
+	//     before the secret can be retrieved.
+	//   - [ErrorSecretNotFound] when the requested secret does not exist or no
+	//     entries match the request.
+	//   - [ErrorUserNotFound] when the user requesting the secret does not
+	//     exist.
 	Resolve(context.Context, sdk.SlotRef) (Secret, error)
 }
