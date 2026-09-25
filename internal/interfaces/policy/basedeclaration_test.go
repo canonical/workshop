@@ -45,7 +45,7 @@ func Test(t *testing.T) {
 }
 
 func (s *baseDeclSuite) SetUpSuite(c *check.C) {
-	s.restoreSanitize = sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})
+	s.restoreSanitize = sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })
 	s.baseDecl = asserts.BuiltinBaseDeclaration()
 }
 
@@ -68,11 +68,11 @@ plugs:
   %s:
 `, iface)
 	}
-	slotSdk := sdk.MockInfo(c, slotYaml, slotprj, slotws)
-	plugSdk := sdk.MockInfo(c, plugYaml, plugprj, plugws)
+	_, _, slotSlots := sdk.MockInfo(c, slotYaml, slotprj, slotws)
+	_, plugPlugs, _ := sdk.MockInfo(c, plugYaml, plugprj, plugws)
 	return &policy.ConnectCandidate{
-		Plug:            interfaces.NewConnectedPlug(plugSdk.Plugs[iface], nil, nil),
-		Slot:            interfaces.NewConnectedSlot(slotSdk.Slots[iface], nil, nil),
+		Plug:            interfaces.NewConnectedPlug(plugPlugs[iface], nil, nil),
+		Slot:            interfaces.NewConnectedSlot(slotSlots[iface], nil, nil),
 		BaseDeclaration: s.baseDecl,
 	}
 }
@@ -90,9 +90,9 @@ slots:
   %s:
 `, name, sdkType, iface)
 	}
-	sdk := sdk.MockInfo(c, yaml, "mock424242", "ws")
+	_, _, slots := sdk.MockInfo(c, yaml, "mock424242", "ws")
 	return &policy.InstallCandidate{
-		Sdk:             sdk,
+		Slots:           slots,
 		BaseDeclaration: s.baseDecl,
 	}
 }

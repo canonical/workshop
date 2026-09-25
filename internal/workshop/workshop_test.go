@@ -15,6 +15,7 @@
 package workshop_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/canonical/workshop/internal/arch"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
+	"github.com/canonical/workshop/internal/workshop/fakebackend"
 )
 
 type workshopSuite struct {
@@ -84,7 +86,7 @@ func (f *workshopSuite) TestExecArgsEffectiveCommandNoPrefix(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -98,7 +100,7 @@ func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkName(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -112,7 +114,7 @@ func (f *workshopSuite) TestValidateSdkName(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkBase(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -127,7 +129,7 @@ base: ubuntu@24.04
 }
 
 func (f *workshopSuite) TestValidateSdkArchitecture(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
 	architecture := arch.ArchitectureType(arch.DpkgArchitecture())
 	arch.SetArchitecture("mock32")
 	defer arch.SetArchitecture(architecture)
@@ -194,4 +196,122 @@ func (f *workshopSuite) TestSdkSetupsByInstallOrder(c *check.C) {
 
 	sdks := w.SdksByInstallOrder()
 	c.Assert(sdks, check.DeepEquals, []workshop.SdkInstallation{w.Sdks["system"], w.Sdks["test-sdk-1"], w.Sdks["test-sdk-2"], w.Sdks["sketch"]})
+}
+
+// newTrySdkWorkshop builds a minimal installed *workshop.Workshop with a
+// single try-source SDK, for exercising Workshop.SdkPlugsAndSlots without
+// going through a full install flow.
+func (f *workshopSuite) newTrySdkWorkshop(c *check.C, sdkYaml string, sdkRecord workshop.SdkRecord) *workshop.Workshop {
+	backend, err := fakebackend.New(c.MkDir())
+	c.Assert(err, check.IsNil)
+
+	setup := sdk.Setup{Name: sdkRecord.Name, Source: sdk.TrySource, Revision: sdk.R(1)}
+	volumeName := sdk.VolumeName(setup.Name, setup.Revision)
+	backend.Volumes[volumeName] = fakebackend.FakeVolume{Kind: "sdk"}
+	backend.SdkVolumes[volumeName] = sdk.Meta{Setup: setup, SdkYAML: sdkYaml}
+
+	return &workshop.Workshop{
+		Backend: backend,
+		Project: f.project,
+		Name:    "ws",
+		File: &workshop.File{
+			Name: "ws",
+			Base: "ubuntu@22.04",
+			Sdks: []workshop.SdkRecord{sdkRecord},
+		},
+		Sdks: map[string]workshop.SdkInstallation{
+			sdkRecord.Name: {Setup: setup},
+		},
+	}
+}
+
+// TestSdkPlugsAndSlotsAddsWorkshopSlot verifies that a slot declared for an
+// SDK in the workshop file is merged alongside the SDK's own declared slots.
+func (f *workshopSuite) TestSdkPlugsAndSlotsAddsWorkshopSlot(c *check.C) {
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
+
+	sdkYaml := `name: sdk
+base: ubuntu@22.04
+slots:
+  training:
+    interface: mount
+    workshop-source: /project
+`
+	w := f.newTrySdkWorkshop(c, sdkYaml, workshop.SdkRecord{
+		Name: "sdk",
+		Slots: map[string]any{
+			"cache": map[string]any{
+				"interface":       "mount",
+				"workshop-source": "/var/cache",
+			},
+		},
+	})
+
+	info, plugs, slots, badInterfaces, err := w.SdkPlugsAndSlots(context.Background(), "sdk")
+	c.Assert(err, check.IsNil)
+	c.Assert(badInterfaces, check.HasLen, 0)
+	c.Assert(plugs, check.HasLen, 0)
+	c.Assert(slots, check.HasLen, 2)
+	c.Assert(*slots["training"], check.DeepEquals, sdk.SlotInfo{
+		Sdk:       info.Ref(),
+		Name:      "training",
+		Interface: "mount",
+		Attrs:     map[string]any{"workshop-source": "/project"},
+	})
+	c.Assert(*slots["cache"], check.DeepEquals, sdk.SlotInfo{
+		Sdk:       info.Ref(),
+		Name:      "cache",
+		Interface: "mount",
+		Attrs:     map[string]any{"workshop-source": "/var/cache"},
+	})
+}
+
+// TestSdkPlugsAndSlotsAlreadyExistingSlotFails verifies that a workshop-file
+// slot override colliding with a name the SDK already declares itself fails.
+func (f *workshopSuite) TestSdkPlugsAndSlotsAlreadyExistingSlotFails(c *check.C) {
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
+
+	sdkYaml := `name: sdk
+base: ubuntu@22.04
+slots:
+  training:
+    interface: mount
+    workshop-source: /project
+`
+	w := f.newTrySdkWorkshop(c, sdkYaml, workshop.SdkRecord{
+		Name: "sdk",
+		Slots: map[string]any{
+			"training": map[string]any{
+				"workshop-source": "/data",
+			},
+		},
+	})
+
+	_, _, _, _, err := w.SdkPlugsAndSlots(context.Background(), "sdk")
+	c.Assert(err, check.ErrorMatches, `cannot add slot "training" to "sdk" SDK: already exists`)
+}
+
+// TestSdkPlugsAndSlotsAlreadyExistingPlugFails verifies that a workshop-file
+// plug override colliding with a name the SDK already declares itself fails.
+func (f *workshopSuite) TestSdkPlugsAndSlotsAlreadyExistingPlugFails(c *check.C) {
+	defer sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })()
+
+	sdkYaml := `name: sdk
+base: ubuntu@22.04
+plugs:
+  training:
+    interface: mount
+    workshop-target: /project
+`
+	w := f.newTrySdkWorkshop(c, sdkYaml, workshop.SdkRecord{
+		Name: "sdk",
+		Plugs: map[string]workshop.PlugOrBind{
+			"training": {Plug: map[string]any{
+				"workshop-target": "/data",
+			}},
+		},
+	})
+
+	_, _, _, _, err := w.SdkPlugsAndSlots(context.Background(), "sdk")
+	c.Assert(err, check.ErrorMatches, `cannot add plug "training" to "sdk" SDK: already exists`)
 }

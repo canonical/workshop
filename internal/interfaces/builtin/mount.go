@@ -93,7 +93,7 @@ func (iface *mountInterface) BeforePreparePlug(plug *sdk.PlugInfo) error {
 		}
 	}
 
-	path, err := parseMountPath(plug.Attrs, "plug", "workshop-target", plug.Sdk.Name)
+	path, err := parseMountPath(plug.Attrs, "plug", "workshop-target", plug.Sdk.Sdk)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func parseInt(attrs map[string]any, key string, fallback int64) (int64, error) {
 }
 
 func (iface *mountInterface) BeforePrepareSlot(slot *sdk.SlotInfo) error {
-	if slot.Sdk.Type == sdk.System {
+	if sdk.IsSystem(slot.Sdk.Sdk) {
 		for name := range slot.Attrs {
 			return fmt.Errorf("unknown attribute for system mount interface slot: %q", name)
 		}
@@ -200,7 +200,7 @@ func (iface *mountInterface) BeforePrepareSlot(slot *sdk.SlotInfo) error {
 		}
 	}
 
-	_, err := parseMountPath(slot.Attrs, "slot", "workshop-source", slot.Sdk.Name)
+	_, err := parseMountPath(slot.Attrs, "slot", "workshop-source", slot.Sdk.Sdk)
 	return err
 }
 
@@ -298,7 +298,7 @@ func (iface *mountInterface) setSystemSlotAttrs(mount *workshop.Mount, spec *lxd
 
 	// default dir: <sdk>/<plug>
 	userDataDir := workshop.UserDataRootDir(spec.User.HomeDir, spec.Environment)
-	mount.What = workshop.SdkMountHostSource(userDataDir, slot.Sdk().ProjectId, slot.Sdk().Workshop, plug.Sdk().Name, plug.Name())
+	mount.What = workshop.SdkMountHostSource(userDataDir, slot.Sdk().ProjectId, slot.Sdk().Workshop, plug.Sdk().Sdk, plug.Name())
 	mount.MakeWhat = true
 	return nil
 }
@@ -316,7 +316,7 @@ func (iface *mountInterface) MountConnectedPlug(spec *lxd_device.Specification, 
 		return err
 	}
 
-	if slot.Sdk().Type == sdk.System {
+	if sdk.IsSystem(slot.Sdk().Sdk) {
 		if err := iface.setSystemSlotAttrs(&mount, spec, plug, slot); err != nil {
 			return err
 		}

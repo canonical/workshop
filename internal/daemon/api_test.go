@@ -97,7 +97,7 @@ func (s *apiSuite) SetUpTest(c *check.C) {
 	_, _, err = s.b.CreateOrLoadProject(s.ctx, s.project.Path)
 	c.Assert(err, check.IsNil)
 
-	s.restoreSanitize = sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})
+	s.restoreSanitize = sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil })
 	s.secBackend = &ifacetest.TestSecurityBackend{BackendName: "api-suite"}
 	s.restoreSecBackend = ifacestate.MockSecurityBackends([]interfaces.SecurityBackend{s.secBackend})
 

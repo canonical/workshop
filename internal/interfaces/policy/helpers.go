@@ -103,12 +103,16 @@ func checkPlugConnectionAltConstraints(connc *ConnectCandidate, altConstraints [
 }
 
 // check helpers
-func checkSdkType(sdkInfo *sdk.Info, types []string) error {
+func checkSdkType(sdkRef sdk.Ref, types []string) error {
 	if len(types) == 0 {
 		return nil
 	}
-	if !slices.Contains(types, string(sdkInfo.Type)) {
-		return fmt.Errorf("invalid SDK type %q", sdkInfo.Type)
+	t := sdk.Regular
+	if sdk.IsSystem(sdkRef.Sdk) {
+		t = sdk.System
+	}
+	if !slices.Contains(types, string(t)) {
+		return fmt.Errorf("invalid SDK type %q", t)
 	}
 	return nil
 }

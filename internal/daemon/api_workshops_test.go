@@ -1182,7 +1182,6 @@ line 1: cannot unmarshal !!seq into string`,
 	c.Assert(sdkInfo.Workshop, check.Equals, "basic")
 	c.Assert(sdkInfo.Name, check.Equals, sdk.System.String())
 	c.Assert(sdkInfo.Version, check.Equals, "")
-	c.Assert(sdkInfo.Type, check.Equals, sdk.System)
 	c.Assert(sdkInfo.BuiltAt, check.IsNil)
 }
 

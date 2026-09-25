@@ -90,11 +90,6 @@ func (m *InterfaceManager) doAutoConnect(task *state.Task, tomb *tomb.Tomb) (err
 		return err
 	}
 
-	info, err := wp.SdkInfo(ctx, s)
-	if err != nil {
-		return err
-	}
-
 	st.Lock()
 	defer st.Unlock()
 
@@ -112,7 +107,8 @@ func (m *InterfaceManager) doAutoConnect(task *state.Task, tomb *tomb.Tomb) (err
 		return err
 	}
 
-	return m.connectAuto(task, wp, info, preserved)
+	sk := sdk.Ref{ProjectId: project.ProjectId, Workshop: w, Sdk: s}
+	return m.connectAuto(task, wp, sk, preserved)
 }
 
 func (m *InterfaceManager) preserveConns(st *state.State, chg *state.Change, projectId, w, s string) error {
@@ -162,7 +158,7 @@ func (m *InterfaceManager) preserveConns(st *state.State, chg *state.Change, pro
 	return nil
 }
 
-func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sdk.Info, refs []*interfaces.ConnRef, attrs map[string]schema.PreservedConn) *state.TaskSet {
+func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, sk sdk.Ref, refs []*interfaces.ConnRef, attrs map[string]schema.PreservedConn) *state.TaskSet {
 	connectTs := state.NewTaskSet()
 	var affected = map[sdk.Ref]bool{}
 	for _, ref := range refs {
@@ -192,7 +188,7 @@ func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sd
 		affected[slotSdk] = true
 	}
 
-	setup := m.state.NewTask("setup-profiles", fmt.Sprintf("Setup %q SDK profile", info.Name))
+	setup := m.state.NewTask("setup-profiles", fmt.Sprintf("Setup %q SDK profile", sk.Sdk))
 	setup.Set("sdks", slices.Collect(maps.Keys(affected)))
 	setup.WaitAll(connectTs)
 
@@ -201,8 +197,8 @@ func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sd
 	}
 
 	for _, tsk := range connectTs.Tasks() {
-		tsk.Set("workshop", info.Workshop)
-		tsk.Set("sdk", info.Name)
+		tsk.Set("workshop", sk.Workshop)
+		tsk.Set("sdk", sk.Sdk)
 		tsk.Set("project", wp.Project)
 	}
 
@@ -220,7 +216,7 @@ func workshopConns(wp *workshop.Workshop) []interfaces.ConnRef {
 	return conns
 }
 
-func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, info *sdk.Info, preserved map[string]schema.PreservedConn) error {
+func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, sk sdk.Ref, preserved map[string]schema.PreservedConn) error {
 	conns, err := getConns(m.state)
 	if err != nil {
 		return err
@@ -271,9 +267,9 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		connectAttrs[connRef.ID()] = attrs
 	}
 
-	for _, plug := range info.Plugs {
-		candidates := m.repo.AutoConnectCandidateSlots(info.ProjectId, info.Workshop,
-			info.Name, plug.Name, autoConnectChecker(wconns))
+	for _, plug := range m.repo.Plugs(sk.ProjectId, sk.Workshop, sk.Sdk) {
+		candidates := m.repo.AutoConnectCandidateSlots(sk.ProjectId, sk.Workshop,
+			sk.Sdk, plug.Name, autoConnectChecker(wconns))
 
 		ref := plug.Ref()
 		master, slaves := MaybeBound(wp, ref)
@@ -289,9 +285,9 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		}
 	}
 
-	for _, slot := range info.Slots {
-		candidates := m.repo.AutoConnectCandidatePlugs(info.ProjectId, info.Workshop,
-			info.Name, slot.Name, autoConnectChecker(wconns))
+	for _, slot := range m.repo.Slots(sk.ProjectId, sk.Workshop, sk.Sdk) {
+		candidates := m.repo.AutoConnectCandidatePlugs(sk.ProjectId, sk.Workshop,
+			sk.Sdk, slot.Name, autoConnectChecker(wconns))
 
 		for _, plug := range candidates {
 			ref := plug.Ref()
@@ -322,7 +318,7 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 			return err
 		}
 		plugRef, slotRef := connRef.PlugRef, connRef.SlotRef
-		if plugRef.Sdk != info.Name && slotRef.Sdk != info.Name {
+		if plugRef.Sdk != sk.Sdk && slotRef.Sdk != sk.Sdk {
 			continue
 		}
 
@@ -350,7 +346,7 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		return strings.Compare(a.ID(), b.ID())
 	})
 
-	ts := m.batchAutoConnectTasks(wp, info, connectRefs, connectAttrs)
+	ts := m.batchAutoConnectTasks(wp, sk, connectRefs, connectAttrs)
 	handlersetup.InjectTasks(task, ts)
 	m.state.EnsureBefore(0)
 	task.SetStatus(state.DoneStatus)
@@ -447,22 +443,7 @@ func getPlugAndSlotRefs(task *state.Task) (sdk.PlugRef, sdk.SlotRef, error) {
 }
 
 func MaybeBound(w *workshop.Workshop, ref sdk.PlugRef) (sdk.PlugRef, []sdk.PlugRef) {
-	var masters = make(map[sdk.PlugRef][]sdk.PlugRef)
-	var slaves = make(map[sdk.PlugRef]sdk.PlugRef)
-
-	for _, s := range w.File.Sdks {
-		for name, pl := range s.Plugs {
-			if pl.Bind == nil {
-				continue
-			}
-			sk, plug := pl.Bind.Sdk, pl.Bind.Name
-			mkey := sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: sk, Name: plug}
-			skey := sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: s.Name, Name: name}
-			masters[mkey] = append(masters[mkey], skey)
-			slaves[skey] = mkey
-		}
-	}
-
+	masters, slaves := w.Bound()
 	srefs, mok := masters[ref]
 	mref, sok := slaves[ref]
 
@@ -560,7 +541,7 @@ func (m *InterfaceManager) doConnect(task *state.Task, tomb *tomb.Tomb) error {
 	// the spot and not as part of another task which usually happens with
 	// auto-connections.
 	if !delayedSetupProfile {
-		for _, ref := range []sdk.Ref{conn.Plug.Sdk().Ref(), conn.Slot.Sdk().Ref()} {
+		for _, ref := range []sdk.Ref{conn.Plug.Sdk(), conn.Slot.Sdk()} {
 			ctx, cancel := handlersetup.BackendContext(tomb, user, ref.ProjectId)
 			defer cancel()
 			for _, backend := range m.repo.Backends() {
@@ -643,7 +624,7 @@ func (m *InterfaceManager) undoConnect(task *state.Task, tomb *tomb.Tomb) error 
 		return nil
 	}
 
-	for _, ref := range []sdk.Ref{plug.Sdk.Ref(), slot.Sdk.Ref()} {
+	for _, ref := range []sdk.Ref{plug.Sdk, slot.Sdk} {
 		ctx, cancel := handlersetup.BackendContext(tomb, user, ref.ProjectId)
 		defer cancel()
 		for _, backend := range m.repo.Backends() {
@@ -815,7 +796,7 @@ func (m *InterfaceManager) undoDisconnect(task *state.Task, tomb *tomb.Tomb) (er
 		}
 	})
 
-	for _, ref := range []sdk.Ref{c.Plug.Sdk().Ref(), c.Slot.Sdk().Ref()} {
+	for _, ref := range []sdk.Ref{c.Plug.Sdk(), c.Slot.Sdk()} {
 		ctx, cancel := handlersetup.BackendContext(tomb, user, ref.ProjectId)
 		defer cancel()
 		for _, backend := range m.repo.Backends() {
@@ -1124,7 +1105,7 @@ func (m *InterfaceManager) remount(ctx context.Context, task *state.Task, plug *
 		return err
 	}
 
-	if connection.Slot.Sdk().Type != sdk.System {
+	if !sdk.IsSystem(connection.Slot.Sdk().Sdk) {
 		return fmt.Errorf("source directory of connected slot %q is inside the workshop", connRef.SlotRef.ShortRef())
 	}
 
@@ -1224,7 +1205,7 @@ func (m *InterfaceManager) remount(ctx context.Context, task *state.Task, plug *
 	}
 
 	for _, backend := range m.repo.Backends() {
-		if err := backend.Setup(ctx, connection.Plug.Sdk().Ref(), m.repo); err != nil {
+		if err := backend.Setup(ctx, connection.Plug.Sdk(), m.repo); err != nil {
 			return err
 		}
 	}

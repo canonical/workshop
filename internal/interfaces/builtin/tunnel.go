@@ -244,13 +244,13 @@ func (iface *tunnelInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo
 func (iface *tunnelInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
 	entry := workshop.ProxyEntry{Name: plug.Name()}
 
-	if plug.Sdk().Type == sdk.System {
-		if slot.Sdk().Type == sdk.System {
+	if sdk.IsSystem(plug.Sdk().Sdk) {
+		if sdk.IsSystem(slot.Sdk().Sdk) {
 			return errors.New("cannot connect system SDK to itself")
 		}
 		entry.Direction = workshop.HostToWorkshop
 	} else {
-		if slot.Sdk().Type == sdk.Regular {
+		if !sdk.IsSystem(slot.Sdk().Sdk) {
 			return errors.New("cannot connect regular SDKs from the same workshop")
 		}
 		entry.Direction = workshop.WorkshopToHost

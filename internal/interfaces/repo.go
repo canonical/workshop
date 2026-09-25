@@ -328,7 +328,7 @@ func (r *Repository) AddPlug(plug *sdk.PlugInfo) error {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	key := plugOrSlotKey(plug.Sdk.ProjectId, plug.Sdk.Workshop, plug.Sdk.Name)
+	key := plugOrSlotKey(plug.Sdk.ProjectId, plug.Sdk.Workshop, plug.Sdk.Sdk)
 
 	// Reject plugs with invalid names
 	if err := sdk.ValidatePlugName(plug.Name); err != nil {
@@ -339,10 +339,10 @@ func (r *Repository) AddPlug(plug *sdk.PlugInfo) error {
 		return fmt.Errorf("cannot add plug: %q interface unknown", plug.Interface)
 	}
 	if _, ok := r.plugs[key][plug.Name]; ok {
-		return fmt.Errorf("%q SDK has plugs conflicting on name %q", plug.Sdk.Name, plug.Name)
+		return fmt.Errorf("%q SDK has plugs conflicting on name %q", plug.Sdk.Sdk, plug.Name)
 	}
 	if _, ok := r.slots[key][plug.Name]; ok {
-		return fmt.Errorf("%q SDK has plug and slot conflicting on name %q", plug.Sdk.Name, plug.Name)
+		return fmt.Errorf("%q SDK has plug and slot conflicting on name %q", plug.Sdk.Sdk, plug.Name)
 	}
 	if r.plugs[key] == nil {
 		r.plugs[key] = make(map[string]*sdk.PlugInfo)
@@ -425,7 +425,7 @@ func (r *Repository) AddSlot(slot *sdk.SlotInfo) error {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	key := plugOrSlotKey(slot.Sdk.ProjectId, slot.Sdk.Workshop, slot.Sdk.Name)
+	key := plugOrSlotKey(slot.Sdk.ProjectId, slot.Sdk.Workshop, slot.Sdk.Sdk)
 
 	// Reject slots with invalid names
 	if err := sdk.ValidateSlotName(slot.Name); err != nil {
@@ -437,10 +437,10 @@ func (r *Repository) AddSlot(slot *sdk.SlotInfo) error {
 		return fmt.Errorf("cannot add slot: %q interface unknown", slot.Interface)
 	}
 	if _, ok := r.slots[key][slot.Name]; ok {
-		return fmt.Errorf("%q SDK has slots conflicting on name %q", slot.Sdk.Name, slot.Name)
+		return fmt.Errorf("%q SDK has slots conflicting on name %q", slot.Sdk.Sdk, slot.Name)
 	}
 	if _, ok := r.plugs[key][slot.Name]; ok {
-		return fmt.Errorf("%q SDK has plug and slot conflicting on name %q", slot.Sdk.Name, slot.Name)
+		return fmt.Errorf("%q SDK has plug and slot conflicting on name %q", slot.Sdk.Sdk, slot.Name)
 	}
 	if r.slots[key] == nil {
 		r.slots[key] = make(map[string]*sdk.SlotInfo)
@@ -875,9 +875,11 @@ func (r *Repository) SdkSpecification(ctx context.Context, securitySystem Securi
 // Each added plug/slot is validated according to the corresponding interface.
 // Unknown interfaces and plugs/slots that don't validate are not added.
 // Information about those failures are returned to the caller.
-func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
-	err := sdk.Validate(sdkInfo)
-	if err != nil {
+func (r *Repository) AddSdk(sdkInfo *sdk.Info, plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) error {
+	if err := sdk.Validate(sdkInfo); err != nil {
+		return err
+	}
+	if err := sdk.ValidatePlugsAndSlots(plugs, slots); err != nil {
 		return err
 	}
 
@@ -889,17 +891,17 @@ func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
 	if r.plugs[key] != nil || r.slots[key] != nil {
 		return fmt.Errorf("cannot register interfaces for %q SDK more than once", key)
 	}
-	r.plugs[key] = make(map[string]*sdk.PlugInfo, len(sdkInfo.Plugs))
-	r.slots[key] = make(map[string]*sdk.SlotInfo, len(sdkInfo.Slots))
+	r.plugs[key] = make(map[string]*sdk.PlugInfo, len(plugs))
+	r.slots[key] = make(map[string]*sdk.SlotInfo, len(slots))
 
-	for plugName, plugInfo := range sdkInfo.Plugs {
+	for plugName, plugInfo := range plugs {
 		if _, ok := r.ifaces[plugInfo.Interface]; !ok {
 			continue
 		}
 		r.plugs[key][plugName] = plugInfo
 	}
 
-	for slotName, slotInfo := range sdkInfo.Slots {
+	for slotName, slotInfo := range slots {
 		if _, ok := r.ifaces[slotInfo.Interface]; !ok {
 			continue
 		}
@@ -948,13 +950,13 @@ func (r *Repository) RemoveSdk(projectId, workshop, sdkName string) error {
 // DisconnectSdk disconnects all the connections to and from a given sdk.
 //
 // The return value is a list of names that were affected.
-func (r *Repository) DisconnectSdk(projectId, workshop, sdkName string) ([]*sdk.Info, error) {
+func (r *Repository) DisconnectSdk(projectId, workshop, sdkName string) ([]sdk.Ref, error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	key := plugOrSlotKey(projectId, workshop, sdkName)
 
-	seen := make(map[*sdk.Info]bool)
+	seen := make(map[sdk.Ref]bool)
 
 	for _, plug := range r.plugs[key] {
 		for slot := range r.plugSlots[plug] {

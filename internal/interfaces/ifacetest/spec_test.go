@@ -63,12 +63,12 @@ var _ = check.Suite(&SpecificationSuite{
 		},
 	},
 	plugInfo: &sdk.PlugInfo{
-		Sdk:       &sdk.Info{Name: "sdk"},
+		Sdk:       sdk.Ref{Sdk: "sdk"},
 		Name:      "name",
 		Interface: "test",
 	},
 	slotInfo: &sdk.SlotInfo{
-		Sdk:       &sdk.Info{Name: "sdk"},
+		Sdk:       sdk.Ref{Sdk: "sdk"},
 		Name:      "name",
 		Interface: "test",
 	},

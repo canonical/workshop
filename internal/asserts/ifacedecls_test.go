@@ -97,13 +97,18 @@ func attrs(yml string) *attrerObject {
 		panic(err)
 	}
 
-	ao := attrerObject(info.Plugs["plug"].Attrs)
+	plugs, err := sdk.ParsePlugs(info.Ref(), info.Plugs)
+	if err != nil {
+		panic(err)
+	}
+
+	ao := attrerObject(plugs["plug"].Attrs)
 	return &ao
 }
 
 func (s *attrConstraintsSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 }
 
 func (s *attrConstraintsSuite) TearDownTest(c *check.C) {

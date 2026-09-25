@@ -69,14 +69,14 @@ slots:
 `
 
 func (s *helpersSuite) TestAutoConnectChecker(c *check.C) {
-	consumer := sdk.MockInfo(c, consumerYaml, "42424242", "ws")
-	plugMount := interfaces.NewConnectedPlug(consumer.Plugs["plug-mount"], nil, nil)
+	_, consumerPlugs, _ := sdk.MockInfo(c, consumerYaml, "42424242", "ws")
+	plugMount := interfaces.NewConnectedPlug(consumerPlugs["plug-mount"], nil, nil)
 
-	system := sdk.MockInfo(c, systemYaml, "42424242", "ws")
-	autoMount := interfaces.NewConnectedSlot(system.Slots["mount"], nil, nil)
+	_, _, systemSlots := sdk.MockInfo(c, systemYaml, "42424242", "ws")
+	autoMount := interfaces.NewConnectedSlot(systemSlots["mount"], nil, nil)
 
-	producer := sdk.MockInfo(c, producerYaml, "42424242", "ws")
-	slotMount := interfaces.NewConnectedSlot(producer.Slots["slot-mount"], nil, nil)
+	_, _, producerSlots := sdk.MockInfo(c, producerYaml, "42424242", "ws")
+	slotMount := interfaces.NewConnectedSlot(producerSlots["slot-mount"], nil, nil)
 
 	workshopConns := []interfaces.ConnRef{}
 	policyCheck := ifacestate.AutoConnectChecker(workshopConns)

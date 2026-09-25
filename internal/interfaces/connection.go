@@ -113,8 +113,8 @@ func (plug *ConnectedPlug) Name() string {
 	return plug.plugInfo.Name
 }
 
-// sdk returns the sdk Info of this plug.
-func (plug *ConnectedPlug) Sdk() *sdk.Info {
+// sdk returns the sdk Ref of this plug.
+func (plug *ConnectedPlug) Sdk() sdk.Ref {
 	return plug.plugInfo.Sdk
 }
 
@@ -160,7 +160,7 @@ func (plug *ConnectedPlug) Lookup(path string) (any, bool) {
 // SetAttr sets the given dynamic attribute. Error is returned if the key is already used by a static attribute.
 func (plug *ConnectedPlug) SetAttr(key string, value any) error {
 	if _, ok := plug.staticAttrs[key]; ok {
-		return fmt.Errorf("cannot change attribute %q as it was statically specified in the %q SDK details", key, plug.plugInfo.Sdk.Name)
+		return fmt.Errorf("cannot change attribute %q as it was statically specified in the %q SDK details", key, plug.plugInfo.Sdk.Sdk)
 	}
 	if plug.dynamicAttrs == nil {
 		plug.dynamicAttrs = make(map[string]any)
@@ -184,8 +184,8 @@ func (slot *ConnectedSlot) Name() string {
 	return slot.slotInfo.Name
 }
 
-// sdk returns the sdk Info of this slot.
-func (slot *ConnectedSlot) Sdk() *sdk.Info {
+// sdk returns the sdk Ref of this slot.
+func (slot *ConnectedSlot) Sdk() sdk.Ref {
 	return slot.slotInfo.Sdk
 }
 
@@ -231,7 +231,7 @@ func (slot *ConnectedSlot) Lookup(path string) (any, bool) {
 // SetAttr sets the given dynamic attribute. Error is returned if the key is already used by a static attribute.
 func (slot *ConnectedSlot) SetAttr(key string, value any) error {
 	if _, ok := slot.staticAttrs[key]; ok {
-		return fmt.Errorf("cannot change attribute %q as it was statically specified in the %q SDK details", key, slot.slotInfo.Sdk.Name)
+		return fmt.Errorf("cannot change attribute %q as it was statically specified in the %q SDK details", key, slot.slotInfo.Sdk.Sdk)
 	}
 	if slot.dynamicAttrs == nil {
 		slot.dynamicAttrs = make(map[string]any)

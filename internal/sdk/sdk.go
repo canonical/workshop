@@ -134,7 +134,6 @@ type sdkYaml struct {
 	Summary     string            `yaml:"summary"`
 	Description string            `yaml:"description"`
 	License     string            `yaml:"license"`
-	Type        string            `yaml:"type"`
 	BuiltAt     *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
 	Plugs       map[string]any    `yaml:"plugs,omitempty"`
 	Slots       map[string]any    `yaml:"slots,omitempty"`
@@ -180,7 +179,6 @@ type Info struct {
 	Base        string
 	Arch        string
 	Version     string
-	Type        Type
 	Revision    Revision
 	Channel     string
 	Source      Source
@@ -190,11 +188,11 @@ type Info struct {
 	Description string
 	License     string
 
-	Plugs     map[string]*PlugInfo
-	PlugBinds map[string]PlugRef
-	Slots     map[string]*SlotInfo
-	// Plugs or slots with issues (they are not included in Plugs or Slots)
-	BadInterfaces map[string]string
+	// Plugs and Slots are the raw, unconverted plug/slot declarations from
+	// the SDK's own sdk.yaml (its "plugs:"/"slots:" sections), as parsed by
+	// ReadSdkInfo. They do not include workshop-file overrides or binds.
+	Plugs map[string]any
+	Slots map[string]any
 }
 
 func (i *Info) Ref() Ref {
@@ -205,64 +203,44 @@ func (i *Info) Ref() Ref {
 	}
 }
 
-func (i *Info) SetupPlugBinds(binds map[string]PlugRef) error {
-	for name, plug := range binds {
-		if _, ok := i.Plugs[name]; ok {
-			// Check plugs that are bound. The existence of plugs that are
-			// "bound to" it will be checked at the connecting stage, i.e. when
-			// all plugs from all SDKs are in the repository already.
-			i.PlugBinds[name] = plug
-		} else {
-			return fmt.Errorf("plug binding failed: SDK %q has no plug named %q", i.Ref().ShortRef(), name)
-		}
-	}
-	return nil
-}
-
-// Adds slots defined for this SDK in a workshop file.
-func (i *Info) SetupWorkshopSlots(slots map[string]any) error {
+// ParseSlots converts raw slot declarations (as found in an SDK's own
+// sdk.yaml, or in a workshop file's slot overrides) into SlotInfo values.
+func ParseSlots(ref Ref, slots map[string]any) (map[string]*SlotInfo, error) {
+	result := make(map[string]*SlotInfo, len(slots))
 	for name, data := range slots {
-		if _, exist := i.Slots[name]; exist {
-			return fmt.Errorf("cannot add slot %q to %q SDK: already exists", name, i.Name)
-		}
 		iface, label, attrs, err := convertToSlotOrPlugData("slot", name, data)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		i.Slots[name] = &SlotInfo{
-			Sdk:       i,
+		result[name] = &SlotInfo{
+			Sdk:       ref,
 			Name:      name,
 			Interface: iface,
 			Attrs:     attrs,
 			Label:     label,
 		}
 	}
-
-	SanitizePlugsSlots(i)
-	return nil
+	return result, nil
 }
 
-// Adds slots defined for this SDK in a workshop file.
-func (i *Info) SetupWorkshopPlugs(plugs map[string]any) error {
+// ParsePlugs converts raw plug declarations (as found in an SDK's own
+// sdk.yaml, or in a workshop file's plug overrides) into PlugInfo values.
+func ParsePlugs(ref Ref, plugs map[string]any) (map[string]*PlugInfo, error) {
+	result := make(map[string]*PlugInfo, len(plugs))
 	for name, data := range plugs {
-		if _, exist := i.Plugs[name]; exist {
-			return fmt.Errorf("cannot add plug %q to %q SDK: already exists", name, i.Name)
-		}
 		iface, label, attrs, err := convertToSlotOrPlugData("plug", name, data)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		i.Plugs[name] = &PlugInfo{
-			Sdk:       i,
+		result[name] = &PlugInfo{
+			Sdk:       ref,
 			Name:      name,
 			Interface: iface,
 			Attrs:     attrs,
 			Label:     label,
 		}
 	}
-
-	SanitizePlugsSlots(i)
-	return nil
+	return result, nil
 }
 
 type Ref struct {
@@ -279,10 +257,17 @@ func (r Ref) ShortRef() string {
 	return fmt.Sprintf("%s/%s", r.Workshop, r.Sdk)
 }
 
-var SanitizePlugsSlots = func(snapInfo *Info) {
+// SanitizePlugsSlots checks that every plug and slot references a known
+// interface, removing (and reporting) the ones that don't.
+var SanitizePlugsSlots = func(plugs map[string]*PlugInfo, slots map[string]*SlotInfo) (badInterfaces map[string]string) {
 	panic("SanitizePlugsSlots function not set")
 }
 
+// ReadSdkInfo parses an SDK's own sdk.yaml into its Info, including the raw
+// plugs and slots it declares (see Info.Plugs/Info.Slots). It does not apply
+// any workshop-file overrides or binds, and does not convert the declared
+// plugs/slots into PlugInfo/SlotInfo values; use ParsePlugs/ParseSlots for
+// that.
 func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
 	var sdkYaml sdkYaml
 	err := yaml.Unmarshal(yamlData, &sdkYaml)
@@ -290,78 +275,23 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
 		return nil, err
 	}
 
-	if sdkYaml.Type == "" {
-		sdkYaml.Type = Regular.String()
-	}
-	if sdkYaml.Type == System.String() && !IsSystem(sdkYaml.Name) {
-		return nil, fmt.Errorf("type %q is reserved for the system SDK", sdkYaml.Type)
-	}
-
 	sdkInfo := &Info{
-		ProjectId:     projectId,
-		Workshop:      workshop,
-		Name:          sdkYaml.Name,
-		Base:          sdkYaml.Base,
-		Arch:          sdkYaml.Arch,
-		Version:       sdkYaml.Version,
-		Type:          Type(sdkYaml.Type),
-		BuiltAt:       (*time.Time)(sdkYaml.BuiltAt),
-		Title:         sdkYaml.Title,
-		Summary:       sdkYaml.Summary,
-		Description:   sdkYaml.Description,
-		License:       sdkYaml.License,
-		Plugs:         make(map[string]*PlugInfo),
-		PlugBinds:     make(map[string]PlugRef),
-		Slots:         make(map[string]*SlotInfo),
-		BadInterfaces: make(map[string]string),
+		ProjectId:   projectId,
+		Workshop:    workshop,
+		Name:        sdkYaml.Name,
+		Base:        sdkYaml.Base,
+		Arch:        sdkYaml.Arch,
+		Version:     sdkYaml.Version,
+		BuiltAt:     (*time.Time)(sdkYaml.BuiltAt),
+		Title:       sdkYaml.Title,
+		Summary:     sdkYaml.Summary,
+		Description: sdkYaml.Description,
+		License:     sdkYaml.License,
+		Plugs:       sdkYaml.Plugs,
+		Slots:       sdkYaml.Slots,
 	}
 
-	if err := setPlugsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
-		return nil, err
-	}
-
-	if err := setSlotsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
-		return nil, err
-	}
-
-	SanitizePlugsSlots(sdkInfo)
 	return sdkInfo, nil
-}
-
-func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
-	for name, data := range y.Plugs {
-		iface, label, attrs, err := convertToSlotOrPlugData("plug", name, data)
-		if err != nil {
-			return err
-		}
-		sdk.Plugs[name] = &PlugInfo{
-			Sdk:       sdk,
-			Name:      name,
-			Interface: iface,
-			Attrs:     attrs,
-			Label:     label,
-		}
-	}
-
-	return nil
-}
-
-func setSlotsFromSdkYaml(y *sdkYaml, sdk *Info) error {
-	for name, data := range y.Slots {
-		iface, label, attrs, err := convertToSlotOrPlugData("slot", name, data)
-		if err != nil {
-			return err
-		}
-		sdk.Slots[name] = &SlotInfo{
-			Sdk:       sdk,
-			Name:      name,
-			Interface: iface,
-			Attrs:     attrs,
-			Label:     label,
-		}
-	}
-
-	return nil
 }
 
 func convertToSlotOrPlugData(plugOrSlot, name string, data any) (iface, label string, attrs map[string]any, err error) {
@@ -416,7 +346,7 @@ func convertToSlotOrPlugData(plugOrSlot, name string, data any) (iface, label st
 
 // SlotInfo provides information about a slot.
 type SlotInfo struct {
-	Sdk *Info
+	Sdk Ref
 
 	Name      string
 	Interface string
@@ -456,7 +386,7 @@ func (slot *SlotInfo) Lookup(key string) (any, bool) {
 }
 
 func (slot *SlotInfo) Ref() SlotRef {
-	return SlotRef{ProjectId: slot.Sdk.ProjectId, Workshop: slot.Sdk.Workshop, Sdk: slot.Sdk.Name, Name: slot.Name}
+	return SlotRef{ProjectId: slot.Sdk.ProjectId, Workshop: slot.Sdk.Workshop, Sdk: slot.Sdk.Sdk, Name: slot.Name}
 }
 
 // SlotRef is a reference to a slot.
@@ -494,12 +424,13 @@ func (ref SlotRef) SortsBefore(other SlotRef) bool {
 
 // PlugInfo provides information about a plug.
 type PlugInfo struct {
-	Sdk *Info
+	Sdk Ref
 
 	Name      string
 	Interface string
 	Attrs     map[string]any
 	Label     string
+	Bind      *PlugRef
 }
 
 func (plug *PlugInfo) Attr(key string, val any) error {
@@ -520,7 +451,7 @@ func (plug *PlugInfo) Lookup(key string) (any, bool) {
 }
 
 func (plug *PlugInfo) Ref() PlugRef {
-	return PlugRef{ProjectId: plug.Sdk.ProjectId, Workshop: plug.Sdk.Workshop, Sdk: plug.Sdk.Name, Name: plug.Name}
+	return PlugRef{ProjectId: plug.Sdk.ProjectId, Workshop: plug.Sdk.Workshop, Sdk: plug.Sdk.Sdk, Name: plug.Name}
 }
 
 // PlugRef is a reference to a plug.
@@ -572,43 +503,52 @@ func SdkHookPath(sdkName, hookName string) string {
 	return filepath.Join(SdkHooksDir(sdkName), hookName)
 }
 
-func MockSanitizePlugsSlots(f func(sdkInfo *Info)) (restore func()) {
+func MockSanitizePlugsSlots(f func(plugs map[string]*PlugInfo, slots map[string]*SlotInfo) map[string]string) (restore func()) {
 	old := SanitizePlugsSlots
 	SanitizePlugsSlots = f
 	return func() { SanitizePlugsSlots = old }
 }
 
-func MockInfo(c *check.C, yamlText string, projectId, workshop string) *Info {
-	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
-	defer restoreSanitize()
+func MockInfo(c *check.C, yamlText string, projectId, workshop string) (*Info, map[string]*PlugInfo, map[string]*SlotInfo) {
 	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop)
 	c.Assert(err, check.IsNil)
 
-	err = Validate(info)
+	plugs, err := ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.IsNil)
-	return info
+	slots, err := ParseSlots(info.Ref(), info.Slots)
+	c.Assert(err, check.IsNil)
+
+	c.Assert(Validate(info), check.IsNil)
+	c.Assert(ValidatePlugsAndSlots(plugs, slots), check.IsNil)
+	return info, plugs, slots
 }
 
-func MockInvalidInfo(c *check.C, yamlText string) *Info {
-	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
-	defer restoreSanitize()
-
+func MockInvalidInfo(c *check.C, yamlText string) (*Info, map[string]*PlugInfo, map[string]*SlotInfo) {
 	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws")
 	c.Assert(err, check.IsNil)
+
+	plugs, err := ParsePlugs(sdkInfo.Ref(), sdkInfo.Plugs)
+	c.Assert(err, check.IsNil)
+	slots, err := ParseSlots(sdkInfo.Ref(), sdkInfo.Slots)
+	c.Assert(err, check.IsNil)
+
 	err = Validate(sdkInfo)
+	if err == nil {
+		err = ValidatePlugsAndSlots(plugs, slots)
+	}
 	c.Assert(err, check.NotNil)
-	return sdkInfo
+	return sdkInfo, plugs, slots
 }
 
 // BadInterfacesSummary returns a summary of the problems of bad plugs
 // and slots in the sdk.
-func BadInterfacesSummary(sdkInfo *Info) string {
+func BadInterfacesSummary(sdkName string, badInterfaces map[string]string) string {
 	inverted := make(map[string][]string)
-	for name, reason := range sdkInfo.BadInterfaces {
+	for name, reason := range badInterfaces {
 		inverted[reason] = append(inverted[reason], name)
 	}
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%q SDK has bad plugs or slots: ", sdkInfo.Name)
+	fmt.Fprintf(&buf, "%q SDK has bad plugs or slots: ", sdkName)
 	reasons := make([]string, 0, len(inverted))
 	for reason := range inverted {
 		reasons = append(reasons, reason)

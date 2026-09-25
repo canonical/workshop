@@ -39,9 +39,9 @@ var _ = check.Suite(&connSuite{})
 
 func (s *connSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 	s.projectId = "42424242"
-	consumer := sdk.MockInfo(c, `
+	_, consumerPlugs, _ := sdk.MockInfo(c, `
 name: consumer
 base: ubuntu@22.04
 plugs:
@@ -51,8 +51,8 @@ plugs:
         complex:
             c: d
 `, s.projectId, "ws")
-	s.plug = consumer.Plugs["plug"]
-	producer := sdk.MockInfo(c, `
+	s.plug = consumerPlugs["plug"]
+	_, _, producerSlots := sdk.MockInfo(c, `
 name: producer
 base: ubuntu@22.04
 slots:
@@ -63,7 +63,7 @@ slots:
         complex:
             a: b
 `, s.projectId, "ws")
-	s.slot = producer.Slots["slot"]
+	s.slot = producerSlots["slot"]
 }
 
 func (s *connSuite) TearDownTest(c *check.C) {

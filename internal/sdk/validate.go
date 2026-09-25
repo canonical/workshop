@@ -106,47 +106,24 @@ func (f *UnknownYamlField) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func infoFromYaml(y *sdkYaml) (*Info, error) {
-	if y.Type == "" {
-		y.Type = Regular.String()
-	}
-	if y.Type == System.String() && !IsSystem(y.Name) {
-		return nil, fmt.Errorf(
-			"type %q is reserved for the system SDK",
-			y.Type,
-		)
-	}
-
 	sdkInfo := &Info{
-		Arch:          y.Arch,
-		BadInterfaces: make(map[string]string),
-		Base:          y.Base,
-		BuiltAt:       nil,
-		Description:   y.Description,
-		License:       y.License,
-		Name:          y.Name,
-		PlugBinds:     make(map[string]PlugRef),
-		Plugs:         make(map[string]*PlugInfo),
-		Slots:         make(map[string]*SlotInfo),
-		Summary:       y.Summary,
-		Title:         y.Title,
-		Type:          Type(y.Type),
-		Version:       y.Version,
+		Arch:        y.Arch,
+		Base:        y.Base,
+		BuiltAt:     nil,
+		Description: y.Description,
+		License:     y.License,
+		Name:        y.Name,
+		Summary:     y.Summary,
+		Title:       y.Title,
+		Version:     y.Version,
+		Plugs:       y.Plugs,
+		Slots:       y.Slots,
 	}
 
 	if y.BuiltAt != nil {
 		sdkInfo.BuiltAt = (*time.Time)(y.BuiltAt)
 	}
 
-	err := setPlugsFromSdkYaml(y, sdkInfo)
-	if err != nil {
-		return nil, err
-	}
-	err = setSlotsFromSdkYaml(y, sdkInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	SanitizePlugsSlots(sdkInfo)
 	return sdkInfo, nil
 }
 
@@ -171,7 +148,13 @@ func Validate(sdk *Info) error {
 		return fmt.Errorf("invalid SDK architecture %q; supported architectures: %s", sdk.Arch, arches)
 	}
 
-	for plugName, plug := range sdk.Plugs {
+	return nil
+}
+
+// ValidatePlugsAndSlots checks whether the given plugs and slots have valid
+// names and interface names.
+func ValidatePlugsAndSlots(plugs map[string]*PlugInfo, slots map[string]*SlotInfo) error {
+	for plugName, plug := range plugs {
 		if err := ValidatePlugName(plugName); err != nil {
 			return err
 		}
@@ -179,7 +162,7 @@ func Validate(sdk *Info) error {
 			return fmt.Errorf("invalid interface name %q for plug %q", plug.Interface, plugName)
 		}
 	}
-	for slotName, slot := range sdk.Slots {
+	for slotName, slot := range slots {
 		if err := ValidateSlotName(slotName); err != nil {
 			return err
 		}
@@ -299,7 +282,24 @@ func ValidateYaml(reader io.Reader) error {
 		return err
 	}
 
-	return Validate(sdkInfo)
+	if err := Validate(sdkInfo); err != nil {
+		return err
+	}
+
+	plugs, err := ParsePlugs(sdkInfo.Ref(), sdkInfo.Plugs)
+	if err != nil {
+		return err
+	}
+	slots, err := ParseSlots(sdkInfo.Ref(), sdkInfo.Slots)
+	if err != nil {
+		return err
+	}
+
+	if badInterfaces := SanitizePlugsSlots(plugs, slots); len(badInterfaces) > 0 {
+		return fmt.Errorf("%s", BadInterfacesSummary(sdkInfo.Name, badInterfaces))
+	}
+
+	return ValidatePlugsAndSlots(plugs, slots)
 }
 
 // ValidateName checks if a string can be used as an SDK name.

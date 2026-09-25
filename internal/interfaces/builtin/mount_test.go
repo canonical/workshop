@@ -87,7 +87,7 @@ func (s *mountSuite) TestInterfaces(c *check.C) {
 }
 
 func (s *mountSuite) TestInstallSystemSdkSlot(c *check.C) {
-	info := sdk.MockInfo(c, `name: system
+	_, _, slots := sdk.MockInfo(c, `name: system
 base: ubuntu@22.04
 type: system
 slots:
@@ -95,14 +95,14 @@ slots:
 `, s.projectId, "ws")
 
 	ic := policy.InstallCandidate{
-		Sdk:             info,
+		Slots:           slots,
 		BaseDeclaration: asserts.BuiltinBaseDeclaration(),
 	}
 	c.Check(ic.Check(), check.IsNil)
 }
 
 func (s *mountSuite) TestInstallOtherSystemSdkSlot(c *check.C) {
-	info := sdk.MockInfo(c, `name: system
+	_, _, slots := sdk.MockInfo(c, `name: system
 base: ubuntu@22.04
 type: system
 slots:
@@ -111,14 +111,14 @@ slots:
 `, s.projectId, "ws")
 
 	ic := policy.InstallCandidate{
-		Sdk:             info,
+		Slots:           slots,
 		BaseDeclaration: asserts.BuiltinBaseDeclaration(),
 	}
 	c.Check(ic.Check(), check.ErrorMatches, `installation not allowed by "m" slot rule of interface "mount"`)
 }
 
 func (s *mountSuite) TestInstallRegularSdkSlot(c *check.C) {
-	info := sdk.MockInfo(c, `name: producer
+	_, _, slots := sdk.MockInfo(c, `name: producer
 base: ubuntu@22.04
 slots:
  m:
@@ -127,14 +127,14 @@ slots:
 `, s.projectId, "ws")
 
 	ic := policy.InstallCandidate{
-		Sdk:             info,
+		Slots:           slots,
 		BaseDeclaration: asserts.BuiltinBaseDeclaration(),
 	}
 	c.Check(ic.Check(), check.IsNil)
 }
 
 func (s *mountSuite) TestInstallSystemSdkPlug(c *check.C) {
-	info := sdk.MockInfo(c, `name: system
+	_, plugs, _ := sdk.MockInfo(c, `name: system
 base: ubuntu@22.04
 type: system
 plugs:
@@ -142,14 +142,14 @@ plugs:
 `, s.projectId, "ws")
 
 	ic := policy.InstallCandidate{
-		Sdk:             info,
+		Plugs:           plugs,
 		BaseDeclaration: asserts.BuiltinBaseDeclaration(),
 	}
 	c.Check(ic.Check(), check.ErrorMatches, `installation not allowed by "mount" plug rule of interface "mount"`)
 }
 
 func (s *mountSuite) TestInstallRegularSdkPlug(c *check.C) {
-	info := sdk.MockInfo(c, `name: consumer
+	_, plugs, _ := sdk.MockInfo(c, `name: consumer
 base: ubuntu@22.04
 plugs:
  mount:
@@ -158,7 +158,7 @@ plugs:
 `, s.projectId, "ws")
 
 	ic := policy.InstallCandidate{
-		Sdk:             info,
+		Plugs:           plugs,
 		BaseDeclaration: asserts.BuiltinBaseDeclaration(),
 	}
 	c.Check(ic.Check(), check.IsNil)
@@ -172,8 +172,8 @@ slots:
  mount-slot:
   interface: mount
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.IsNil)
 }
 
@@ -186,8 +186,8 @@ slots:
   interface: mount
   workshop-source: /opt
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.ErrorMatches, `unknown attribute for system mount interface slot: "workshop-source"`)
 }
 
@@ -200,8 +200,8 @@ slots:
   interface: mount
   host-source: /usr
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.ErrorMatches, `unknown attribute for system mount interface slot: "host-source"`)
 }
 
@@ -213,8 +213,8 @@ plugs:
   interface: mount
   workshop-target: /home/workshop/.cache/mount
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	plug := info.Plugs["mount-plug"]
+	_, plugs, _ := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	plug := plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
 	c.Check(plug.Attrs["mode"], check.Equals, int64(0775))
 	c.Check(plug.Attrs["uid"], check.Equals, int64(1000))
@@ -229,8 +229,8 @@ plugs:
   interface: mount
   workshop-target: /root/.cache/mount
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	plug := info.Plugs["mount-plug"]
+	_, plugs, _ := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	plug := plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
 	c.Check(plug.Attrs["mode"], check.Equals, int64(0755))
 	c.Check(plug.Attrs["uid"], check.Equals, int64(0))
@@ -245,8 +245,8 @@ plugs:
   interface: mount
   workshop-target: $SDK
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	plug := info.Plugs["mount-plug"]
+	_, plugs, _ := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	plug := plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
 	c.Check(plug.Attrs["workshop-target"], check.Equals, "/var/lib/workshop/sdk/mount-slot-sdk")
 }
@@ -259,8 +259,8 @@ plugs:
   interface: mount
   workshop-target: ${SDK}/lib/x86_64-linux-gnu
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	plug := info.Plugs["mount-plug"]
+	_, plugs, _ := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	plug := plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
 	c.Check(plug.Attrs["workshop-target"], check.Equals, "/var/lib/workshop/sdk/mount-slot-sdk/lib/x86_64-linux-gnu")
 }
@@ -273,8 +273,8 @@ plugs:
   interface: mount
   workshop-target: $SDK/
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	plug := info.Plugs["mount-plug"]
+	_, plugs, _ := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	plug := plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.ErrorMatches, `mount plug "workshop-target" is not clean: "/var/lib/workshop/sdk/mount-slot-sdk/"`)
 }
 
@@ -285,8 +285,8 @@ plugs:
  mount-plug:
   interface: mount
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	plug := info.Plugs["mount-plug"]
+	_, plugs, _ := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	plug := plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.ErrorMatches, `mount plug must contain "workshop-target"`)
 }
 
@@ -298,8 +298,8 @@ plugs:
   interface: mount
   workshop-target: foo/bar
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	plug := info.Plugs["mount-plug"]
+	_, plugs, _ := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	plug := plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.ErrorMatches, `mount plug "workshop-target" must be absolute: "foo/bar"`)
 }
 
@@ -311,8 +311,8 @@ plugs:
   interface: mount
   workshop-target: /usr/../etc/passwd
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	plug := info.Plugs["mount-plug"]
+	_, plugs, _ := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	plug := plugs["mount-plug"]
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.ErrorMatches, `mount plug "workshop-target" is not clean: "/usr/../etc/passwd"`)
 }
 
@@ -478,8 +478,8 @@ slots:
   interface: mount
   workshop-source: /images/low-res
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.IsNil)
 }
 
@@ -491,8 +491,8 @@ slots:
   interface: mount
   workshop-source: $SDK/training
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.IsNil)
 	c.Check(slot.Attrs["workshop-source"], check.Equals, "/var/lib/workshop/sdk/mount-slot-sdk/training")
 }
@@ -504,8 +504,8 @@ slots:
  mount-slot:
   interface: mount
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.ErrorMatches, `mount slot must contain "workshop-source"`)
 }
 
@@ -517,8 +517,8 @@ slots:
   interface: mount
   workshop-source: root
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.ErrorMatches, `mount slot \"workshop-source\" must be absolute: "root"`)
 }
 
@@ -530,8 +530,8 @@ slots:
   interface: mount
   workshop-source: ../../../../../../../../root/
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.ErrorMatches, `mount slot \"workshop-source\" must be absolute: "../../../../../../../../root/"`)
 }
 
@@ -543,8 +543,8 @@ slots:
   interface: mount
   workshop-source: /tmp/../etc/shadow
 `
-	info := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
-	slot := info.Slots["mount-slot"]
+	_, _, slots := sdk.MockInfo(c, mockSdkYaml, s.projectId, "ws")
+	slot := slots["mount-slot"]
 	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), check.ErrorMatches, `mount slot \"workshop-source\" is not clean: "/tmp/../etc/shadow"`)
 }
 

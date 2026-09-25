@@ -37,7 +37,7 @@ func (s *SdkSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
 	s.projectId = "prj42prj42"
 
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) map[string]string { return nil }))
 }
 
 func (s *SdkSuite) TearDownTest(c *check.C) {
@@ -84,8 +84,11 @@ plugs:
 	c.Assert(err, check.IsNil)
 	c.Assert(info.Plugs, check.HasLen, 1)
 	c.Assert(info.Slots, check.HasLen, 0)
-	c.Assert(*info.Plugs["training"], check.DeepEquals, sdk.PlugInfo{
-		Sdk:       info,
+
+	plugs, err := sdk.ParsePlugs(info.Ref(), info.Plugs)
+	c.Assert(err, check.IsNil)
+	c.Assert(*plugs["training"], check.DeepEquals, sdk.PlugInfo{
+		Sdk:       info.Ref(),
 		Name:      "training",
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-target": "/project"},
@@ -105,8 +108,11 @@ slots:
 	c.Assert(err, check.IsNil)
 	c.Assert(info.Slots, check.HasLen, 1)
 	c.Assert(info.Plugs, check.HasLen, 0)
-	c.Assert(*info.Slots["training"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
+
+	slots, err := sdk.ParseSlots(info.Ref(), info.Slots)
+	c.Assert(err, check.IsNil)
+	c.Assert(*slots["training"], check.DeepEquals, sdk.SlotInfo{
+		Sdk:       info.Ref(),
 		Name:      "training",
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-source": "/project"},
@@ -129,8 +135,11 @@ plugs:
 	c.Assert(err, check.IsNil)
 	c.Assert(info.Plugs, check.HasLen, 1)
 	c.Assert(info.Slots, check.HasLen, 0)
-	c.Assert(info.Plugs["iface"], check.DeepEquals, &sdk.PlugInfo{
-		Sdk:       info,
+
+	plugs, err := sdk.ParsePlugs(info.Ref(), info.Plugs)
+	c.Assert(err, check.IsNil)
+	c.Assert(plugs["iface"], check.DeepEquals, &sdk.PlugInfo{
+		Sdk:       info.Ref(),
 		Name:      "iface",
 		Interface: "complex",
 		Attrs: map[string]any{
@@ -167,8 +176,11 @@ plugs:
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 1)
 	c.Check(info.Slots, check.HasLen, 0)
-	c.Assert(info.Plugs["mount"], check.DeepEquals, &sdk.PlugInfo{
-		Sdk:       info,
+
+	plugs, err := sdk.ParsePlugs(info.Ref(), info.Plugs)
+	c.Assert(err, check.IsNil)
+	c.Assert(plugs["mount"], check.DeepEquals, &sdk.PlugInfo{
+		Sdk:       info.Ref(),
 		Name:      "mount",
 		Interface: "mount",
 		Attrs:     map[string]any{"ipv6-aware": true},
@@ -188,8 +200,10 @@ plugs:
 	c.Check(info.Plugs, check.HasLen, 1)
 	c.Check(info.Slots, check.HasLen, 0)
 
-	c.Assert(info.Plugs["bool-file"], check.DeepEquals, &sdk.PlugInfo{
-		Sdk:       info,
+	plugs, err := sdk.ParsePlugs(info.Ref(), info.Plugs)
+	c.Assert(err, check.IsNil)
+	c.Assert(plugs["bool-file"], check.DeepEquals, &sdk.PlugInfo{
+		Sdk:       info.Ref(),
 		Name:      "bool-file",
 		Interface: "bool-file",
 		Label:     "Disk I/O indicator",
@@ -198,86 +212,100 @@ plugs:
 
 func (s *SdkSuite) TestUnmarshalCorruptedPlugWithNonStringInterfaceName(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 plugs:
     net:
         interface: 1.0
         ipv6-aware: true
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.ErrorMatches, `interface name on plug "net" is not a string \(found float64\)`)
 }
 
 func (s *SdkSuite) TestUnmarshalCorruptedPlugWithNonStringLabel(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 plugs:
     bool-file:
         label: 1.0
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.ErrorMatches, `label of plug "bool-file" is not a string \(found float64\)`)
 }
 
 func (s *SdkSuite) TestUnmarshalCorruptedPlugWithNonStringAttributes(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 plugs:
     net:
         1: ok
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.ErrorMatches, `plug "net" has malformed definition \(found map\[interface {}\]interface {}\)`)
 }
 
 func (s *SdkSuite) TestUnmarshalCorruptedPlugWithEmptyAttributeKey(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 plugs:
     net:
         "": ok
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.ErrorMatches, `plug "net" has an empty attribute key`)
 }
 
 func (s *SdkSuite) TestUnmarshalCorruptedPlugWithUnexpectedType(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 plugs:
     net: 5
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.ErrorMatches, `plug "net" has malformed definition \(found int\)`)
 }
 
 func (s *SdkSuite) TestUnmarshalReservedPlugAttribute(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 plugs:
     serial:
         interface: serial-port
         $baud-rate: [9600]
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.ErrorMatches, `plug "serial" uses reserved attribute "\$baud-rate"`)
 }
 
 func (s *SdkSuite) TestUnmarshalInvalidPlugAttribute(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 plugs:
     serial:
         interface: serial-port
         foo: null
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.ErrorMatches, `attribute "foo" of plug \"serial\": invalid scalar:.*`)
 }
 
 func (s *SdkSuite) TestUnmarshalInvalidAttributeMapKey(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 plugs:
     serial:
@@ -286,6 +314,8 @@ plugs:
           baz:
           - 1: A
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParsePlugs(info.Ref(), info.Plugs)
 	c.Assert(err, check.ErrorMatches, `attribute "bar" of plug \"serial\": non-string key: 1`)
 }
 
@@ -301,8 +331,11 @@ slots:
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
-	c.Assert(info.Slots["mount"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+
+	slots, err := sdk.ParseSlots(info.Ref(), info.Slots)
+	c.Assert(err, check.IsNil)
+	c.Assert(slots["mount"], check.DeepEquals, &sdk.SlotInfo{
+		Sdk:       info.Ref(),
 		Name:      "mount",
 		Interface: "mount",
 	})
@@ -318,8 +351,11 @@ slots:
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
-	c.Assert(info.Slots["net"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+
+	slots, err := sdk.ParseSlots(info.Ref(), info.Slots)
+	c.Assert(err, check.IsNil)
+	c.Assert(slots["net"], check.DeepEquals, &sdk.SlotInfo{
+		Sdk:       info.Ref(),
 		Name:      "net",
 		Interface: "mount",
 	})
@@ -337,8 +373,11 @@ slots:
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
-	c.Assert(info.Slots["net"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+
+	slots, err := sdk.ParseSlots(info.Ref(), info.Slots)
+	c.Assert(err, check.IsNil)
+	c.Assert(slots["net"], check.DeepEquals, &sdk.SlotInfo{
+		Sdk:       info.Ref(),
 		Name:      "net",
 		Interface: "mount",
 		Attrs:     map[string]any{"ipv6-aware": true},
@@ -360,8 +399,11 @@ slots:
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
-	c.Assert(info.Slots["iface"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+
+	slots, err := sdk.ParseSlots(info.Ref(), info.Slots)
+	c.Assert(err, check.IsNil)
+	c.Assert(slots["iface"], check.DeepEquals, &sdk.SlotInfo{
+		Sdk:       info.Ref(),
 		Name:      "iface",
 		Interface: "complex",
 		Attrs: map[string]any{
@@ -398,8 +440,11 @@ slots:
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
-	c.Assert(info.Slots["mount"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+
+	slots, err := sdk.ParseSlots(info.Ref(), info.Slots)
+	c.Assert(err, check.IsNil)
+	c.Assert(slots["mount"], check.DeepEquals, &sdk.SlotInfo{
+		Sdk:       info.Ref(),
 		Name:      "mount",
 		Interface: "mount",
 		Attrs:     map[string]any{"ipv6-aware": true},
@@ -418,8 +463,11 @@ slots:
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
-	c.Assert(info.Slots["led0"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+
+	slots, err := sdk.ParseSlots(info.Ref(), info.Slots)
+	c.Assert(err, check.IsNil)
+	c.Assert(slots["led0"], check.DeepEquals, &sdk.SlotInfo{
+		Sdk:       info.Ref(),
 		Name:      "led0",
 		Interface: "bool-file",
 		Label:     "Front panel LED (red)",
@@ -428,172 +476,100 @@ slots:
 
 func (s *SdkSuite) TestUnmarshalCorruptedSlotWithNonStringInterfaceName(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 slots:
     net:
         interface: 1.0
         ipv6-aware: true
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParseSlots(info.Ref(), info.Slots)
 	c.Assert(err, check.ErrorMatches, `interface name on slot "net" is not a string \(found float64\)`)
 }
 
 func (s *SdkSuite) TestUnmarshalCorruptedSlotWithNonStringLabel(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 slots:
     bool-file:
         label: 1.0
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParseSlots(info.Ref(), info.Slots)
 	c.Assert(err, check.ErrorMatches, `label of slot "bool-file" is not a string \(found float64\)`)
 }
 
 func (s *SdkSuite) TestUnmarshalCorruptedSlotWithNonStringAttributes(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 slots:
     net:
         1: ok
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParseSlots(info.Ref(), info.Slots)
 	c.Assert(err, check.ErrorMatches, `slot \"net\" has malformed definition \(found map\[interface {}\]interface {}\)`)
 }
 
 func (s *SdkSuite) TestUnmarshalCorruptedSlotWithEmptyAttributeKey(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 slots:
     net:
         "": ok
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParseSlots(info.Ref(), info.Slots)
 	c.Assert(err, check.ErrorMatches, `slot "net" has an empty attribute key`)
 }
 
 func (s *SdkSuite) TestUnmarshalCorruptedSlotWithUnexpectedType(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 slots:
     net: 5
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParseSlots(info.Ref(), info.Slots)
 	c.Assert(err, check.ErrorMatches, `slot "net" has malformed definition \(found int\)`)
 }
 
 func (s *SdkSuite) TestUnmarshalReservedSlotAttribute(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 slots:
     serial:
         interface: serial-port
         $baud-rate: [9600]
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParseSlots(info.Ref(), info.Slots)
 	c.Assert(err, check.ErrorMatches, `slot "serial" uses reserved attribute "\$baud-rate"`)
 }
 
 func (s *SdkSuite) TestUnmarshalInvalidSlotAttribute(c *check.C) {
 	// NOTE: yaml content cannot use tabs, indent the section with spaces.
-	_, err := sdk.ReadSdkInfo([]byte(`
+	info, err := sdk.ReadSdkInfo([]byte(`
 name: sdk
 slots:
     serial:
         interface: serial-port
         foo: null
 `), s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+	_, err = sdk.ParseSlots(info.Ref(), info.Slots)
 	c.Assert(err, check.ErrorMatches, `attribute "foo" of slot \"serial\": invalid scalar:.*`)
 }
 
-func (s *SdkSuite) TestAddingWorkshopSlotOK(c *check.C) {
-	var mockYaml = []byte(`name: sdk
-base: ubuntu@24.04
-slots:
-  training:
-    interface: mount
-    workshop-source: /project
-`)
-
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
-	c.Assert(err, check.IsNil)
-	c.Assert(info.Slots, check.HasLen, 1)
-	c.Assert(info.Plugs, check.HasLen, 0)
-	c.Assert(*info.Slots["training"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
-		Name:      "training",
-		Interface: "mount",
-		Attrs:     map[string]any{"workshop-source": "/project"},
-	})
-	slots := map[string]any{
-		"cache": map[string]any{
-			"interface":       "mount",
-			"workshop-source": "/var/cache",
-		},
-	}
-	err = info.SetupWorkshopSlots(slots)
-	c.Assert(err, check.IsNil)
-	c.Assert(info.Slots, check.HasLen, 2)
-	c.Assert(info.Plugs, check.HasLen, 0)
-	c.Assert(*info.Slots["cache"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
-		Name:      "cache",
-		Interface: "mount",
-		Attrs:     map[string]any{"workshop-source": "/var/cache"},
-	})
-}
-
-func (s *SdkSuite) TestAddingAlreadyExistingSlotFails(c *check.C) {
-	var mockYaml = []byte(`name: sdk
-base: ubuntu@24.04
-slots:
-  training:
-    interface: mount
-    workshop-source: /project
-`)
-
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
-	c.Assert(err, check.IsNil)
-	c.Assert(info.Slots, check.HasLen, 1)
-	c.Assert(info.Plugs, check.HasLen, 0)
-	c.Assert(*info.Slots["training"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
-		Name:      "training",
-		Interface: "mount",
-		Attrs:     map[string]any{"workshop-source": "/project"},
-	})
-	slots := map[string]any{
-		"training": map[string]any{
-			"workshop-source": "/data",
-		},
-	}
-	err = info.SetupWorkshopSlots(slots)
-	c.Assert(err, check.ErrorMatches, `cannot add slot "training" to "sdk" SDK: already exists`)
-}
-
-func (s *SdkSuite) TestAddingAlreadyExistingPlugFails(c *check.C) {
-	var mockYaml = []byte(`name: sdk
-base: ubuntu@24.04
-plugs:
-  training:
-    interface: mount
-    workshop-target: /project
-`)
-
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
-	c.Assert(err, check.IsNil)
-	c.Assert(info.Slots, check.HasLen, 0)
-	c.Assert(info.Plugs, check.HasLen, 1)
-	c.Assert(*info.Plugs["training"], check.DeepEquals, sdk.PlugInfo{
-		Sdk:       info,
-		Name:      "training",
-		Interface: "mount",
-		Attrs:     map[string]any{"workshop-target": "/project"},
-	})
-	plugs := map[string]any{
-		"training": map[string]any{
-			"workshop-target": "/data",
-		},
-	}
-	err = info.SetupWorkshopPlugs(plugs)
-	c.Assert(err, check.ErrorMatches, `cannot add plug "training" to "sdk" SDK: already exists`)
-}
+// Note: workshop-file plug/slot merging (formerly Info.SetupWorkshopSlots /
+// Info.SetupWorkshopPlugs, including "already exists" conflict checks) now
+// lives in Workshop.SdkPlugsAndSlots; see workshop_test.go for
+// TestSdkPlugsAndSlotsAddsWorkshopSlot,
+// TestSdkPlugsAndSlotsAlreadyExistingSlotFails, and
+// TestSdkPlugsAndSlotsAlreadyExistingPlugFails.

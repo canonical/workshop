@@ -41,8 +41,8 @@ func (c byPlugWorkshopSdkAndName) Less(i, j int) bool {
 	if c[i].Sdk.Workshop != c[j].Sdk.Workshop {
 		return c[i].Sdk.Workshop < c[j].Sdk.Workshop
 	}
-	if c[i].Sdk.Name != c[j].Sdk.Name {
-		return c[i].Sdk.Name < c[j].Sdk.Name
+	if c[i].Sdk.Sdk != c[j].Sdk.Sdk {
+		return c[i].Sdk.Sdk < c[j].Sdk.Sdk
 	}
 	return c[i].Name < c[j].Name
 }
@@ -55,8 +55,8 @@ func (c bySlotWorkshopSdkAndName) Less(i, j int) bool {
 	if c[i].Sdk.Workshop != c[j].Sdk.Workshop {
 		return c[i].Sdk.Workshop < c[j].Sdk.Workshop
 	}
-	if c[i].Sdk.Name != c[j].Sdk.Name {
-		return c[i].Sdk.Name < c[j].Sdk.Name
+	if c[i].Sdk.Sdk != c[j].Sdk.Sdk {
+		return c[i].Sdk.Sdk < c[j].Sdk.Sdk
 	}
 	return c[i].Name < c[j].Name
 }

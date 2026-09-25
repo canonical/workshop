@@ -357,20 +357,20 @@ func (m *SdkManager) registerSdk(ctx context.Context, w, sk string) error {
 		return err
 	}
 
-	info, err := wp.SdkInfo(ctx, sk)
+	info, plugs, slots, badInterfaces, err := wp.SdkPlugsAndSlots(ctx, sk)
 	if err != nil {
 		return err
 	}
 
-	if len(info.BadInterfaces) > 0 {
-		return fmt.Errorf("%s", sdk.BadInterfacesSummary(info))
+	if len(badInterfaces) > 0 {
+		return fmt.Errorf("%s", sdk.BadInterfacesSummary(info.Name, badInterfaces))
 	}
 
-	if err = policy.CheckInterfaces(info); err != nil {
+	if err = policy.CheckInterfaces(plugs, slots); err != nil {
 		return err
 	}
 
-	return m.repo.AddSdk(info)
+	return m.repo.AddSdk(info, plugs, slots)
 }
 
 func (m *SdkManager) doSnapshotSdk(task *state.Task, tomb *tomb.Tomb) error {

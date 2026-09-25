@@ -32,7 +32,8 @@ import (
 
 // InstallCandidate represents a candidate SDK for installation.
 type InstallCandidate struct {
-	Sdk             *sdk.Info
+	Plugs           map[string]*sdk.PlugInfo
+	Slots           map[string]*sdk.SlotInfo
 	BaseDeclaration *asserts.BaseDeclaration
 }
 
@@ -79,14 +80,14 @@ func (ic *InstallCandidate) Check() error {
 		return fmt.Errorf("internal error: improperly initialized InstallCandidate")
 	}
 
-	for _, slot := range ic.Sdk.Slots {
+	for _, slot := range ic.Slots {
 		err := ic.checkSlot(slot)
 		if err != nil {
 			return err
 		}
 	}
 
-	for _, plug := range ic.Sdk.Plugs {
+	for _, plug := range ic.Plugs {
 		err := ic.checkPlug(plug)
 		if err != nil {
 			return err
@@ -208,15 +209,16 @@ func (a sideArity) SlotsPerPlugAny() bool {
 	return a.slotsPerPlug.Any()
 }
 
-// CheckInterfaces checks whether plugs and slots of sdk are allowed for installation.
-func CheckInterfaces(sdkInfo *sdk.Info) error {
+// CheckInterfaces checks whether plugs and slots are allowed for installation.
+func CheckInterfaces(plugs map[string]*sdk.PlugInfo, slots map[string]*sdk.SlotInfo) error {
 	baseDecl := asserts.BuiltinBaseDeclaration()
 	if baseDecl == nil {
 		return fmt.Errorf("internal error: cannot find base declaration")
 	}
 
 	ic := InstallCandidate{
-		Sdk:             sdkInfo,
+		Plugs:           plugs,
+		Slots:           slots,
 		BaseDeclaration: baseDecl,
 	}
 
