@@ -1,5 +1,4 @@
 name: system
-type: system
 summary: Built-in system SDK
 slots:
   mount:

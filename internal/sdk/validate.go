@@ -106,16 +106,6 @@ func (f *UnknownYamlField) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func infoFromYaml(y *sdkYaml) (*Info, error) {
-	if y.Type == "" {
-		y.Type = Regular.String()
-	}
-	if y.Type == System.String() && !IsSystem(y.Name) {
-		return nil, fmt.Errorf(
-			"type %q is reserved for the system SDK",
-			y.Type,
-		)
-	}
-
 	sdkInfo := &Info{
 		Arch:          y.Arch,
 		BadInterfaces: make(map[string]string),
@@ -128,7 +118,6 @@ func infoFromYaml(y *sdkYaml) (*Info, error) {
 		Slots:         make(map[string]*SlotInfo),
 		Summary:       y.Summary,
 		Title:         y.Title,
-		Type:          Type(y.Type),
 		Version:       y.Version,
 	}
 
