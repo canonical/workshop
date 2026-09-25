@@ -328,7 +328,7 @@ func (r *Repository) AddPlug(plug *sdk.PlugInfo) error {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	key := plugOrSlotKey(plug.Sdk.ProjectId, plug.Sdk.Workshop, plug.Sdk.Name)
+	key := plugOrSlotKey(plug.Sdk.ProjectId, plug.Sdk.Workshop, plug.Sdk.Sdk)
 
 	// Reject plugs with invalid names
 	if err := sdk.ValidatePlugName(plug.Name); err != nil {
@@ -339,10 +339,10 @@ func (r *Repository) AddPlug(plug *sdk.PlugInfo) error {
 		return fmt.Errorf("cannot add plug: %q interface unknown", plug.Interface)
 	}
 	if _, ok := r.plugs[key][plug.Name]; ok {
-		return fmt.Errorf("%q SDK has plugs conflicting on name %q", plug.Sdk.Name, plug.Name)
+		return fmt.Errorf("%q SDK has plugs conflicting on name %q", plug.Sdk.Sdk, plug.Name)
 	}
 	if _, ok := r.slots[key][plug.Name]; ok {
-		return fmt.Errorf("%q SDK has plug and slot conflicting on name %q", plug.Sdk.Name, plug.Name)
+		return fmt.Errorf("%q SDK has plug and slot conflicting on name %q", plug.Sdk.Sdk, plug.Name)
 	}
 	if r.plugs[key] == nil {
 		r.plugs[key] = make(map[string]*sdk.PlugInfo)
@@ -425,7 +425,7 @@ func (r *Repository) AddSlot(slot *sdk.SlotInfo) error {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	key := plugOrSlotKey(slot.Sdk.ProjectId, slot.Sdk.Workshop, slot.Sdk.Name)
+	key := plugOrSlotKey(slot.Sdk.ProjectId, slot.Sdk.Workshop, slot.Sdk.Sdk)
 
 	// Reject slots with invalid names
 	if err := sdk.ValidateSlotName(slot.Name); err != nil {
@@ -437,10 +437,10 @@ func (r *Repository) AddSlot(slot *sdk.SlotInfo) error {
 		return fmt.Errorf("cannot add slot: %q interface unknown", slot.Interface)
 	}
 	if _, ok := r.slots[key][slot.Name]; ok {
-		return fmt.Errorf("%q SDK has slots conflicting on name %q", slot.Sdk.Name, slot.Name)
+		return fmt.Errorf("%q SDK has slots conflicting on name %q", slot.Sdk.Sdk, slot.Name)
 	}
 	if _, ok := r.plugs[key][slot.Name]; ok {
-		return fmt.Errorf("%q SDK has plug and slot conflicting on name %q", slot.Sdk.Name, slot.Name)
+		return fmt.Errorf("%q SDK has plug and slot conflicting on name %q", slot.Sdk.Sdk, slot.Name)
 	}
 	if r.slots[key] == nil {
 		r.slots[key] = make(map[string]*sdk.SlotInfo)
@@ -736,7 +736,7 @@ func (r *Repository) Connections(projectId, workshop, sdk string) ([]*ConnRef, e
 	for _, slotInfo := range r.slots[key] {
 		for plugInfo := range r.slotPlugs[slotInfo] {
 			// self-connection, ignore here as we got it already in the plugs loop above
-			if plugInfo.Sdk.Ref() == slotInfo.Sdk.Ref() {
+			if plugInfo.Sdk == slotInfo.Sdk {
 				continue
 			}
 			connRef := NewConnRef(plugInfo, slotInfo)
@@ -959,16 +959,16 @@ func (r *Repository) DisconnectSdk(projectId, workshop, sdkName string) ([]sdk.R
 	for _, plug := range r.plugs[key] {
 		for slot := range r.plugSlots[plug] {
 			r.disconnect(plug, slot)
-			seen[plug.Sdk.Ref()] = true
-			seen[slot.Sdk.Ref()] = true
+			seen[plug.Sdk] = true
+			seen[slot.Sdk] = true
 		}
 	}
 
 	for _, slot := range r.slots[key] {
 		for plug := range r.slotPlugs[slot] {
 			r.disconnect(plug, slot)
-			seen[plug.Sdk.Ref()] = true
-			seen[slot.Sdk.Ref()] = true
+			seen[plug.Sdk] = true
+			seen[slot.Sdk] = true
 		}
 	}
 

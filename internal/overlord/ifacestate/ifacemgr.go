@@ -450,8 +450,8 @@ func (m *InterfaceManager) reloadConnections(workshopNames map[string][]string, 
 			// If the connection succeeded update the connection state and keep
 			// track of the sdks that were affected.
 
-			affected[plugInfo.Sdk.Ref()] = true
-			affected[slotInfo.Sdk.Ref()] = true
+			affected[plugInfo.Sdk] = true
+			affected[slotInfo.Sdk] = true
 		}
 	}
 	if connStateChanged {
@@ -525,7 +525,7 @@ func (m *InterfaceManager) checkConflictingMounts(w *workshop.Workshop) error {
 
 		idx := slices.IndexFunc(plugs, func(pi *sdk.PlugInfo) bool {
 			// exclude oneself
-			if pi.Sdk.Name == plug.Sdk.Name && pi.Name == plug.Name {
+			if pi.Sdk.Sdk == plug.Sdk.Sdk && pi.Name == plug.Name {
 				return false
 			}
 			target, _ := pi.Lookup("workshop-target")

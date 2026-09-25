@@ -85,7 +85,7 @@ plugs:
 	c.Assert(info.Plugs, check.HasLen, 1)
 	c.Assert(info.Slots, check.HasLen, 0)
 	c.Assert(*info.Plugs["training"], check.DeepEquals, sdk.PlugInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "training",
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-target": "/project"},
@@ -106,7 +106,7 @@ slots:
 	c.Assert(info.Slots, check.HasLen, 1)
 	c.Assert(info.Plugs, check.HasLen, 0)
 	c.Assert(*info.Slots["training"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "training",
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-source": "/project"},
@@ -130,7 +130,7 @@ plugs:
 	c.Assert(info.Plugs, check.HasLen, 1)
 	c.Assert(info.Slots, check.HasLen, 0)
 	c.Assert(info.Plugs["iface"], check.DeepEquals, &sdk.PlugInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "iface",
 		Interface: "complex",
 		Attrs: map[string]any{
@@ -168,7 +168,7 @@ plugs:
 	c.Check(info.Plugs, check.HasLen, 1)
 	c.Check(info.Slots, check.HasLen, 0)
 	c.Assert(info.Plugs["mount"], check.DeepEquals, &sdk.PlugInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "mount",
 		Interface: "mount",
 		Attrs:     map[string]any{"ipv6-aware": true},
@@ -189,7 +189,7 @@ plugs:
 	c.Check(info.Slots, check.HasLen, 0)
 
 	c.Assert(info.Plugs["bool-file"], check.DeepEquals, &sdk.PlugInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "bool-file",
 		Interface: "bool-file",
 		Label:     "Disk I/O indicator",
@@ -302,7 +302,7 @@ slots:
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
 	c.Assert(info.Slots["mount"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "mount",
 		Interface: "mount",
 	})
@@ -319,7 +319,7 @@ slots:
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
 	c.Assert(info.Slots["net"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "net",
 		Interface: "mount",
 	})
@@ -338,7 +338,7 @@ slots:
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
 	c.Assert(info.Slots["net"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "net",
 		Interface: "mount",
 		Attrs:     map[string]any{"ipv6-aware": true},
@@ -361,7 +361,7 @@ slots:
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
 	c.Assert(info.Slots["iface"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "iface",
 		Interface: "complex",
 		Attrs: map[string]any{
@@ -399,7 +399,7 @@ slots:
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
 	c.Assert(info.Slots["mount"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "mount",
 		Interface: "mount",
 		Attrs:     map[string]any{"ipv6-aware": true},
@@ -419,7 +419,7 @@ slots:
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
 	c.Assert(info.Slots["led0"], check.DeepEquals, &sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "led0",
 		Interface: "bool-file",
 		Label:     "Front panel LED (red)",
@@ -519,7 +519,7 @@ slots:
 	c.Assert(info.Slots, check.HasLen, 1)
 	c.Assert(info.Plugs, check.HasLen, 0)
 	c.Assert(*info.Slots["training"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "training",
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-source": "/project"},
@@ -535,7 +535,7 @@ slots:
 	c.Assert(info.Slots, check.HasLen, 2)
 	c.Assert(info.Plugs, check.HasLen, 0)
 	c.Assert(*info.Slots["cache"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "cache",
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-source": "/var/cache"},
@@ -556,7 +556,7 @@ slots:
 	c.Assert(info.Slots, check.HasLen, 1)
 	c.Assert(info.Plugs, check.HasLen, 0)
 	c.Assert(*info.Slots["training"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "training",
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-source": "/project"},
@@ -584,7 +584,7 @@ plugs:
 	c.Assert(info.Slots, check.HasLen, 0)
 	c.Assert(info.Plugs, check.HasLen, 1)
 	c.Assert(*info.Plugs["training"], check.DeepEquals, sdk.PlugInfo{
-		Sdk:       info,
+		Sdk:       info.Ref(),
 		Name:      "training",
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-target": "/project"},

@@ -541,7 +541,7 @@ func (m *InterfaceManager) doConnect(task *state.Task, tomb *tomb.Tomb) error {
 	// the spot and not as part of another task which usually happens with
 	// auto-connections.
 	if !delayedSetupProfile {
-		for _, ref := range []sdk.Ref{conn.Plug.Sdk().Ref(), conn.Slot.Sdk().Ref()} {
+		for _, ref := range []sdk.Ref{conn.Plug.Sdk(), conn.Slot.Sdk()} {
 			ctx, cancel := handlersetup.BackendContext(tomb, user, ref.ProjectId)
 			defer cancel()
 			for _, backend := range m.repo.Backends() {
@@ -624,7 +624,7 @@ func (m *InterfaceManager) undoConnect(task *state.Task, tomb *tomb.Tomb) error 
 		return nil
 	}
 
-	for _, ref := range []sdk.Ref{plug.Sdk.Ref(), slot.Sdk.Ref()} {
+	for _, ref := range []sdk.Ref{plug.Sdk, slot.Sdk} {
 		ctx, cancel := handlersetup.BackendContext(tomb, user, ref.ProjectId)
 		defer cancel()
 		for _, backend := range m.repo.Backends() {
@@ -796,7 +796,7 @@ func (m *InterfaceManager) undoDisconnect(task *state.Task, tomb *tomb.Tomb) (er
 		}
 	})
 
-	for _, ref := range []sdk.Ref{c.Plug.Sdk().Ref(), c.Slot.Sdk().Ref()} {
+	for _, ref := range []sdk.Ref{c.Plug.Sdk(), c.Slot.Sdk()} {
 		ctx, cancel := handlersetup.BackendContext(tomb, user, ref.ProjectId)
 		defer cancel()
 		for _, backend := range m.repo.Backends() {
@@ -1105,7 +1105,7 @@ func (m *InterfaceManager) remount(ctx context.Context, task *state.Task, plug *
 		return err
 	}
 
-	if connection.Slot.Sdk().Type != sdk.System {
+	if !sdk.IsSystem(connection.Slot.Sdk().Sdk) {
 		return fmt.Errorf("source directory of connected slot %q is inside the workshop", connRef.SlotRef.ShortRef())
 	}
 
@@ -1205,7 +1205,7 @@ func (m *InterfaceManager) remount(ctx context.Context, task *state.Task, plug *
 	}
 
 	for _, backend := range m.repo.Backends() {
-		if err := backend.Setup(ctx, connection.Plug.Sdk().Ref(), m.repo); err != nil {
+		if err := backend.Setup(ctx, connection.Plug.Sdk(), m.repo); err != nil {
 			return err
 		}
 	}

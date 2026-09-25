@@ -229,7 +229,7 @@ func (i *Info) SetupWorkshopSlots(slots map[string]any) error {
 			return err
 		}
 		i.Slots[name] = &SlotInfo{
-			Sdk:       i,
+			Sdk:       i.Ref(),
 			Name:      name,
 			Interface: iface,
 			Attrs:     attrs,
@@ -252,7 +252,7 @@ func (i *Info) SetupWorkshopPlugs(plugs map[string]any) error {
 			return err
 		}
 		i.Plugs[name] = &PlugInfo{
-			Sdk:       i,
+			Sdk:       i.Ref(),
 			Name:      name,
 			Interface: iface,
 			Attrs:     attrs,
@@ -333,7 +333,7 @@ func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
 			return err
 		}
 		sdk.Plugs[name] = &PlugInfo{
-			Sdk:       sdk,
+			Sdk:       sdk.Ref(),
 			Name:      name,
 			Interface: iface,
 			Attrs:     attrs,
@@ -351,7 +351,7 @@ func setSlotsFromSdkYaml(y *sdkYaml, sdk *Info) error {
 			return err
 		}
 		sdk.Slots[name] = &SlotInfo{
-			Sdk:       sdk,
+			Sdk:       sdk.Ref(),
 			Name:      name,
 			Interface: iface,
 			Attrs:     attrs,
@@ -414,7 +414,7 @@ func convertToSlotOrPlugData(plugOrSlot, name string, data any) (iface, label st
 
 // SlotInfo provides information about a slot.
 type SlotInfo struct {
-	Sdk *Info
+	Sdk Ref
 
 	Name      string
 	Interface string
@@ -454,7 +454,7 @@ func (slot *SlotInfo) Lookup(key string) (any, bool) {
 }
 
 func (slot *SlotInfo) Ref() SlotRef {
-	return SlotRef{ProjectId: slot.Sdk.ProjectId, Workshop: slot.Sdk.Workshop, Sdk: slot.Sdk.Name, Name: slot.Name}
+	return SlotRef{ProjectId: slot.Sdk.ProjectId, Workshop: slot.Sdk.Workshop, Sdk: slot.Sdk.Sdk, Name: slot.Name}
 }
 
 // SlotRef is a reference to a slot.
@@ -492,7 +492,7 @@ func (ref SlotRef) SortsBefore(other SlotRef) bool {
 
 // PlugInfo provides information about a plug.
 type PlugInfo struct {
-	Sdk *Info
+	Sdk Ref
 
 	Name      string
 	Interface string
@@ -519,7 +519,7 @@ func (plug *PlugInfo) Lookup(key string) (any, bool) {
 }
 
 func (plug *PlugInfo) Ref() PlugRef {
-	return PlugRef{ProjectId: plug.Sdk.ProjectId, Workshop: plug.Sdk.Workshop, Sdk: plug.Sdk.Name, Name: plug.Name}
+	return PlugRef{ProjectId: plug.Sdk.ProjectId, Workshop: plug.Sdk.Workshop, Sdk: plug.Sdk.Sdk, Name: plug.Name}
 }
 
 // PlugRef is a reference to a plug.
