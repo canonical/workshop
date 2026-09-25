@@ -26,6 +26,7 @@ workshop file at .workshop/<NAME>.yaml. This fails if a workshop with
 the same name already exists.
 
 The supported bases are ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
+The supported runtimes are lxd-container (the default) and lxd-vm.
 
 SDKs are specified as a comma-separated list. Each SDK entry can optionally
 include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.26/stable").
@@ -59,11 +60,13 @@ Create a workshop using a specific base:
 
    Default: ``ubuntu@24.04``
 
+--runtime
+
+   Sandbox technology to use.
+
+   Default: ``lxd-container``
+
 --sdks
 
    Comma-separated list of SDKs (e.g., "go,uv/latest/stable").
-
---vm
-
-   Use a virtual machine instead of a container.
 
