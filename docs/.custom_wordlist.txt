@@ -146,6 +146,7 @@ OpenVINO
 passthrough
 pathname
 PlugRef
+PRs
 prebuilt
 predefined
 preexisting
