@@ -194,7 +194,7 @@
                 <td><a href="tutorial/part-1-get-started.rst#L138">[part-1-get-started.rst]</a></td>
                 <td></td>
                 <td></td>
-                <td><a href="reference/cli/sdk-find.rst#L10">[sdk-find.rst]</a></td>
+                <td><a href="reference/ai-agents.rst#L182">[ai-agents.rst]</a><br><a href="reference/cli/sdk-find.rst#L10">[sdk-find.rst]</a></td>
                 <td></td>
             </tr><tr>
                 <td>sdk info</td>
@@ -203,7 +203,7 @@
                 <td><a href="tutorial/part-1-get-started.rst#L156">[part-1-get-started.rst]</a></td>
                 <td></td>
                 <td></td>
-                <td><a href="reference/cli/sdk-info.rst#L10">[sdk-info.rst]</a></td>
+                <td><a href="reference/ai-agents.rst#L183">[ai-agents.rst]</a><br><a href="reference/cli/sdk-info.rst#L10">[sdk-info.rst]</a></td>
                 <td>SK048</td>
             </tr><tr>
                 <td>sdk list</td>
@@ -408,7 +408,7 @@
                 <td>SDK</td>
                 <td>concept</td>
                 <td><a href="tutorial/part-1-get-started.rst#L118">[part-1-get-started.rst]</a><br><a href="tutorial/part-3-sketch-sdks.rst#L24">[part-3-sketch-sdks.rst]</a><br><a href="tutorial/part-4-craft-sdks.rst#L14">[part-4-craft-sdks.rst]</a></td>
-                <td><a href="how-to/develop-sdks/build-an-sdk.rst#L14">[build-an-sdk.rst]</a><br><a href="how-to/develop-sdks/publish-an-sdk.rst#L13">[publish-an-sdk.rst]</a><br><a href="how-to/develop-with-workshops/run-github-actions-locally.rst#L20">[run-github-actions-locally.rst]</a><br><a href="how-to/develop-with-workshops/use-workshops-with-ai-agents.rst#L146">[use-workshops-with-ai-agents.rst]</a><br><a href="how-to/index.rst#L51">[index.rst]</a></td>
+                <td><a href="how-to/develop-sdks/build-an-sdk.rst#L14">[build-an-sdk.rst]</a><br><a href="how-to/develop-sdks/publish-an-sdk.rst#L13">[publish-an-sdk.rst]</a><br><a href="how-to/develop-with-workshops/run-github-actions-locally.rst#L20">[run-github-actions-locally.rst]</a><br><a href="how-to/index.rst#L51">[index.rst]</a></td>
                 <td><a href="explanation/index.rst#L58">[index.rst]</a><br><a href="explanation/interfaces/concepts.rst#L12">[concepts.rst]</a><br><a href="explanation/sdks/best-practices.rst#L11">[best-practices.rst]</a><br><a href="explanation/sdks/concepts.rst#L11">[concepts.rst]</a><br><a href="explanation/sdks/index.rst#L9">[index.rst]</a><br><a href="explanation/sdks/lifecycle.rst#L11">[lifecycle.rst]</a><br><a href="explanation/sdks/parts.rst#L13">[parts.rst]</a><br><a href="explanation/sdks/runtime-hooks.rst#L11">[runtime-hooks.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L12">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L162">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/workshops/concepts.rst#L220">[concepts.rst]</a></td>
                 <td><a href="reference/ai-agents.rst#L12">[ai-agents.rst]</a><br><a href="reference/definition-files/index.rst#L8">[index.rst]</a><br><a href="reference/definition-files/sdkcraft-definition.rst#L12">[sdkcraft-definition.rst]</a><br><a href="reference/index.rst#L34">[index.rst]</a><br><a href="reference/index.rst#L84">[index.rst]</a><br><a href="reference/sdks.rst#L10">[sdks.rst]</a><br><a href="reference/workshops.rst#L30">[workshops.rst]</a></td>
                 <td>SK000</td>
@@ -831,7 +831,7 @@
                 <td>workshop (container)</td>
                 <td>concept</td>
                 <td><a href="tutorial/part-1-get-started.rst#L17">[part-1-get-started.rst]</a></td>
-                <td><a href="how-to/develop-with-workshops/connect-vscode.rst#L12">[connect-vscode.rst]</a><br><a href="how-to/develop-with-workshops/run-jupyterlab-in-browser.rst#L12">[run-jupyterlab-in-browser.rst]</a><br><a href="how-to/develop-with-workshops/use-git.rst#L12">[use-git.rst]</a><br><a href="how-to/develop-with-workshops/use-workshops-with-ai-agents.rst#L13">[use-workshops-with-ai-agents.rst]</a><br><a href="how-to/fix-workshops/fix-installation.rst#L73">[fix-installation.rst]</a></td>
+                <td><a href="how-to/develop-with-workshops/connect-vscode.rst#L12">[connect-vscode.rst]</a><br><a href="how-to/develop-with-workshops/run-jupyterlab-in-browser.rst#L12">[run-jupyterlab-in-browser.rst]</a><br><a href="how-to/develop-with-workshops/use-git.rst#L12">[use-git.rst]</a><br><a href="how-to/fix-workshops/fix-installation.rst#L73">[fix-installation.rst]</a></td>
                 <td><a href="explanation/index.rst#L38">[index.rst]</a><br><a href="explanation/sdks/sdk-vs-dockerfile.rst#L13">[sdk-vs-dockerfile.rst]</a><br><a href="explanation/workshops/concepts.rst#L12">[concepts.rst]</a><br><a href="explanation/workshops/index.rst#L9">[index.rst]</a><br><a href="explanation/workshops/multi-workshop-patterns.rst#L14">[multi-workshop-patterns.rst]</a></td>
                 <td><a href="reference/ai-agents.rst#L13">[ai-agents.rst]</a><br><a href="reference/index.rst#L35">[index.rst]</a><br><a href="reference/workshops.rst#L16">[workshops.rst]</a></td>
                 <td>SK000<br>SK003<br>SK007</td>
@@ -849,7 +849,7 @@
                 <td>workshop (container)</td>
                 <td>file</td>
                 <td></td>
-                <td><a href="how-to/develop-with-workshops/use-git.rst#L156">[use-git.rst]</a><br><a href="how-to/develop-with-workshops/use-workshops-with-ai-agents.rst#L145">[use-workshops-with-ai-agents.rst]</a></td>
+                <td><a href="how-to/develop-with-workshops/use-git.rst#L156">[use-git.rst]</a></td>
                 <td><a href="explanation/workshops/concepts.rst#L198">[concepts.rst]</a></td>
                 <td><a href="reference/sdks.rst#L430">[sdks.rst]</a></td>
                 <td>SK001</td>
@@ -858,7 +858,7 @@
                 <td>workshop (container)</td>
                 <td>file</td>
                 <td><a href="tutorial/part-1-get-started.rst#L205">[part-1-get-started.rst]</a></td>
-                <td><a href="how-to/customize-workshops/use-multiple-workshops.rst#L15">[use-multiple-workshops.rst]</a><br><a href="how-to/develop-with-workshops/use-workshops-with-ai-agents.rst#L14">[use-workshops-with-ai-agents.rst]</a></td>
+                <td><a href="how-to/customize-workshops/use-multiple-workshops.rst#L15">[use-multiple-workshops.rst]</a></td>
                 <td><a href="explanation/index.rst#L39">[index.rst]</a><br><a href="explanation/workshops/concepts.rst#L13">[concepts.rst]</a><br><a href="explanation/workshops/concepts.rst#L199">[concepts.rst]</a><br><a href="explanation/workshops/multi-workshop-patterns.rst#L15">[multi-workshop-patterns.rst]</a><br><a href="explanation/workshops/projects.rst#L15">[projects.rst]</a></td>
                 <td><a href="reference/definition-files/index.rst#L9">[index.rst]</a><br><a href="reference/definition-files/workshop-definition.rst#L12">[workshop-definition.rst]</a></td>
                 <td>SK001<br>SK006<br>SK008</td>

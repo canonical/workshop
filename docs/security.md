@@ -32,10 +32,13 @@ container](https://ubuntu.com/server/docs/how-to/containers/lxd-containers/)
 within a dedicated
 [project](https://canonical.com/lxd/docs/latest/explanation/projects/),
 which separates workshops that belong to different users and isolates them from
-each other and the host system.
+each other and the host system. The exceptions are the project directory, which
+every workshop in the project mounts read-write, and the host resources you
+connect through interfaces.
 
-By design, all SDKs in a workshop can access any data inside it, but have
-limited capabilities on the host, due to the confinement of the workshop.
+By design, all SDKs in a workshop can access any data inside it, because
+everything in the workshop runs as the same `workshop` user or as `root`; their
+capabilities on the host are limited by the confinement of the workshop.
 
 ## Interfaces
 
@@ -68,13 +71,70 @@ only to the SDKs that require it. Another example is avoiding the connection of
 sensitive interfaces, such as the SSH agent, unless absolutely necessary.
 
 You can use environment variables in Workshop commands for access tokens or the
-\:ref:`SSH interface <exp_ssh_interface>` for transparent key-based access to
-securely handle sensitive data in your SDKs.
+[SSH interface](https://ubuntu.com/workshop/docs/explanation/interfaces/ssh-interface/)
+for transparent key-based access to securely handle sensitive data in your SDKs.
 
 The SDKs available in a workshop are sourced from the SDK Store and are
 generally reliable at this stage of development. However, if you are cautious
 about potential risks, assume from the outset that no SDK is free from security
 concerns.
+
+(security_coding_agents)=
+
+## Coding agents
+
+A coding agent that runs in a workshop can do anything the workshop allows, and
+permission modes that turn off the agent's approval prompts remove its own
+safeguards. The workshop doesn't replace those safeguards; it only limits the
+agent to the boundaries below, so weigh them before giving an agent that much
+autonomy:
+
+* **The project directory is writable.** Workshop mounts the entire project
+  directory at `/project` read-write, including its `.git` directory, and files
+  created inside the workshop belong to your host user. Git runs hooks from
+  `.git/hooks`, and settings in `.git/config` can name commands for Git to run,
+  so anything an agent writes there runs on your host the next time you use Git
+  in the project. For an agent that works unattended, use a separate clone of
+  the repository rather than your working copy, and review its changes before
+  you bring them back.
+* **Subdirectories and worktrees don't narrow the mount.** The workshop sees the
+  whole project directory, whichever subdirectory the agent starts in. A Git
+  worktree is a separate project with a mount of its own, but its `.git` file
+  points to the main repository outside that mount, so Git commands fail inside
+  the workshop; run them on the host.
+* **Everything runs as one user.** Commands, actions, and agents run as the
+  `workshop` user, which can use `sudo` without a password, and SDK hooks run
+  as `root`.
+  An agent can read and change anything in the workshop, including other SDKs'
+  files and the credentials they store.
+* **Outbound network access is open.** Workshop doesn't filter outgoing traffic,
+  so an agent can reach any host that the workshop's network can reach and send
+  project data there.
+* **Connected interfaces extend the reach.** Avoid connecting these interfaces
+  to a workshop where an autonomous agent runs, or disconnect them before the
+  agent starts:
+  * The
+    [SSH interface](https://ubuntu.com/workshop/docs/explanation/interfaces/ssh-interface/)
+    lets any process in the workshop authenticate with the identities in your
+    host's SSH agent while it's connected.
+  * [Mounts](https://ubuntu.com/workshop/docs/explanation/interfaces/mount-interface/)
+    of host directories are writable unless the plug sets `read-only`; mounting
+    an agent's configuration directory from your home exposes its credentials
+    and settings to everything in the workshop.
+  * The
+    [desktop interface](https://ubuntu.com/workshop/docs/explanation/interfaces/desktop-interface/)
+    shares your graphical session with the workshop.
+  * [Tunnels](https://ubuntu.com/workshop/docs/explanation/interfaces/tunnel-interface/)
+    let the workshop reach network services on your host.
+  * The
+    [camera](https://ubuntu.com/workshop/docs/explanation/interfaces/camera-interface/)
+    and
+    [custom device](https://ubuntu.com/workshop/docs/explanation/interfaces/custom-device-interface/)
+    interfaces pass host devices into the workshop.
+* **A virtual machine changes the kernel, not the rest.** The experimental
+  virtual machine runtime gives a workshop its own kernel, but the project
+  directory is still mounted read-write, and outbound network access is still
+  open.
 
 ## Supported versions
 

@@ -177,10 +177,31 @@ Next, launch the redefined workshop to work on the problem:
 .. code-block:: console
 
    $ workshop launch
-   $ # Hacking away until the problem is solved
+   $ # Hacking away in the workshop until the problem is solved
    $ git commit -m "solve problem with hotfix"
    $ cd ../original/
    $ git merge hotfix
+
+
+.. warning::
+
+   Git commands fail inside a workshop launched from a worktree.
+   The worktree's :file:`.git` is a file
+   that points to the main repository's :file:`.git` directory,
+   which lies outside the worktree and isn't mounted in the workshop:
+
+   .. code-block:: console
+
+      $ workshop exec dev -- git status
+
+        fatal: not a git repository: /home/user/original/.git/worktrees/hotfix
+
+
+   Run Git commands for a worktree on the host,
+   as the example above does.
+   Don't work around this by mounting the main repository's :file:`.git` directory
+   into a workshop where untrusted tools such as coding agents run:
+   Git runs hooks and configured commands from that directory on your host.
 
 
 As with regular directories,
@@ -225,12 +246,12 @@ Explanation:
 - :ref:`exp_multi_workshop_patterns`
 - :ref:`exp_projects`
 - :ref:`exp_workshop_definition`
+- :ref:`security_coding_agents`
 
 
 How-to guides:
 
 - :ref:`how_move_projects`
-- :ref:`how_use_workshops_with_ai_agents`
 
 
 Reference:
