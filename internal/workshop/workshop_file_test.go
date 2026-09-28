@@ -201,6 +201,19 @@ base: ubuntu@22.04
 	c.Assert(err, check.ErrorMatches, message)
 }
 
+func (f *workshopFile) TestUnknownField(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+connection:
+  - plug: plug
+    slot: slot
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, `workshop definition YAML contains unknown fields: "connection" at line 4, column 3`)
+}
+
 func (f *workshopFile) TestWorkshopNamesDifferent(c *check.C) {
 	yaml := `name: xbert-gpu
 base: ubuntu@24.04
@@ -358,6 +371,31 @@ sdks:
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(file, check.IsNil)
 	c.Assert(err, check.ErrorMatches, `"cuda" SDK: invalid risk "foo" in channel "latest/foo"`)
+}
+
+func (f *workshopFile) TestWorkshopUnknownSdkField(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: cuda
+    foo: bar
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `"cuda" SDK contains unknown fields: "foo" at line 5, column 10`)
+}
+
+func (f *workshopFile) TestWorkshopUnknownSdkNameAndField(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - foo: bar
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `workshop definition YAML: SDK contains unknown fields: "foo" at line 4, column 10`)
 }
 
 func (f *workshopFile) TestShortcuts(c *check.C) {
@@ -737,4 +775,19 @@ connections:
 	f.createWFile(c, "xbert-gpu", yaml)
 	_, err := f.project.Workshop("xbert-gpu")
 	c.Assert(err, check.ErrorMatches, `cannot connect plug "data-sdk:data" to slot "system:mount": plug is bound`)
+}
+
+func (f *workshopFile) TestWorkshopConnectionsUnknownField(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: data-sdk
+connections:
+  - plug: data-sdk:mount
+    slot: system:mount
+    interface: mount
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	_, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.ErrorMatches, `workshop definition YAML: connections entry contains unknown fields: "interface" at line 8, column 16`)
 }
