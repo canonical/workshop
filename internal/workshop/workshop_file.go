@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 const MAX_WORKSHOP_NAME_LENGTH = 40
@@ -336,12 +337,7 @@ func readWorkshop(path string) (*File, error) {
 		return nil, err
 	}
 	if err = yaml.Unmarshal(buf, &file); err != nil {
-		te, ok := err.(*yaml.TypeError)
-		if ok {
-			errs := strings.Join(te.Errors, "\n")
-			return nil, fmt.Errorf("workshop definition YAML:\n%s", errs)
-		}
-		return nil, err
+		return nil, yamlutil.AttachContext("workshop definition YAML", err)
 	}
 
 	if err := ValidateFile(&file); err != nil {

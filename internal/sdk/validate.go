@@ -156,15 +156,8 @@ func ParseSketchYaml(reader io.Reader) (SketchSDKYaml, error) {
 	var validator sketchSDKYamlValidator
 	dec := yaml.NewDecoder(reader)
 	err := dec.Decode(&validator)
-
-	var typeErr *yaml.TypeError
-	if errors.As(err, &typeErr) {
-		return SketchSDKYaml{}, fmt.Errorf(
-			"sketch SDK YAML:\n%s",
-			strings.Join(typeErr.Errors, "\n"),
-		)
-	} else if err != nil {
-		return SketchSDKYaml{}, err
+	if err != nil {
+		return SketchSDKYaml{}, yamlutil.AttachContext("sketch SDK YAML", err)
 	}
 
 	err = ValidateSketchYaml(&validator.SketchSDKYaml)
@@ -235,16 +228,8 @@ func ValidateYaml(reader io.Reader) error {
 	var validator sdkYamlValidator
 	dec := yaml.NewDecoder(reader)
 	err := dec.Decode(&validator)
-
-	var typeErr *yaml.TypeError
-	if errors.As(err, &typeErr) {
-		return fmt.Errorf(
-			"SDK definition YAML:\n%s",
-			strings.Join(typeErr.Errors, "\n"),
-		)
-	}
 	if err != nil {
-		return err
+		return yamlutil.AttachContext("SDK definition YAML", err)
 	}
 
 	sdkInfo, err := infoFromYaml(&validator.sdkYaml)

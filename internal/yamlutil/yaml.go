@@ -16,6 +16,7 @@ package yamlutil
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -69,7 +70,8 @@ func UnmarshalStrict[T any](t *T, value *yaml.Node) error {
 
 // UnknownFieldsError reports unknown struct fields from decoding a mapping.
 type UnknownFieldsError struct {
-	Fields []UnknownField
+	Context string
+	Fields  []UnknownField
 }
 
 type UnknownField struct {
@@ -80,7 +82,11 @@ type UnknownField struct {
 
 func (e *UnknownFieldsError) Error() string {
 	var builder strings.Builder
-	builder.WriteString("unknown YAML fields: ")
+	if e.Context == "" {
+		builder.WriteString("unknown YAML fields: ")
+	} else {
+		fmt.Fprintf(&builder, "%s contains unknown fields: ", e.Context)
+	}
 	_, _ = e.WriteTo(&builder)
 	return builder.String()
 }
@@ -120,6 +126,20 @@ func (f UnknownField) WriteTo(w io.Writer) (int64, error) {
 	m, err = fmt.Fprintf(w, ", column %d", f.Column)
 	n += int64(m)
 	return n, err
+}
+
+func AttachContext(document string, err error) error {
+	typeErr, ok := errors.AsType[*yaml.TypeError](err)
+	if ok {
+		return fmt.Errorf("%s:\n%s", document, strings.Join(typeErr.Errors, "\n"))
+	}
+
+	unknownErr, ok := errors.AsType[*UnknownFieldsError](err)
+	if ok && unknownErr.Context == "" {
+		unknownErr.Context = document
+	}
+
+	return err
 }
 
 // RemoveNodes removes the given nodes from the document.
