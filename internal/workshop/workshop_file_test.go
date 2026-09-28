@@ -187,34 +187,6 @@ func (f *workshopFile) TestSingleWorkshopFileError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*is a directory")
 }
 
-func (f *workshopFile) TestRuntime(c *check.C) {
-	yaml := `name: xbert-gpu
-base: ubuntu@24.04
-runtime: lxd-container
-`
-	f.createSingleWFile(c, "workshop.yaml", yaml)
-	file, err := f.project.Workshop("xbert-gpu")
-	c.Assert(err, check.IsNil)
-	c.Check(file.Runtime, check.Equals, workshop.RuntimeLXDContainer)
-
-	yaml = strings.Replace(yaml, "lxd-container", "lxd-vm", 1)
-	f.createSingleWFile(c, "workshop.yaml", yaml)
-	file, err = f.project.Workshop("xbert-gpu")
-	c.Assert(err, check.IsNil)
-	c.Check(file.Runtime, check.Equals, workshop.RuntimeLXDVM)
-}
-
-func (f *workshopFile) TestRuntimeError(c *check.C) {
-	yaml := `name: xbert-gpu
-base: ubuntu@24.04
-runtime: classic
-`
-	f.createSingleWFile(c, "workshop.yaml", yaml)
-	file, err := f.project.Workshop("xbert-gpu")
-	c.Check(file, check.IsNil)
-	c.Check(err, check.ErrorMatches, `invalid file ".*": invalid runtime "classic"; valid runtimes: lxd-container, lxd-vm`)
-}
-
 func (f *workshopFile) TestWorkshopFileDuplicate(c *check.C) {
 	yaml := `name: xbert-gpu
 base: ubuntu@22.04
@@ -275,6 +247,34 @@ base: foo@24.04
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(file, check.IsNil)
 	c.Assert(err, check.ErrorMatches, `base "foo@24.04" not supported`)
+}
+
+func (f *workshopFile) TestRuntime(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+runtime: lxd-container
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.Runtime, check.Equals, workshop.RuntimeLXDContainer)
+
+	yaml = strings.Replace(yaml, "lxd-container", "lxd-vm", 1)
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err = f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.Runtime, check.Equals, workshop.RuntimeLXDVM)
+}
+
+func (f *workshopFile) TestRuntimeError(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+runtime: classic
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, `invalid runtime "classic"; valid runtimes: lxd-container, lxd-vm`)
 }
 
 func (f *workshopFile) TestWorkshopFileDuplicateSdks(c *check.C) {
