@@ -563,7 +563,7 @@ func editSketchSdk(sketchdir string) error {
 func parseSketchYamlUserError(err error) error {
 	var (
 		invalidHook  sdk.InvalidSDKHookNameError
-		unknownField *sdk.UnknownYamlFieldsError
+		unknownField *yamlutil.UnknownFieldsError
 	)
 
 	switch {
@@ -579,23 +579,10 @@ func parseSketchYamlUserError(err error) error {
 			strings.Join(sdk.AllowedHooks, ", "),
 		)
 	case errors.As(err, &unknownField):
-		parts := make([]string, 0, len(unknownField.Fields))
-		for name, field := range unknownField.Fields {
-			parts = append(
-				parts,
-				fmt.Sprintf(
-					"%q at line %d, column %d",
-					name,
-					field.Line,
-					field.Column,
-				),
-			)
-		}
-
-		return fmt.Errorf(
-			"sketch SDK YAML contains unknown fields: %s",
-			strings.Join(parts, ", "),
-		)
+		var builder strings.Builder
+		builder.WriteString("sketch SDK YAML contains unknown fields: ")
+		_, _ = unknownField.WriteTo(&builder)
+		return errors.New(builder.String())
 	default:
 		return fmt.Errorf("could not parse sketch SDK YAML: %v", err)
 	}

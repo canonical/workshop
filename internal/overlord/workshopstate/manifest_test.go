@@ -41,6 +41,7 @@ import (
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 	"github.com/canonical/workshop/internal/workshop/fakebackend"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 type manifestSuite struct {
@@ -987,15 +988,13 @@ ssh-agent:
 	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
-	var unknown *sdk.UnknownYamlFieldsError
-	ok := errors.As(err, &unknown)
+	unknown, ok := errors.AsType[*yamlutil.UnknownFieldsError](err)
 	c.Assert(ok, check.Equals, true)
-	c.Check(unknown.Fields, check.DeepEquals, map[string]sdk.UnknownYamlField{
-		"ssh-agent": {
-			Line:   3,
-			Column: 3,
-		},
-	})
+	c.Check(unknown.Fields, check.DeepEquals, []yamlutil.UnknownField{{
+		Name:   "ssh-agent",
+		Line:   3,
+		Column: 3,
+	}})
 }
 
 func (s *manifestSuite) TestRefreshDetectsSketchSdk(c *check.C) {

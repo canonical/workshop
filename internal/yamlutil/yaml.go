@@ -15,7 +15,11 @@
 package yamlutil
 
 import (
+	"cmp"
+	"fmt"
+	"io"
 	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -29,6 +33,93 @@ type NodeRef struct {
 func (n *NodeRef) UnmarshalYAML(value *yaml.Node) error {
 	n.Node = value
 	return nil
+}
+
+// UnmarshalStrict decodes a struct from the given YAML node, but returns an
+// error if the YAML mapping contains fields that aren't in the struct. When
+// implementing UnmarshalYAML using this function, T must be distinct from the
+// receiver's type (to avoid infinite recursion).
+func UnmarshalStrict[T any](t *T, value *yaml.Node) error {
+	result := struct {
+		T       *T                 `yaml:",inline"`
+		Unknown map[string]NodeRef `yaml:",inline"`
+	}{
+		T: t,
+	}
+
+	if err := value.Decode(&result); err != nil || len(result.Unknown) == 0 {
+		return err
+	}
+
+	fields := make([]UnknownField, 0, len(result.Unknown))
+	for name, node := range result.Unknown {
+		field := UnknownField{Name: name}
+		// The yaml package never calls UnmarshalYAML for `null` scalars.
+		if node.Node != nil {
+			field.Line = node.Node.Line
+			field.Column = node.Node.Column
+		}
+		fields = append(fields, field)
+	}
+	slices.SortFunc(fields, func(a, b UnknownField) int {
+		return cmp.Or(cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column), cmp.Compare(a.Name, b.Name))
+	})
+	return &UnknownFieldsError{Fields: fields}
+}
+
+// UnknownFieldsError reports unknown struct fields from decoding a mapping.
+type UnknownFieldsError struct {
+	Fields []UnknownField
+}
+
+type UnknownField struct {
+	Name   string
+	Line   int
+	Column int
+}
+
+func (e *UnknownFieldsError) Error() string {
+	var builder strings.Builder
+	builder.WriteString("unknown YAML fields: ")
+	_, _ = e.WriteTo(&builder)
+	return builder.String()
+}
+
+func (e *UnknownFieldsError) WriteTo(w io.Writer) (int64, error) {
+	n := int64(0)
+	for _, field := range e.Fields {
+		if n > 0 {
+			m, err := w.Write([]byte("; "))
+			n += int64(m)
+			if err != nil {
+				return n, err
+			}
+		}
+		m, err := field.WriteTo(w)
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
+}
+
+func (f UnknownField) WriteTo(w io.Writer) (int64, error) {
+	m, err := fmt.Fprintf(w, "%q", f.Name)
+	n := int64(m)
+	if err != nil || f.Line <= 0 {
+		return n, err
+	}
+
+	m, err = fmt.Fprintf(w, " at line %d", f.Line)
+	n += int64(m)
+	if err != nil || f.Column <= 0 {
+		return n, err
+	}
+
+	m, err = fmt.Fprintf(w, ", column %d", f.Column)
+	n += int64(m)
+	return n, err
 }
 
 // RemoveNodes removes the given nodes from the document.

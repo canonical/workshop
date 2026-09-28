@@ -128,6 +128,45 @@ func contains(root, node *yaml.Node) bool {
 	}
 }
 
+type strict struct {
+	A string
+	B int
+}
+
+func (s *strict) UnmarshalYAML(value *yaml.Node) error {
+	type relaxed strict
+	return yamlutil.UnmarshalStrict((*relaxed)(s), value)
+}
+
+func (y *yamlSuite) TestStrictUnmarshal(c *check.C) {
+	var result strict
+
+	content := `a: foo
+b: 42
+`
+	c.Assert(yaml.Unmarshal([]byte(content), &result), check.IsNil)
+	c.Check(result.A, check.Equals, "foo")
+	c.Check(result.B, check.Equals, 42)
+
+	content = `a: bar
+b: -42
+c: cccc
+aa:    aaaa
+`
+	c.Check(yaml.Unmarshal([]byte(content), &result), check.ErrorMatches, `unknown YAML fields: "c" at line 3, column 4; "aa" at line 4, column 8`)
+	c.Check(result.A, check.Equals, "bar")
+	c.Check(result.B, check.Equals, -42)
+
+	content = `a: a
+b: 1
+c: null
+d: d
+`
+	c.Check(yaml.Unmarshal([]byte(content), &result), check.ErrorMatches, `unknown YAML fields: "c"; "d" at line 4, column 4`)
+	c.Check(result.A, check.Equals, "a")
+	c.Check(result.B, check.Equals, 1)
+}
+
 func (y *yamlSuite) TestRemoveNodesMapping(c *check.C) {
 	var nodes struct {
 		Field yamlutil.NodeRef

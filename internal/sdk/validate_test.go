@@ -100,33 +100,6 @@ func (s *ValidateSuite) TestValidateSketchYamlInvalidName(c *check.C) {
 	c.Check(errors.Is(err, sdk.ErrorInvalidSDKName), check.Equals, true)
 }
 
-// TestParseSketchYamlUnknownFields reports full SDK metadata fields as unknown
-// when they are not meaningful for sketch SDK YAML.
-func (s *ValidateSuite) TestParseSketchYamlUnknownFields(c *check.C) {
-	_, err := sdk.ParseSketchYaml(strings.NewReader(`name: sketch
-architecture: amd64
-base: ubuntu@24.04
-version: 1.0
-`))
-
-	c.Assert(err, check.ErrorMatches, `unknown SDK YAML fields: .*`)
-
-	var unknown *sdk.UnknownYamlFieldsError
-	ok := errors.As(err, &unknown)
-	c.Assert(ok, check.Equals, true)
-	c.Check(unknown.Fields, check.HasLen, 3)
-
-	field, ok := unknown.Fields["architecture"]
-	c.Assert(ok, check.Equals, true)
-	c.Check(field.Line, check.Equals, 2)
-	c.Check(field.Column, check.Equals, 15)
-
-	_, ok = unknown.Fields["base"]
-	c.Check(ok, check.Equals, true)
-	_, ok = unknown.Fields["version"]
-	c.Check(ok, check.Equals, true)
-}
-
 func (s *ValidateSuite) TestValidateSlotPlugInterfaceName(c *check.C) {
 	valid := []string{
 		"a",
@@ -191,30 +164,6 @@ func (s *ValidateSuite) TestValidateYamlInvalidContent(c *check.C) {
 `))
 
 	c.Check(err, check.ErrorMatches, `invalid SDK name "invalid.name"`)
-}
-
-// TestValidateYamlUnknownFields reports unknown top-level keys as a structured
-// error that callers can inspect with [errors.As].
-func (s *ValidateSuite) TestValidateYamlUnknownFields(c *check.C) {
-	err := sdk.ValidateYaml(strings.NewReader(`name: valid
-zzz-field: later
-aaa-field: first
-`))
-
-	c.Assert(err, check.ErrorMatches, `unknown SDK YAML fields: .*`)
-
-	var unknown *sdk.UnknownYamlFieldsError
-	ok := errors.As(err, &unknown)
-	c.Assert(ok, check.Equals, true)
-	c.Check(unknown.Fields, check.HasLen, 2)
-
-	field, ok := unknown.Fields["zzz-field"]
-	c.Assert(ok, check.Equals, true)
-	c.Check(field.Line, check.Equals, 2)
-	c.Check(field.Column, check.Equals, 12)
-
-	_, ok = unknown.Fields["aaa-field"]
-	c.Check(ok, check.Equals, true)
 }
 
 func (s *ValidateSuite) TestIllegalSdkName(c *check.C) {

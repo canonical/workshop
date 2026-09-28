@@ -26,32 +26,28 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/arch"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 // InvalidSDKHookNameError reports an unsupported SDK hook name.
 type InvalidSDKHookNameError string
 
-// UnknownYamlField reports where an unknown top-level SDK YAML field was
-// found.
-type UnknownYamlField struct {
-	Column int
-	Line   int
-}
-
-// UnknownYamlFieldsError reports unknown top-level fields in an SDK YAML
-// definition.
-type UnknownYamlFieldsError struct {
-	Fields map[string]UnknownYamlField
-}
-
 type sdkYamlValidator struct {
 	sdkYaml `yaml:",inline"`
-	Unknown map[string]UnknownYamlField `yaml:",inline"`
+}
+
+func (s *sdkYamlValidator) UnmarshalYAML(value *yaml.Node) error {
+	type validator sdkYamlValidator
+	return yamlutil.UnmarshalStrict((*validator)(s), value)
 }
 
 type sketchSDKYamlValidator struct {
 	SketchSDKYaml `yaml:",inline"`
-	Unknown       map[string]UnknownYamlField `yaml:",inline"`
+}
+
+func (s *sketchSDKYamlValidator) UnmarshalYAML(value *yaml.Node) error {
+	type validator sketchSDKYamlValidator
+	return yamlutil.UnmarshalStrict((*validator)(s), value)
 }
 
 const MAX_SDK_NAME_LENGTH = 40
@@ -75,34 +71,6 @@ var (
 // Error returns a human-readable message describing the invalid hook name.
 func (e InvalidSDKHookNameError) Error() string {
 	return "invalid SDK hook name"
-}
-
-// Error returns a human-readable message describing the unknown YAML fields.
-func (e UnknownYamlFieldsError) Error() string {
-	var builder strings.Builder
-	builder.WriteString("unknown SDK YAML fields: ")
-	i := 0
-	for name, field := range e.Fields {
-		if i > 0 {
-			builder.WriteString(", ")
-		}
-		_, _ = fmt.Fprintf(
-			&builder,
-			"%s (line %d, column %d)",
-			name,
-			field.Line,
-			field.Column,
-		)
-		i++
-	}
-	return builder.String()
-}
-
-// UnmarshalYAML records the source location of an unknown YAML field value.
-func (f *UnknownYamlField) UnmarshalYAML(value *yaml.Node) error {
-	f.Column = value.Column
-	f.Line = value.Line
-	return nil
 }
 
 func infoFromYaml(y *sdkYaml) (*Info, error) {
@@ -148,13 +116,6 @@ func infoFromYaml(y *sdkYaml) (*Info, error) {
 
 	SanitizePlugsSlots(sdkInfo)
 	return sdkInfo, nil
-}
-
-// newUnknownYamlFieldsError collects unknown YAML fields into an error.
-func newUnknownYamlFieldsError(
-	unknownFields map[string]UnknownYamlField,
-) error {
-	return &UnknownYamlFieldsError{Fields: unknownFields}
 }
 
 // Validate checks whether sdk contains a valid SDK definition.
@@ -204,10 +165,6 @@ func ParseSketchYaml(reader io.Reader) (SketchSDKYaml, error) {
 		)
 	} else if err != nil {
 		return SketchSDKYaml{}, err
-	}
-
-	if len(validator.Unknown) > 0 {
-		return SketchSDKYaml{}, newUnknownYamlFieldsError(validator.Unknown)
 	}
 
 	err = ValidateSketchYaml(&validator.SketchSDKYaml)
@@ -288,10 +245,6 @@ func ValidateYaml(reader io.Reader) error {
 	}
 	if err != nil {
 		return err
-	}
-
-	if len(validator.Unknown) > 0 {
-		return newUnknownYamlFieldsError(validator.Unknown)
 	}
 
 	sdkInfo, err := infoFromYaml(&validator.sdkYaml)
