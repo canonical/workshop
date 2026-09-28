@@ -50,7 +50,7 @@ func (s *managerSuite) addWorkshop(
 	ctx context.Context,
 	name string,
 	instanceID string,
-) {
+) workshop.Project {
 	project, _, err := s.backend.CreateOrLoadProject(ctx, c.MkDir())
 	c.Assert(err, check.IsNil)
 
@@ -66,6 +66,7 @@ func (s *managerSuite) addWorkshop(
 			InstanceID: instanceID,
 		},
 	}
+	return *project
 }
 
 func (s *managerSuite) TestAddHandlers(c *check.C) {
@@ -89,10 +90,9 @@ func (s *managerSuite) TestAddHandlers(c *check.C) {
 	})
 }
 
-// TestOwnsWorkshopInstanceIDReturnsTrueForOwnedWorkshop checks that the
-// manager finds an instance ID belonging to a workshop owned by the user in
-// context.
-func (s *managerSuite) TestOwnsWorkshopInstanceIDReturnsTrueForOwnedWorkshop(
+// TestResolveWorkshopInstanceIDReturnsIdentity checks that the manager
+// returns the owning project and workshop name for the user's instance ID.
+func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsIdentity(
 	c *check.C,
 ) {
 	ctx := context.WithValue(
@@ -100,17 +100,23 @@ func (s *managerSuite) TestOwnsWorkshopInstanceIDReturnsTrueForOwnedWorkshop(
 		workshop.ContextUser,
 		"test-user",
 	)
-	s.addWorkshop(c, ctx, "test-workshop", "instance-id")
+	project := s.addWorkshop(c, ctx, "test-workshop", "instance-id")
+
+	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "instance-id")
+
+	c.Assert(err, check.IsNil)
+	c.Assert(identity, check.NotNil)
+	c.Check(identity.Project, check.DeepEquals, project)
+	c.Check(identity.Workshop, check.Equals, "test-workshop")
 
 	owns, err := s.manager.OwnsWorkshopInstanceID(ctx, "instance-id")
-
 	c.Assert(err, check.IsNil)
 	c.Check(owns, check.Equals, true)
 }
 
-// TestOwnsWorkshopInstanceIDReturnsFalseForUnknownID checks that the manager
+// TestResolveWorkshopInstanceIDReturnsNilForUnknownID checks that the manager
 // rejects an instance ID that does not identify one of the user's workshops.
-func (s *managerSuite) TestOwnsWorkshopInstanceIDReturnsFalseForUnknownID(
+func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsNilForUnknownID(
 	c *check.C,
 ) {
 	ctx := context.WithValue(
@@ -120,15 +126,19 @@ func (s *managerSuite) TestOwnsWorkshopInstanceIDReturnsFalseForUnknownID(
 	)
 	s.addWorkshop(c, ctx, "test-workshop", "instance-id")
 
-	owns, err := s.manager.OwnsWorkshopInstanceID(ctx, "unknown-id")
+	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "unknown-id")
 
+	c.Assert(err, check.IsNil)
+	c.Check(identity, check.IsNil)
+
+	owns, err := s.manager.OwnsWorkshopInstanceID(ctx, "unknown-id")
 	c.Assert(err, check.IsNil)
 	c.Check(owns, check.Equals, false)
 }
 
-// TestOwnsWorkshopInstanceIDReturnsFalseForEmptyID checks that an empty
-// instance ID is not considered to be owned by the user.
-func (s *managerSuite) TestOwnsWorkshopInstanceIDReturnsFalseForEmptyID(
+// TestResolveWorkshopInstanceIDReturnsNilForEmptyID checks that an empty
+// instance ID does not resolve to a workshop.
+func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsNilForEmptyID(
 	c *check.C,
 ) {
 	ctx := context.WithValue(
@@ -137,15 +147,15 @@ func (s *managerSuite) TestOwnsWorkshopInstanceIDReturnsFalseForEmptyID(
 		"test-user",
 	)
 
-	owns, err := s.manager.OwnsWorkshopInstanceID(ctx, "")
+	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "")
 
 	c.Assert(err, check.IsNil)
-	c.Check(owns, check.Equals, false)
+	c.Check(identity, check.IsNil)
 }
 
-// TestOwnsWorkshopInstanceIDReturnsFalseForAnotherUsersWorkshop checks that
+// TestResolveWorkshopInstanceIDRejectsAnotherUsersWorkshop checks that
 // workshop ownership is scoped to the user in context.
-func (s *managerSuite) TestOwnsWorkshopInstanceIDReturnsFalseForAnotherUsersWorkshop(
+func (s *managerSuite) TestResolveWorkshopInstanceIDRejectsAnotherUsersWorkshop(
 	c *check.C,
 ) {
 	ownerCtx := context.WithValue(
@@ -160,8 +170,13 @@ func (s *managerSuite) TestOwnsWorkshopInstanceIDReturnsFalseForAnotherUsersWork
 		"another-user",
 	)
 
-	owns, err := s.manager.OwnsWorkshopInstanceID(requestCtx, "instance-id")
+	s.addWorkshop(c, requestCtx, "test-workshop", "another-instance-id")
+
+	identity, err := s.manager.ResolveWorkshopInstanceID(
+		requestCtx,
+		"instance-id",
+	)
 
 	c.Assert(err, check.IsNil)
-	c.Check(owns, check.Equals, false)
+	c.Check(identity, check.IsNil)
 }

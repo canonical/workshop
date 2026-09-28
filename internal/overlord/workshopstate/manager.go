@@ -28,6 +28,15 @@ import (
 	lxdbackend "github.com/canonical/workshop/internal/workshop/lxd"
 )
 
+// WorkshopIdentity identifies a workshop within its owning project.
+type WorkshopIdentity struct {
+	// Project is the project containing the workshop.
+	Project workshop.Project
+
+	// Workshop is the workshop name within the project.
+	Workshop string
+}
+
 type WorkshopManager struct {
 	backend         workshop.Backend
 	state           *state.State
@@ -133,13 +142,25 @@ func (w *WorkshopManager) OwnsWorkshopInstanceID(
 	ctx context.Context,
 	instanceID string,
 ) (bool, error) {
-	if instanceID == "" {
-		return false, nil
+	identity, err := w.ResolveWorkshopInstanceID(ctx, instanceID)
+	return identity != nil, err
+}
+
+// ResolveWorkshopInstanceID finds a workshop owned by the user in ctx with
+// the specified backend instance identifier. It returns nil without an error
+// if the identifier is empty or unknown, or ctx does not identify a user.
+func (w *WorkshopManager) ResolveWorkshopInstanceID(
+	ctx context.Context,
+	instanceID string,
+) (*WorkshopIdentity, error) {
+	user, ok := ctx.Value(workshop.ContextUser).(string)
+	if instanceID == "" || !ok || user == "" {
+		return nil, nil
 	}
 
 	projects, err := w.backend.UserProjects(ctx)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	for _, project := range projects {
@@ -150,7 +171,7 @@ func (w *WorkshopManager) OwnsWorkshopInstanceID(
 		)
 		workshops, err := w.backend.ProjectWorkshops(projectCtx)
 		if err != nil {
-			return false, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"cannot list workshops for project %q: %w",
 				project.ProjectId,
 				err,
@@ -159,12 +180,15 @@ func (w *WorkshopManager) OwnsWorkshopInstanceID(
 
 		for _, candidate := range workshops {
 			if candidate.InstanceID == instanceID {
-				return true, nil
+				return &WorkshopIdentity{
+					Project:  project,
+					Workshop: candidate.Name,
+				}, nil
 			}
 		}
 	}
 
-	return false, nil
+	return nil, nil
 }
 
 // Returns latest file for a workshop. The state must be locked, as listing

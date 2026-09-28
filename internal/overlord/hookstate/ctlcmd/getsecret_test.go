@@ -73,15 +73,20 @@ func (s *getSecretSuite) checkSuccess(
 
 	s.st.Lock()
 	defer s.st.Unlock()
-	changes := s.st.Changes()
+	var changes []*state.Change
+
+	for _, change := range s.st.Changes() {
+		if change.Kind() == "get-secret" {
+			changes = append(changes, change)
+		}
+	}
 	c.Assert(changes, check.HasLen, 1)
 	change := changes[0]
-	c.Check(change.Kind(), check.Equals, "get-secret")
 	var user, projectID string
 	c.Assert(change.Get("user", &user), check.IsNil)
 	c.Check(user, check.Equals, "test-user")
 	c.Assert(change.Get("project-id", &projectID), check.IsNil)
-	c.Check(projectID, check.Equals, "placeholder-project")
+	c.Check(projectID, check.Equals, "test-project")
 	tasks := change.Tasks()
 	c.Assert(tasks, check.HasLen, 1)
 	task := tasks[0]
@@ -92,7 +97,7 @@ func (s *getSecretSuite) checkSuccess(
 	c.Assert(task.Get("project", &project), check.IsNil)
 	c.Check(project, check.DeepEquals, workshop.Project{
 		Path:      "/project",
-		ProjectId: "placeholder-project",
+		ProjectId: "test-project",
 	})
 	var actualSDK, actualPlug, workshopName string
 	c.Assert(task.Get("sdk", &actualSDK), check.IsNil)
@@ -100,7 +105,7 @@ func (s *getSecretSuite) checkSuccess(
 	c.Assert(task.Get("plug", &actualPlug), check.IsNil)
 	c.Check(actualPlug, check.Equals, plugName)
 	c.Assert(task.Get("workshop", &workshopName), check.IsNil)
-	c.Check(workshopName, check.Equals, "placeholder-workshop")
+	c.Check(workshopName, check.Equals, "test-workshop")
 }
 
 // SetUpTest wires a real hook context and secret task handler.
@@ -113,10 +118,10 @@ func (s *getSecretSuite) SetUpTest(c *check.C) {
 	s.workshopBackend = &secretWorkshopBackend{
 		user: "test-user",
 		workshop: &workshop.Workshop{
-			Name: "placeholder-workshop",
+			Name: "test-workshop",
 			Project: workshop.Project{
 				Path:      "/project",
-				ProjectId: "placeholder-project",
+				ProjectId: "test-project",
 			},
 			Sdks: map[string]workshop.SdkInstallation{
 				"ollama": {
@@ -137,9 +142,9 @@ func (s *getSecretSuite) SetUpTest(c *check.C) {
 		Name:      "ollama-api-key",
 		Sdk: &sdk.Info{
 			Name:      "ollama",
-			ProjectId: "placeholder-project",
+			ProjectId: "test-project",
 			Type:      sdk.Regular,
-			Workshop:  "placeholder-workshop",
+			Workshop:  "test-workshop",
 		},
 	}
 	mySDKPlug := &sdk.PlugInfo{
@@ -147,9 +152,9 @@ func (s *getSecretSuite) SetUpTest(c *check.C) {
 		Name:      "api-key",
 		Sdk: &sdk.Info{
 			Name:      "my-sdk",
-			ProjectId: "placeholder-project",
+			ProjectId: "test-project",
 			Type:      sdk.Regular,
-			Workshop:  "placeholder-workshop",
+			Workshop:  "test-workshop",
 		},
 	}
 	ollamaSlot := &sdk.SlotInfo{
@@ -211,6 +216,11 @@ func (s *getSecretSuite) SetUpTest(c *check.C) {
 		"",
 	)
 	c.Assert(err, check.IsNil)
+	s.hookCtx.SetWorkshopIdentity(hookstate.WorkshopIdentity{
+		Project:  s.workshopBackend.workshop.Project,
+		User:     s.workshopBackend.user,
+		Workshop: s.workshopBackend.workshop.Name,
+	})
 }
 
 // start runs the command without blocking the test's task runner.
@@ -274,6 +284,43 @@ func (s *getSecretSuite) TestGetSecretCancelled(c *check.C) {
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), check.HasLen, 0)
 	c.Check(s.backend.ensureBefore, check.HasLen, 0)
+}
+
+// TestGetSecretTaskBackedContext checks that retrieval succeeds using workshop
+// identity from an attached hook task and change, without a stored identity.
+func (s *getSecretSuite) TestGetSecretTaskBackedContext(c *check.C) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+
+	s.st.Lock()
+	change := s.st.NewChange("run-hook", "Run test hook")
+	change.Set("user", "test-user")
+	task := s.st.NewTask("run-hook", "Run test hook")
+	task.Set("project", s.workshopBackend.workshop.Project)
+	task.Set("workshop", s.workshopBackend.workshop.Name)
+	change.AddTask(task)
+	task.SetStatus(state.DoingStatus)
+	s.st.Unlock()
+
+	var err error
+	s.hookCtx, err = hookstate.NewContext(
+		task,
+		s.st,
+		&hookstate.HookSetup{},
+		nil,
+		"cookie-id",
+	)
+	c.Assert(err, check.IsNil)
+	resolved := secrets.NewSecret([]byte("provider-api-token"))
+	defer resolved.Close()
+	s.secret = resolved
+	s.slotName = "ollama-api-key"
+
+	results := s.start(ctx, "ollama.ollama-api-key", 1000)
+	s.checkSuccess(c, results, "ollama", "ollama-api-key")
+	_, err = resolved.Read(make([]byte, 1))
+	c.Check(err, check.Equals, io.EOF)
 }
 
 // TestGetSecretInvalidFormat checks that a missing separator reports the
@@ -388,6 +435,36 @@ func (s *getSecretSuite) TestGetSecretMissingContext(c *check.C) {
 	s.st.Lock()
 	defer s.st.Unlock()
 	c.Check(s.st.Changes(), check.HasLen, 0)
+}
+
+// TestGetSecretMissingIdentity checks a taskless context without an identity
+// rejects retrieval before scheduling secret work.
+func (s *getSecretSuite) TestGetSecretMissingIdentity(c *check.C) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+	hookCtx, err := hookstate.NewContext(
+		nil,
+		s.st,
+		&hookstate.HookSetup{},
+		nil,
+		"",
+	)
+	c.Assert(err, check.IsNil)
+
+	stdout, stderr, err := ctlcmd.Run(
+		ctx,
+		hookCtx,
+		[]string{"get-secret", "ollama.ollama-api-key"},
+		0,
+	)
+	c.Check(err, check.ErrorMatches, ".*missing workshop identity.*")
+	c.Check(string(stdout), check.Equals, "")
+	c.Check(string(stderr), check.Equals, "")
+	s.st.Lock()
+	defer s.st.Unlock()
+	c.Check(s.st.Changes(), check.HasLen, 0)
+	c.Check(s.backend.ensureBefore, check.HasLen, 0)
 }
 
 // TestGetSecretNonRoot checks that get-secret is allowed without root, as

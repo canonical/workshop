@@ -103,9 +103,8 @@ func (s *apiSuite) TestWorkshopCtlRejectsUnknownInstanceID(c *check.C) {
 }
 
 // TestWorkshopCtlAcceptsOwnedInstanceID checks that a request without a hook
-// cookie reaches secret validation after its instance ID is matched to the
-// requesting user. The command still supplies a dummy project, so retrieval
-// must fail rather than return a secret for the authenticated workshop.
+// cookie reaches SDK validation in the authenticated workshop rather than
+// attempting to resolve placeholder project and workshop names.
 func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 	s.daemon(c)
 	s.addWorkshopWithInstanceID("instance-id")
@@ -132,8 +131,34 @@ func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 	c.Check(rsp.Type, check.Equals, ResponseTypeError)
 	c.Assert(rsp.Result, check.FitsTypeOf, &errorResult{})
 	c.Check(rsp.Result.(*errorResult).Message, check.Matches,
-		"(?s).*resolving workshop: project not found.*")
+		"(?s).*requested sdk is not installed in workshop.*")
 
+}
+
+// TestWorkshopCtlPreservesInstanceIdentity checks the ephemeral context carries
+// the project, workshop and authenticated user resolved from the instance ID.
+func (s *apiSuite) TestWorkshopCtlPreservesInstanceIdentity(c *check.C) {
+	s.daemon(c)
+	s.addWorkshopWithInstanceID("instance-id")
+	wctl := apiCmd("/v1/workshopctl")
+	req, err := s.createProjectsRequest("POST", "/v1/workshopctl", nil)
+	c.Assert(err, check.IsNil)
+	req = req.WithContext(context.WithValue(
+		req.Context(),
+		workshop.ContextWorkshopInstanceID,
+		"instance-id",
+	))
+
+	hookContext, response := workshopctlHookContext(wctl, req, "")
+
+	c.Assert(response, check.IsNil)
+	c.Assert(hookContext, check.NotNil)
+	identity, err := hookContext.WorkshopIdentity()
+	c.Assert(err, check.IsNil)
+	c.Check(identity.Project, check.DeepEquals, s.project)
+	c.Check(identity.Workshop, check.Equals, "test-workshop")
+	c.Check(identity.User, check.Equals,
+		req.Context().Value(workshop.ContextUser))
 }
 
 // TestWorkshopCtlRejectsUnknownCookie checks that an invalid cookie produces

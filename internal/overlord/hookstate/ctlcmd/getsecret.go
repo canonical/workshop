@@ -24,7 +24,6 @@ import (
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/overlord/secretstate"
 	"github.com/canonical/workshop/internal/sdk"
-	"github.com/canonical/workshop/internal/workshop"
 )
 
 type getSecretCommand struct {
@@ -102,19 +101,24 @@ func (c *getSecretCommand) Execute(ctx context.Context, _ []string) error {
 		return err
 	}
 
-	// TODO: use the validated workshop identity before enabling real providers.
-	project := workshop.Project{
-		Path:      "/project",
-		ProjectId: "placeholder-project",
-	}
-	ref := sdk.PlugRef{
-		Name:      plugName,
-		ProjectId: project.ProjectId,
-		Sdk:       sdkName,
-		Workshop:  "placeholder-workshop",
+	identity, err := hookContext.WorkshopIdentity()
+	if err != nil {
+		return fmt.Errorf("resolving secret request identity: %w", err)
 	}
 
-	value, err := secretstate.GetSecret(ctx, hookContext.State(), project, ref)
+	ref := sdk.PlugRef{
+		Name:      plugName,
+		ProjectId: identity.Project.ProjectId,
+		Sdk:       sdkName,
+		Workshop:  identity.Workshop,
+	}
+
+	value, err := secretstate.GetSecret(
+		ctx,
+		hookContext.State(),
+		identity.Project,
+		ref,
+	)
 
 	if err != nil {
 		return err
