@@ -33,6 +33,7 @@ import (
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 type CmdSketch struct {
@@ -284,8 +285,8 @@ func ejectSketch(project, sketchdir string, name string) (*revert.Reverter, erro
 
 func sketchToProjectSdk(document *yaml.Node, name string) error {
 	var nodes struct {
-		Name  NodeRef `yaml:"name"`
-		Hooks NodeRef `yaml:"hooks"`
+		Name  yamlutil.NodeRef `yaml:"name"`
+		Hooks yamlutil.NodeRef `yaml:"hooks"`
 	}
 	err := document.Decode(&nodes)
 	if err != nil {
@@ -295,7 +296,7 @@ func sketchToProjectSdk(document *yaml.Node, name string) error {
 	nodes.Name.Node.Value = name
 
 	if nodes.Hooks.Node != nil {
-		RemoveNodes(document, nodes.Hooks.Node)
+		yamlutil.RemoveNodes(document, nodes.Hooks.Node)
 	}
 
 	return nil
