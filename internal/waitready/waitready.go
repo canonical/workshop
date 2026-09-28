@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	lxd "github.com/canonical/lxd/client"
@@ -29,7 +30,7 @@ import (
 	"github.com/canonical/workshop/internal/systemd"
 )
 
-const Timeout = 5 * time.Minute
+var Timeout = 5 * time.Minute
 
 // IsWaitreadyInvocation reports whether the process was invoked via a symlink
 // named waitready. This allows multiple logically unrelated commands to be
@@ -41,7 +42,16 @@ func IsWaitreadyInvocation() bool {
 // WaitReady waits for the system to finish booting and then sets the instance
 // to Ready via the DevLXD socket.
 func WaitReady() error {
-	ctx, cancel := context.WithTimeout(context.Background(), Timeout)
+	timeout := Timeout
+	if timeoutSetting := os.Getenv("WORKSHOP_WAITREADY_TIMEOUT_NS"); timeoutSetting != "" {
+		timeoutNS, err := strconv.ParseInt(timeoutSetting, 10, 64)
+		if err != nil {
+			return err
+		}
+		timeout = time.Duration(timeoutNS) * time.Nanosecond
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	server, err := lxd.ConnectDevLXDWithContext(ctx, "/dev/lxd/sock", nil)
@@ -53,6 +63,10 @@ func WaitReady() error {
 		return err
 	}
 	defer server.Disconnect()
+
+	if err := server.UpdateState(api.DevLXDPut{State: api.Started.String()}); err != nil {
+		return err
+	}
 
 	if err := waitReady(ctx); err != nil {
 		return err
@@ -75,7 +89,7 @@ func waitReady(ctx context.Context) error {
 	}
 	defer conn.Close()
 
-	signal := make(chan *dbus.Signal, 1)
+	signal := make(chan *dbus.Signal, 8)
 	conn.Signal(signal)
 
 	options := []dbus.MatchOption{
@@ -86,7 +100,12 @@ func waitReady(ctx context.Context) error {
 		return err
 	}
 
-	ready, err := isReady(conn)
+	manager := conn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
+	if err := manager.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.Subscribe", 0).Err; err != nil {
+		return err
+	}
+
+	ready, err := isReady(manager)
 	if err != nil {
 		return err
 	}
@@ -98,16 +117,24 @@ func waitReady(ctx context.Context) error {
 	if ready {
 		return nil
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-signal:
-		return nil
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case sig := <-signal:
+			if sig == nil {
+				return errors.New("bus connection closed unexpectedly")
+			}
+			if sig.Name != "org.freedesktop.systemd1.Manager.StartupFinished" {
+				continue
+			}
+			return nil
+		}
 	}
 }
 
-func isReady(conn *dbus.Conn) (bool, error) {
-	manager := conn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
+func isReady(manager dbus.BusObject) (bool, error) {
 	variant, err := manager.GetProperty("org.freedesktop.systemd1.Manager.SystemState")
 	if err != nil {
 		return false, err

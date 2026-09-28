@@ -221,14 +221,18 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 	mountProject := st.NewTask("mount-project", fmt.Sprintf("Mount project directory %q", project.Path))
 	addTaskSet(state.NewTaskSet(mountProject))
 
-	connect := autoconnectSdks(st, manifest.File.Name, manifest.Sdks)
-	addTaskSet(connect)
+	if manifest.File.Runtime == workshop.RuntimeLXDContainer {
+		connect := autoconnectSdks(st, manifest.File.Name, manifest.Sdks)
+		addTaskSet(connect)
+	}
 
 	setupProject := runHooks(st, manifest.Sdks, 0, hookstate.SetupProject)
 	addTaskSet(setupProject)
 
-	checkHealth := runHooks(st, manifest.Sdks, checkHealthTimeout, hookstate.CheckHealth)
-	addTaskSet(checkHealth)
+	if manifest.File.Runtime == workshop.RuntimeLXDContainer {
+		checkHealth := runHooks(st, manifest.Sdks, checkHealthTimeout, hookstate.CheckHealth)
+		addTaskSet(checkHealth)
+	}
 
 	for _, task := range all.Tasks() {
 		task.Set("workshop", manifest.File.Name)
@@ -400,7 +404,9 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	addTaskSet(state.NewTaskSet(discard))
 
 	stop := st.NewTask("stop-workshop", fmt.Sprintf("Stop %q workshop", latest.File.Name))
-	stop.Set("force", true)
+	// Using force is fine for containers, but for VMs it can lead to (usually
+	// repairable) filesystem integrity issues, which are copied to the stash.
+	stop.Set("force", current.File.Runtime == workshop.RuntimeLXDContainer)
 	addTaskSet(state.NewTaskSet(stop))
 
 	// Unmount SDKs and remove plugs and slots from interfaces repository.
@@ -429,7 +435,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	install := installSdks(st, newSdks)
 	addTaskSet(install)
 
-	if option == conflict.RefreshUpdate {
+	if option == conflict.RefreshUpdate && latest.File.Runtime == workshop.RuntimeLXDContainer {
 		restoreConns := st.NewTask("restore-conns", fmt.Sprintf("Restore %q undesired connections", latest.File.Name))
 		restoreConns.Set("discard-conns-task", discard.ID())
 		addTaskSet(state.NewTaskSet(restoreConns))
@@ -441,8 +447,10 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	mountProject := st.NewTask("mount-project", fmt.Sprintf("Mount project directory %q", project.Path))
 	addTaskSet(state.NewTaskSet(mountProject))
 
-	connect := autoconnectSdks(st, latest.File.Name, latest.Sdks)
-	addTaskSet(connect)
+	if latest.File.Runtime == workshop.RuntimeLXDContainer {
+		connect := autoconnectSdks(st, latest.File.Name, latest.Sdks)
+		addTaskSet(connect)
+	}
 
 	setupProject := runHooks(st, latest.Sdks, 0, hookstate.SetupProject)
 	addTaskSet(setupProject)
@@ -450,8 +458,10 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	restoreState := runHooks(st, restoreSdks, 0, hookstate.RestoreState)
 	addTaskSet(restoreState)
 
-	checkHealth := runHooks(st, latest.Sdks, 0, hookstate.CheckHealth)
-	addTaskSet(checkHealth)
+	if latest.File.Runtime == workshop.RuntimeLXDContainer {
+		checkHealth := runHooks(st, latest.Sdks, 0, hookstate.CheckHealth)
+		addTaskSet(checkHealth)
+	}
 
 	length := len(refresh.Tasks())
 	last := refresh.Tasks()[length-1]
@@ -591,6 +601,10 @@ func (w *WorkshopManager) StartMany(ctx context.Context, names []string, project
 		if err = healthstate.CheckWorkshopHealth(w.state, wp, allowedHealthStatus); err != nil {
 			return nil, fmt.Errorf("cannot start %q: %w", name, err)
 		}
+
+		if w.FormatRevision().N >= 11 && wp.Format.N < 11 {
+			return nil, fmt.Errorf("cannot start %q: workshop too old: use %q and %q to update it", name, "workshop remove "+name, "workshop launch "+name)
+		}
 	}
 
 	project, err := w.Project(ctx, projectId)
@@ -661,8 +675,7 @@ func (w *WorkshopManager) Exec(ctx context.Context, name, projectId string, args
 		return nil, err
 	}
 
-	ctx = context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
-	wp, err := w.backend.Workshop(ctx, name)
+	wp, err := w.Workshop(ctx, name, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -671,6 +684,7 @@ func (w *WorkshopManager) Exec(ctx context.Context, name, projectId string, args
 		return nil, err
 	}
 
+	ctx = context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 	wrkspc, err := w.backend.WorkshopFs(ctx, name)
 	if err != nil {
 		return nil, err

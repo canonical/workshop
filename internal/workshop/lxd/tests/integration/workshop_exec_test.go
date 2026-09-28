@@ -56,18 +56,6 @@ type wsExec struct {
 
 var _ = check.Suite(&wsExec{})
 
-func execTestDevices(projectDir string) func(pid, w string) ([]workshop.Mount, []workshop.ProxyEntry) {
-	mounts := []workshop.Mount{{
-		Name:  workshop.ConfigProjectPathDevice,
-		Type:  workshop.HostWorkshop,
-		What:  projectDir,
-		Where: workshop.WorkshopProjectPath,
-	}}
-	return func(pid, w string) ([]workshop.Mount, []workshop.ProxyEntry) {
-		return mounts, nil
-	}
-}
-
 func (f *wsExec) SetUpSuite(c *check.C) {
 	dirs.SetRootDir(c.MkDir())
 	c.Assert(dirs.CreateDirs(), check.IsNil)
@@ -120,7 +108,7 @@ func (f *wsExec) SetUpSuite(c *check.C) {
 	f.lxdClient, err = f.be.(*lxdbackend.Backend).LxdClient(f.ctx)
 	c.Check(err, check.IsNil)
 
-	f.restoreDevices = workshop.FakeDefaultDevices(execTestDevices(c.MkDir()))
+	f.restoreDevices = workshop.FakeDefaultDevices(helper.TestDevices)
 
 	f.newProjectidRestore = testutil.FakeFunc(func() (string, error) {
 		return f.project.ProjectId, nil

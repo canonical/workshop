@@ -18,9 +18,9 @@ The :file:`sdkcraft.yaml` file is the *build-time* SDK definition:
 into the resulting package, copying plug, slot, and metadata fields across.
 
 |sdk_markup| builds on the
-`craft-application <https://canonical-craft-application.readthedocs-hosted.com/>`__
+`craft-application <https://documentation.ubuntu.com/craft-application/latest/>`__
 framework and
-`craft-parts <https://canonical-craft-parts.readthedocs-hosted.com/>`__
+`craft-parts <https://documentation.ubuntu.com/craft-parts/latest/>`__
 for build orchestration. Many fields are inherited from :samp:`craft-application`.
 
 
@@ -64,8 +64,7 @@ Top-level fields
    * - :samp:`base`
      - string
      - Base operating system image the SDK targets at runtime.
-       One of :samp:`ubuntu@20.04`, :samp:`ubuntu@22.04`, :samp:`ubuntu@24.04`,
-       or :samp:`ubuntu@26.04`.
+       One of :samp:`ubuntu@22.04`, :samp:`ubuntu@24.04`, or :samp:`ubuntu@26.04`.
        Omit for SDKs that work on any supported base.
 
    * - :samp:`build-base`
@@ -121,7 +120,7 @@ Top-level fields
      - array
      - Additional package repositories to enable while building.
        Standard :samp:`craft-application` machinery;
-       see the `craft-archives reference <https://canonical-craft-archives.readthedocs-hosted.com/>`__.
+       see the `craft-archives reference <https://documentation.ubuntu.com/craft-archives/latest/>`__.
 
    * - :samp:`parts`
      - object
@@ -142,7 +141,7 @@ Top-level fields
 
 |sdk_markup| writes :samp:`name`, :samp:`base`, :samp:`version`, :samp:`title`,
 :samp:`summary`, :samp:`description`, :samp:`license`, :samp:`contact`,
-:samp:`issues`, :samp:`source-code`, :samp:`plugs`, and :samp:`slots`
+:samp:`issues`, :samp:`source-code`, :samp:`website`, :samp:`plugs`, and :samp:`slots`
 straight into the runtime :file:`sdk.yaml`.
 The other top-level fields control the build only.
 

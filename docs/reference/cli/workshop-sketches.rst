@@ -19,7 +19,6 @@ List project sketch SDKs.
 
 .. rubric:: Description
 
-
 This command enumerates all sketches in the project, printing a compact list:
 
 - Project:  absolute pathname of the project
@@ -30,9 +29,7 @@ This command enumerates all sketches in the project, printing a compact list:
 
 - Notes:    current, stashed, or both
 
-
 .. rubric:: Examples
-
 
 List the sketches in the current project directory:
 
@@ -41,14 +38,9 @@ List the sketches in the current project directory:
    $ workshop sketches
 
 
-
 .. rubric:: Flags
-
 
 --no-headers
 
    Hide table headers.
-
-
-
 

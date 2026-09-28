@@ -443,6 +443,8 @@ Choose :samp:`setup-project` for:
   (e.g., frequently updated or extra large)
 
 
+.. _exp_best_health_checks:
+
 Health checks
 -------------
 

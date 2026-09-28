@@ -29,6 +29,7 @@ import (
 )
 
 type CmdConnections struct {
+	cmdutil.ColorMixin
 	root      *CmdRoot
 	all       bool
 	noHeaders bool
@@ -220,7 +221,8 @@ func (c *CmdConnections) Run(cmd *cobra.Command, av []string) error {
 
 	w := tabWriter()
 	if !c.noHeaders {
-		fmt.Fprintln(w, i18n.G("INTERFACE\tPLUG\tSLOT\tNOTES"))
+		esc := c.GetEscapes()
+		fmt.Fprintln(w, esc.Bold+i18n.G("INTERFACE\tPLUG\tSLOT\tNOTES")+esc.End)
 	}
 	for _, note := range annotatedConns {
 		// find the plug that the current connection is bound to

@@ -41,6 +41,7 @@ func (m *workshopInfo) SetUpTest(c *check.C) {
 var mockWorkshopWithSdks = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",
+    "runtime":"lxd-container",
     "project-id":"42424242",
     "status":"Error",
     "hostname":"ws.sdkcraft.wp",
@@ -99,6 +100,7 @@ base:      ubuntu@22.04
 project:   %s
 hostname:  ws\.sdkcraft\.wp
 status:    error
+runtime:   lxd-container
 notes:     missing-project
 sdks:
   go:
@@ -114,6 +116,7 @@ sdks:
 var mockWorkshopWithHealth = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",
+    "runtime":"lxd-container",
     "project-id":"42424242",
     "status":"Pending",
     "notes":["workshop-note"],
@@ -156,6 +159,7 @@ func (m *workshopInfo) TestWorkshopInfoWithSdkHealthReport(c *check.C) {
 base:     ubuntu@22.04
 project:  %s
 status:   pending
+runtime:  lxd-container
 notes:    workshop-note,try-later
 sdks:
   go:
@@ -169,6 +173,7 @@ sdks:
 var mockWorkshopWithMounts = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",
+    "runtime":"lxd-container",
     "project-id":"42424242",
     "status":"Ready",
     "sdks":[{
@@ -204,6 +209,7 @@ var mockWorkshopWithMountsOutput = `name:     ws
 base:     ubuntu@22.04
 project:  %s
 status:   ready
+runtime:  lxd-container
 notes:    %s
 sdks:
   go:
@@ -307,6 +313,7 @@ var mockWorkshopWithTunnels = `{
   "result": {
     "name": "ws",
     "base": "ubuntu@22.04",
+    "runtime": "lxd-container",
     "project-id": "42424242",
     "status": "Ready",
     "sdks": [
@@ -396,6 +403,7 @@ func (m *workshopInfo) TestWorkshopInfoWithSdkTunnels(c *check.C) {
 base:     ubuntu@22.04
 project:  %s
 status:   ready
+runtime:  lxd-container
 notes:    --
 sdks:
   system:

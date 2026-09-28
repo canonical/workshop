@@ -234,6 +234,7 @@ func (b byCrefConnJSON) Less(i, j int) bool {
 	return sortsBefore
 }
 
+// checkWorkshopExists ensures a workshop exists. The state must be locked.
 func checkWorkshopExists(ctx context.Context, manager *workshopstate.WorkshopManager, projectId, name string) error {
 	_, err := manager.Workshop(ctx, name, projectId)
 	return err
@@ -256,7 +257,11 @@ func v1GetConnections(c *Command, r *http.Request, _ *userState) Response {
 	onlyConnected := qselect == ""
 
 	if workshop != "" {
-		if err := checkWorkshopExists(r.Context(), c.d.overlord.WorkshopManager(), projectId, workshop); err != nil {
+		st := c.d.overlord.State()
+		st.Lock()
+		err := checkWorkshopExists(r.Context(), c.d.overlord.WorkshopManager(), projectId, workshop)
+		st.Unlock()
+		if err != nil {
 			return statusNotFound("cannot access %q workshop: %w", workshop, err)
 		}
 	}

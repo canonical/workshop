@@ -49,3 +49,6 @@ vale~=3.13
 
 # Mermaid diagrams in Sphinx docs (not bundled in the Sphinx Stack).
 sphinxcontrib-mermaid~=2.0
+
+# Accessible domain and slice navigation on the home page.
+sphinx-structured-toc~=0.1.1

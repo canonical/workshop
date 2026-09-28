@@ -147,8 +147,8 @@ func (s *hookSuite) TestExecHookDoesNotExist(c *check.C) {
 	chg.AddTask(t1)
 
 	// Launch a workshop provinding no hooks
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04"}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Check(err, check.IsNil)
 
@@ -171,8 +171,8 @@ func (s *hookSuite) TestExecHookSkipsStrayHooksFile(c *check.C) {
 	chg.Set("user", "testuser")
 	chg.AddTask(t1)
 
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04"}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Check(err, check.IsNil)
 
@@ -205,8 +205,8 @@ func (s *hookSuite) TestExecHookStatError(c *check.C) {
 	chg.Set("user", "testuser")
 	chg.AddTask(t1)
 
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04"}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Check(err, check.IsNil)
 
@@ -666,8 +666,8 @@ func (s *hookSuite) TestHookWithMultipleHandlersIsError(c *check.C) {
 }
 
 func (s *hookSuite) launchWorkshop(c *check.C, newsdk string) {
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04", Sdks: []workshop.SdkRecord{{Name: "one", Channel: "latest/stable"}}}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04", Sdks: []workshop.SdkRecord{{Name: "one", Channel: "latest/stable"}}}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Check(err, check.IsNil)
 	ws, err := s.backend.WorkshopFs(s.ctx, "ws")

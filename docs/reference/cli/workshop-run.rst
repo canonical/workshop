@@ -19,7 +19,6 @@ Run a named action from the workshop definition.
 
 .. rubric:: Description
 
-
 The "run" subcommand runs an action specified in the workshop definition file,
 waiting for it to complete. If a timeout elapses before that, it's terminated.
 
@@ -62,9 +61,7 @@ Notes:
 - You can set the working directory, environment variables, user and group ID
   for running the action in the workshop; reasonable defaults are provided.
 
-
 .. rubric:: Examples
-
 
 Run the "build" action under the "nimble" workshop
 in the current project directory:
@@ -73,20 +70,17 @@ in the current project directory:
 
    $ workshop run nimble build
 
-
 A similar command that sets an environment variable and the working directory:
 
 .. code-block:: console
 
    $ workshop run --env GO111MODULE=off -w /project nimble -- build
 
-
 If the project has only one workshop, the workshop name is optional:
 
 .. code-block:: console
 
    $ workshop run -- build
-
 
 If the action doesn't overlap with a workshop name
 and the shell is interactive,
@@ -96,7 +90,6 @@ the separator is also optional:
 
    $ workshop run build
 
-
 Forward arguments to an action that consumes them
 (for example, ``tests: go test "$@"`` in the workshop definition):
 
@@ -105,44 +98,41 @@ Forward arguments to an action that consumes them
    $ workshop run dev -- tests -run TestFoo ./pkg/...
 
 
-
 .. rubric:: Flags
 
-
---cwd
+-w, --cwd
 
    Set the working directory in the workshop.
 
+   Default: ``/project``
 
 --env
 
    Set an environment variable, e.g. 'FOO=bar'; if only the name is provided, the value is inherited from the CLI environment.
 
-
 --uid
 
    Run as a specific workshop user.
 
+   Default: ``1000``
 
 --gid
 
    Run as a member of a specific workshop group.
 
+   Default: ``1000``
 
 --timeout
 
    Set a timeout; valid units are ns, us or µs, ms, s, m, h.
 
+   Default: ``0s``
 
---interactive
+-i, --interactive
 
    Force interactive mode.
 
-
---non-interactive
+-I, --non-interactive
 
    Force non-interactive mode.
-
-
-
 

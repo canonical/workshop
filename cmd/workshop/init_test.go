@@ -25,8 +25,9 @@ func (s *workshopInit) SetUpTest(c *check.C) {
 
 func (s *workshopInit) makeCmd(projectDir string) *CmdInit {
 	return &CmdInit{
-		root: &CmdRoot{cwd: projectDir},
-		base: defaultBase,
+		root:    &CmdRoot{cwd: projectDir},
+		base:    defaultBase,
+		runtime: defaultRuntime,
 	}
 }
 
@@ -39,6 +40,7 @@ func (s *workshopInit) TestInitBaseUsage(c *check.C) {
 	cmd := s.makeCmd(projectDir)
 
 	bases := slices.Clone(workshop.SupportedBases)
+	bases = slices.DeleteFunc(bases, func(b string) bool { return b == "ubuntu@20.04" })
 	bases[len(bases)-1] = "and " + bases[len(bases)-1]
 	line := fmt.Sprintf("\nThe supported bases are %s.\n", strings.Join(bases, ", "))
 
@@ -82,6 +84,21 @@ func (s *workshopInit) TestInitEmptySdks(c *check.C) {
 	path := workshop.Filepath(projectDir, "dev")
 	c.Check(path, testutil.FileEquals, `name: dev
 base: ubuntu@24.04
+`)
+}
+
+func (s *workshopInit) TestInitRuntime(c *check.C) {
+	projectDir := c.MkDir()
+	cmd := s.makeCmd(projectDir)
+	cmd.runtime = "lxd-vm"
+
+	err := s.run(cmd, "dev")
+	c.Assert(err, check.IsNil)
+
+	path := workshop.Filepath(projectDir, "dev")
+	c.Check(path, testutil.FileEquals, `name: dev
+base: ubuntu@24.04
+runtime: lxd-vm
 `)
 }
 
@@ -437,9 +454,10 @@ func (s *workshopInit) TestInitProjectFlagOverride(c *check.C) {
 
 	// Use --project flag (simulated via root.prj).
 	cmd := &CmdInit{
-		root: &CmdRoot{cwd: otherDir, prj: projectDir},
-		sdks: []string{"go"},
-		base: defaultBase,
+		root:    &CmdRoot{cwd: otherDir, prj: projectDir},
+		sdks:    []string{"go"},
+		base:    defaultBase,
+		runtime: defaultRuntime,
 	}
 
 	err := s.run(cmd, "dev")

@@ -41,6 +41,10 @@ import (
 	"github.com/canonical/workshop/internal/workshop/lxd/tests/helper"
 )
 
+func TestMain(m *testing.M) {
+	os.Exit(helper.RunTestsOrWorkshopCtl(m))
+}
+
 type backendDeviceSuite struct {
 	ctx          context.Context
 	be           *lxdbackend.Backend
@@ -81,17 +85,6 @@ func (f *backendDeviceSuite) readWorkshopFile(c *check.C, fname string) string {
 	return string(buf)
 }
 
-func defaultTestDevices(pid, w string) ([]workshop.Mount, []workshop.ProxyEntry) {
-	cwd, _ := os.Getwd()
-	mounts := []workshop.Mount{{
-		Name:  workshop.ConfigProjectPathDevice,
-		Type:  workshop.HostWorkshop,
-		What:  cwd,
-		Where: workshop.WorkshopProjectPath,
-	}}
-	return mounts, nil
-}
-
 func (f *backendDeviceSuite) SetUpTest(c *check.C) {
 	dirs.SetRootDir(c.MkDir())
 	c.Assert(dirs.CreateDirs(), check.IsNil)
@@ -125,8 +118,20 @@ func (f *backendDeviceSuite) SetUpTest(c *check.C) {
 
 	f.setupRepo(c)
 
-	defer workshop.FakeDefaultDevices(defaultTestDevices)()
-	helper.LaunchTestWorkshop(c, f.ctx, f.be, c.MkDir())
+	defer workshop.FakeDefaultDevices(helper.TestDevices)()
+	project := c.MkDir()
+	helper.LaunchTestWorkshop(c, f.ctx, f.be, project)
+
+	// Required because WorkshopWorkshop mounts use
+	// x-systemd-requires=/project.
+	prjMount := workshop.Mount{
+		Name:  workshop.ConfigProjectPathDevice,
+		Type:  workshop.HostWorkshop,
+		What:  project,
+		Where: workshop.WorkshopProjectPath,
+	}
+	err = f.be.AddWorkshopMount(f.ctx, "test", prjMount)
+	c.Assert(err, check.IsNil)
 }
 
 func (f *backendDeviceSuite) TearDownTest(c *check.C) {

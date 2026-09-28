@@ -256,7 +256,21 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		}
 		files = append(files, file)
 
-		image, err := a.backend.GetBase(ctx, file.Base)
+		if file.Base == "ubuntu@20.04" {
+			a.state.Lock()
+			a.state.Warnf(`workshops with "base: ubuntu@20.04" are no longer supported; refresh to 22.04+ before the next release of Workshop`)
+			a.state.Unlock()
+		}
+
+		if file.Runtime != workshop.RuntimeLXDContainer && !refresh && !osutil.GetenvBool("WORKSHOP_EXPERIMENTAL_VMS") {
+			runtime, err := file.Runtime.MarshalText()
+			if err == nil {
+				err = fmt.Errorf("runtime %q is experimental\nTo opt in: %q", runtime, "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd")
+			}
+			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
+		}
+
+		image, err := a.backend.GetBase(ctx, file.Base, file.Runtime)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
@@ -266,7 +280,9 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
-		sdks = slices.Insert(sdks, 0, systemMeta.Setup)
+		if file.Runtime == workshop.RuntimeLXDContainer || workshop.WorkshopVMsSupportSDKs.Load() {
+			sdks = slices.Insert(sdks, 0, systemMeta.Setup)
+		}
 		storeSdks = append(storeSdks, sdks)
 	}
 
@@ -285,6 +301,16 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 			if err != nil {
 				return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 			}
+
+			if cur.File.Runtime != files[i].Runtime {
+				r1, err1 := cur.File.Runtime.MarshalText()
+				r2, err2 := files[i].Runtime.MarshalText()
+				if err := cmp.Or(err1, err2); err != nil {
+					return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
+				}
+				return nil, nil, fmt.Errorf("cannot %s %q: runtime changed from %q to %q", action, name, r1, r2)
+			}
+
 			current = append(current, *cur)
 		} else if err := a.checkNotLaunched(ctx, a.project.ProjectId, name); err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
@@ -298,6 +324,9 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		format := a.backend.FormatRevision()
 		installOrder := sdkInstallOrder(files[i])
 		sdks := ordered(installOrder, storeSdks[i], localSdks)
+		if files[i].Runtime != workshop.RuntimeLXDContainer && len(sdks) > 0 && !workshop.WorkshopVMsSupportSDKs.Load() {
+			return nil, nil, fmt.Errorf("cannot %s %q: SDKs are currently unavailable for virtual machines", action, name)
+		}
 		latest = append(latest, Manifest{File: files[i], Format: format, Image: images[i], Sdks: sdks})
 	}
 

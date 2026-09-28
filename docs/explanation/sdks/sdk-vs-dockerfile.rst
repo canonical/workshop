@@ -378,6 +378,8 @@ In turn, the CLI subcommands can be mapped like this:
      - :command:`workshop stop`
 
 
+.. _exp_ros2_case_study:
+
 Case study: ROS 2
 -----------------
 

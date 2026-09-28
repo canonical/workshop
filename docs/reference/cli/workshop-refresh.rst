@@ -19,7 +19,6 @@ Update workshops according to their definitions.
 
 .. rubric:: Description
 
-
 This command updates the workshops listed as arguments. For each workshop,
 it checks the workshop definition and applies any required updates
 to the base image, SDKs, and interface connections:
@@ -48,10 +47,7 @@ Notes:
 
 - To construct a newly defined workshop, use "workshop launch" instead.
 
-
-
 .. rubric:: Examples
-
 
 Refresh the "nimble" and "jazzy" workshops in the current project directory:
 
@@ -59,13 +55,11 @@ Refresh the "nimble" and "jazzy" workshops in the current project directory:
 
    $ workshop refresh nimble jazzy
 
-
 The name is optional if the project has only one workshop:
 
 .. code-block:: console
 
    $ workshop refresh
-
 
 Refresh workshop, but pause on any errors (won't accept multiple workshops):
 
@@ -73,13 +67,11 @@ Refresh workshop, but pause on any errors (won't accept multiple workshops):
 
    $ workshop refresh --wait-on-error
 
-
 After refresh paused on error, abort the operation:
 
 .. code-block:: console
 
    $ workshop refresh --abort
-
 
 After refresh paused on error and the workshop was fixed,
 continue the operation:
@@ -89,34 +81,25 @@ continue the operation:
    $ workshop refresh --continue
 
 
-
 .. rubric:: Flags
-
 
 --abort
 
    Abort the previously paused operation, reverting any changes.
 
-
 --continue
 
    Continue the previously paused operation.
-
 
 --no-wait
 
    Return the change ID, don't wait for the operation to finish.
 
-
 --verbose
 
    Combine stdout and stderr output from hooks.
 
-
 --wait-on-error
 
    Pause the operation on error; to resume, use "--continue" or "--abort".
-
-
-
 

@@ -59,6 +59,9 @@ var (
 
 	// Cache directory for deb packages
 	AptCacheDir = "/var/cache/apt/archives"
+
+	// Symlink to workshopctl that freezes VM filesystems.
+	FsFreezePath = "/usr/local/lib/workshop/fsfreeze"
 )
 
 // Variables for workshopd (host paths)

@@ -106,14 +106,14 @@ var storeSdks = map[string]sdk.Meta{
 		},
 		SdkYAML: "name: test\n",
 	},
-	"noble": {
+	"resolute": {
 		Setup: sdk.Setup{
-			Name:      "noble",
+			Name:      "resolute",
 			PackageID: "WMwWl1i0hX4PuT4nXdZrjecHnJuBfJ2R",
 			Revision:  sdk.R(1),
 			Sha3_384:  "199a8c0bcf6f2348a795b7bc1d24595530a189b85c682c28b23d037365fb013e3dd71057ee21c99822b745c20349abd9",
 		},
-		SdkYAML: "name: noble\nbase: ubuntu@24.04\n",
+		SdkYAML: "name: resolute\nbase: ubuntu@26.04\n",
 	},
 	"rust": {
 		Setup: sdk.Setup{
@@ -217,7 +217,7 @@ func (s *manifestSuite) createWFile(c *check.C, ws, base string, sdks []workshop
 
 func (s *manifestSuite) launchWorkshopWithSDKs(c *check.C, ws, base string, sdks []workshop.SdkRecord) *workshop.Workshop {
 	wf := s.createWFile(c, ws, base, sdks)
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -231,9 +231,9 @@ func (s *manifestSuite) TestLaunchOK(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.createWFile(c, "test-1", "ubuntu@20.04", nil)
+	s.createWFile(c, "test-1", "ubuntu@24.04", nil)
 	sdks := []workshop.SdkRecord{{Name: "test", Channel: "latest/edge"}}
-	s.createWFile(c, "test-2", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-2", "ubuntu@24.04", sdks)
 
 	manifests, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1", "test-2"})
 	c.Assert(err, check.IsNil)
@@ -242,15 +242,15 @@ func (s *manifestSuite) TestLaunchOK(c *check.C) {
 
 	c.Check(manifests[0].File, check.DeepEquals, &workshop.File{
 		Name: "test-1",
-		Base: "ubuntu@20.04",
+		Base: "ubuntu@24.04",
 	})
 	c.Check(manifests[1].File, check.DeepEquals, &workshop.File{
 		Name: "test-2",
-		Base: "ubuntu@20.04",
+		Base: "ubuntu@24.04",
 		Sdks: sdks,
 	})
 
-	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: "fakeimage123"})
+	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	c.Check(manifests[1].Image, check.Equals, manifests[0].Image)
 
 	systemSdk, err := system.SystemSdkMeta()
@@ -270,8 +270,8 @@ func (s *manifestSuite) TestRefreshOK(c *check.C) {
 	defer s.state.Unlock()
 
 	sdks := []workshop.SdkRecord{{Name: "test", Channel: "latest/stable"}}
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", sdks)
-	s.launchWorkshopWithSDKs(c, "test-2", "ubuntu@20.04", sdks)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", sdks)
+	s.launchWorkshopWithSDKs(c, "test-2", "ubuntu@24.04", sdks)
 
 	// Install try SDK in test-1 workshop.
 	oldSdk := storeSdks["test"]
@@ -285,7 +285,7 @@ func (s *manifestSuite) TestRefreshOK(c *check.C) {
 	// Update base for test-2 workshop.
 	fileBlob, err := os.ReadFile(workshop.Filepath(s.project.Path, "test-2"))
 	c.Assert(err, check.IsNil)
-	fileText := strings.Replace(string(fileBlob), "ubuntu@20.04", "ubuntu@22.04", 1)
+	fileText := strings.Replace(string(fileBlob), "ubuntu@24.04", "ubuntu@22.04", 1)
 	err = os.WriteFile(workshop.Filepath(s.project.Path, "test-2"), []byte(fileText), 0644)
 	c.Assert(err, check.IsNil)
 
@@ -302,19 +302,19 @@ func (s *manifestSuite) TestRefreshOK(c *check.C) {
 	// Sanity check for test-1.
 	c.Check(current[0].File, check.DeepEquals, &workshop.File{
 		Name: "test-1",
-		Base: "ubuntu@20.04",
+		Base: "ubuntu@24.04",
 		Sdks: sdks,
 	})
 	c.Check(latest[0].File, check.DeepEquals, current[0].File)
 	c.Check(current[0].Format, check.Equals, sdk.R(1))
 	c.Check(latest[0].Format, check.Equals, sdk.R(2))
-	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: "fakeimage123"})
+	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	c.Check(latest[0].Image, check.Equals, current[0].Image)
 
 	// Check base was updated for test-2.
 	c.Check(current[1].File, check.DeepEquals, &workshop.File{
 		Name: "test-2",
-		Base: "ubuntu@20.04",
+		Base: "ubuntu@24.04",
 		Sdks: sdks,
 	})
 	c.Check(latest[1].File, check.DeepEquals, &workshop.File{
@@ -325,7 +325,7 @@ func (s *manifestSuite) TestRefreshOK(c *check.C) {
 	c.Check(current[1].Format, check.Equals, sdk.R(1))
 	c.Check(latest[1].Format, check.Equals, sdk.R(2))
 	c.Check(current[1].Image, check.Equals, current[0].Image)
-	c.Check(latest[1].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"})
+	c.Check(latest[1].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 
 	// Check current SDKs are loaded from running workshop.
 	c.Check(current[0].Sdks, check.DeepEquals, []sdk.Setup{oldSdk.Setup})
@@ -345,7 +345,7 @@ func (s *manifestSuite) TestRefreshRestoreOK(c *check.C) {
 	defer s.state.Unlock()
 
 	sdks := []workshop.SdkRecord{{Name: "test", Channel: "latest/stable"}}
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", sdks)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", sdks)
 
 	// Install try SDK in test-1 workshop.
 	oldSdk := storeSdks["test"]
@@ -359,7 +359,7 @@ func (s *manifestSuite) TestRefreshRestoreOK(c *check.C) {
 	// Update base for test-1 workshop.
 	fileBlob, err := os.ReadFile(workshop.Filepath(s.project.Path, "test-1"))
 	c.Assert(err, check.IsNil)
-	fileText := strings.Replace(string(fileBlob), "ubuntu@20.04", "ubuntu@22.04", 1)
+	fileText := strings.Replace(string(fileBlob), "ubuntu@24.04", "ubuntu@22.04", 1)
 	err = os.WriteFile(workshop.Filepath(s.project.Path, "test-1"), []byte(fileText), 0644)
 	c.Assert(err, check.IsNil)
 
@@ -373,10 +373,10 @@ func (s *manifestSuite) TestRefreshRestoreOK(c *check.C) {
 
 	c.Check(current[0].File, check.DeepEquals, &workshop.File{
 		Name: "test-1",
-		Base: "ubuntu@20.04",
+		Base: "ubuntu@24.04",
 		Sdks: sdks,
 	})
-	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: "fakeimage123"})
+	c.Check(current[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	c.Check(current[0].Sdks, check.DeepEquals, []sdk.Setup{oldSdk.Setup})
 }
 
@@ -384,9 +384,9 @@ func (s *manifestSuite) TestLaunchRequiresStatusOff(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.createWFile(c, "test-1", "ubuntu@20.04", nil)
-	s.launchWorkshopWithSDKs(c, "test-2", "ubuntu@20.04", nil)
-	s.createWFile(c, "test-3", "ubuntu@20.04", nil)
+	s.createWFile(c, "test-1", "ubuntu@24.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-2", "ubuntu@24.04", nil)
+	s.createWFile(c, "test-3", "ubuntu@24.04", nil)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1", "test-2", "test-3"})
 	c.Assert(err, check.ErrorMatches, `cannot launch "test-2": workshop exists`)
@@ -396,9 +396,9 @@ func (s *manifestSuite) TestLaunchAvoidsConflicts(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.createWFile(c, "test-1", "ubuntu@20.04", nil)
-	s.createWFile(c, "test-2", "ubuntu@20.04", nil)
-	s.createWFile(c, "test-3", "ubuntu@20.04", nil)
+	s.createWFile(c, "test-1", "ubuntu@24.04", nil)
+	s.createWFile(c, "test-2", "ubuntu@24.04", nil)
+	s.createWFile(c, "test-3", "ubuntu@24.04", nil)
 
 	chg := s.state.NewChange("launch", "...")
 	chg.Set("project-id", s.project.ProjectId)
@@ -414,9 +414,9 @@ func (s *manifestSuite) TestRefreshRequiresWorkshopExistence(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", nil)
-	s.createWFile(c, "test-2", "ubuntu@20.04", nil)
-	s.launchWorkshopWithSDKs(c, "test-3", "ubuntu@20.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", nil)
+	s.createWFile(c, "test-2", "ubuntu@24.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-3", "ubuntu@24.04", nil)
 
 	_, _, err := s.manager.RefreshManifests(s.ctx, s.project, []string{"test-1", "test-2", "test-3"}, conflict.RefreshUpdate)
 	c.Assert(err, check.ErrorMatches, `cannot refresh "test-2": workshop not launched`)
@@ -429,11 +429,11 @@ func (s *manifestSuite) TestRefreshRequiresStatusReady(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", nil)
-	s.launchWorkshopWithSDKs(c, "test-2", "ubuntu@20.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-2", "ubuntu@24.04", nil)
 	err := s.backend.StopWorkshop(s.ctx, "test-2", false)
 	c.Assert(err, check.IsNil)
-	s.launchWorkshopWithSDKs(c, "test-3", "ubuntu@20.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-3", "ubuntu@24.04", nil)
 
 	_, _, err = s.manager.RefreshManifests(s.ctx, s.project, []string{"test-1", "test-2", "test-3"}, conflict.RefreshUpdate)
 	c.Assert(err, check.ErrorMatches, `cannot refresh "test-2": not running`)
@@ -442,11 +442,26 @@ func (s *manifestSuite) TestRefreshRequiresStatusReady(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `cannot refresh "test-2": not running`)
 }
 
+func (s *manifestSuite) TestRefreshRequiresSameRuntime(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	s.launchWorkshopWithSDKs(c, "test", "ubuntu@24.04", nil)
+	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "test"), os.O_APPEND|os.O_WRONLY, 0644)
+	c.Assert(err, check.IsNil)
+	_, err = f.WriteString("runtime: lxd-vm\n")
+	c.Assert(f.Close(), check.IsNil)
+	c.Assert(err, check.IsNil)
+
+	_, _, err = s.manager.RefreshManifests(s.ctx, s.project, []string{"test"}, conflict.RefreshUpdate)
+	c.Check(err, check.ErrorMatches, `cannot refresh "test": runtime changed from "lxd-container" to "lxd-vm"`)
+}
+
 func (s *manifestSuite) TestRestoreRequiresCurrentFormat(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", nil)
 
 	defer s.backend.SetFormatRevision(sdk.R(2))()
 
@@ -461,7 +476,7 @@ func (s *manifestSuite) TestRefreshManifestsWaitingReturnsChangeConflict(c *chec
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", nil)
 	change := s.state.NewChange("refresh", "refresh test-1")
 	change.Set("project-id", s.project.ProjectId)
 	change.SetStatus(state.WaitStatus)
@@ -502,9 +517,9 @@ func (s *manifestSuite) TestLaunchRequiresBase(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", nil)
 
-	restoreBase := testutil.FakeFunc(func(ctx context.Context, base string) (workshop.BaseImage, error) {
+	restoreBase := testutil.FakeFunc(func(ctx context.Context, base string, runtime workshop.Runtime) (workshop.BaseImage, error) {
 		return workshop.BaseImage{}, errors.New("contrived error")
 	}, &s.backend.GetBaseCallback)
 	defer restoreBase()
@@ -518,7 +533,7 @@ func (s *manifestSuite) TestLaunchMissingStoreSdk(c *check.C) {
 	defer s.state.Unlock()
 
 	sdks := []workshop.SdkRecord{{Name: "nonexistent", Channel: "latest/edge"}}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "nonexistent" SDK: Package not found`)
@@ -532,7 +547,7 @@ func (s *manifestSuite) TestLaunchMissingStoreSdks(c *check.C) {
 		{Name: "nonexistent1", Channel: "latest/edge"},
 		{Name: "nonexistent2", Channel: "latest/beta"},
 	}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": multiple SDK Store errors:
@@ -552,7 +567,7 @@ func (s *manifestSuite) TestLaunchValidRequest(c *check.C) {
 		{Name: "test"},
 		{Name: "node", Channel: "latest/edge"},
 	}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	manifests, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	c.Assert(err, check.IsNil)
@@ -561,10 +576,10 @@ func (s *manifestSuite) TestLaunchValidRequest(c *check.C) {
 
 	c.Check(manifests[0].File, check.DeepEquals, &workshop.File{
 		Name: "test-1",
-		Base: "ubuntu@20.04",
+		Base: "ubuntu@24.04",
 		Sdks: sdks,
 	})
-	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@20.04", Fingerprint: "fakeimage123"})
+	c.Check(manifests[0].Image, check.Equals, workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 
 	systemSdk, err := system.SystemSdkMeta()
 	c.Assert(err, check.IsNil)
@@ -585,7 +600,7 @@ func (s *manifestSuite) TestLaunchValidRequest(c *check.C) {
 		Channel:     "stable",
 		Platform: transport.Platform{
 			Name:         "ubuntu",
-			Channel:      "20.04",
+			Channel:      "24.04",
 			Architecture: "mock64",
 		},
 	}, {
@@ -595,7 +610,7 @@ func (s *manifestSuite) TestLaunchValidRequest(c *check.C) {
 		Channel:     "latest/edge",
 		Platform: transport.Platform{
 			Name:         "ubuntu",
-			Channel:      "20.04",
+			Channel:      "24.04",
 			Architecture: "mock64",
 		},
 	}}
@@ -615,7 +630,7 @@ func (s *manifestSuite) TestLaunchMissingTrySdkDir(c *check.C) {
 	defer s.state.Unlock()
 
 	sdks := []workshop.SdkRecord{{Name: "nonexistent", Source: sdk.TrySource}}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "try-nonexistent" SDK not found: open .*/try/nonexistent: no such file or directory`)
@@ -633,41 +648,41 @@ func (s *manifestSuite) TestLaunchFindTrySdkFile(c *check.C) {
 `
 	focal := `name: test
 architecture: all
-base: ubuntu@20.04
-`
-	noble := `name: test
 base: ubuntu@24.04
+`
+	resolute := `name: test
+base: ubuntu@26.04
 `
 	mock16 := `name: test
 architecture: mock16
 `
 	focal16 := `name: test
 architecture: mock16
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 	mock64 := `name: test
 architecture: mock64
 `
 	focal64 := `name: test
 architecture: mock64
-base: ubuntu@20.04
-`
-	noble64 := `name: test
-architecture: mock64
 base: ubuntu@24.04
+`
+	resolute64 := `name: test
+architecture: mock64
+base: ubuntu@26.04
 `
 
 	allDigest := s.mockTrySdk(c, "test", "test_all.sdk", all)
-	focalDigest := s.mockTrySdk(c, "test", "test_all_ubuntu@20.04.sdk", focal)
-	s.mockTrySdk(c, "test", "test_all_ubuntu@24.04.sdk", noble)
+	focalDigest := s.mockTrySdk(c, "test", "test_all_ubuntu@24.04.sdk", focal)
+	s.mockTrySdk(c, "test", "test_all_ubuntu@26.04.sdk", resolute)
 	s.mockTrySdk(c, "test", "test_mock16.sdk", mock16)
-	s.mockTrySdk(c, "test", "test_mock16_ubuntu@20.04.sdk", focal16)
+	s.mockTrySdk(c, "test", "test_mock16_ubuntu@24.04.sdk", focal16)
 	mock64Digest := s.mockTrySdk(c, "test", "test_mock64.sdk", mock64)
-	focal64Digest := s.mockTrySdk(c, "test", "test_mock64_ubuntu@20.04.sdk", focal64)
-	s.mockTrySdk(c, "test", "test_mock64_ubuntu@24.04.sdk", noble64)
+	focal64Digest := s.mockTrySdk(c, "test", "test_mock64_ubuntu@24.04.sdk", focal64)
+	s.mockTrySdk(c, "test", "test_mock64_ubuntu@26.04.sdk", resolute64)
 
 	sdks := []workshop.SdkRecord{{Name: "test", Source: sdk.TrySource}}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	// Check arch- and base-specific SDK is picked first.
 	manifests, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
@@ -704,9 +719,9 @@ base: ubuntu@24.04
 	c.Check(manifests[0].Sdks[1].Sha3_384, check.Equals, mock64Digest)
 
 	// Check arch-specific SDK is picked ahead of base-specific SDK.
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 	trySdkDir := workshop.TrySdkDir(workshop.UserDataRootDir(s.user.HomeDir, nil), "test")
-	err = os.RemoveAll(filepath.Join(trySdkDir, "test_mock64_ubuntu@20.04.sdk"))
+	err = os.RemoveAll(filepath.Join(trySdkDir, "test_mock64_ubuntu@24.04.sdk"))
 	c.Assert(err, check.IsNil)
 
 	manifests, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
@@ -718,13 +733,13 @@ base: ubuntu@24.04
 	// Check case where no SDK matches.
 	err = os.RemoveAll(filepath.Join(trySdkDir, "test_mock64.sdk"))
 	c.Assert(err, check.IsNil)
-	err = os.RemoveAll(filepath.Join(trySdkDir, "test_all_ubuntu@20.04.sdk"))
+	err = os.RemoveAll(filepath.Join(trySdkDir, "test_all_ubuntu@24.04.sdk"))
 	c.Assert(err, check.IsNil)
 	err = os.RemoveAll(filepath.Join(trySdkDir, "test_all.sdk"))
 	c.Assert(err, check.IsNil)
 
 	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
-	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "try-test" SDK not found: openat .*/test_mock64_ubuntu@20\.04\.sdk: no such file or directory`)
+	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "try-test" SDK not found: openat .*/test_mock64_ubuntu@24\.04\.sdk: no such file or directory`)
 }
 
 func (s *manifestSuite) TestLaunchMissingTryMetadata(c *check.C) {
@@ -743,9 +758,9 @@ func (s *manifestSuite) TestLaunchMissingTryMetadata(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	sdks := []workshop.SdkRecord{{Name: "test", Source: sdk.TrySource}}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 	sdks2 := []workshop.SdkRecord{{Name: "test2", Source: sdk.TrySource}}
-	s.createWFile(c, "test-2", "ubuntu@20.04", sdks2)
+	s.createWFile(c, "test-2", "ubuntu@24.04", sdks2)
 
 	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": invalid "try-test" SDK: openat .*/test_all\.sdk\.yaml: no such file or directory`)
@@ -758,12 +773,12 @@ func (s *manifestSuite) TestLaunchValidatesTrySdks(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.mockTrySdk(c, "test", "test_all_ubuntu@20.04.sdk", `name: foo
-base: ubuntu@20.04
+	s.mockTrySdk(c, "test", "test_all_ubuntu@24.04.sdk", `name: foo
+base: ubuntu@24.04
 `)
 
 	sdks := []workshop.SdkRecord{{Name: "test", Source: sdk.TrySource}}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": SDK must be named "test" \(now: "foo"\)`)
@@ -803,8 +818,8 @@ func (s *manifestSuite) TestLaunchImportsTrySdks(c *check.C) {
 		{Name: "test", Source: sdk.TrySource},
 		{Name: "test2", Source: sdk.TrySource},
 	}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks[:1])
-	s.createWFile(c, "test-2", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks[:1])
+	s.createWFile(c, "test-2", "ubuntu@24.04", sdks)
 
 	// Check launch creates both volumes at revision x1.
 	manifests, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1", "test-2"})
@@ -867,7 +882,7 @@ func (s *manifestSuite) TestLaunchMissingProjectSdk(c *check.C) {
 	defer s.state.Unlock()
 
 	sdks := []workshop.SdkRecord{{Name: "nonexistent", Source: sdk.ProjectSource}}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": stat .*/\.workshop/nonexistent: no such file or directory`)
@@ -878,7 +893,7 @@ func (s *manifestSuite) TestRefreshKeepsInstalledProjectSdk(c *check.C) {
 	defer s.state.Unlock()
 
 	sdks := []workshop.SdkRecord{{Name: "test", Source: sdk.ProjectSource}}
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", sdks)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", sdks)
 
 	sdkYamls := []string{
 		"name: test\n",
@@ -953,7 +968,7 @@ architecture: arm64
 `)
 
 	sdks := []workshop.SdkRecord{{Name: "test", Source: sdk.ProjectSource}}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "test" SDK has "arm64" architecture; required: "amd64" or "all"`)
@@ -969,7 +984,7 @@ ssh-agent:
 `)
 
 	sdks := []workshop.SdkRecord{{Name: "test", Source: sdk.ProjectSource}}
-	s.createWFile(c, "test-1", "ubuntu@20.04", sdks)
+	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
 	var unknown *sdk.UnknownYamlFieldsError
@@ -987,7 +1002,7 @@ func (s *manifestSuite) TestRefreshDetectsSketchSdk(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", nil)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", nil)
 
 	s.mockSketchSdk(c, "test-1", "name: sketch\n")
 
@@ -1009,7 +1024,7 @@ func (s *manifestSuite) TestLaunchRemovesSketchSdk(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	s.createWFile(c, "test-1", "ubuntu@20.04", nil)
+	s.createWFile(c, "test-1", "ubuntu@24.04", nil)
 
 	userDataDir := workshop.UserDataRootDir(s.user.HomeDir, nil)
 	sketchdir := workshop.SketchSdkCurrent(userDataDir, s.project.ProjectId, "test-1")
@@ -1019,7 +1034,7 @@ func (s *manifestSuite) TestLaunchRemovesSketchSdk(c *check.C) {
 
 	// Mock stashed sketch.
 	hooksdir := filepath.Join(stashdir, "hooks")
-	err := mockSdk(stashdir, hooksdir, "name: sketch\nbase: ubuntu@20.04\n")
+	err := mockSdk(stashdir, hooksdir, "name: sketch\nbase: ubuntu@24.04\n")
 	c.Assert(err, check.IsNil)
 
 	c.Check(sketchdir, testutil.FilePresent)
@@ -1045,7 +1060,7 @@ func (s *manifestSuite) TestRefreshRespectsExplicitSketchSdk(c *check.C) {
 		Source: sdk.SketchSource,
 		Plugs:  map[string]workshop.PlugOrBind{"ssh-agent": {Plug: nil}},
 	}}
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", sdks)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, _, err := s.manager.RefreshManifests(s.ctx, s.project, []string{"test-1"}, conflict.RefreshUpdate)
 	c.Check(err, check.ErrorMatches, `cannot refresh "test-1": "sketch" SDK not found, but appears in workshop definition`)
@@ -1066,7 +1081,7 @@ func (s *manifestSuite) TestRefreshSortsSdks(c *check.C) {
 		{Name: "lsp", Source: sdk.ProjectSource},
 		{Name: "rocm", Source: sdk.TrySource},
 	}
-	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@20.04", sdks)
+	s.launchWorkshopWithSDKs(c, "test-1", "ubuntu@24.04", sdks)
 
 	s.mockProjectSdk(c, "linter", "name: linter\n")
 	s.mockTrySdk(c, "jupyter", "jupyter_all.sdk", "name: jupyter\n")
@@ -1101,4 +1116,31 @@ func (s *manifestSuite) TestRefreshSortsSdks(c *check.C) {
 		"sketch: sketch",
 	}
 	c.Check(sorted, check.DeepEquals, expected)
+}
+
+func (s *manifestSuite) TestLaunchRejectsVMsWithSDKs(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	sdks := []workshop.SdkRecord{{Name: "test", Channel: "latest/edge"}}
+	s.createWFile(c, "test", "ubuntu@24.04", sdks)
+	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "test"), os.O_APPEND|os.O_WRONLY, 0644)
+	c.Assert(err, check.IsNil)
+	_, err = f.WriteString("runtime: lxd-vm\n")
+	c.Assert(f.Close(), check.IsNil)
+	c.Assert(err, check.IsNil)
+
+	os.Setenv("WORKSHOP_EXPERIMENTAL_VMS", "1")
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
+	c.Check(err, check.ErrorMatches, `cannot launch "test": SDKs are currently unavailable for virtual machines`)
+
+	old := workshop.WorkshopVMsSupportSDKs.Swap(true)
+	defer workshop.WorkshopVMsSupportSDKs.Store(old)
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
+	c.Check(err, check.IsNil)
+
+	os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS")
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
+	c.Check(err, check.ErrorMatches, `cannot launch "test": runtime "lxd-vm" is experimental
+To opt in: "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd"`)
 }

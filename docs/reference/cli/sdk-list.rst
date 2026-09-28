@@ -19,7 +19,6 @@ List SDK volumes available on this machine.
 
 .. rubric:: Description
 
-
 This command lists all local SDK volumes.
 
 Use it to enumerate the SDK revisions currently stored on the system.
@@ -31,16 +30,13 @@ Notes:
 - Multiple entries may appear for a single SDK
   if several revisions are present simultaneously.
 
-
 .. rubric:: Examples
-
 
 List all local SDK volumes:
 
 .. code-block:: console
 
    $ sdk list
-
 
 Hide the table header in the output:
 
@@ -49,14 +45,9 @@ Hide the table header in the output:
    $ sdk list --no-headers
 
 
-
 .. rubric:: Flags
-
 
 --no-headers
 
    Hide table headers.
-
-
-
 

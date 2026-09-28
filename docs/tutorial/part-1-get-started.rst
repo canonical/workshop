@@ -536,8 +536,8 @@ Next, we'll explore the remaining aspects of your daily workshop usage.
 .. note::
 
    |ws_markup| also integrates with modern IDEs.
-   For instance, see these guides:
-   :ref:`how_vscode_connect_remote`.
+   For instance, see :ref:`how_vscode_connect_remote`
+   for the VS Code extension.
 
 
 .. _tut_shell:

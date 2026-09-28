@@ -112,8 +112,8 @@ func (w *WorkshopManager) Project(ctx context.Context, pId string) (workshop.Pro
 	return projects[user][idx], nil
 }
 
-// Loads a workshop, the state must be locked as it is used to find out the
-// workshop state
+// Loads a workshop, the state must be locked (even if it is not currently
+// used) to facilitate future `workshop warnings`.
 func (w *WorkshopManager) Workshop(ctx context.Context, name, pId string) (*workshop.Workshop, error) {
 	// project-id must be in the context for this query
 	pCtx := context.WithValue(ctx, workshop.ContextProjectId, pId)
@@ -165,8 +165,8 @@ func (e *WorkshopFileError) Unwrap() error {
 	return e.err
 }
 
-// Returns all existing workshops for a project, the state must be
-// locked as it is used to find out the workshop state.
+// Loads all existing workshops for a project, the state must be locked (even
+// if it is not currently used) to facilitate future `workshop warnings`.
 func (w *WorkshopManager) Workshops(ctx context.Context, pId string) ([]*workshop.Workshop, error) {
 	// project-id must be in the context for this query
 	pCtx := context.WithValue(ctx, workshop.ContextProjectId, pId)

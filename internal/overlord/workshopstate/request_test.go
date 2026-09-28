@@ -92,7 +92,7 @@ func (s *requestSuite) TearDownTest(c *check.C) {
 }
 
 var workshopTemplate = `name: %s
-base: ubuntu@20.04
+base: ubuntu@24.04
 sdks:
   {{- range . }}
   - name: {{ .Name}}
@@ -101,7 +101,7 @@ sdks:
 `
 
 var sdkTemplate = `name: %s
-base: ubuntu@20.04
+base: ubuntu@24.04
 `
 
 func (s *requestSuite) importSdkVolume(c *check.C, meta sdk.Meta) {
@@ -132,8 +132,8 @@ func (s *requestSuite) launchWorkshopWithSDKs(c *check.C, ws string, sdks []work
 	err = os.WriteFile(path, workshopFile.Bytes(), 0644)
 	c.Assert(err, check.IsNil)
 
-	wf := workshop.File{Name: ws, Base: "ubuntu@20.04", Sdks: sdks}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	wf := workshop.File{Name: ws, Base: "ubuntu@24.04", Sdks: sdks}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	err = s.backend.LaunchOrRebuildWorkshop(s.ctx, &wf, snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -198,7 +198,7 @@ connections:
 	current := []workshopstate.Manifest{{
 		File:   &oldf,
 		Format: sdk.R(1),
-		Image:  workshop.BaseImage{Name: newf.Base, Fingerprint: "fakeimage123"},
+		Image:  workshop.BaseImage{Name: newf.Base, Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"},
 		Sdks: []sdk.Setup{{
 			Name:     "system",
 			Source:   sdk.SystemSource,
@@ -365,7 +365,7 @@ sdks:
 	err := yaml.Unmarshal([]byte(file), &wf)
 	c.Assert(err, check.IsNil)
 
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"}
 
 	uv := sdk.Setup{
 		Name:     "uv",
@@ -523,7 +523,7 @@ sdks:
 	err := yaml.Unmarshal([]byte(file), &wf)
 	c.Assert(err, check.IsNil)
 
-	image := workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "fakeimage123"}
+	image := workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"}
 
 	uv := sdk.Setup{
 		Name:     "uv",

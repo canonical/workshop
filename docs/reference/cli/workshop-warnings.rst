@@ -19,7 +19,6 @@ List warnings.
 
 .. rubric:: Description
 
-
 This command lists the warnings that were reported to the system.
 
 All warnings listed by "workshop warnings"
@@ -30,9 +29,7 @@ or the "--all" option is used.
 
 Also, warnings expire automatically; expired warnings are not listed.
 
-
 .. rubric:: Examples
-
 
 List the globally registered warnings across all workshops:
 
@@ -41,31 +38,25 @@ List the globally registered warnings across all workshops:
    $ workshop warnings
 
 
-
 .. rubric:: Flags
-
 
 --abs-time
 
    Use absolute times in RFC 3339 format.
    By default, relative times are used up to 60 days, then YYYY-MM-DD.
 
-
 --all
 
    Show all warnings, including the acknowledged ones.
-
 
 --unicode
 
    Use Unicode characters to improve legibility (auto|never|always).
    By default, Unicode is used only if the output supports it.
 
+   Default: ``auto``
 
 --verbose
 
    Show more information per each warning.
-
-
-
 

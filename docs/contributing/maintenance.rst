@@ -145,18 +145,25 @@ At every release, remember to:
 CLI reference generation
 ------------------------
 
-The :ref:`command-line reference <ref_workshop__cli>` for |ws_markup|
-is produced directly from the Cobra command tree:
+The :ref:`command-line references <ref_workshop__cli>` for |ws_markup|
+and the :program:`sdk` CLI are produced directly from the Cobra command trees
+into :file:`docs/reference/cli/`:
 
 .. code-block:: console
 
-   $ go run ./cmd/workshop generate-docs
+   $ go run ./cmd/workshop generate-docs ./docs/reference/cli
+   $ go run ./cmd/sdk generate-docs ./docs/reference/cli
 
-The helper in :file:`cmd/workshop/gendocs.go`
-uses the `Gencodo <https://github.com/canonical/gencodo>`_ Go module
-to convert the command metadata into :file:`*.rst` files with templates.
-In particular, this is used during the
-:ref:`release workflow <contributing_cicd>`.
+Without the directory argument, the files land in :file:`docs-gendocs/`,
+which is ignored by Git and not used by the documentation build.
+
+The helpers in :file:`cmd/workshop/gendocs.go` and :file:`cmd/sdk/gendocs.go`
+use the `Gencodo <https://github.com/canonical/gencodo>`_ Go module
+to convert the command metadata into :file:`*.rst` files
+with the templates in :file:`cmd/internal/doctemplates/`;
+a unit test there validates the templates against Gencodo.
+The :file:`generate-ref-docs.yaml` workflow regenerates the files
+on every push to ``main`` and opens a pull request if they changed.
 
 The :ref:`command-line reference <ref_sdkcraft__cli>` for |sdk_markup|
 can be generated in the |sdk_markup| repository.
@@ -202,6 +209,10 @@ Documentation workflows:
 
    * - :file:`fix-redirected-links.yml`
      - Update selected redirecting documentation links and open a pull request.
+
+   * - :file:`generate-ref-docs.yaml`
+     - Regenerate the CLI reference from the Cobra command trees
+       and open a pull request if it changed.
 
    * - :file:`markdown-style-checks.yml` (SP)
      - Lint Markdown documentation files.

@@ -15,8 +15,7 @@
 package main
 
 import (
-	"log"
-	"os"
+	"fmt"
 
 	"github.com/canonical/gencodo"
 	"github.com/spf13/cobra"
@@ -40,19 +39,10 @@ func (c *CmdDocs) Command() *cobra.Command {
 	return cmd
 }
 
-func filePrepender(filename string) string {
-	return ""
-}
-
 func (c *CmdDocs) Run(cmd *cobra.Command, av []string) error {
 	docDir := "docs-gendocs"
 	if len(av) > 0 {
 		docDir = av[0]
-	}
-
-	err := os.MkdirAll(docDir, os.ModePerm)
-	if err != nil {
-		log.Fatalf("failed to create docs directory: %v", err)
 	}
 
 	indexTemplate, err := doctemplates.ReadFile("sdk.rst")
@@ -74,10 +64,10 @@ func (c *CmdDocs) Run(cmd *cobra.Command, av []string) error {
 		c.root.Command(),
 		docDir,
 		td,
-		filePrepender,
+		nil,
 	)
 	if err != nil {
-		log.Fatalf("failed to generate documentation: %v", err)
+		return fmt.Errorf("failed to generate documentation: %w", err)
 	}
 	return nil
 }

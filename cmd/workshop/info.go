@@ -24,9 +24,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
+	"github.com/juju/ansiterm/tabwriter"
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
@@ -154,6 +154,7 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 		fmt.Fprintf(w, "hostname:\t%s\n", workshop.Hostname)
 	}
 	fmt.Fprintf(w, "status:\t%s\n", strings.ToLower(workshop.Status))
+	fmt.Fprintf(w, "runtime:\t%s\n", workshop.Runtime)
 
 	// get the workshop notes
 	notes := workshop.Notes

@@ -19,7 +19,6 @@ Connect a plug to a slot.
 
 .. rubric:: Description
 
-
 This command connects a plug to a target slot
 that is specified as the second argument or deduced from the context.
 
@@ -46,9 +45,7 @@ that is specified as the second argument or deduced from the context.
 
 - The "workshop connections" output will list the connection as "manual".
 
-
 .. rubric:: Examples
-
 
 Connect the "mod-cache" mount interface plug of the "go" SDK
 under the "nimble" workshop in the current project directory:
@@ -57,7 +54,6 @@ under the "nimble" workshop in the current project directory:
 
    $ workshop connect nimble/go:mod-cache :mount
 
-
 A full version of the command that also lists the target SDK ("system"):
 
 .. code-block:: console
@@ -65,14 +61,9 @@ A full version of the command that also lists the target SDK ("system"):
    $ workshop connect nimble/go:mod-cache nimble/system:mount
 
 
-
 .. rubric:: Flags
-
 
 --no-wait
 
    Return the change ID, don't wait for the operation to finish.
-
-
-
 

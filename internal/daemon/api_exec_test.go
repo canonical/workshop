@@ -28,7 +28,7 @@ import (
 )
 
 var wsYaml = `name: ws
-base: ubuntu@20.04
+base: ubuntu@24.04
 actions:
   lint: golangci-lint run
 `
@@ -40,8 +40,8 @@ func (s *apiSuite) setupExec(c *check.C) *Command {
 	s.vars = map[string]string{"id": s.project.ProjectId, "name": "ws"}
 	s.createWFile(c, "ws", wsYaml)
 
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04", Actions: map[string]workshop.Action{"lint": "\n\n\ngolangci-lint run\n"}}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04", Actions: map[string]workshop.Action{"lint": "\n\n\ngolangci-lint run\n"}}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 
 	err := s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)

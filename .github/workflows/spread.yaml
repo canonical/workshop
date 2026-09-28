@@ -1,9 +1,14 @@
 name: Workshop end-to-end tests
 on:
   workflow_call:
+    inputs:
+      lxd_channel:
+        description: LXD snap channel to use
+        type: string
+        default: 6/stable
     secrets:
       STORE_CREDENTIALS:
-        required: true
+        required: false
       SDKCRAFT_STORE_CREDENTIALS:
         required: true
   workflow_dispatch:
@@ -13,7 +18,7 @@ permissions:
 
 jobs:
   build-deps:
-    uses: ./.github/workflows/build-deps.yaml
+    uses: $/.github/workflows/build-deps.yaml
     secrets:
       SDKCRAFT_STORE_CREDENTIALS: ${{ secrets.SDKCRAFT_STORE_CREDENTIALS }}
   snap-tests:
@@ -111,7 +116,7 @@ jobs:
       - name: Install LXD
         uses: canonical/setup-lxd@8c6a87bfb56aa48f3fb9b830baa18562d8bfd4ee # v1
         with:
-          channel: 6/stable
+          channel: ${{ inputs.lxd_channel || '6/stable' }}
       - name: Cleanup job workspace
         run: |
           rm -rf "${{ github.workspace }}"
@@ -140,19 +145,35 @@ jobs:
         run: sudo chmod +x /usr/local/bin/spread
       - name: Set LXD storage size
         run: |
-          lxc storage set default volume.size=32GB
+          lxc profile device set default root size=64GiB
+      - name: Install zip
+        # Needed to workaround https://github.com/actions/upload-artifact/issues/546.
+        run: |
+          sudo apt-get --fix-missing update
+          sudo apt-get install -y zip
       - name: Run spread
         env:
           SUITE_PATHS: ${{ matrix.suite.paths }}
+          LXD_CHANNEL: ${{ inputs.lxd_channel || '6/stable' }}
+          ARTIFACTS: ${{ github.workspace }}.cover
+          ARTIFACT: ${{ github.workspace }}/code-coverage-${{ matrix.suite.name }}.zip
         run: |
-          mkdir ${{ github.workspace }}.cover
+          mkdir "$ARTIFACTS"
           read -r -a suite_paths <<< "$SUITE_PATHS"
-          spread -artifacts=${{ github.workspace }}.cover "${suite_paths[@]}"
+          spread -artifacts="$ARTIFACTS" "${suite_paths[@]}"
+
+          # Workaround https://github.com/actions/upload-artifact/issues/546
+          cd "$ARTIFACTS/lxd:ubuntu-24.04:tests" || exit 0
+          shopt -s dotglob nullglob
+          entries=(*)
+          [ "${#entries[@]}" -gt 0 ] || exit 0
+          rm -f "$ARTIFACT"
+          zip -r "$ARTIFACT" "${entries[@]}"
       - name: Upload Coverage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: code-coverage-${{ matrix.suite.name }}
-          path: ${{ github.workspace }}.cover/lxd:ubuntu-24.04:tests/
+          path: code-coverage-${{ matrix.suite.name }}.zip
+          archive: false
           if-no-files-found: ignore
   publish:
     needs: [build-deps, snap-tests]

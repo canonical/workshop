@@ -1,20 +1,56 @@
-summary: Test 'How to connect your local VS Code to a workshop' to ensure it's operational
+summary: Test 'How to develop in a workshop with VS Code' to ensure it's operational
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec refresh --abort dev || true
+  workshop_exec remove dev || true
+  rm -rf .workshop
 execute: |
   . "$TESTSLIB"/utils.sh
+  chown -R ubuntu:ubuntu .
 
-  # Launch the workshop with vscode-remote SDK
+  echo "The Add New Workshop wizard runs workshop init with the channel it recommends; the CLI form creates the same definition."
+  workshop_exec init dev --sdks go/1.27/stable | MATCH '"dev" workshop created at .*/\.workshop/dev\.yaml$'
+  test -f .workshop/dev.yaml
+  cat .workshop/dev.yaml | MATCH '^    channel: 1\.27/stable$'
+  workshop_exec list | MATCH '^dev[[:space:]]+Off'
 
-  workshop_exec launch
-  workshop_exec list
+  echo "Reopen in Workshop launches a definition-only workshop and connects to <WORKSHOP>.<PROJECT>.wp."
+  workshop_exec launch dev
+  workshop_exec info dev | yq -er '.hostname' | MATCH '^dev\..*\.wp$'
 
+  echo "The integrated terminal runs inside the workshop, where Go is available and the project is mounted at /project."
+  workshop_exec exec dev -- hostname | MATCH '^dev$'
+  workshop_exec exec dev -- go version | MATCH '^go version go1\.27'
+  workshop_exec exec dev -- pwd | MATCH '^/project$'
+  workshop_exec exec dev -- go vet ./...
 
-  # Verify workshop info contains the hostname used for SSH connection information
+  echo "Adding an SDK to the definition and refreshing makes it available."
+  printf '  - name: uv\n' >> .workshop/dev.yaml
+  workshop_exec refresh dev
+  workshop_exec exec dev -- uv --version | MATCH '^uv '
 
-  hostname="$(workshop_exec info dev | yq -er '.hostname')"
-  test -n "$hostname"
-  echo "$hostname" | MATCH '^dev\..*\.wp$'
+  echo "A misspelled SDK name is rejected before any change is made to the workshop."
+  sed -i 's/^  - name: go$/  - name: goo/' .workshop/dev.yaml
+  ! workshop_exec refresh dev
+  workshop_exec refresh dev 2>&1 | MATCH 'goo'
+  workshop_exec list | MATCH '^dev[[:space:]]+Ready'
+  sed -i 's/^  - name: goo$/  - name: go/' .workshop/dev.yaml
 
+  echo "A task failing during the refresh pauses it in --wait-on-error mode; --abort reverts it."
+  mkdir -p .workshop/broken/hooks
+  printf 'name: broken\nbase: ubuntu@24.04\nsummary: Simulates a failing SDK setup hook\n' > .workshop/broken/sdk.yaml
+  printf '#!/bin/sh\necho "E: Unable to locate package libfoo-dev" >&2\nexit 1\n' > .workshop/broken/hooks/setup-base
+  chmod +x .workshop/broken/hooks/setup-base
+  chown -R ubuntu:ubuntu .workshop
+  printf '  - name: project-broken\n' >> .workshop/dev.yaml
+  ! workshop_exec refresh --wait-on-error dev
+  workshop_exec list | MATCH '^dev[[:space:]]+Waiting'
+  workshop_exec refresh --abort dev
+  workshop_exec list | MATCH '^dev[[:space:]]+Ready'
+  sed -i '/project-broken/d' .workshop/dev.yaml
+  rm -rf .workshop/broken
 
-  # Clean up
-
-  workshop_exec remove
+  echo "Turn Off removes the container but keeps the definition."
+  workshop_exec remove dev
+  workshop_exec list | MATCH '^dev[[:space:]]+Off'
+  test -f .workshop/dev.yaml

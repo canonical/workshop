@@ -38,6 +38,9 @@ exclude = [
     # API endpoints that reject HEAD/GET (405 Method Not Allowed) but are valid references
     "^https://api\\.snapcraft\\.io/api/",
 
+    # GitHub release downloads intentionally redirect to short-lived signed asset URLs
+    "^https://github\\.com/ollama/ollama/releases/download/v0\\.9\\.6/ollama-linux-amd64\\.tgz$",
+
     # gnu.org blocks bot User-Agents with 403; valid references
     "^https://www\\.gnu\\.org/",
 

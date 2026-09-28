@@ -553,6 +553,7 @@ func (s *apiSuite) TestGetWorkshops(c *check.C) {
 	c.Check(info.Workshops, testutil.DeepUnsortedMatches, []*WorkshopInfo{{
 		Name:      "manysdks",
 		Base:      "ubuntu@24.04",
+		Runtime:   "lxd-container",
 		ProjectId: s.project.ProjectId,
 		Status:    "Ready",
 		Sdks: []*SdkInfo{
@@ -571,6 +572,7 @@ func (s *apiSuite) TestGetWorkshops(c *check.C) {
 	}, {
 		Name:      "basic",
 		Base:      "ubuntu@22.04",
+		Runtime:   "lxd-container",
 		ProjectId: s.project.ProjectId,
 		Status:    "Ready",
 		Sdks: []*SdkInfo{{
@@ -674,6 +676,7 @@ func (s *apiSuite) TestGetWorkshopInfo(c *check.C) {
 		WorkshopInfo: WorkshopInfo{
 			Name:      "tunnels",
 			Base:      "ubuntu@22.04",
+			Runtime:   "lxd-container",
 			ProjectId: s.project.ProjectId,
 			Status:    "Ready",
 			Notes:     nil,
@@ -826,6 +829,7 @@ func (s *apiSuite) TestGetWorkshopInfoSomePlugsBound(c *check.C) {
 		WorkshopInfo: WorkshopInfo{
 			Name:      "somebound",
 			Base:      "ubuntu@22.04",
+			Runtime:   "lxd-container",
 			ProjectId: s.project.ProjectId,
 			Status:    "Ready",
 			Notes:     nil,
@@ -1316,7 +1320,7 @@ var snapshotFormat []byte
 // Attempt to specify the filesystem layout of a workshop. Changes to this may
 // invalidate snapshots of existing workshops, so the snapshot format revision
 // number should be bumped to force a full refresh. LXD-specific format is
-// covered by `snapshotSuite.TestLxdBackendSnapshotFormat`. Currently checks
+// covered by `snapshotSuite.TestLxdBackendSnapshotFormat*`. Currently checks
 // all known factors which can influence a snapshot. Unknown factors are tested
 // below by `apiSuite.TestSnapshotIngredients`.
 func (s *apiSuite) TestSnapshotFormat(c *check.C) {
@@ -3790,8 +3794,8 @@ func (s *apiSuite) TestRefreshBaseUpdate(c *check.C) {
 	defer s.store.SetDownloadCallback(storeDownload(c))()
 
 	oldGetBase := s.b.GetBaseCallback
-	s.b.GetBaseCallback = func(ctx context.Context, base string) (workshop.BaseImage, error) {
-		return workshop.BaseImage{Name: base, Fingerprint: "oldimage123"}, nil
+	s.b.GetBaseCallback = func(ctx context.Context, base string, runtime workshop.Runtime) (workshop.BaseImage, error) {
+		return workshop.BaseImage{Name: base, Runtime: runtime, Fingerprint: "oldimage123"}, nil
 	}
 	defer func() { s.b.GetBaseCallback = oldGetBase }()
 
@@ -3810,7 +3814,7 @@ func (s *apiSuite) TestRefreshBaseUpdate(c *check.C) {
 
 	wp, err := s.b.Workshop(s.ctx, "manysdks")
 	c.Assert(err, check.IsNil)
-	c.Check(wp.Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "oldimage123"})
+	c.Check(wp.Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "oldimage123"})
 
 	requests = []*bytes.Buffer{
 		bytes.NewBufferString(`{"names":["manysdks"],"action":"refresh"}`),
@@ -3824,15 +3828,15 @@ func (s *apiSuite) TestRefreshBaseUpdate(c *check.C) {
 		},
 	}
 
-	s.b.GetBaseCallback = func(ctx context.Context, base string) (workshop.BaseImage, error) {
-		return workshop.BaseImage{Name: base, Fingerprint: "newimage321"}, nil
+	s.b.GetBaseCallback = func(ctx context.Context, base string, runtime workshop.Runtime) (workshop.BaseImage, error) {
+		return workshop.BaseImage{Name: base, Runtime: runtime, Fingerprint: "newimage321"}, nil
 	}
 
 	s.runActionTest(c, requests, expected)
 
 	wp, err = s.b.Workshop(s.ctx, "manysdks")
 	c.Assert(err, check.IsNil)
-	c.Check(wp.Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Fingerprint: "newimage321"})
+	c.Check(wp.Image, check.Equals, workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "newimage321"})
 
 	want := []expectedWorkshop{{
 		name: "manysdks",

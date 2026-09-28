@@ -19,21 +19,19 @@ Create a new workshop definition in the project directory.
 
 .. rubric:: Description
 
-
 Create a new workshop definition file in the project's .workshop/ directory.
 
 The NAME argument sets the workshop name. The command creates a named
 workshop file at .workshop/<NAME>.yaml. This fails if a workshop with
 the same name already exists.
 
-The supported bases are ubuntu@20.04, ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
+The supported bases are ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
+The supported runtimes are lxd-container (the default) and lxd-vm.
 
 SDKs are specified as a comma-separated list. Each SDK entry can optionally
 include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.26/stable").
 
-
 .. rubric:: Examples
-
 
 Create a workshop called "dev" with the Go and UV SDKs:
 
@@ -41,13 +39,11 @@ Create a workshop called "dev" with the Go and UV SDKs:
 
    $ workshop init dev --sdks go,uv
 
-
 Create a workshop with a specific SDK channel:
 
 .. code-block:: console
 
    $ workshop init dev --sdks go/1.26/stable
-
 
 Create a workshop using a specific base:
 
@@ -56,19 +52,21 @@ Create a workshop using a specific base:
    $ workshop init dev --base ubuntu@22.04 --sdks go
 
 
-
 .. rubric:: Flags
-
 
 --base
 
    Base image for the workshop.
 
+   Default: ``ubuntu@24.04``
+
+--runtime
+
+   Sandbox technology to use.
+
+   Default: ``lxd-container``
 
 --sdks
 
    Comma-separated list of SDKs (e.g., "go,uv/latest/stable").
-
-
-
 

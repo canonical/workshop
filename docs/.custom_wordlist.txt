@@ -152,6 +152,7 @@ preexisting
 prepackaged
 prerelease
 presketching
+PRs
 PYTHONHOME
 QPA
 readme

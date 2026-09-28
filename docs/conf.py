@@ -85,7 +85,7 @@ templates_path = ["_templates"]
 html_css_files = [
     "workshop.css",
     "flat-toctree.css",
-    "category-nav.css",
+    # "category-nav.css",  # category_nav extension disabled on this branch
     "cookie-banner.css",
 ]
 
@@ -168,7 +168,9 @@ extensions = [
     "sphinxcontrib.cairosvgconverter",
     "sphinx_sitemap",
     "flat_toctree",
-    "category_nav",
+    "sphinx_structured_toc",
+    "structured_toc",
+    # "category_nav",  # disabled on this branch; extension kept in _extensions/
 ]
 
 exclude_patterns = [

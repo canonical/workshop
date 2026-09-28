@@ -19,7 +19,6 @@ Start an interactive terminal session for the workshop.
 
 .. rubric:: Description
 
-
 The "shell" subcommand runs an interactive terminal session
 in the specified workshop.
 
@@ -34,9 +33,7 @@ Notes:
   it launches the login shell for "workshop",
   the default non-privileged user in a workshop.
 
-
 .. rubric:: Examples
-
 
 Open the default login shell of the "workshop" user into the "nimble" workshop
 in the current project directory:
@@ -45,13 +42,9 @@ in the current project directory:
 
    $ workshop shell nimble
 
-
 The name is optional if the project has only one workshop:
 
 .. code-block:: console
 
    $ workshop shell
-
-
-
 

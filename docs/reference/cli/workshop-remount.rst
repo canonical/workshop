@@ -19,7 +19,6 @@ Mount a new source location to the mount interface plug's target.
 
 .. rubric:: Description
 
-
 This command mounts a new source location on the host to the target directory
 of the specified mount interface plug, qualified by the SDK name.
 Specifically, it does the following:
@@ -43,9 +42,7 @@ Notes:
 - During "workshop remove",
   non-default sources set by "workshop remount" aren't removed.
 
-
 .. rubric:: Examples
-
 
 Remount the "mod-cache" mount interface plug of the "go" SDK
 under the "nimble" workshop in the current project directory
@@ -56,14 +53,9 @@ to "~/new-cache-mount/" on the host:
    $ workshop remount nimble/go:mod-cache ~/new-cache-mount
 
 
-
 .. rubric:: Flags
-
 
 --no-wait
 
    Return the change ID, don't wait for the operation to finish.
-
-
-
 

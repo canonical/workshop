@@ -154,7 +154,9 @@ Currently, |ws_markup| and |sdk_markup| support the following interface plugs:
 - :ref:`Tunnel <ref_tunnel_interface>`
 
 
-Slots can only be defined for the :samp:`mount` interface.
+Regular SDKs can define slots only for the :samp:`mount` and :samp:`tunnel` interfaces.
+Slots for the other interfaces are built into the :samp:`system` SDK
+and cannot be added to it under another name.
 
 .. _ref_camera_interface:
 

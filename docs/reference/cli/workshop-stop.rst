@@ -19,7 +19,6 @@ Stop one or many workshops.
 
 .. rubric:: Description
 
-
 This command deactivates the workshops listed as arguments. For each one, it:
 
 - Makes sure the workshop was actually started or is already stopped
@@ -39,9 +38,7 @@ Notes:
 
 - To start a stopped workshop, use "workshop start".
 
-
 .. rubric:: Examples
-
 
 Stop the "nimble" and "jazzy" workshops in the current project directory:
 
@@ -49,13 +46,9 @@ Stop the "nimble" and "jazzy" workshops in the current project directory:
 
    $ workshop stop nimble jazzy
 
-
 The name is optional if the project has only one workshop:
 
 .. code-block:: console
 
    $ workshop stop
-
-
-
 

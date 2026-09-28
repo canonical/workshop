@@ -58,13 +58,13 @@ func (s *SdkSuite) TestSourceMarshalUnmarshal(c *check.C) {
 
 func (s *SdkSuite) TestSimple(c *check.C) {
 	var mockYaml = []byte(`name: sdk
-base: ubuntu@20.04
+base: ubuntu@24.04
 `)
 
 	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
 	c.Assert(err, check.IsNil)
 	c.Assert(info.ProjectId, check.Equals, s.projectId)
-	c.Assert(info.Base, check.Equals, "ubuntu@20.04")
+	c.Assert(info.Base, check.Equals, "ubuntu@24.04")
 	c.Assert(info.Name, check.Equals, "sdk")
 	c.Assert(info.Workshop, check.Equals, "ws")
 	c.Assert(info.Plugs, check.HasLen, 0)
@@ -73,7 +73,7 @@ base: ubuntu@20.04
 
 func (s *SdkSuite) TestMinimalisticPlug(c *check.C) {
 	var mockYaml = []byte(`name: sdk
-base: ubuntu@20.04
+base: ubuntu@24.04
 plugs:
   training:
     interface: mount
@@ -94,7 +94,7 @@ plugs:
 
 func (s *SdkSuite) TestMinimalisticSlot(c *check.C) {
 	var mockYaml = []byte(`name: sdk
-base: ubuntu@20.04
+base: ubuntu@24.04
 slots:
   training:
     interface: mount
@@ -507,7 +507,7 @@ slots:
 
 func (s *SdkSuite) TestAddingWorkshopSlotOK(c *check.C) {
 	var mockYaml = []byte(`name: sdk
-base: ubuntu@20.04
+base: ubuntu@24.04
 slots:
   training:
     interface: mount
@@ -544,7 +544,7 @@ slots:
 
 func (s *SdkSuite) TestAddingAlreadyExistingSlotFails(c *check.C) {
 	var mockYaml = []byte(`name: sdk
-base: ubuntu@20.04
+base: ubuntu@24.04
 slots:
   training:
     interface: mount
@@ -572,7 +572,7 @@ slots:
 
 func (s *SdkSuite) TestAddingAlreadyExistingPlugFails(c *check.C) {
 	var mockYaml = []byte(`name: sdk
-base: ubuntu@20.04
+base: ubuntu@24.04
 plugs:
   training:
     interface: mount

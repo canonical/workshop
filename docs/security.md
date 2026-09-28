@@ -2,6 +2,8 @@
 
 This is an overview of security considerations for Workshop and SDKcraft.
 
+(security_privileges)=
+
 ## Privileges
 
 Workshop has a client-server architecture; its CLI, which is the contact surface
@@ -18,6 +20,8 @@ installed, and run as a snap; it neither needs nor requires elevated privileges
 to work and securely confines the SDK build process to a container.
 
 Packaged SDKs are uploaded to the SDK Store.
+
+(security_isolation)=
 
 ## Isolation
 
@@ -53,6 +57,8 @@ manager](https://snapcraft.io/docs/interface-management/):
   publishers and users to request only the necessary permissions, reducing the
   attack surface.
 
+(security_risks)=
+
 ## Risks
 
 Although safeguards are in place, the security of a workshop or an SDK largely
@@ -75,13 +81,15 @@ concerns.
 Use the latest releases of Workshop and SDKcraft from GitHub; older releases may
 have known bugs or be incompatible with latest changes.
 
+(security_reporting)=
+
 ## Reporting a vulnerability
 
 The easiest way to report a security issue is through GitHub, filing a private
 security report with a description of the issue, affected versions, the steps to
 reproduce the issue, and, if known, ways of mitigating it. See [Privately
 reporting a security
-vulnerability](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/privately-reporting-a-security-vulnerability)
+vulnerability](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/report-privately)
 for instructions.
 
 Our GitHub admins will be notified of the issue and will work with you to

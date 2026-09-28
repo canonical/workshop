@@ -47,7 +47,7 @@ func (s *sdkSuite) TestFind(c *check.C) {
 		Revision:   "85",
 		ReleasedAt: &d1,
 		Version:    "2.1-084c8c8",
-		Base:       "ubuntu@20.04",
+		Base:       "ubuntu@24.04",
 		Arch:       "amd64",
 	}, {
 		Name:        "openvino-notebooks",

@@ -19,7 +19,6 @@ List project workshops.
 
 .. rubric:: Description
 
-
 This command enumerates all workshops in the project, printing a compact list:
 
 - Project:  Absolute pathname of the project where this workshop belongs
@@ -39,16 +38,13 @@ Notes:
 
 - For details of a single workshop, use "workshop info" instead.
 
-
 .. rubric:: Examples
-
 
 List the workshops in the current project directory:
 
 .. code-block:: console
 
    $ workshop list
-
 
 List the globally registered workshops:
 
@@ -57,19 +53,13 @@ List the globally registered workshops:
    $ workshop list --global
 
 
-
 .. rubric:: Flags
-
 
 --global
 
    List workshops from all projects in the system.
 
-
 --no-headers
 
    Hide table headers.
-
-
-
 

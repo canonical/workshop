@@ -1,6 +1,15 @@
 summary: Check workshop stop
+
+environment:
+  RUNTIME/ctr: lxd-container
+  RUNTIME/vm: lxd-vm
+
 prepare: |  
   . "$TESTSLIB"/utils.sh
+  envsubst '${RUNTIME}' < workshop.yaml.in > workshop.yaml
+  # TODO: remove the next line once VMs support SDKs
+  [ "${RUNTIME}" = lxd-container ] || (head --lines=-2 workshop.yaml | sponge workshop.yaml)
+  chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch
 restore: |
   . "$TESTSLIB"/utils.sh

@@ -24,9 +24,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/canonical/workshop/client"
+	"github.com/canonical/workshop/cmd/internal/cmdutil"
 )
 
 type CmdTasks struct {
+	cmdutil.ColorMixin
 	root      *CmdRoot
 	noHeaders bool
 }
@@ -126,7 +128,8 @@ func (c *CmdTasks) Run(cmd *cobra.Command, av []string) error {
 	}
 	w := tabWriter()
 	if !c.noHeaders {
-		fmt.Fprintf(w, "STATUS\t%*s\tSUMMARY\n", maxDur, "DURATION")
+		esc := c.GetEscapes()
+		fmt.Fprintf(w, "%sSTATUS\t%*s\tSUMMARY%s\n", esc.Bold, maxDur, "DURATION", esc.End)
 	}
 	for _, tsk := range tasks {
 		duration := tsk.DoingTime.Round(time.Millisecond).String()

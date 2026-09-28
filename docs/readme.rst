@@ -1,16 +1,26 @@
 Workshop
 ========
 
-**Secure, fast, and composable development environments that come agent-ready.**
+**Ubuntu-native development environments: secure, fast, composable, and agent-ready.**
 
 Workshop wraps complex, error-prone workspaces
 into reproducible definitions of languages, libraries, and tooling.
 
-- **Composable**: definitions are built from SDKs, independent units of
-  functionality that publishers share on the SDK Store.
-- **Transactional**: environment updates apply as changes you can inspect and restore.
-- **Sandboxed**: experiment freely and tear down without leftover state.
-- **System container**: Unlike an app container, it behaves like a small Ubuntu system with users, packages, networking, and systemd services. Ideal for a devenv.
+Capture your development environment in a single ``workshop.yaml``,
+then launch it on an Ubuntu or WSL host with one command: ``workshop launch``.
+
+Built by Canonical on LXD system containers,
+Workshop brings Ubuntu's familiar tools and services
+into your project's development workflow.
+
+- **Composable**: build definitions from SDKs, independent units of functionality
+  available from the SDK Store or defined as sketches in your repository.
+- **Transactional**: environment updates apply as changes you can inspect,
+  with automatic rollback on failure by default.
+- **Sandboxed**: experiment inside a container and control its access
+  to host resources through interfaces.
+- **System containers**: work with Ubuntu users, packages, networking,
+  and systemd services inside your development environment.
 
 
 Installation

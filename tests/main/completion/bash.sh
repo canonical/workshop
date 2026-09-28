@@ -32,6 +32,11 @@ echo "Test launch completion"
 do_complete workshop launch o
 [ "$COMPREPLY" = off ]
 
+echo "Test exec --env completion"
+export OBSCURE_ENVIRONMENT_VARIABLE_WITH_NO_SHARED_PREFIX=1
+do_complete workshop exec --env OBSCURE_ENVIRONMENT_VARIABLE_WITH_NO_SHARED_PR
+[ "$COMPREPLY" = 'OBSCURE_ENVIRONMENT_VARIABLE_WITH_NO_SHARED_PREFIX' ]
+
 echo "Test connect completion"
 do_complete workshop connect w
 [ "$COMPREPLY" = 'ws-comp/test-sdk-desktop:desktop' ]

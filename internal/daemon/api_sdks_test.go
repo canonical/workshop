@@ -236,7 +236,7 @@ func (s *apiSuite) TestFindSdksOk(c *check.C) {
 					Risk:  "stable",
 					Platform: transport.Platform{
 						Name:         "ubuntu",
-						Channel:      "20.04",
+						Channel:      "24.04",
 						Architecture: "amd64",
 					},
 					ReleasedAt: (*timeutil.TimeUTC)(&stableReleased),
@@ -306,7 +306,7 @@ func (s *apiSuite) TestFindSdksOk(c *check.C) {
 		Revision:   "85",
 		ReleasedAt: &stableReleased,
 		Version:    "2.1-084c8c8",
-		Base:       "ubuntu@20.04",
+		Base:       "ubuntu@24.04",
 		Arch:       "amd64",
 	}, {
 		Name:        "openvino-notebooks",
@@ -398,7 +398,7 @@ func (s *apiSuite) TestSdkInfoGetOk(c *check.C) {
 					Risk:  "stable",
 					Platform: transport.Platform{
 						Name:         "ubuntu",
-						Channel:      "20.04",
+						Channel:      "24.04",
 						Architecture: "amd64",
 					},
 					ReleasedAt: (*timeutil.TimeUTC)(&stableReleased),
@@ -417,7 +417,7 @@ func (s *apiSuite) TestSdkInfoGetOk(c *check.C) {
 					Risk:  "edge",
 					Platform: transport.Platform{
 						Name:         "ubuntu",
-						Channel:      "20.04",
+						Channel:      "24.04",
 						Architecture: "amd64",
 					},
 					ReleasedAt: (*timeutil.TimeUTC)(&edgeReleased),
@@ -435,15 +435,15 @@ func (s *apiSuite) TestSdkInfoGetOk(c *check.C) {
 	defer restore()
 
 	// Create two workshops in the same project.
-	s.createWFile(c, "nav2", "name: nav2\nbase: ubuntu@20.04\n")
-	s.createWFile(c, "lerobot", "name: lerobot\nbase: ubuntu@20.04\n")
+	s.createWFile(c, "nav2", "name: nav2\nbase: ubuntu@24.04\n")
+	s.createWFile(c, "lerobot", "name: lerobot\nbase: ubuntu@24.04\n")
 
-	wf := &workshop.File{Name: "nav2", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	wf := &workshop.File{Name: "nav2", Base: "ubuntu@24.04"}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
 
-	wf = &workshop.File{Name: "lerobot", Base: "ubuntu@20.04"}
-	snapshot = workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	wf = &workshop.File{Name: "lerobot", Base: "ubuntu@24.04"}
+	snapshot = workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
 
 	// Add SDK setups with channels so the endpoint can report channels.
@@ -522,7 +522,7 @@ sdkcraft-started-at: 2024-11-25T00:00:00+00:00
 		UploadedAt:   &stableUploaded,
 		ReleasedAt:   &stableReleased,
 		Version:      "2.1-084c8c8",
-		Base:         "ubuntu@20.04",
+		Base:         "ubuntu@24.04",
 		Arch:         "amd64",
 		DownloadSize: 1234,
 	}, {
@@ -534,7 +534,7 @@ sdkcraft-started-at: 2024-11-25T00:00:00+00:00
 		UploadedAt:   &edgeUploaded,
 		ReleasedAt:   &edgeReleased,
 		Version:      "2.0",
-		Base:         "ubuntu@20.04",
+		Base:         "ubuntu@24.04",
 		Arch:         "amd64",
 		DownloadSize: 4321,
 	}})
@@ -600,7 +600,7 @@ func (s *apiSuite) TestSdkInfoStoreOnly(c *check.C) {
 					Risk:  "stable",
 					Platform: transport.Platform{
 						Name:         "ubuntu",
-						Channel:      "20.04",
+						Channel:      "24.04",
 						Architecture: "amd64",
 					},
 					ReleasedAt: (*timeutil.TimeUTC)(&stableReleased),
@@ -654,7 +654,7 @@ func (s *apiSuite) TestSdkInfoStoreOnly(c *check.C) {
 		UploadedAt:   &stableUploaded,
 		ReleasedAt:   &stableReleased,
 		Version:      "2.1-084c8c8",
-		Base:         "ubuntu@20.04",
+		Base:         "ubuntu@24.04",
 		Arch:         "amd64",
 		DownloadSize: 1234,
 	}})
@@ -665,9 +665,9 @@ func (s *apiSuite) TestSdkInfoStoreOnly(c *check.C) {
 func (s *apiSuite) TestSdkInfoLocalOnly(c *check.C) {
 	s.daemon(c)
 
-	s.createWFile(c, "nav2", "name: nav2\nbase: ubuntu@20.04\n")
-	wf := &workshop.File{Name: "nav2", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	s.createWFile(c, "nav2", "name: nav2\nbase: ubuntu@24.04\n")
+	wf := &workshop.File{Name: "nav2", Base: "ubuntu@24.04"}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
 
 	// Add SDK setup with channels so the endpoint can report channels.
@@ -768,7 +768,7 @@ func (s *apiSuite) TestSdkInfoInvalidStoreMetadata(c *check.C) {
 					Risk:  "stable",
 					Platform: transport.Platform{
 						Name:         "ubuntu",
-						Channel:      "20.04",
+						Channel:      "24.04",
 						Architecture: "amd64",
 					},
 					ReleasedAt: (*timeutil.TimeUTC)(&stableReleased),
@@ -796,9 +796,9 @@ func (s *apiSuite) TestSdkInfoInvalidStoreMetadata(c *check.C) {
 func (s *apiSuite) TestSdkInfoGetInvalidLocalMetadata(c *check.C) {
 	s.daemon(c)
 
-	s.createWFile(c, "ws", "name: ws\nbase: ubuntu@20.04\n")
-	wf := &workshop.File{Name: "ws", Base: "ubuntu@20.04"}
-	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, "fakeimage123")
+	s.createWFile(c, "ws", "name: ws\nbase: ubuntu@24.04\n")
+	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04"}
+	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	c.Assert(s.b.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot), check.IsNil)
 
 	meta := sdk.Meta{

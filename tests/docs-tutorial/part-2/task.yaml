@@ -12,7 +12,6 @@ execute: |
   cd ollama-python-project/
   workshop_exec init dev --sdks ollama/vulkan/stable --base ubuntu@24.04
   workshop_exec launch
-  lxc storage set workshop size=20GB
 
   # ----------------------------------------------------------------------------
 

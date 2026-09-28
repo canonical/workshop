@@ -19,12 +19,9 @@ List the named actions defined in a workshop.
 
 .. rubric:: Description
 
-
 This command enumerates all actions in the workshop, printing a YAML map.
 
-
 .. rubric:: Examples
-
 
 List actions for the "nimble" workshop in the current project directory:
 
@@ -32,13 +29,9 @@ List actions for the "nimble" workshop in the current project directory:
 
    $ workshop actions nimble
 
-
 The name is optional if the project has only one workshop:
 
 .. code-block:: console
 
    $ workshop actions
-
-
-
 

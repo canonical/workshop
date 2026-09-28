@@ -13,14 +13,15 @@ to running version control and CI/CD pipelines inside a workshop.
 Use IDEs and editors
 --------------------
 
-You can connect a locally installed IDE to a workshop over SSH,
+You can develop inside a workshop from VS Code with the Workshop extension,
+connect another locally installed IDE to a workshop over SSH,
 or run an editor or notebook environment directly inside your workshop
 and access it in your browser:
 
 .. toctree::
    :maxdepth: 1
 
-   Connect VS Code to a workshop <connect-vscode>
+   Develop in a workshop with VS Code <connect-vscode>
    Run JetBrains Gateway in a workshop <run-jetbrains-gateway>
    Run JupyterLab in your browser <run-jupyterlab-in-browser>
 

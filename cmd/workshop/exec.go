@@ -33,6 +33,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/client"
+	"github.com/canonical/workshop/cmd/internal/cmdutil"
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/ptyutil"
@@ -213,6 +214,7 @@ $ workshop exec sh`,
 	cmd.Flags().SortFlags = false
 	cmd.Flags().SetInterspersed(false)
 	commonVars(cmd.Flags(), &c.flags)
+	_ = cmd.RegisterFlagCompletionFunc("env", cmdutil.CompleteEnv)
 
 	return cmd
 }
@@ -313,6 +315,7 @@ $ workshop run dev -- tests -run TestFoo ./pkg/...`,
 	cmd.Flags().SortFlags = false
 	cmd.Flags().SetInterspersed(false)
 	commonVars(cmd.Flags(), &c.flags)
+	_ = cmd.RegisterFlagCompletionFunc("env", cmdutil.CompleteEnv)
 
 	return cmd
 }

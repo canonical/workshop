@@ -99,7 +99,7 @@ and writes the corresponding files into the template
 once you approve it.
 
 #. Install the skill for your agent;
-   see :ref:`ref_ai_design_sdk_skill`.
+   see :ref:`ref_ai_skills`.
 
 #. Aim the agent at the new repository.
 

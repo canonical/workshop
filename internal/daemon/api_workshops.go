@@ -109,6 +109,7 @@ type WorkshopInfo struct {
 	ProjectId string     `json:"project-id"`
 	Name      string     `json:"name"`
 	Base      string     `json:"base"`
+	Runtime   string     `json:"runtime"`
 	Status    string     `json:"status"`
 	Sdks      []*SdkInfo `json:"sdks,omitempty"`
 	Hostname  string     `json:"hostname,omitempty"`
@@ -202,6 +203,12 @@ func workshopToInfo(username string, w *workshop.Workshop, health healthstate.He
 	info.ProjectId = w.Project.ProjectId
 	info.Base = w.File.Base
 
+	runtime, err := w.File.Runtime.MarshalText()
+	if err != nil {
+		return nil, err
+	}
+	info.Runtime = string(runtime)
+
 	sdkSetups := w.SdksByInstallOrder()
 
 	usr, env, err := osutil.UserAndEnv(username)
@@ -254,6 +261,12 @@ func workshopToInfoFull(ctx context.Context, username string, w *workshop.Worksh
 	info.Name = w.Name
 	info.ProjectId = w.Project.ProjectId
 	info.Base = w.File.Base
+
+	runtime, err := w.File.Runtime.MarshalText()
+	if err != nil {
+		return nil, err
+	}
+	info.Runtime = string(runtime)
 
 	sdks, err := w.SdkInfosByInstallOrder(ctx)
 	if err != nil {

@@ -19,7 +19,6 @@ Show SDK info.
 
 .. rubric:: Description
 
-
 Prints the SDK's metadata,
 shows the revisions currently available in the SDK Store,
 and lists workshops where the SDK is installed.
@@ -30,9 +29,7 @@ Notes:
 - For an overview of SDK volumes, use "sdk list".
 - For per-workshop information, use "workshop info".
 
-
 .. rubric:: Examples
-
 
 Show metadata, Store channels, and local installations for the "openvino" SDK:
 
@@ -40,13 +37,11 @@ Show metadata, Store channels, and local installations for the "openvino" SDK:
 
    $ sdk info openvino
 
-
 Restrict the Store channels to a specific base:
 
 .. code-block:: console
 
    $ sdk info openvino --base ubuntu@24.04
-
 
 Show the channels for every supported architecture:
 
@@ -55,19 +50,13 @@ Show the channels for every supported architecture:
    $ sdk info openvino --arch all
 
 
-
 .. rubric:: Flags
-
 
 --arch
 
    Show SDKs compatible with a different architecture (or "all").
 
-
 --base
 
    Show SDKs compatible with a specific base.
-
-
-
 
