@@ -1428,6 +1428,13 @@ func (s *apiSuite) TestConnectFailureOnConflict(c *check.C) {
 	c.Check(body, check.DeepEquals, map[string]any{
 		"result": map[string]any{
 			"message": `cannot connect "producer-ws/producer:slot": workshop "producer-ws" has "conflict" change in progress`,
+			"kind":    "change-conflict",
+			"value": map[string]any{
+				"change-id":   chg.ID(),
+				"change-kind": "conflict",
+				"project-id":  "b8639dea",
+				"workshop":    "producer-ws",
+			},
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
@@ -1972,6 +1979,13 @@ func (s *apiSuite) TestDisconnectFailureOnConflict(c *check.C) {
 	c.Check(body, check.DeepEquals, map[string]any{
 		"result": map[string]any{
 			"message": `cannot disconnect "consumer-ws/consumer:plug": workshop "consumer-ws" has "conflict" change in progress`,
+			"kind":    "change-conflict",
+			"value": map[string]any{
+				"change-id":   chg.ID(),
+				"change-kind": "conflict",
+				"project-id":  "b8639dea",
+				"workshop":    "consumer-ws",
+			},
 		},
 		"status":      "Bad Request",
 		"status-code": 400.0,
