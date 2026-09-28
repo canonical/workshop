@@ -50,6 +50,10 @@ const (
 	// [errors.Is].
 	ErrorPlugNotConnected = ConstError("plug not connected")
 
+	// ErrorSecretMultipleMatches signals that a lookup matches more than one
+	// secret and cannot safely select a value. Match it with [errors.Is].
+	ErrorSecretMultipleMatches = ConstError("multiple secrets match the request")
+
 	// ErrorSecretNotFound signals that a requested secret does not exist or
 	// matches no entries in the secret provider. Match it with [errors.Is].
 	ErrorSecretNotFound = ConstError("secret not found")
@@ -95,6 +99,14 @@ func (e *Error) Is(target error) bool {
 	switch target {
 	case ErrorNoWaitingChange:
 		return e.Kind == ErrorKindNoWaitingChange
+	case ErrorPlugNotConnected:
+		return e.Kind == ErrorKindPlugNotConnected
+	case ErrorSecretMultipleMatches:
+		return e.Kind == ErrorKindSecretMultipleMatches
+	case ErrorSecretNotFound:
+		return e.Kind == ErrorKindSecretNotFound
+	case ErrorSecretProviderLocked:
+		return e.Kind == ErrorKindSecretProviderLocked
 	default:
 		return false
 	}
