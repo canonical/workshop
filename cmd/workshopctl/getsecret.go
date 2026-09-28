@@ -41,13 +41,21 @@ type systemdSecretRequest struct {
 }
 
 const (
+	// exitCodePlugNotConnected indicates an ordinary get-secret request has
+	// no connected slot from which to retrieve a secret.
+	exitCodePlugNotConnected = 3
+
 	// exitCodeProviderLocked indicates the secret provider is locked and
 	// the secret cannot be accessed until it is unlocked.
 	exitCodeProviderLocked = 2
 
-	// exitCodeSecretError indicates the requested secret does not exist or
-	// matches no entries in the secret provider.
+	// exitCodeSecretError indicates the requested secret is missing or
+	// cannot be selected because multiple entries match.
 	exitCodeSecretError = 1
+
+	// exitCodeSecretNotFound indicates an ordinary get-secret request could
+	// not find the configured secret.
+	exitCodeSecretNotFound = 2
 
 	// exitCodeSecretSystemError indicates an internal infrastructure error,
 	// such as the secret provider being unavailable.
@@ -88,6 +96,7 @@ func interceptGetSecret(
 ) (workshopctlRequest, error) {
 	args := req.Args[1:]
 	if len(args) != 1 || args[0] != "--systemd" {
+		req.responseHandler = handleSecretResponse(stdout, stderr)
 		return req, nil
 	}
 
@@ -115,6 +124,27 @@ func interceptGetSecret(
 	return req, nil
 }
 
+// handleSecretResponse distinguishes missing secrets and unconnected plugs
+// for ordinary get-secret callers. Output and other failures retain the
+// default workshopctl response behaviour.
+func handleSecretResponse(
+	stdout, stderr io.Writer,
+) func([]byte, []byte, error) int {
+	defaultHandler := defaultResponseHandler(stdout, stderr)
+	return func(responseStdout, responseStderr []byte, err error) int {
+		switch {
+		case errors.Is(err, client.ErrorSecretNotFound):
+			fmt.Fprintf(stderr, "error: %s\n", err)
+			return exitCodeSecretNotFound
+		case errors.Is(err, client.ErrorPlugNotConnected):
+			fmt.Fprintf(stderr, "error: %s\n", err)
+			return exitCodePlugNotConnected
+		default:
+			return defaultHandler(responseStdout, responseStderr, err)
+		}
+	}
+}
+
 // handleSystemdSecretResponse returns the response handler for a get-secret
 // request made on behalf of a systemd LoadCredential connection. The
 // returned handler produces the process exit code, using the requested
@@ -131,6 +161,13 @@ func handleSystemdSecretResponse(
 			// An unconnected plug is not an error: systemd receives a
 			// zero-byte credential and the unit handles the missing value.
 			return 0
+		case errors.Is(err, client.ErrorSecretMultipleMatches):
+			fmt.Fprintf(
+				stderr,
+				"error: multiple secrets match credential %q\n",
+				credential,
+			)
+			return exitCodeSecretError
 		case errors.Is(err, client.ErrorSecretNotFound):
 			fmt.Fprintf(
 				stderr, "error: credential %q not found\n", credential)

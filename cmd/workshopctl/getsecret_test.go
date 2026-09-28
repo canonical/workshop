@@ -32,6 +32,85 @@ type getSecretSuite struct{}
 
 var _ = check.Suite(&getSecretSuite{})
 
+// TestHandleSecretResponse checks that ordinary requests preserve stdout
+// and stderr on success.
+func (s *getSecretSuite) TestHandleSecretResponse(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	handler := handleSecretResponse(&stdout, &stderr)
+
+	exitCode := handler([]byte("secret-value"), []byte("diagnostic"), nil)
+
+	c.Check(exitCode, check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "secret-value")
+	c.Check(stderr.String(), check.Equals, "diagnostic")
+}
+
+// TestHandleSecretResponseError checks that other failures retain the
+// default diagnostic and exit code 1.
+func (s *getSecretSuite) TestHandleSecretResponseError(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	handler := handleSecretResponse(&stdout, &stderr)
+
+	exitCode := handler(nil, nil, errors.New("daemon unavailable"))
+
+	c.Check(exitCode, check.Equals, 1)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: daemon unavailable\n")
+}
+
+// TestHandleSecretResponsePlugNotConnected checks that an unconnected plug
+// returns exit code 3 without emitting a secret.
+func (s *getSecretSuite) TestHandleSecretResponsePlugNotConnected(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	handler := handleSecretResponse(&stdout, &stderr)
+	err := &client.Error{
+		Kind:    client.ErrorKindPlugNotConnected,
+		Message: "plug not connected",
+	}
+
+	exitCode := handler(nil, nil, err)
+
+	c.Check(exitCode, check.Equals, 3)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: plug not connected\n")
+}
+
+// TestHandleSecretResponseSecretNotFound checks that a missing secret
+// returns exit code 2, including when the API error is wrapped.
+func (s *getSecretSuite) TestHandleSecretResponseSecretNotFound(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	handler := handleSecretResponse(&stdout, &stderr)
+	err := fmt.Errorf("lookup: %w", &client.Error{
+		Kind:    client.ErrorKindSecretNotFound,
+		Message: "secret not found",
+	})
+
+	exitCode := handler(nil, nil, err)
+
+	c.Check(exitCode, check.Equals, 2)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: lookup: secret not found\n")
+}
+
+// TestInterceptGetSecretInstallsHandler checks that ordinary get-secret
+// requests use the secret-specific exit codes rather than the default ones.
+func (s *getSecretSuite) TestInterceptGetSecretInstallsHandler(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	req, err := interceptArgs(
+		[]string{"get-secret", "ollama.ollama-api-key"},
+		nil,
+		&stdout,
+		&stderr,
+	)
+	c.Assert(err, check.IsNil)
+
+	exitCode := req.responseHandler(nil, nil, client.ErrorSecretNotFound)
+
+	c.Check(exitCode, check.Equals, 2)
+	c.Check(req.Args, check.DeepEquals,
+		[]string{"get-secret", "ollama.ollama-api-key"})
+}
+
 // TestHandleSystemdSecretResponse checks that the response handler delivers
 // the secret value on stdout.
 func (s *getSecretSuite) TestHandleSystemdSecretResponse(c *check.C) {
@@ -48,6 +127,31 @@ func (s *getSecretSuite) TestHandleSystemdSecretResponse(c *check.C) {
 	c.Check(exitCode, check.Equals, 0)
 	c.Check(stdout.String(), check.Equals, "secret-value")
 	c.Check(stderr.String(), check.Equals, "")
+}
+
+// TestHandleSystemdSecretResponseMultipleMatches checks that an ambiguous
+// lookup returns exit code 1 and a diagnostic without emitting a credential.
+func (s *getSecretSuite) TestHandleSystemdSecretResponseMultipleMatches(
+	c *check.C,
+) {
+	secretReq := systemdSecretRequest{
+		Unit:   "ollama.service",
+		SDK:    "ollama",
+		Secret: "ollama-api-key",
+	}
+	var stdout, stderr bytes.Buffer
+	handler := handleSystemdSecretResponse(secretReq, &stdout, &stderr)
+	err := &client.Error{
+		Kind:    client.ErrorKindSecretMultipleMatches,
+		Message: "multiple secrets match the request",
+	}
+
+	exitCode := handler(nil, nil, err)
+
+	c.Check(exitCode, check.Equals, 1)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals,
+		"error: multiple secrets match credential \"ollama.ollama-api-key\"\n")
 }
 
 // TestHandleSystemdSecretResponsePlugNotConnected checks that an unconnected
