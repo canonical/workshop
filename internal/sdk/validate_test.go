@@ -140,32 +140,6 @@ func (s *ValidateSuite) TestValidateSlotPlugInterfaceName(c *check.C) {
 	}
 }
 
-// TestValidateYaml accepts SDK YAML with known top-level fields and valid
-// semantic content.
-func (s *ValidateSuite) TestValidateYaml(c *check.C) {
-	err := sdk.ValidateYaml(strings.NewReader(`name: valid
-base: ubuntu@24.04
-architecture: amd64
-plugs:
-  models:
-    interface: mount
-slots:
-  service:
-    interface: tunnel
-`))
-
-	c.Check(err, check.IsNil)
-}
-
-// TestValidateYamlInvalidContent reports semantic validation failures after
-// YAML decoding succeeds.
-func (s *ValidateSuite) TestValidateYamlInvalidContent(c *check.C) {
-	err := sdk.ValidateYaml(strings.NewReader(`name: invalid.name
-`))
-
-	c.Check(err, check.ErrorMatches, `invalid SDK name "invalid.name"`)
-}
-
 func (s *ValidateSuite) TestIllegalSdkName(c *check.C) {
 	info, err := sdk.ReadSdkInfo([]byte(`name: foo.something
 `), s.projectId, "ws")

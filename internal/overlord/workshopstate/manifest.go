@@ -15,7 +15,6 @@
 package workshopstate
 
 import (
-	"bytes"
 	"cmp"
 	"context"
 	"errors"
@@ -767,11 +766,6 @@ func (a *artifactFinder) commitRevision(w, sk string, source sdk.Source, path st
 	sdkYaml, err := os.ReadFile(filepath.Join(target, digest, "meta", "sdk.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid %q SDK: %w", sk, err)
-	}
-	if source == sdk.ProjectSource {
-		if err := sdk.ValidateYaml(bytes.NewReader(sdkYaml)); err != nil {
-			return nil, fmt.Errorf("invalid %q SDK: %w", sk, err)
-		}
 	}
 
 	setup := sdk.Setup{

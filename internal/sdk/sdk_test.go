@@ -91,6 +91,21 @@ website: https://example.com
 	c.Assert(err, check.IsNil)
 }
 
+func (s *SdkSuite) TestUnmarshalSketchSDK(c *check.C) {
+	mockYaml := []byte(`name: sketch
+hooks: false
+`)
+	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	c.Check(err, check.IsNil)
+
+	mockYaml = []byte(`name: sketch
+hooks: true
+foo: bar
+`)
+	_, err = sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	c.Check(err, check.ErrorMatches, `sketch SDK YAML contains unknown fields: "foo" at line 3, column 6`)
+}
+
 func (s *SdkSuite) TestMinimalisticPlug(c *check.C) {
 	var mockYaml = []byte(`name: sdk
 base: ubuntu@24.04

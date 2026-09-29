@@ -17,11 +17,13 @@ package workshop_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
 
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/arch"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -94,7 +96,7 @@ func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
 	sdkYaml := `incorrect yaml: -
 `
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", sdkYaml)
-	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK definition: yaml: block sequence entries are not allowed in this context`)
+	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: yaml: block sequence entries are not allowed in this context`)
 }
 
 func (f *workshopSuite) TestValidateSdkName(c *check.C) {
@@ -128,6 +130,10 @@ base: ubuntu@24.04
 
 func (f *workshopSuite) TestValidateSdkArchitecture(c *check.C) {
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+
+	arches := append(slices.Clone(arch.AllowedArchitectures), "mock64")
+	defer testutil.FakeFunc(arches, &arch.AllowedArchitectures)()
+
 	architecture := arch.ArchitectureType(arch.DpkgArchitecture())
 	arch.SetArchitecture("mock32")
 	defer arch.SetArchitecture(architecture)

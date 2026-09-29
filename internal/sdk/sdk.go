@@ -16,8 +16,10 @@ package sdk
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -28,6 +30,7 @@ import (
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/metautil"
 	"github.com/canonical/workshop/internal/timeutil"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 type Meta struct {
@@ -146,6 +149,34 @@ type sdkYaml struct {
 	Slots map[string]any `yaml:"slots,omitempty"`
 
 	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
+}
+
+func (s *sdkYaml) UnmarshalYAML(value *yaml.Node) error {
+	type sdk sdkYaml
+	err := yamlutil.UnmarshalStrict((*sdk)(s), value)
+
+	context := "SDK definition YAML"
+	if s.Name == Sketch {
+		context = "sketch SDK YAML"
+	}
+
+	// Allow hooks in the sketch SDK, but don't validate them here.
+	unknownErr, ok := errors.AsType[*yamlutil.UnknownFieldsError](err)
+	if !ok {
+		return yamlutil.AttachContext(context, err)
+	}
+	if s.Name == Sketch {
+		unknownErr.Fields = slices.DeleteFunc(unknownErr.Fields, func(f yamlutil.UnknownField) bool {
+			return f.Name == "hooks"
+		})
+		if len(unknownErr.Fields) == 0 {
+			return nil
+		}
+	} else if len(unknownErr.Fields) == 1 && unknownErr.Fields[0].Name == "hooks" {
+		return fmt.Errorf("SDK definition YAML: only the %q SDK supports inline hooks", Sketch)
+	}
+
+	return yamlutil.AttachContext(context, err)
 }
 
 // SketchSDKYaml describes the editable YAML shape of a sketch SDK.

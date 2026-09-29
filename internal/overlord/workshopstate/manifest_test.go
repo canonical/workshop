@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -641,6 +642,9 @@ func (s *manifestSuite) TestLaunchFindTrySdkFile(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
+	arches := append(slices.Clone(arch.AllowedArchitectures), "mock64")
+	defer testutil.FakeFunc(arches, &arch.AllowedArchitectures)()
+
 	architecture := arch.ArchitectureType(arch.DpkgArchitecture())
 	arch.SetArchitecture("mock64")
 	defer arch.SetArchitecture(architecture)
@@ -960,19 +964,22 @@ func (s *manifestSuite) TestLaunchValidatesProjectSdks(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
+	arches := append(slices.Clone(arch.AllowedArchitectures), "mock32")
+	defer testutil.FakeFunc(arches, &arch.AllowedArchitectures)()
+
 	architecture := arch.ArchitectureType(arch.DpkgArchitecture())
-	arch.SetArchitecture("amd64")
+	arch.SetArchitecture("mock64")
 	defer arch.SetArchitecture(architecture)
 
 	s.mockProjectSdk(c, "test", `name: test
-architecture: arm64
+architecture: mock32
 `)
 
 	sdks := []workshop.SdkRecord{{Name: "test", Source: sdk.ProjectSource}}
 	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
-	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "test" SDK has "arm64" architecture; required: "amd64" or "all"`)
+	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "test" SDK has "mock32" architecture; required: "mock64" or "all"`)
 }
 
 func (s *manifestSuite) TestLaunchRejectsProjectSdkUnknownField(c *check.C) {

@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -31,15 +30,6 @@ import (
 
 // InvalidSDKHookNameError reports an unsupported SDK hook name.
 type InvalidSDKHookNameError string
-
-type sdkYamlValidator struct {
-	sdkYaml `yaml:",inline"`
-}
-
-func (s *sdkYamlValidator) UnmarshalYAML(value *yaml.Node) error {
-	type validator sdkYamlValidator
-	return yamlutil.UnmarshalStrict((*validator)(s), value)
-}
 
 type sketchSDKYamlValidator struct {
 	SketchSDKYaml `yaml:",inline"`
@@ -71,51 +61,6 @@ var (
 // Error returns a human-readable message describing the invalid hook name.
 func (e InvalidSDKHookNameError) Error() string {
 	return "invalid SDK hook name"
-}
-
-func infoFromYaml(y *sdkYaml) (*Info, error) {
-	if y.Type == "" {
-		y.Type = Regular.String()
-	}
-	if y.Type == System.String() && !IsSystem(y.Name) {
-		return nil, fmt.Errorf(
-			"type %q is reserved for the system SDK",
-			y.Type,
-		)
-	}
-
-	sdkInfo := &Info{
-		Arch:          y.Arch,
-		BadInterfaces: make(map[string]string),
-		Base:          y.Base,
-		BuiltAt:       nil,
-		Description:   y.Description,
-		License:       y.License,
-		Name:          y.Name,
-		PlugBinds:     make(map[string]PlugRef),
-		Plugs:         make(map[string]*PlugInfo),
-		Slots:         make(map[string]*SlotInfo),
-		Summary:       y.Summary,
-		Title:         y.Title,
-		Type:          Type(y.Type),
-		Version:       y.Version,
-	}
-
-	if y.BuiltAt != nil {
-		sdkInfo.BuiltAt = (*time.Time)(y.BuiltAt)
-	}
-
-	err := setPlugsFromSdkYaml(y, sdkInfo)
-	if err != nil {
-		return nil, err
-	}
-	err = setSlotsFromSdkYaml(y, sdkInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	SanitizePlugsSlots(sdkInfo)
-	return sdkInfo, nil
 }
 
 // Validate checks whether sdk contains a valid SDK definition.
@@ -221,23 +166,6 @@ func ValidateSketchYaml(y *SketchSDKYaml) error {
 		}
 	}
 	return nil
-}
-
-// ValidateYaml checks whether reader contains a valid SDK YAML definition.
-func ValidateYaml(reader io.Reader) error {
-	var validator sdkYamlValidator
-	dec := yaml.NewDecoder(reader)
-	err := dec.Decode(&validator)
-	if err != nil {
-		return yamlutil.AttachContext("SDK definition YAML", err)
-	}
-
-	sdkInfo, err := infoFromYaml(&validator.sdkYaml)
-	if err != nil {
-		return err
-	}
-
-	return Validate(sdkInfo)
 }
 
 // ValidateName checks if a string can be used as an SDK name.
