@@ -20,6 +20,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -57,8 +58,9 @@ var clientConfig = client.Config{
 
 // defaultResponseHandler returns a response handler implementing the
 // standard workshopctl response behaviour: the response stdout and stderr
-// are written to the given writers, daemon-reported exit codes are
-// honoured, and any other error is reported with exit code 1.
+// are written to the given writers. API errors supply output and a valid
+// exit code when present, regardless of kind. Missing stderr falls back to
+// the error message, and missing or invalid exit codes default to 1.
 func defaultResponseHandler(stdout, stderr io.Writer) func([]byte, []byte, error) int {
 	return func(responseStdout, responseStderr []byte, err error) int {
 		if err == nil {
@@ -67,20 +69,23 @@ func defaultResponseHandler(stdout, stderr io.Writer) func([]byte, []byte, error
 			return 0
 		}
 
-		if e, ok := err.(*client.Error); ok && e.Kind == client.ErrorKindUnsuccessful {
-			if errRes, ok := e.Value.(map[string]any); ok {
-				if out, ok := errRes["stdout"].(string); ok {
-					stdout.Write([]byte(out))
-				}
-				if errOut, ok := errRes["stderr"].(string); ok {
-					stderr.Write([]byte(errOut))
-				}
-				if errCode, ok := errRes["exit-code"].(float64); ok {
-					return int(errCode)
-				}
-			}
+		clientErr, is := errors.AsType[*client.Error](err)
+		if !is {
+			fmt.Fprintf(stderr, "error: %s\n", err)
+			return 1
 		}
-		fmt.Fprintf(stderr, "error: %s\n", err)
+
+		if output, ok := clientErr.Stdout(); ok {
+			fmt.Fprint(stdout, output)
+		}
+		if output, ok := clientErr.Stderr(); ok {
+			fmt.Fprint(stderr, output)
+		} else {
+			fmt.Fprintf(stderr, "error: %s\n", err)
+		}
+		if code, ok := clientErr.ExitCode(); ok {
+			return code
+		}
 		return 1
 	}
 }
