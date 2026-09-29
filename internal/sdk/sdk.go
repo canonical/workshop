@@ -126,18 +126,26 @@ func SetupContentID(setup Setup) ContentID {
 }
 
 type sdkYaml struct {
-	Name        string            `yaml:"name"`
-	Base        string            `yaml:"base"`
-	Arch        string            `yaml:"architecture"`
-	Version     string            `yaml:"version,omitempty"`
-	Title       string            `yaml:"title"`
-	Summary     string            `yaml:"summary"`
-	Description string            `yaml:"description"`
-	License     string            `yaml:"license"`
-	Type        string            `yaml:"type"`
-	BuiltAt     *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
-	Plugs       map[string]any    `yaml:"plugs,omitempty"`
-	Slots       map[string]any    `yaml:"slots,omitempty"`
+	Name        string `yaml:"name"`
+	Title       string `yaml:"title,omitempty"`
+	Version     string `yaml:"version,omitempty"`
+	Summary     string `yaml:"summary,omitempty"`
+	Description string `yaml:"description,omitempty"`
+
+	Base string `yaml:"base,omitempty"`
+	Arch string `yaml:"architecture,omitempty"`
+
+	Contact    stringOrSlice `yaml:"contact,omitempty"`
+	Issues     stringOrSlice `yaml:"issues,omitempty"`
+	SourceCode string        `yaml:"source-code,omitempty"`
+	Website    string        `yaml:"website,omitempty"`
+	License    string        `yaml:"license,omitempty"`
+
+	Type  string         `yaml:"type,omitempty"`
+	Plugs map[string]any `yaml:"plugs,omitempty"`
+	Slots map[string]any `yaml:"slots,omitempty"`
+
+	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
 }
 
 // SketchSDKYaml describes the editable YAML shape of a sketch SDK.
@@ -170,6 +178,13 @@ func IsSystem(name string) bool {
 
 func IsSketch(name string) bool {
 	return name == Sketch
+}
+
+type stringOrSlice []string
+
+func (s *stringOrSlice) UnmarshalText(text []byte) error {
+	*s = []string{string(text)}
+	return nil
 }
 
 type Info struct {
