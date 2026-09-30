@@ -126,6 +126,65 @@ func SetupContentID(setup Setup) ContentID {
 	return ContentID{Name: setup.Name, Sha3_384: setup.Sha3_384, IsVolume: setup.IsVolume()}
 }
 
+type File struct {
+	Name        string
+	Title       string
+	Version     string
+	Summary     string
+	Description string
+
+	Base string
+	Arch string
+
+	License string
+
+	Plugs map[string]any
+	Slots map[string]any
+
+	BuiltAt *time.Time
+
+	Type Type
+}
+
+func ReadSdkFile(yamlData []byte) (*File, error) {
+	var sdkYaml sdkYaml
+	if err := yaml.Unmarshal(yamlData, &sdkYaml); err != nil {
+		return nil, err
+	}
+
+	if sdkYaml.Name != Sketch && sdkYaml.Hooks.Node != nil {
+		return nil, fmt.Errorf("SDK definition YAML: only the %q SDK supports inline hooks", Sketch)
+	}
+
+	switch sdkYaml.Type {
+	case "":
+		sdkYaml.Type = Regular
+	case Regular:
+	case System:
+		if !IsSystem(sdkYaml.Name) {
+			return nil, fmt.Errorf("type %q is reserved for the system SDK", sdkYaml.Type)
+		}
+	default:
+		return nil, fmt.Errorf("invalid SDK type %q", sdkYaml.Type)
+	}
+
+	return &File{
+		Name:        sdkYaml.Name,
+		Title:       sdkYaml.Title,
+		Version:     sdkYaml.Version,
+		Summary:     sdkYaml.Summary,
+		Description: sdkYaml.Description,
+		Base:        sdkYaml.Base,
+		Arch:        sdkYaml.Arch,
+		License:     sdkYaml.License,
+		Plugs:       sdkYaml.Plugs,
+		Slots:       sdkYaml.Slots,
+		BuiltAt:     (*time.Time)(sdkYaml.BuiltAt),
+		Type:        sdkYaml.Type,
+	}, nil
+}
+
+// Keep this in sync with sdkcraft.models.Metadata (+ Type & Hooks).
 type sdkYaml struct {
 	Name        string `yaml:"name"`
 	Title       string `yaml:"title,omitempty"`
@@ -147,7 +206,7 @@ type sdkYaml struct {
 
 	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
 
-	Type string `yaml:"type,omitempty"`
+	Type Type `yaml:"type,omitempty"`
 	// Avoid UnknownFieldsError for "hooks". It's a known field, just not
 	// used for anything except the sketch SDK.
 	Hooks yamlutil.NodeRef `yaml:"hooks"`
@@ -304,46 +363,34 @@ var SanitizePlugsSlots = func(snapInfo *Info) {
 }
 
 func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
-	var sdkYaml sdkYaml
-	err := yaml.Unmarshal(yamlData, &sdkYaml)
+	file, err := ReadSdkFile(yamlData)
 	if err != nil {
 		return nil, err
-	}
-
-	if sdkYaml.Name != Sketch && sdkYaml.Hooks.Node != nil {
-		return nil, fmt.Errorf("SDK definition YAML: only the %q SDK supports inline hooks", Sketch)
-	}
-
-	if sdkYaml.Type == "" {
-		sdkYaml.Type = Regular.String()
-	}
-	if sdkYaml.Type == System.String() && !IsSystem(sdkYaml.Name) {
-		return nil, fmt.Errorf("type %q is reserved for the system SDK", sdkYaml.Type)
 	}
 
 	sdkInfo := &Info{
 		ProjectId:     projectId,
 		Workshop:      workshop,
-		Name:          sdkYaml.Name,
-		Base:          sdkYaml.Base,
-		Arch:          sdkYaml.Arch,
-		Version:       sdkYaml.Version,
-		Type:          Type(sdkYaml.Type),
-		BuiltAt:       (*time.Time)(sdkYaml.BuiltAt),
-		Title:         sdkYaml.Title,
-		Summary:       sdkYaml.Summary,
-		Description:   sdkYaml.Description,
-		License:       sdkYaml.License,
+		Name:          file.Name,
+		Base:          file.Base,
+		Arch:          file.Arch,
+		Version:       file.Version,
+		Type:          file.Type,
+		BuiltAt:       file.BuiltAt,
+		Title:         file.Title,
+		Summary:       file.Summary,
+		Description:   file.Description,
+		License:       file.License,
 		Plugs:         make(map[string]*PlugInfo),
 		Slots:         make(map[string]*SlotInfo),
 		BadInterfaces: make(map[string]string),
 	}
 
-	if err := setPlugsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
+	if err := setPlugsFromSdkFile(file, sdkInfo); err != nil {
 		return nil, err
 	}
 
-	if err := setSlotsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
+	if err := setSlotsFromSdkFile(file, sdkInfo); err != nil {
 		return nil, err
 	}
 
@@ -351,8 +398,8 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
 	return sdkInfo, nil
 }
 
-func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
-	for name, data := range y.Plugs {
+func setPlugsFromSdkFile(f *File, sdk *Info) error {
+	for name, data := range f.Plugs {
 		iface, label, attrs, err := convertToSlotOrPlugData("plug", name, data)
 		if err != nil {
 			return err
@@ -369,8 +416,8 @@ func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
 	return nil
 }
 
-func setSlotsFromSdkYaml(y *sdkYaml, sdk *Info) error {
-	for name, data := range y.Slots {
+func setSlotsFromSdkFile(f *File, sdk *Info) error {
+	for name, data := range f.Slots {
 		iface, label, attrs, err := convertToSlotOrPlugData("slot", name, data)
 		if err != nil {
 			return err
