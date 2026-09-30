@@ -128,32 +128,73 @@ func SetupContentID(setup Setup) ContentID {
 	return ContentID{Name: setup.Name, Sha3_384: setup.Sha3_384, IsVolume: setup.IsVolume()}
 }
 
-type sdkYaml struct {
-	Name        string `yaml:"name"`
-	Title       string `yaml:"title,omitempty"`
-	Version     string `yaml:"version,omitempty"`
-	Summary     string `yaml:"summary,omitempty"`
-	Description string `yaml:"description,omitempty"`
+type File struct {
+	Name        string
+	Title       string
+	Version     string
+	Summary     string
+	Description string
 
-	Base string `yaml:"base,omitempty"`
-	Arch string `yaml:"architecture,omitempty"`
+	Base string
+	Arch string
 
-	Contact    stringOrSlice `yaml:"contact,omitempty"`
-	Issues     stringOrSlice `yaml:"issues,omitempty"`
-	SourceCode string        `yaml:"source-code,omitempty"`
-	Website    string        `yaml:"website,omitempty"`
-	License    string        `yaml:"license,omitempty"`
+	License string
 
-	Type  string         `yaml:"type,omitempty"`
-	Plugs map[string]any `yaml:"plugs,omitempty"`
-	Slots map[string]any `yaml:"slots,omitempty"`
+	Type  Type
+	Plugs map[string]any
+	Slots map[string]any
 
-	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
+	BuiltAt *time.Time
 }
 
-func (s *sdkYaml) UnmarshalYAML(value *yaml.Node) error {
-	type sdk sdkYaml
-	err := yamlutil.UnmarshalStrict((*sdk)(s), value)
+func (s *File) UnmarshalYAML(value *yaml.Node) error {
+	// Keep this in sync with sdkcraft.models.Metadata (+ Type).
+	var f struct {
+		Name        string `yaml:"name"`
+		Title       string `yaml:"title,omitempty"`
+		Version     string `yaml:"version,omitempty"`
+		Summary     string `yaml:"summary,omitempty"`
+		Description string `yaml:"description,omitempty"`
+
+		Base string `yaml:"base,omitempty"`
+		Arch string `yaml:"architecture,omitempty"`
+
+		Contact    stringOrSlice `yaml:"contact,omitempty"`
+		Issues     stringOrSlice `yaml:"issues,omitempty"`
+		SourceCode string        `yaml:"source-code,omitempty"`
+		Website    string        `yaml:"website,omitempty"`
+		License    string        `yaml:"license,omitempty"`
+
+		Type  Type           `yaml:"type,omitempty"`
+		Plugs map[string]any `yaml:"plugs,omitempty"`
+		Slots map[string]any `yaml:"slots,omitempty"`
+
+		BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
+	}
+	err := yamlutil.UnmarshalStrict(&f, value)
+
+	switch f.Type {
+	case "":
+		f.Type = Regular
+	case Regular, System:
+	default:
+		return fmt.Errorf("invalid SDK type %q", f.Type)
+	}
+
+	*s = File{
+		Name:        f.Name,
+		Title:       f.Title,
+		Version:     f.Version,
+		Summary:     f.Summary,
+		Description: f.Description,
+		Base:        f.Base,
+		Arch:        f.Arch,
+		License:     f.License,
+		Type:        f.Type,
+		Plugs:       f.Plugs,
+		Slots:       f.Slots,
+		BuiltAt:     (*time.Time)(f.BuiltAt),
+	}
 
 	context := "SDK definition YAML"
 	if s.Name == Sketch {
@@ -318,42 +359,38 @@ var SanitizePlugsSlots = func(snapInfo *Info) {
 }
 
 func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
-	var sdkYaml sdkYaml
-	err := yaml.Unmarshal(yamlData, &sdkYaml)
-	if err != nil {
+	var file File
+	if err := yaml.Unmarshal(yamlData, &file); err != nil {
 		return nil, err
 	}
 
-	if sdkYaml.Type == "" {
-		sdkYaml.Type = Regular.String()
-	}
-	if sdkYaml.Type == System.String() && !IsSystem(sdkYaml.Name) {
-		return nil, fmt.Errorf("type %q is reserved for the system SDK", sdkYaml.Type)
+	if file.Type == System && !IsSystem(file.Name) {
+		return nil, fmt.Errorf("type %q is reserved for the system SDK", file.Type)
 	}
 
 	sdkInfo := &Info{
 		ProjectId:     projectId,
 		Workshop:      workshop,
-		Name:          sdkYaml.Name,
-		Base:          sdkYaml.Base,
-		Arch:          sdkYaml.Arch,
-		Version:       sdkYaml.Version,
-		Type:          Type(sdkYaml.Type),
-		BuiltAt:       (*time.Time)(sdkYaml.BuiltAt),
-		Title:         sdkYaml.Title,
-		Summary:       sdkYaml.Summary,
-		Description:   sdkYaml.Description,
-		License:       sdkYaml.License,
+		Name:          file.Name,
+		Base:          file.Base,
+		Arch:          file.Arch,
+		Version:       file.Version,
+		Type:          file.Type,
+		BuiltAt:       file.BuiltAt,
+		Title:         file.Title,
+		Summary:       file.Summary,
+		Description:   file.Description,
+		License:       file.License,
 		Plugs:         make(map[string]*PlugInfo),
 		Slots:         make(map[string]*SlotInfo),
 		BadInterfaces: make(map[string]string),
 	}
 
-	if err := setPlugsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
+	if err := setPlugsFromSdkYaml(&file, sdkInfo); err != nil {
 		return nil, err
 	}
 
-	if err := setSlotsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
+	if err := setSlotsFromSdkYaml(&file, sdkInfo); err != nil {
 		return nil, err
 	}
 
@@ -361,7 +398,7 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
 	return sdkInfo, nil
 }
 
-func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
+func setPlugsFromSdkYaml(y *File, sdk *Info) error {
 	for name, data := range y.Plugs {
 		iface, label, attrs, err := convertToSlotOrPlugData("plug", name, data)
 		if err != nil {
@@ -379,7 +416,7 @@ func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
 	return nil
 }
 
-func setSlotsFromSdkYaml(y *sdkYaml, sdk *Info) error {
+func setSlotsFromSdkYaml(y *File, sdk *Info) error {
 	for name, data := range y.Slots {
 		iface, label, attrs, err := convertToSlotOrPlugData("slot", name, data)
 		if err != nil {

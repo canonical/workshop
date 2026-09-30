@@ -145,17 +145,16 @@ func (w *SdkManager) SdkVolumes(ctx context.Context) ([]SdkVolume, error) {
 
 	entries := make([]SdkVolume, 0, len(sdks))
 	for _, s := range sdks {
-		info, err := sdk.ReadSdkInfo([]byte(s.SdkYAML), "", "")
-		if err != nil {
-
+		var file sdk.File
+		if err := yaml.Unmarshal([]byte(s.SdkYAML), &file); err != nil {
 			return nil, err
 		}
 
 		entries = append(entries, SdkVolume{
-			Name:     info.Name,
-			Version:  info.Version,
+			Name:     s.Name,
+			Version:  file.Version,
 			Revision: s.Revision.String(),
-			BuiltAt:  info.BuiltAt,
+			BuiltAt:  file.BuiltAt,
 			Size:     s.Size,
 		})
 	}
@@ -306,23 +305,23 @@ func (w *SdkManager) fillInstalled(ctx context.Context, name string, full *SdkFu
 
 	full.Installed = make([]SdkInstalled, 0, len(sdks))
 	for _, s := range sdks {
-		info, err := sdk.ReadSdkInfo([]byte(s.SdkYAML), "", "")
-		if err != nil {
+		var file sdk.File
+		if err := yaml.Unmarshal([]byte(s.SdkYAML), &file); err != nil {
 			return err
 		}
 
 		// Needed if the SDK isn't in the Store (e.g. try SDKs).
 		if full.Title == "" {
-			full.Title = info.Title
+			full.Title = file.Title
 		}
 		if full.Summary == "" {
-			full.Summary = info.Summary
+			full.Summary = file.Summary
 		}
 		if full.Description == "" {
-			full.Description = info.Description
+			full.Description = file.Description
 		}
 		if full.License == "" {
-			full.License = info.License
+			full.License = file.License
 		}
 
 		for pid, wps := range s.Workshops {
@@ -339,7 +338,7 @@ func (w *SdkManager) fillInstalled(ctx context.Context, name string, full *SdkFu
 					channel = sk.Channel
 				}
 
-				arch := info.Arch
+				arch := file.Arch
 				if arch == "" {
 					// SDKcraft always sets architecture,
 					// but we probably shouldn't rely on it.
@@ -348,16 +347,16 @@ func (w *SdkManager) fillInstalled(ctx context.Context, name string, full *SdkFu
 
 				full.Installed = append(full.Installed, SdkInstalled{
 					SdkVolume: SdkVolume{
-						Name:     info.Name,
-						Version:  info.Version,
+						Name:     s.Name,
+						Version:  file.Version,
 						Revision: s.Revision.String(),
-						BuiltAt:  info.BuiltAt,
+						BuiltAt:  file.BuiltAt,
 						Size:     s.Size,
 					},
 					Workshop:    winfo.Name,
 					ProjectPath: winfo.Project.Path,
 					Channel:     channel,
-					Base:        info.Base,
+					Base:        file.Base,
 					Arch:        arch,
 				})
 			}

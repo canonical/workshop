@@ -24,6 +24,8 @@ import (
 	"slices"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/canonical/workshop/internal/arch"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
@@ -78,6 +80,14 @@ type SdkInstallation struct {
 
 func SdkDeviceName(sk string) string {
 	return "sdk." + sk
+}
+
+func (w *Workshop) meta(ctx context.Context, sk sdk.Setup) (string, error) {
+	if sk.IsVolume() {
+		return w.metaFromVolume(ctx, sk)
+	} else {
+		return w.metaFromFile(ctx, sk)
+	}
 }
 
 func (w *Workshop) metaFromVolume(ctx context.Context, setup sdk.Setup) (string, error) {
@@ -135,20 +145,34 @@ func ValidateSdkInfo(pid, w, base, sk, sdkYaml string) error {
 }
 
 // Reads information about the installed SDK from its meta file.
+func (w *Workshop) SdkFile(ctx context.Context, sdkName string) (*sdk.File, error) {
+	sk, ok := w.Sdks[sdkName]
+	if !ok {
+		return nil, fmt.Errorf("SDK %q is not installed in %q workshop", sdkName, w.Name)
+	}
+
+	meta, err := w.meta(ctx, sk.Setup)
+	if err != nil {
+		return nil, err
+	}
+
+	var file sdk.File
+	if err := yaml.Unmarshal([]byte(meta), &file); err != nil {
+		return nil, err
+	}
+
+	return &file, nil
+}
+
+// Reads information about the installed SDK from its meta file and merges it
+// with the workshop definition.
 func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, error) {
 	sk, ok := w.Sdks[sdkName]
 	if !ok {
 		return nil, fmt.Errorf("SDK %q is not installed in %q workshop", sdkName, w.Name)
 	}
 
-	var err error
-	var meta string
-	if sk.IsVolume() {
-		meta, err = w.metaFromVolume(ctx, sk.Setup)
-	} else {
-		meta, err = w.metaFromFile(ctx, sk.Setup)
-	}
-
+	meta, err := w.meta(ctx, sk.Setup)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +227,19 @@ func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, erro
 	}
 
 	return info, nil
+}
+
+// Returns a map of SDK files for installed SDKs.
+func (w *Workshop) SdkFilesByInstallOrder(ctx context.Context) ([]*sdk.File, error) {
+	var files = make([]*sdk.File, 0, len(w.Sdks))
+	for _, sdk := range w.SdksByInstallOrder() {
+		file, err := w.SdkFile(ctx, sdk.Name)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	return files, nil
 }
 
 // Returns a map of SDK info for installed SDKs. The info includes SDK details
