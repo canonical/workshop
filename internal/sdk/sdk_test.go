@@ -71,6 +71,14 @@ base: ubuntu@24.04
 	c.Assert(info.Slots, check.HasLen, 0)
 }
 
+func (s *SdkSuite) TestUnmarshalInvalidType(c *check.C) {
+	mockYaml := []byte(`name: sdk
+type: foo
+`)
+	_, err := sdk.ReadSdkFile(mockYaml)
+	c.Check(err, check.ErrorMatches, `invalid SDK type "foo"`)
+}
+
 func (s *SdkSuite) TestUnmarshalUnusedMetadata(c *check.C) {
 	mockYaml := []byte(`name: sdk
 contact: contact@example.com
@@ -78,7 +86,7 @@ issues: https://example.com/issues
 source-code: https://github.com/canonical/craft-application
 website: https://example.com
 `)
-	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	_, err := sdk.ReadSdkFile(mockYaml)
 	c.Assert(err, check.IsNil)
 
 	mockYaml = []byte(`name: sdk
@@ -87,7 +95,7 @@ issues: [issues@example.com, https://example.com/issues]
 source-code: https://github.com/canonical/craft-application
 website: https://example.com
 `)
-	_, err = sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	_, err = sdk.ReadSdkFile(mockYaml)
 	c.Assert(err, check.IsNil)
 }
 
@@ -97,7 +105,7 @@ hooks:
   setup-project: |
     true
 `)
-	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	_, err := sdk.ReadSdkFile(mockYaml)
 	c.Check(err, check.ErrorMatches, `SDK definition YAML: only the "sketch" SDK supports inline hooks`)
 }
 
@@ -105,14 +113,14 @@ func (s *SdkSuite) TestUnmarshalSketchSDK(c *check.C) {
 	mockYaml := []byte(`name: sketch
 hooks: false
 `)
-	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	_, err := sdk.ReadSdkFile(mockYaml)
 	c.Check(err, check.IsNil)
 
 	mockYaml = []byte(`name: sketch
 hooks: true
 foo: bar
 `)
-	_, err = sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	_, err = sdk.ReadSdkFile(mockYaml)
 	c.Check(err, check.ErrorMatches, `sketch SDK YAML contains unknown fields: "foo" at line 3, column 6`)
 }
 
