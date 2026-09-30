@@ -73,7 +73,7 @@ const (
 
 var (
 	startCommandTimeout = 1 * time.Minute
-	storagePoolDriver = "zfs"
+	storagePoolDriver   string
 
 	workshopFormatsChecked = false
 )
@@ -161,12 +161,8 @@ func checkVersion(version string) error {
 	return nil
 }
 
-// preferredDriver picks the storage driver for a new workshop pool, trying each
-// candidate in order of preference: ZFS first for its snapshot and
-// copy-on-write support, then Btrfs as a fallback. LXD builds its
-// supported-drivers list by attempting to load each driver's kernel module
-// (e.g. modprobe zfs), so it reflects what the host can actually back. It
-// returns an error when none of the preferred drivers is supported.
+// preferredDriver returns the first supported storage driver in order of
+// preference (ZFS, then Btrfs), or an error if none is supported.
 func preferredDriver(supported []api.ServerStorageDriverInfo) (string, error) {
 	preferred := []string{"zfs", "btrfs"}
 	for _, driver := range preferred {
@@ -179,30 +175,14 @@ func preferredDriver(supported []api.ServerStorageDriverInfo) (string, error) {
 	return "", fmt.Errorf("suitable storage backend not found: none of %s is available", strings.Join(preferred, ", "))
 }
 
-// poolDriver is the storage driver of the workshop pool. ensureBackendReady
-// records it once, during the initial system check that runs before the daemon
-// starts serving requests. Pool operations then reuse it instead of querying
-// LXD (which reloads the driver's module). The pool's driver is fixed at
-// creation, so the recorded value stays accurate for the daemon's run.
-var poolDriver string
-
-// poolUsesZFS reports whether the workshop storage pool is backed by ZFS, using
-// the driver recorded by ensureBackendReady.
-func poolUsesZFS() bool {
-	return poolDriver == "zfs"
-}
-
-// checkStoragePool returns an error, degrading the daemon, when the workshop
-// storage pool exists but its storage driver can't be loaded. A missing pool
-// is fine here: ensureBackendReady creates it.
+// checkStoragePool returns an error when the workshop storage pool exists but
+// its storage driver can't be loaded. A missing pool is not an error:
+// ensureBackendReady creates it.
 func checkStoragePool(conn lxd.InstanceServer) error {
-	_, _, err := conn.GetStoragePool(storagePool)
-	if err == nil {
+	if _, _, err := conn.GetStoragePool(storagePool); err == nil {
 		return nil
-	}
-	if !api.StatusErrorCheck(err, http.StatusNotFound) {
-		return fmt.Errorf(`cannot use the %q storage pool, its storage driver may be unavailable (for example a ZFS pool after booting a kernel without the ZFS module): %w
-Boot into a kernel that provides the pool's storage driver, or reinstall Workshop to recreate the pool on an available driver`, storagePool, err)
+	} else if !api.StatusErrorCheck(err, http.StatusNotFound) {
+		return fmt.Errorf("%q storage pool unavailable: %w", storagePool, err)
 	}
 
 	return nil
@@ -344,7 +324,7 @@ func ensureBackendReady() error {
 	// Create the LXD storage pool if it doesn't exist, and record its driver so
 	// pool operations can reuse it. A missing pool returns a 404; any other
 	// error (e.g. a ZFS pool whose module is gone) is left for checkStoragePool
-	// to report as a degraded state.
+	// to report.
 	existingPool, _, err := conn.GetStoragePool(storagePool)
 	if api.StatusErrorCheck(err, http.StatusNotFound) {
 		info, _, err := conn.GetServer()
@@ -366,7 +346,7 @@ func ensureBackendReady() error {
 		if err := op.Wait(); err != nil {
 			return err
 		}
-		poolDriver = driver
+		storagePoolDriver = driver
 
 		// Ensure the new pool has enough total space available.
 		pool, etag, err := conn.GetStoragePool(storagePool)
@@ -399,10 +379,10 @@ func ensureBackendReady() error {
 		}
 	} else if err != nil {
 		return err
-	} else if poolDriver == "" {
-		// Record the existing pool's driver on the first successful check,
-		// before the daemon serves requests. Later checks leave it untouched.
-		poolDriver = existingPool.Driver
+	} else if storagePoolDriver == "" {
+		// Set once, during the initial check before the daemon serves
+		// requests, so reads of storagePoolDriver never race with a write.
+		storagePoolDriver = existingPool.Driver
 	}
 
 	network, etag, err := conn.GetNetwork(networkName)

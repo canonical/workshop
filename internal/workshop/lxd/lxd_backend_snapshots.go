@@ -370,7 +370,7 @@ func (s *Backend) TakeSnapshot(ctx context.Context, name string, snapshot worksh
 	if inst.Devices == nil {
 		inst.Devices = map[string]map[string]string{}
 	}
-	if err := mergeDevices(inst.Devices, snapshot.Sdks, name, poolUsesZFS()); err != nil {
+	if err := mergeDevices(inst.Devices, snapshot.Sdks, name); err != nil {
 		return err
 	}
 
