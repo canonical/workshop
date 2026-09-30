@@ -284,7 +284,15 @@ func (i *Info) Ref() Ref {
 	}
 }
 
-func (i *Info) SetupPlugBinds(binds map[string]PlugRef) error {
+// Additions lists extra plugs, slots, and plug bindings, e.g. those added in
+// the workshop definition file.
+type Additions struct {
+	Plugs map[string]any
+	Slots map[string]any
+	Binds map[string]PlugRef
+}
+
+func bindPlugs(binds map[string]PlugRef, i *Info) error {
 	for name, bind := range binds {
 		plug, ok := i.Plugs[name]
 		if !ok {
@@ -299,7 +307,7 @@ func (i *Info) SetupPlugBinds(binds map[string]PlugRef) error {
 }
 
 // Adds slots defined for this SDK in a workshop file.
-func (i *Info) SetupWorkshopSlots(slots map[string]any) error {
+func extendSlots(slots map[string]any, i *Info) error {
 	for name, data := range slots {
 		if _, exist := i.Slots[name]; exist {
 			return fmt.Errorf("cannot add slot %q to %q SDK: already exists", name, i.Name)
@@ -317,12 +325,11 @@ func (i *Info) SetupWorkshopSlots(slots map[string]any) error {
 		}
 	}
 
-	SanitizePlugsSlots(i)
 	return nil
 }
 
-// Adds slots defined for this SDK in a workshop file.
-func (i *Info) SetupWorkshopPlugs(plugs map[string]any) error {
+// Adds plugs defined for this SDK in a workshop file.
+func extendPlugs(plugs map[string]any, i *Info) error {
 	for name, data := range plugs {
 		if _, exist := i.Plugs[name]; exist {
 			return fmt.Errorf("cannot add plug %q to %q SDK: already exists", name, i.Name)
@@ -340,7 +347,6 @@ func (i *Info) SetupWorkshopPlugs(plugs map[string]any) error {
 		}
 	}
 
-	SanitizePlugsSlots(i)
 	return nil
 }
 
@@ -362,7 +368,7 @@ var SanitizePlugsSlots = func(snapInfo *Info) {
 	panic("SanitizePlugsSlots function not set")
 }
 
-func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
+func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additions) (*Info, error) {
 	file, err := ReadSdkFile(yamlData)
 	if err != nil {
 		return nil, err
@@ -389,9 +395,24 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
 	if err := setPlugsFromSdkFile(file, sdkInfo); err != nil {
 		return nil, err
 	}
+	for _, a := range additions {
+		if err := extendPlugs(a.Plugs, sdkInfo); err != nil {
+			return nil, err
+		}
+	}
+	for _, a := range additions {
+		if err := bindPlugs(a.Binds, sdkInfo); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := setSlotsFromSdkFile(file, sdkInfo); err != nil {
 		return nil, err
+	}
+	for _, a := range additions {
+		if err := extendSlots(a.Slots, sdkInfo); err != nil {
+			return nil, err
+		}
 	}
 
 	SanitizePlugsSlots(sdkInfo)
@@ -652,7 +673,7 @@ func MockSanitizePlugsSlots(f func(sdkInfo *Info)) (restore func()) {
 func MockInfo(c *check.C, yamlText string, projectId, workshop string) *Info {
 	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
 	defer restoreSanitize()
-	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop)
+	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop, nil)
 	c.Assert(err, check.IsNil)
 
 	err = Validate(info)
@@ -664,7 +685,7 @@ func MockInvalidInfo(c *check.C, yamlText string) *Info {
 	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
 	defer restoreSanitize()
 
-	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws")
+	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws", nil)
 	c.Assert(err, check.IsNil)
 	err = Validate(sdkInfo)
 	c.Assert(err, check.NotNil)
