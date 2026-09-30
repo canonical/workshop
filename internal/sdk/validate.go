@@ -15,37 +15,15 @@
 package sdk
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"regexp"
 	"slices"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/canonical/workshop/internal/arch"
-	"github.com/canonical/workshop/internal/yamlutil"
 )
-
-// InvalidSDKHookNameError reports an unsupported SDK hook name.
-type InvalidSDKHookNameError string
-
-type sketchSDKYamlValidator struct {
-	SketchSDKYaml `yaml:",inline"`
-}
-
-func (s *sketchSDKYamlValidator) UnmarshalYAML(value *yaml.Node) error {
-	type validator sketchSDKYamlValidator
-	return yamlutil.UnmarshalStrict((*validator)(s), value)
-}
 
 const MAX_SDK_NAME_LENGTH = 40
-
-var (
-	// ErrorInvalidSDKName reports an invalid SDK name.
-	ErrorInvalidSDKName = errors.New("invalid SDK name")
-)
 
 var (
 	AllowedBases = []string{"ubuntu@20.04", "ubuntu@22.04", "ubuntu@24.04", "ubuntu@26.04"}
@@ -57,11 +35,6 @@ var (
 	// Regular expression describing correct plug, slot and interface names.
 	validPlugSlotIface = regexp.MustCompile("^[a-z](?:-?[a-z0-9])*$")
 )
-
-// Error returns a human-readable message describing the invalid hook name.
-func (e InvalidSDKHookNameError) Error() string {
-	return "invalid SDK hook name"
-}
 
 // Validate checks whether sdk contains a valid SDK definition.
 func Validate(sdk *Info) error {
@@ -91,78 +64,6 @@ func Validate(sdk *Info) error {
 		}
 		if err := ValidateInterfaceName(slot.Interface); err != nil {
 			return fmt.Errorf("invalid interface name %q for slot %q", slot.Interface, slotName)
-		}
-	}
-	return nil
-}
-
-// ParseSketchYaml parses and validates a sketch SDK YAML definition.
-func ParseSketchYaml(reader io.Reader) (SketchSDKYaml, error) {
-	var validator sketchSDKYamlValidator
-	dec := yaml.NewDecoder(reader)
-	err := dec.Decode(&validator)
-	if err != nil {
-		return SketchSDKYaml{}, yamlutil.AttachContext("sketch SDK YAML", err)
-	}
-
-	err = ValidateSketchYaml(&validator.SketchSDKYaml)
-	if err != nil {
-		return SketchSDKYaml{}, err
-	}
-	return validator.SketchSDKYaml, nil
-}
-
-// ValidateSketchYaml checks whether y contains a valid sketch SDK definition.
-func ValidateSketchYaml(y *SketchSDKYaml) error {
-	if !IsSketch(y.Name) {
-		return fmt.Errorf(
-			"%w, sketch SDK name can only be %q",
-			ErrorInvalidSDKName,
-			Sketch,
-		)
-	}
-
-	for hookName := range y.Hooks {
-		if !slices.Contains(AllowedHooks, hookName) {
-			return InvalidSDKHookNameError(hookName)
-		}
-	}
-
-	for plugName, plug := range y.Plugs {
-		iface, _, _, err := convertToSlotOrPlugData("plug", plugName, plug)
-		if err != nil {
-			return err
-		}
-		err = ValidatePlugName(plugName)
-		if err != nil {
-			return err
-		}
-		err = ValidateInterfaceName(iface)
-		if err != nil {
-			return fmt.Errorf(
-				"invalid interface name %q for plug %q",
-				iface,
-				plugName,
-			)
-		}
-	}
-
-	for slotName, slot := range y.Slots {
-		iface, _, _, err := convertToSlotOrPlugData("slot", slotName, slot)
-		if err != nil {
-			return err
-		}
-		err = ValidateSlotName(slotName)
-		if err != nil {
-			return err
-		}
-		err = ValidateInterfaceName(iface)
-		if err != nil {
-			return fmt.Errorf(
-				"invalid interface name %q for slot %q",
-				iface,
-				slotName,
-			)
 		}
 	}
 	return nil
