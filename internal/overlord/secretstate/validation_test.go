@@ -133,8 +133,7 @@ func (s *managerSuite) TestGetSecretDisconnectedPlug(c *C) {
 
 	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(err, ErrorMatches,
-		`secret plug is not connected`)
+	c.Check(errors.Is(err, interfaces.ErrorPlugNotConnected), Equals, true)
 }
 
 // TestGetSecretPlugNotDeclared checks installed SDKs cannot request an

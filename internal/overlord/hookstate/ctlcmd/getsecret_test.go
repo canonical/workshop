@@ -25,9 +25,9 @@ import (
 	"github.com/jessevdk/go-flags"
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
-	"github.com/canonical/workshop/internal/overlord/secretstate"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/secrets"
@@ -510,7 +510,7 @@ func (getSecretSuite) TestSecretRequestErrorPlugNotConnected(c *check.C) {
 		Workshop: "test-workshop",
 	})
 
-	cause := fmt.Errorf("connections: %w", secretstate.ErrorPlugNotConnected)
+	cause := fmt.Errorf("connections: %w", interfaces.ErrorPlugNotConnected)
 
 	command := ctlcmd.NewGetSecretCommand(
 		hookCtx, "my-sdk.api-key", nil, nil,
@@ -746,7 +746,7 @@ func (getSecretSuite) TestSystemdSecretRequestErrorPlugNotConnected(
 		Workshop: "test-workshop",
 	})
 
-	cause := fmt.Errorf("connections: %w", secretstate.ErrorPlugNotConnected)
+	cause := fmt.Errorf("connections: %w", interfaces.ErrorPlugNotConnected)
 	var stderr bytes.Buffer
 
 	command := ctlcmd.NewGetSecretCommand(

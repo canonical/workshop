@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	internalerrors "github.com/canonical/workshop/internal/errors"
+	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/overlord/secretstate"
 	"github.com/canonical/workshop/internal/overlord/state"
@@ -172,7 +173,7 @@ func (c *getSecretCommand) Execute(ctx context.Context, _ []string) error {
 // Unknown failures retain their cause with exit code 255. A nil error stays nil.
 func secretRequestError(identifier string, err error) error {
 	switch {
-	case errors.Is(err, secretstate.ErrorPlugNotConnected):
+	case errors.Is(err, interfaces.ErrorPlugNotConnected):
 		return fmt.Errorf(
 			"secret plug %q is not connected%w",
 			identifier,
@@ -209,7 +210,7 @@ func secretRequestError(identifier string, err error) error {
 // credential, reporting its diagnostic on stderr. Other failures use the
 // same messages and exit codes as ordinary requests.
 func (c *getSecretCommand) systemdSecretRequestError(err error) error {
-	if errors.Is(err, secretstate.ErrorPlugNotConnected) {
+	if errors.Is(err, interfaces.ErrorPlugNotConnected) {
 		return c.errorf("secret plug %q is not connected\n", c.Secret)
 	}
 	return secretRequestError(c.Secret, err)

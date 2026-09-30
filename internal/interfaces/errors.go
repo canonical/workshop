@@ -12,10 +12,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package secretstate
+package interfaces
 
-import "github.com/canonical/workshop/internal/secrets"
+// constError is a string-backed error for immutable domain sentinels.
+type constError string
 
-// ErrorPlugNotConnected indicates that a declared secret plug has no
-// connected slot from which to retrieve a value.
-const ErrorPlugNotConnected = secrets.ConstError("secret plug is not connected")
+// ErrorPlugNotConnected indicates that a declared plug has no connected slot.
+const ErrorPlugNotConnected = constError("plug is not connected")
+
+// Error returns the sentinel's diagnostic message.
+func (e constError) Error() string {
+	return string(e)
+}
