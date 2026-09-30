@@ -62,7 +62,7 @@ func (s *SdkSuite) TestSimple(c *check.C) {
 base: ubuntu@24.04
 `)
 
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(info.ProjectId, check.Equals, s.projectId)
 	c.Assert(info.Base, check.Equals, "ubuntu@24.04")
@@ -127,7 +127,7 @@ plugs:
     workshop-target: /project
 `)
 
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(info.Plugs, check.HasLen, 1)
 	c.Assert(info.Slots, check.HasLen, 0)
@@ -148,7 +148,7 @@ slots:
     workshop-source: /project
 `)
 
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(info.Slots, check.HasLen, 1)
 	c.Assert(info.Plugs, check.HasLen, 0)
@@ -172,7 +172,7 @@ plugs:
         m:
           a: A
           b: B
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(info.Plugs, check.HasLen, 1)
 	c.Assert(info.Slots, check.HasLen, 0)
@@ -199,7 +199,7 @@ plugs:
     net:
         interface: mount
         attr: 2
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `(?s).*line 7: mapping key \"net\" already defined at line 4`)
 }
 
@@ -210,7 +210,7 @@ name: sdk
 plugs:
     mount:
         ipv6-aware: true
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 1)
 	c.Check(info.Slots, check.HasLen, 0)
@@ -229,7 +229,7 @@ name: sdk
 plugs:
     bool-file:
         label: Disk I/O indicator
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 
 	c.Check(info.Plugs, check.HasLen, 1)
@@ -251,7 +251,7 @@ plugs:
     net:
         interface: 1.0
         ipv6-aware: true
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `interface name on plug "net" is not a string \(found float64\)`)
 }
 
@@ -262,7 +262,7 @@ name: sdk
 plugs:
     bool-file:
         label: 1.0
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `label of plug "bool-file" is not a string \(found float64\)`)
 }
 
@@ -273,7 +273,7 @@ name: sdk
 plugs:
     net:
         1: ok
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `plug "net" has malformed definition \(found map\[interface {}\]interface {}\)`)
 }
 
@@ -284,7 +284,7 @@ name: sdk
 plugs:
     net:
         "": ok
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `plug "net" has an empty attribute key`)
 }
 
@@ -294,7 +294,7 @@ func (s *SdkSuite) TestUnmarshalCorruptedPlugWithUnexpectedType(c *check.C) {
 name: sdk
 plugs:
     net: 5
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `plug "net" has malformed definition \(found int\)`)
 }
 
@@ -306,7 +306,7 @@ plugs:
     serial:
         interface: serial-port
         $baud-rate: [9600]
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `plug "serial" uses reserved attribute "\$baud-rate"`)
 }
 
@@ -318,7 +318,7 @@ plugs:
     serial:
         interface: serial-port
         foo: null
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `attribute "foo" of plug \"serial\": invalid scalar:.*`)
 }
 
@@ -332,7 +332,7 @@ plugs:
         bar:
           baz:
           - 1: A
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `attribute "bar" of plug \"serial\": non-string key: 1`)
 }
 
@@ -344,7 +344,7 @@ func (s *SdkSuite) TestUnmarshalStandaloneImplicitSlot(c *check.C) {
 name: sdk
 slots:
     mount:
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
@@ -361,7 +361,7 @@ func (s *SdkSuite) TestUnmarshalStandaloneAbbreviatedSlot(c *check.C) {
 name: sdk
 slots:
     net: mount
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
@@ -380,7 +380,7 @@ slots:
     net:
         interface: mount
         ipv6-aware: true
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
@@ -403,7 +403,7 @@ slots:
         l: [1,2]
         m:
           a: "A"
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
@@ -430,7 +430,7 @@ slots:
     net:
         interface: mount
         attr: 2
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `(?s).*line 7: mapping key \"net\" already defined at line 4`)
 }
 
@@ -441,7 +441,7 @@ name: sdk
 slots:
     mount:
         ipv6-aware: true
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
@@ -461,7 +461,7 @@ slots:
     led0:
         interface: bool-file
         label: Front panel LED (red)
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.IsNil)
 	c.Check(info.Plugs, check.HasLen, 0)
 	c.Check(info.Slots, check.HasLen, 1)
@@ -481,7 +481,7 @@ slots:
     net:
         interface: 1.0
         ipv6-aware: true
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `interface name on slot "net" is not a string \(found float64\)`)
 }
 
@@ -492,7 +492,7 @@ name: sdk
 slots:
     bool-file:
         label: 1.0
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `label of slot "bool-file" is not a string \(found float64\)`)
 }
 
@@ -503,7 +503,7 @@ name: sdk
 slots:
     net:
         1: ok
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `slot \"net\" has malformed definition \(found map\[interface {}\]interface {}\)`)
 }
 
@@ -514,7 +514,7 @@ name: sdk
 slots:
     net:
         "": ok
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `slot "net" has an empty attribute key`)
 }
 
@@ -524,7 +524,7 @@ func (s *SdkSuite) TestUnmarshalCorruptedSlotWithUnexpectedType(c *check.C) {
 name: sdk
 slots:
     net: 5
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `slot "net" has malformed definition \(found int\)`)
 }
 
@@ -536,7 +536,7 @@ slots:
     serial:
         interface: serial-port
         $baud-rate: [9600]
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `slot "serial" uses reserved attribute "\$baud-rate"`)
 }
 
@@ -548,7 +548,7 @@ slots:
     serial:
         interface: serial-port
         foo: null
-`), s.projectId, "ws")
+`), s.projectId, "ws", nil)
 	c.Assert(err, check.ErrorMatches, `attribute "foo" of slot \"serial\": invalid scalar:.*`)
 }
 
@@ -561,9 +561,15 @@ slots:
     workshop-source: /project
 `)
 
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	slots := map[string]any{
+		"cache": map[string]any{
+			"interface":       "mount",
+			"workshop-source": "/var/cache",
+		},
+	}
+	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws", []sdk.Additions{{Slots: slots}})
 	c.Assert(err, check.IsNil)
-	c.Assert(info.Slots, check.HasLen, 1)
+	c.Assert(info.Slots, check.HasLen, 2)
 	c.Assert(info.Plugs, check.HasLen, 0)
 	c.Assert(*info.Slots["training"], check.DeepEquals, sdk.SlotInfo{
 		Sdk:       info,
@@ -571,16 +577,6 @@ slots:
 		Interface: "mount",
 		Attrs:     map[string]any{"workshop-source": "/project"},
 	})
-	slots := map[string]any{
-		"cache": map[string]any{
-			"interface":       "mount",
-			"workshop-source": "/var/cache",
-		},
-	}
-	err = info.SetupWorkshopSlots(slots)
-	c.Assert(err, check.IsNil)
-	c.Assert(info.Slots, check.HasLen, 2)
-	c.Assert(info.Plugs, check.HasLen, 0)
 	c.Assert(*info.Slots["cache"], check.DeepEquals, sdk.SlotInfo{
 		Sdk:       info,
 		Name:      "cache",
@@ -598,22 +594,12 @@ slots:
     workshop-source: /project
 `)
 
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
-	c.Assert(err, check.IsNil)
-	c.Assert(info.Slots, check.HasLen, 1)
-	c.Assert(info.Plugs, check.HasLen, 0)
-	c.Assert(*info.Slots["training"], check.DeepEquals, sdk.SlotInfo{
-		Sdk:       info,
-		Name:      "training",
-		Interface: "mount",
-		Attrs:     map[string]any{"workshop-source": "/project"},
-	})
 	slots := map[string]any{
 		"training": map[string]any{
 			"workshop-source": "/data",
 		},
 	}
-	err = info.SetupWorkshopSlots(slots)
+	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws", []sdk.Additions{{Slots: slots}})
 	c.Assert(err, check.ErrorMatches, `cannot add slot "training" to "sdk" SDK: already exists`)
 }
 
@@ -626,21 +612,11 @@ plugs:
     workshop-target: /project
 `)
 
-	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
-	c.Assert(err, check.IsNil)
-	c.Assert(info.Slots, check.HasLen, 0)
-	c.Assert(info.Plugs, check.HasLen, 1)
-	c.Assert(*info.Plugs["training"], check.DeepEquals, sdk.PlugInfo{
-		Sdk:       info,
-		Name:      "training",
-		Interface: "mount",
-		Attrs:     map[string]any{"workshop-target": "/project"},
-	})
 	plugs := map[string]any{
 		"training": map[string]any{
 			"workshop-target": "/data",
 		},
 	}
-	err = info.SetupWorkshopPlugs(plugs)
+	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws", []sdk.Additions{{Plugs: plugs}})
 	c.Assert(err, check.ErrorMatches, `cannot add plug "training" to "sdk" SDK: already exists`)
 }

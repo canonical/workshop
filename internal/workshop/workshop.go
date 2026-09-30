@@ -122,7 +122,7 @@ func (w *Workshop) metaFromFile(ctx context.Context, setup sdk.Setup) (string, e
 }
 
 func ValidateSdkInfo(pid, w, base, sk, sdkYaml string) error {
-	info, err := sdk.ReadSdkInfo([]byte(sdkYaml), pid, w)
+	info, err := sdk.ReadSdkInfo([]byte(sdkYaml), pid, w, nil)
 	if err != nil {
 		return fmt.Errorf("invalid %q SDK: %w", sk, err)
 	}
@@ -177,7 +177,12 @@ func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, erro
 		return nil, err
 	}
 
-	info, err := sdk.ReadSdkInfo([]byte(meta), w.Project.ProjectId, w.Name)
+	additions, err := sdkAdditions(w.Project.ProjectId, w.File, sdkName)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := sdk.ReadSdkInfo([]byte(meta), w.Project.ProjectId, w.Name, additions)
 	if err != nil {
 		return nil, err
 	}
@@ -190,43 +195,32 @@ func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, erro
 	info.Source = sk.Source
 	info.PackageID = sk.PackageID
 
-	// Now add changes defined for this SDK in the workshop file (e.g. plug
-	// binds, slots).
-	idx := slices.IndexFunc(w.File.Sdks, func(sr SdkRecord) bool { return sr.Name == info.Name })
+	return info, nil
+}
 
-	// system and sketch SDK is an optional entry in a workshop file, so it's not an error
-	// scenario.
-	if idx == -1 && IsImplicitSdk(sdkName) {
-		return info, nil
+func sdkAdditions(pid string, file *File, sdkName string) ([]sdk.Additions, error) {
+	idx := slices.IndexFunc(file.Sdks, func(sr SdkRecord) bool { return sr.Name == sdkName })
+	if idx < 0 {
+		// system and sketch SDK is an optional entry in a workshop file, so it's not an error
+		// scenario.
+		if IsImplicitSdk(sdkName) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("internal error: %q SDK is installed but not declared in the workshop file", sdkName)
 	}
 
-	if idx == -1 {
-		return nil, fmt.Errorf("internal error: %q SDK is installed but not declared in the workshop file", info.Name)
-	}
-
+	plugs := make(map[string]any, len(file.Sdks[idx].Plugs))
 	binds := map[string]sdk.PlugRef{}
-	plugs := map[string]any{}
-	for name, m := range w.File.Sdks[idx].Plugs {
+	for name, m := range file.Sdks[idx].Plugs {
 		if m.Bind == nil {
 			plugs[name] = m.Plug
 		} else {
-			binds[name] = sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: m.Bind.Sdk, Name: m.Bind.Name}
+			binds[name] = sdk.PlugRef{ProjectId: pid, Workshop: file.Name, Sdk: m.Bind.Sdk, Name: m.Bind.Name}
 		}
 	}
 
-	if err = info.SetupWorkshopPlugs(plugs); err != nil {
-		return nil, err
-	}
-
-	if err = info.SetupPlugBinds(binds); err != nil {
-		return nil, err
-	}
-
-	if err = info.SetupWorkshopSlots(w.File.Sdks[idx].Slots); err != nil {
-		return nil, err
-	}
-
-	return info, nil
+	slots := file.Sdks[idx].Slots
+	return []sdk.Additions{{Plugs: plugs, Slots: slots, Binds: binds}}, nil
 }
 
 // Returns a map of SDK files for installed SDKs.
