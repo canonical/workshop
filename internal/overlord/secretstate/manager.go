@@ -179,7 +179,7 @@ func (m SecretManager) getSecret(
 	)
 
 	if len(connections) == 0 {
-		return secrets.Secret{}, errors.New("secret plug is not connected")
+		return secrets.Secret{}, ErrorPlugNotConnected
 	}
 
 	if len(connections) > 1 {
