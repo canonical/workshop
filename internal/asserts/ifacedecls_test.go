@@ -92,7 +92,7 @@ func attrs(yml string) *attrerObject {
 
 	// NOTE: it's important to go through sdk yaml here even though we're really interested in Attrs only,
 	// as InfoFromSdkYaml normalizes yaml values.
-	info, err := sdk.ReadSdkInfo(sdkYaml, "", "")
+	info, err := sdk.ReadSdkInfo(sdkYaml, "", "", nil)
 	if err != nil {
 		panic(err)
 	}
