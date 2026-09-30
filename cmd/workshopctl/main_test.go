@@ -20,6 +20,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -124,9 +125,39 @@ func (f *fakeFdReader) Fd() uintptr {
 	return 0
 }
 
+// TestInterceptArgsDefaultFallback checks that other commands retain the
+// ordinary failure exit code rather than the secret fallback.
+func (s *workshopctlSuite) TestInterceptArgsDefaultFallback(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	req, err := interceptArgs([]string{"foo"}, nil, &stdout, &stderr)
+	c.Assert(err, check.IsNil)
+
+	code := req.responseHandler(nil, nil, errors.New("daemon unavailable"))
+
+	c.Check(code, check.Equals, 1)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: daemon unavailable\n")
+}
+
+// TestWorkshopctlGetSecretDecodeFailure checks that run uses the installed
+// secret handler when local systemd decoding fails.
+func (s *workshopctlSuite) TestWorkshopctlGetSecretDecodeFailure(c *check.C) {
+	stdin, err := os.CreateTemp(c.MkDir(), "stdin")
+	c.Assert(err, check.IsNil)
+	defer stdin.Close()
+	var stdout, stderr bytes.Buffer
+
+	code := run([]string{"get-secret", "--systemd"}, stdin, &stdout, &stderr)
+
+	c.Check(code, check.Equals, 255)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Matches,
+		"error: cannot decode secret request: .*\n")
+}
+
 // TestWorkshopctlGetSecretSystemd checks that get-secret --systemd decodes
-// the request from the stdin connection and forwards it to the daemon as a
-// regular get-secret invocation.
+// the stdin connection, forwards the flag but no stdin, and preserves the
+// daemon's stdout and stderr.
 func (s *workshopctlSuite) TestWorkshopctlGetSecretSystemd(c *check.C) {
 	addr := "\x00" + fmt.Sprintf("%d-main", os.Getpid()) + "/unit/ollama.service/ollama.ollama-api-key"
 	name := filepath.Join(c.MkDir(), "conn")
@@ -160,12 +191,17 @@ func (s *workshopctlSuite) TestWorkshopctlGetSecretSystemd(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer f.Close()
 
-	s.expectedArgs = []string{"get-secret", "ollama.ollama-api-key"}
+	s.expectedArgs = []string{
+		"get-secret", "--systemd", "ollama.ollama-api-key",
+	}
+	s.expectedStdin = nil
 
 	var stdout, stderr bytes.Buffer
 	args := []string{"get-secret", "--systemd"}
 	c.Check(run(args, f, &stdout, &stderr), check.Equals, 0)
 	c.Check(stdout.String(), check.Equals, "test stdout")
 	c.Check(stderr.String(), check.Equals,
-		"processed systemd load credential request for unit \"ollama.service\", \"ollama\" SDK and secret \"ollama-api-key\"")
+		"processed systemd load credential request for unit "+
+			"\"ollama.service\", \"ollama\" SDK and secret "+
+			"\"ollama-api-key\"test stderr")
 }

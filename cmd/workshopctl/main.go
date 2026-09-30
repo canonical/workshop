@@ -60,8 +60,11 @@ var clientConfig = client.Config{
 // standard workshopctl response behaviour: the response stdout and stderr
 // are written to the given writers. API errors supply output and a valid
 // exit code when present, regardless of kind. Missing stderr falls back to
-// the error message, and missing or invalid exit codes default to 1.
-func defaultResponseHandler(stdout, stderr io.Writer) func([]byte, []byte, error) int {
+// the error message, and missing or invalid exit codes use fallbackExitCode.
+func defaultResponseHandler(
+	stdout, stderr io.Writer,
+	fallbackExitCode int,
+) func([]byte, []byte, error) int {
 	return func(responseStdout, responseStderr []byte, err error) int {
 		if err == nil {
 			stdout.Write(responseStdout)
@@ -72,7 +75,7 @@ func defaultResponseHandler(stdout, stderr io.Writer) func([]byte, []byte, error
 		clientErr, is := errors.AsType[*client.Error](err)
 		if !is {
 			fmt.Fprintf(stderr, "error: %s\n", err)
-			return 1
+			return fallbackExitCode
 		}
 
 		if output, ok := clientErr.Stdout(); ok {
@@ -86,7 +89,7 @@ func defaultResponseHandler(stdout, stderr io.Writer) func([]byte, []byte, error
 		if code, ok := clientErr.ExitCode(); ok {
 			return code
 		}
-		return 1
+		return fallbackExitCode
 	}
 }
 
@@ -114,8 +117,7 @@ func main() {
 func run(args []string, stdin fdReader, stdout, stderr io.Writer) int {
 	req, err := interceptArgs(args, stdin, stdout, stderr)
 	if err != nil {
-		// The request may not have a handler if interception failed.
-		return defaultResponseHandler(stdout, stderr)(nil, nil, err)
+		return req.responseHandler(nil, nil, err)
 	}
 
 	config := clientConfig
@@ -135,8 +137,8 @@ func run(args []string, stdin fdReader, stdout, stderr io.Writer) int {
 
 // interceptArgs inspects the workshopctl invocation for subcommands that
 // need local interception before being forwarded to the daemon, returning
-// the request to forward. Subcommands with no local handling are forwarded
-// unchanged.
+// the request to forward. The request retains its response handler even if
+// interception fails. Subcommands with no local handling are forwarded unchanged.
 func interceptArgs(
 	args []string,
 	stdin fdReader,
@@ -144,7 +146,7 @@ func interceptArgs(
 ) (workshopctlRequest, error) {
 	req := workshopctlRequest{
 		WorkshopCtlOptions: client.WorkshopCtlOptions{Args: args},
-		responseHandler:    defaultResponseHandler(stdout, stderr),
+		responseHandler:    defaultResponseHandler(stdout, stderr, 1),
 	}
 
 	if len(args) == 0 {

@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"gopkg.in/check.v1"
@@ -33,7 +34,7 @@ var _ = check.Suite(&defaultResponseHandlerSuite{})
 // and an exit code without duplicating the diagnostic.
 func (defaultResponseHandlerSuite) TestAPIOutput(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	handler := defaultResponseHandler(&stdout, &stderr)
+	handler := defaultResponseHandler(&stdout, &stderr, 1)
 	err := fmt.Errorf("request: %w", &client.Error{
 		Kind:    client.ErrorKindSecretNotFound,
 		Message: "fallback message",
@@ -51,11 +52,23 @@ func (defaultResponseHandlerSuite) TestAPIOutput(c *check.C) {
 	c.Check(stderr.String(), check.Equals, "command diagnostic\n")
 }
 
+// TestConfigurableFallback checks that unknown errors use the supplied code.
+func (defaultResponseHandlerSuite) TestConfigurableFallback(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	handler := defaultResponseHandler(&stdout, &stderr, 42)
+
+	code := handler(nil, nil, errors.New("daemon unavailable"))
+
+	c.Check(code, check.Equals, 42)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: daemon unavailable\n")
+}
+
 // TestEmptyStderr checks that explicitly empty stderr suppresses fallback
 // diagnostics, while an absent exit code defaults to failure.
 func (defaultResponseHandlerSuite) TestEmptyStderr(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	handler := defaultResponseHandler(&stdout, &stderr)
+	handler := defaultResponseHandler(&stdout, &stderr, 1)
 	err := &client.Error{
 		Message: "fallback message",
 		Value:   map[string]any{"stderr": ""},
@@ -71,7 +84,7 @@ func (defaultResponseHandlerSuite) TestEmptyStderr(c *check.C) {
 // success through integer truncation.
 func (defaultResponseHandlerSuite) TestInvalidExitCode(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	handler := defaultResponseHandler(&stdout, &stderr)
+	handler := defaultResponseHandler(&stdout, &stderr, 1)
 	err := &client.Error{
 		Message: "command failed",
 		Value:   map[string]any{"exit-code": 0.5},
@@ -87,7 +100,7 @@ func (defaultResponseHandlerSuite) TestInvalidExitCode(c *check.C) {
 // and return the default failure exit code.
 func (defaultResponseHandlerSuite) TestMissingOutput(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	handler := defaultResponseHandler(&stdout, &stderr)
+	handler := defaultResponseHandler(&stdout, &stderr, 1)
 	err := &client.Error{Message: "command failed"}
 
 	code := handler(nil, nil, err)
@@ -97,10 +110,34 @@ func (defaultResponseHandlerSuite) TestMissingOutput(c *check.C) {
 	c.Check(stderr.String(), check.Equals, "error: command failed\n")
 }
 
+// TestSuccess checks that successful responses preserve both output streams.
+func (defaultResponseHandlerSuite) TestSuccess(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	handler := defaultResponseHandler(&stdout, &stderr, 255)
+
+	code := handler([]byte("command output"), []byte("diagnostic"), nil)
+
+	c.Check(code, check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "command output")
+	c.Check(stderr.String(), check.Equals, "diagnostic")
+}
+
+// TestUnknownError checks that ordinary failures retain exit code 1.
+func (defaultResponseHandlerSuite) TestUnknownError(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	handler := defaultResponseHandler(&stdout, &stderr, 1)
+
+	code := handler(nil, nil, errors.New("daemon unavailable"))
+
+	c.Check(code, check.Equals, 1)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: daemon unavailable\n")
+}
+
 // TestZeroExitCode checks that an API error can explicitly request success.
 func (defaultResponseHandlerSuite) TestZeroExitCode(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	handler := defaultResponseHandler(&stdout, &stderr)
+	handler := defaultResponseHandler(&stdout, &stderr, 1)
 	err := &client.Error{
 		Kind:    client.ErrorKindPlugNotConnected,
 		Message: "plug not connected",
