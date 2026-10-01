@@ -41,10 +41,6 @@ import (
 	"github.com/canonical/workshop/internal/workshop/fakebackend"
 )
 
-var wsFocal = `name: ws
-base: ubuntu@24.04
-`
-
 var wsJammy = `name: ws
 base: ubuntu@22.04
 `
@@ -75,16 +71,6 @@ func setWorkshopProject(w string, p workshop.Project, tasks ...*state.Task) {
 		i.Set("workshop", w)
 		i.Set("project", p)
 	}
-}
-
-func (s *workshopHandlers) createWFile(c *check.C, name string, yaml string) {
-	path := workshop.Filepath(s.project.Path, name)
-
-	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
-	c.Assert(err, check.IsNil)
-
-	err = os.WriteFile(path, []byte(yaml), 0644)
-	c.Assert(err, check.IsNil)
 }
 
 var ErrTrigger = errors.New("error out")
@@ -154,7 +140,6 @@ func (s *workshopHandlers) TearDownTest(c *check.C) {
 func (s *workshopHandlers) TestStopPeriodicProgressUpdate(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
-	s.createWFile(c, "ws", wsFocal)
 	wf := &workshop.File{Name: "ws", Base: "ubuntu@24.04"}
 	snapshot := workshop.BaseOnly(sdk.R(1), wf.Base, workshop.RuntimeLXDContainer, "fakeimage123")
 	err := s.backend.LaunchOrRebuildWorkshop(s.ctx, wf, snapshot)
@@ -342,13 +327,12 @@ func (s *workshopHandlers) TestCreateWorkshopNoWorkshopDefinitionFound(c *check.
 func (s *workshopHandlers) TestCreateWorkshopWithSystemSdk(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
-	s.createWFile(c, "ws", wsJammy)
 
 	chg := s.state.NewChange("sample", "...")
 	t1 := s.state.NewTask("create-workshop", "...")
-	t1.Set("workshop-file", wsJammy)
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", wsJammy)
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
@@ -367,7 +351,6 @@ func (s *workshopHandlers) TestCreateWorkshopWithSystemSdk(c *check.C) {
 func (s *workshopHandlers) TestCreateWorkshopCleanup(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
-	s.createWFile(c, "ws", wsJammy)
 
 	reset := s.backend.SetLaunchOrRebuildCallback(func(ctx context.Context, file *workshop.File, snapshot workshop.Snapshot) error {
 		return errors.New("contrived error")
@@ -376,9 +359,9 @@ func (s *workshopHandlers) TestCreateWorkshopCleanup(c *check.C) {
 
 	chg := s.state.NewChange("sample", "...")
 	t1 := s.state.NewTask("create-workshop", "...")
-	t1.Set("workshop-file", wsJammy)
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", wsJammy)
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
@@ -400,7 +383,6 @@ func (s *workshopHandlers) TestCreateWorkshopCleanup(c *check.C) {
 func (s *workshopHandlers) TestRebuildWorkshopNoCleanup(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
-	s.createWFile(c, "ws", wsJammy)
 
 	reset := s.backend.SetLaunchOrRebuildCallback(func(ctx context.Context, file *workshop.File, snapshot workshop.Snapshot) error {
 		return errors.New("contrived error")
@@ -409,10 +391,10 @@ func (s *workshopHandlers) TestRebuildWorkshopNoCleanup(c *check.C) {
 
 	chg := s.state.NewChange("sample", "...")
 	t1 := s.state.NewTask("rebuild-workshop", "...")
-	t1.Set("workshop-file", wsJammy)
 	setWorkshopProject("ws", s.project, t1)
 	chg.Set("user", "testuser")
 	image := workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"}
+	chg.Set("ws_new_file", wsJammy)
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", image)
 	chg.Set("ws_new_sdks", []sdk.Setup{})
@@ -445,8 +427,6 @@ func (s *workshopHandlers) TestDownloadBase(c *check.C) {
 	defer func() {
 		s.backend.DownloadBaseCallback = nil
 	}()
-
-	s.createWFile(c, "ws", wsJammy)
 
 	chg := s.state.NewChange("sample", "...")
 	t1 := s.state.NewTask("download-base", "...")
@@ -599,6 +579,9 @@ func (s *workshopHandlers) TestConfigureTimezoneMissingDpkg(c *check.C) {
 }
 
 func setWorkshopManifest(chg *state.Change, age handlersetup.Age, manifest workshopstate.Manifest) {
+	if age == handlersetup.NewWorkshop {
+		handlersetup.SetWorkshopFile(chg, manifest.File, age)
+	}
 	chg.Set(handlersetup.WorkshopFormatKey(manifest.File.Name, age), manifest.Format)
 	chg.Set(handlersetup.WorkshopBaseKey(manifest.File.Name, age), manifest.Image)
 	chg.Set(handlersetup.WorkshopSdksKey(manifest.File.Name, age), manifest.Sdks)
@@ -610,7 +593,6 @@ func (s *workshopHandlers) launchWorkshop(c *check.C, manifest workshopstate.Man
 	setWorkshopManifest(chg, handlersetup.NewWorkshop, manifest)
 
 	create := s.state.NewTask("create-workshop", "...")
-	handlersetup.SetWorkshopFile(create, manifest.File)
 	setWorkshopProject(manifest.File.Name, s.project, create)
 	chg.AddTask(create)
 
@@ -723,7 +705,6 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterFailedLaunch(c *check.C) {
 	setWorkshopManifest(chg, handlersetup.NewWorkshop, manifest)
 
 	t := s.state.NewTask("create-workshop", "...")
-	handlersetup.SetWorkshopFile(t, manifest.File)
 	setWorkshopProject("ws", s.project, t)
 	chg.AddTask(t)
 
@@ -801,7 +782,6 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterRefresh(c *check.C) {
 	chg.AddTask(stash)
 
 	rebuild := s.state.NewTask("rebuild-workshop", "...")
-	handlersetup.SetWorkshopFile(rebuild, latest.File)
 	setWorkshopProject("ws", s.project, rebuild)
 	rebuild.WaitFor(stash)
 	chg.AddTask(rebuild)
@@ -875,7 +855,6 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterFailedRefresh(c *check.C) {
 	chg.AddTask(stash)
 
 	rebuild := s.state.NewTask("rebuild-workshop", "...")
-	handlersetup.SetWorkshopFile(rebuild, latest.File)
 	setWorkshopProject("ws", s.project, rebuild)
 	rebuild.WaitFor(stash)
 	chg.AddTask(rebuild)
@@ -953,7 +932,6 @@ func (s *workshopHandlers) TestSnapshotRemovedAfterRemoveMidRefresh(c *check.C) 
 	refresh.AddTask(stash)
 
 	rebuild := s.state.NewTask("rebuild-workshop", "...")
-	handlersetup.SetWorkshopFile(rebuild, latest.File)
 	setWorkshopProject("ws", s.project, rebuild)
 	rebuild.WaitFor(stash)
 	refresh.AddTask(rebuild)
@@ -1059,7 +1037,6 @@ func (s *workshopHandlers) TestSnapshotExitCleanupAfterSuccessfulLaunch(c *check
 	setWorkshopManifest(chg, handlersetup.NewWorkshop, manifest)
 
 	t := s.state.NewTask("create-workshop", "...")
-	handlersetup.SetWorkshopFile(t, manifest.File)
 	setWorkshopProject("ws", s.project, t)
 	chg.AddTask(t)
 
@@ -1157,7 +1134,6 @@ func (s *workshopHandlers) TestSnapshotExitCleanupIfUsedAgain(c *check.C) {
 	setWorkshopManifest(launch, handlersetup.NewWorkshop, manifest2)
 
 	create := s.state.NewTask("create-workshop", "...")
-	handlersetup.SetWorkshopFile(create, manifest2.File)
 	setWorkshopProject("ws2", s.project, create)
 	launch.AddTask(create)
 
@@ -1232,7 +1208,6 @@ func (s *workshopHandlers) TestSnapshotRetriesCleanupIfBlockingChangesArePresent
 	setWorkshopManifest(launch, handlersetup.NewWorkshop, manifest2)
 
 	create := s.state.NewTask("create-workshop", "...")
-	handlersetup.SetWorkshopFile(create, manifest2.File)
 	setWorkshopProject("ws2", s.project, create)
 	create.SetToWait(state.DoStatus)
 	launch.AddTask(create)
