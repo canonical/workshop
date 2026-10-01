@@ -193,7 +193,7 @@ slots:
 `)
 
 func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	fs, err := f.be.WorkshopFs(f.ctx, "test")
 	c.Assert(err, check.IsNil)
@@ -325,7 +325,7 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 }
 
 func (f *backendDeviceSuite) TestSetupHostWorkshopMounts(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
@@ -369,7 +369,7 @@ func (f *backendDeviceSuite) TestSetupHostWorkshopMounts(c *check.C) {
 }
 
 func (f *backendDeviceSuite) TestSetupUpdateProfile(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
@@ -408,7 +408,7 @@ func (f *backendDeviceSuite) TestSetupUpdateProfile(c *check.C) {
 }
 
 func (f *backendDeviceSuite) TestSetupSshAgent(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 	defer mockWorkshopRunDir()()
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)
@@ -466,7 +466,7 @@ func (f *backendDeviceSuite) TestSetupSshAgent(c *check.C) {
 }
 
 func (f *backendDeviceSuite) TestSetupMultipleInterfaces(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 	defer mockWorkshopRunDir()()
 
 	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)

@@ -138,10 +138,6 @@ func validateSdkInfo(pid, w, base, sk string, sdkYaml []byte, additions []sdk.Ad
 		return fmt.Errorf("invalid %q SDK: %w", sk, err)
 	}
 
-	if len(info.BadInterfaces) > 0 {
-		return fmt.Errorf("%s", sdk.BadInterfacesSummary(info))
-	}
-
 	if info.Name != sk {
 		return fmt.Errorf("SDK must be named %q (now: %q)", sk, info.Name)
 	}

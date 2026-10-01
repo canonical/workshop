@@ -137,7 +137,7 @@ func (m *workshopSketch) SetUpTest(c *check.C) {
 
 	m.userDataDir = workshop.UserDataRootDir(usr.HomeDir, nil)
 
-	m.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	m.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil }))
 }
 
 func (m *workshopSketch) TearDownTest(c *check.C) {
