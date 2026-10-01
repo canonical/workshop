@@ -90,7 +90,7 @@ func (m *SdkManager) doRetrieveSdk(task *state.Task, tomb *tomb.Tomb) error {
 
 	st := task.State()
 	st.Lock()
-	base, err := WorkshopBase(task.Change(), w, NewWorkshop)
+	file, err := WorkshopFile(task.Change(), w, NewWorkshop)
 	st.Unlock()
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (m *SdkManager) doRetrieveSdk(task *state.Task, tomb *tomb.Tomb) error {
 	// reuse an existing SDK volume, the workshop may add invalid plugs or
 	// slots to it. We also check the SDK's compatibility with the base image,
 	// to double-check that the Store gave us the revision we wanted.
-	return workshop.ValidateSdkInfo(project.ProjectId, w, base.Name, rec.Name, sdkYaml)
+	return workshop.ValidateSdkInfo(project.ProjectId, file, rec.Name, sdkYaml)
 }
 
 func (m *SdkManager) retrieveOrReuseSdk(ctx context.Context, task *state.Task, rec sdk.Setup) (string, error) {

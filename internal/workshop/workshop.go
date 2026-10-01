@@ -121,8 +121,21 @@ func (w *Workshop) metaFromFile(ctx context.Context, setup sdk.Setup) (string, e
 	return string(meta), err
 }
 
-func ValidateSdkInfo(pid, w, base, sk, sdkYaml string) error {
-	info, err := sdk.ReadSdkInfo([]byte(sdkYaml), pid, w, nil)
+func ValidateSdkInfo(pid string, file *File, sdkName, sdkYaml string) error {
+	additions, err := sdkAdditions(pid, file, sdkName)
+	if err != nil {
+		return err
+	}
+
+	return validateSdkInfo(pid, file.Name, file.Base, sdkName, sdkYaml, additions)
+}
+
+func ValidateSketch(pid, w, base string, sdkYaml []byte) error {
+	return validateSdkInfo(pid, w, base, sdk.Sketch, string(sdkYaml), nil)
+}
+
+func validateSdkInfo(pid, w, base, sk, sdkYaml string, additions []sdk.Additions) error {
+	info, err := sdk.ReadSdkInfo([]byte(sdkYaml), pid, w, additions)
 	if err != nil {
 		return fmt.Errorf("invalid %q SDK: %w", sk, err)
 	}
