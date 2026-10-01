@@ -39,7 +39,6 @@ var _ = check.Suite(&connSuite{})
 
 func (s *connSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil }))
 	s.projectId = "42424242"
 	consumer := sdk.MockInfo(c, `
 name: consumer

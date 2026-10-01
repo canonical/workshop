@@ -92,7 +92,7 @@ func attrs(yml string) *attrerObject {
 
 	// NOTE: it's important to go through sdk yaml here even though we're really interested in Attrs only,
 	// as InfoFromSdkYaml normalizes yaml values.
-	info, err := sdk.ReadSdkInfo(sdkYaml, "", "", nil)
+	info, err := sdk.ReadSdkInfo(sdkYaml, "", "", nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +103,6 @@ func attrs(yml string) *attrerObject {
 
 func (s *attrConstraintsSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil }))
 }
 
 func (s *attrConstraintsSuite) TearDownTest(c *check.C) {

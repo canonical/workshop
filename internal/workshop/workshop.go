@@ -121,21 +121,34 @@ func (w *Workshop) metaFromFile(ctx context.Context, setup sdk.Setup) (string, e
 	return string(meta), err
 }
 
-func ValidateSdkInfo(pid string, file *File, sdkName, sdkYaml string) error {
+type Sanitizer = func(info *sdk.Info, runtime Runtime) error
+
+func sdkSanitizer(sanitize Sanitizer, runtime Runtime) sdk.Sanitizer {
+	if sanitize == nil {
+		return nil
+	}
+	return func(i *sdk.Info) error { return sanitize(i, runtime) }
+}
+
+func ValidateSdkInfo(pid string, file *File, sdkName, sdkYaml string, sanitize Sanitizer) error {
 	additions, err := sdkAdditions(pid, file, sdkName)
 	if err != nil {
 		return err
 	}
 
-	return validateSdkInfo(pid, file.Name, file.Base, sdkName, sdkYaml, additions)
+	return validateSdkInfo(pid, file.Name, file.Base, sdkName, sdkYaml, additions, sdkSanitizer(sanitize, file.Runtime))
 }
 
-func ValidateSketch(pid, w, base string, sdkYaml []byte) error {
-	return validateSdkInfo(pid, w, base, sdk.Sketch, string(sdkYaml), nil)
+func ValidateSketch(pid, w, base, runtime string, sdkYaml []byte, sanitize Sanitizer) error {
+	var r Runtime
+	if err := r.UnmarshalText([]byte(runtime)); err != nil {
+		return err
+	}
+	return validateSdkInfo(pid, w, base, sdk.Sketch, string(sdkYaml), nil, sdkSanitizer(sanitize, r))
 }
 
-func validateSdkInfo(pid, w, base, sk, sdkYaml string, additions []sdk.Additions) error {
-	info, err := sdk.ReadSdkInfo([]byte(sdkYaml), pid, w, additions)
+func validateSdkInfo(pid, w, base, sk, sdkYaml string, additions []sdk.Additions, sanitize sdk.Sanitizer) error {
+	info, err := sdk.ReadSdkInfo([]byte(sdkYaml), pid, w, additions, sanitize)
 	if err != nil {
 		return fmt.Errorf("invalid %q SDK: %w", sk, err)
 	}
@@ -179,7 +192,7 @@ func (w *Workshop) SdkFile(ctx context.Context, sdkName string) (*sdk.File, erro
 
 // Reads information about the installed SDK from its meta file and merges it
 // with the workshop definition.
-func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, error) {
+func (w *Workshop) SdkInfo(ctx context.Context, sdkName string, sanitize Sanitizer) (*sdk.Info, error) {
 	sk, ok := w.Sdks[sdkName]
 	if !ok {
 		return nil, fmt.Errorf("SDK %q is not installed in %q workshop", sdkName, w.Name)
@@ -195,7 +208,7 @@ func (w *Workshop) SdkInfo(ctx context.Context, sdkName string) (*sdk.Info, erro
 		return nil, err
 	}
 
-	info, err := sdk.ReadSdkInfo([]byte(meta), w.Project.ProjectId, w.Name, additions)
+	info, err := sdk.ReadSdkInfo([]byte(meta), w.Project.ProjectId, w.Name, additions, sdkSanitizer(sanitize, w.File.Runtime))
 	if err != nil {
 		return nil, err
 	}
@@ -251,10 +264,10 @@ func (w *Workshop) SdkFilesByInstallOrder(ctx context.Context) ([]*sdk.File, err
 
 // Returns a map of SDK info for installed SDKs. The info includes SDK details
 // parsed from its sdk.yaml, such as base, plugs, slots, etc.
-func (w *Workshop) SdkInfosByInstallOrder(ctx context.Context) ([]*sdk.Info, error) {
+func (w *Workshop) SdkInfosByInstallOrder(ctx context.Context, sanitize Sanitizer) ([]*sdk.Info, error) {
 	var infos = make([]*sdk.Info, 0, len(w.Sdks))
 	for _, sdk := range w.SdksByInstallOrder() {
-		info, err := w.SdkInfo(ctx, sdk.Name)
+		info, err := w.SdkInfo(ctx, sdk.Name, sanitize)
 		if err != nil {
 			return nil, err
 		}

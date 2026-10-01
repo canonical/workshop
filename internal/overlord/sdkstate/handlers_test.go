@@ -32,6 +32,7 @@ import (
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/interfaces"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/overlord"
@@ -237,7 +238,7 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	newSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -280,7 +281,7 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	c.Check(props.Sdks["test"].Setup, check.DeepEquals, newSdk.Setup)
 	c.Check(props.Sdks["test"].InstalledAt, check.Equals, s.installedAt)
 
-	sdkInfo, err := props.SdkInfo(s.ctx, "test")
+	sdkInfo, err := props.SdkInfo(s.ctx, "test", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(sdkInfo.Plugs, check.HasLen, 2)
 	c.Assert(sdkInfo.Slots, check.HasLen, 0)
@@ -294,7 +295,7 @@ func (s *sdkStateSuite) TestDoInstallSdkFailedPolicyCheck(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	testSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -387,7 +388,7 @@ func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	newSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -680,7 +681,7 @@ func (s *sdkStateSuite) TestSDKVolumeRemovedAfterCooldownOK(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestSDKVolumeRemovedAfterFailedLaunch(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	newSdk := sdk.Meta{
@@ -724,7 +725,7 @@ func (s *sdkStateSuite) TestSDKVolumeRemovedAfterFailedLaunch(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestSDKVolumeExitCleanupAfterSuccessfulLaunch(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	newSdk := sdk.Meta{
@@ -806,7 +807,7 @@ func (s *sdkStateSuite) TestSDKVolumeNotRemovedBeforeCooldown(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestTaskSDKVolumeExitCleanupIfUsedAgain(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	oldSdk := sdk.Meta{
@@ -857,8 +858,6 @@ func (s *sdkStateSuite) TestTaskSDKVolumeExitCleanupIfUsedAgain(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestTaskSDKVolumeRetriesCleanupIfBlockingChangesArePresent(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
-
 	s.state.Lock()
 	oldSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -987,7 +986,7 @@ func (s *sdkStateSuite) TestSDKVolumeCleanupPerformedByLatestUser(c *check.C) {
 // Check that uninstall-sdk blocks cleanup for the cooldown period, even if
 // the clenanup handler for another Task runs immediately afterwards.
 func (s *sdkStateSuite) TestSDKVolumeCleanupBlockedBeforeUninstall(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	oldSdk := sdk.Meta{
