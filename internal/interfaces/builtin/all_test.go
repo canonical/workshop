@@ -28,6 +28,7 @@ import (
 	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 type AllSuite struct{}
@@ -83,7 +84,7 @@ func (s *AllSuite) TestSanitizeErrorsOnInvalidSlotNames(c *C) {
 	defer restore()
 
 	sdkInfo := sdk.MockInvalidInfo(c, testConsumerInvalidSlotNameYaml)
-	c.Check(sdk.SanitizePlugsSlots(sdkInfo), ErrorMatches, `"consumer" SDK has bad slots: ttyS5 \(invalid slot name\)`)
+	c.Check(builtin.Sanitize(sdkInfo, workshop.Runtime(0)), ErrorMatches, `"consumer" SDK has bad slots: ttyS5 \(invalid slot name\)`)
 }
 
 func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugNames(c *C) {
@@ -93,7 +94,7 @@ func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugNames(c *C) {
 	defer restore()
 
 	sdkInfo := sdk.MockInvalidInfo(c, testConsumerInvalidPlugNameYaml)
-	c.Check(sdk.SanitizePlugsSlots(sdkInfo), ErrorMatches, `"consumer" SDK has bad plugs: ttyS3 \(invalid plug name\)`)
+	c.Check(builtin.Sanitize(sdkInfo, workshop.Runtime(0)), ErrorMatches, `"consumer" SDK has bad plugs: ttyS3 \(invalid plug name\)`)
 }
 
 func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugsAndSlots(c *C) {
@@ -103,5 +104,5 @@ func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugsAndSlots(c *C) {
 	defer restore()
 
 	sdkInfo := sdk.MockInvalidInfo(c, testConsumerInvalidInterfaceNameYaml)
-	c.Check(sdk.SanitizePlugsSlots(sdkInfo), ErrorMatches, `"consumer" SDK has bad plugs: name \(unknown interface "IFACE"\); and slots: name \(unknown interface "IFACE"\)`)
+	c.Check(builtin.Sanitize(sdkInfo, workshop.Runtime(0)), ErrorMatches, `"consumer" SDK has bad plugs: name \(unknown interface "IFACE"\); and slots: name \(unknown interface "IFACE"\)`)
 }
