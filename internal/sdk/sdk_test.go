@@ -38,7 +38,7 @@ func (s *SdkSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
 	s.projectId = "prj42prj42"
 
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) error { return nil }))
 }
 
 func (s *SdkSuite) TearDownTest(c *check.C) {

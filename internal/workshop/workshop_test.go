@@ -86,7 +86,7 @@ func (f *workshopSuite) TestExecArgsEffectiveCommandNoPrefix(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -100,7 +100,7 @@ func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkName(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -114,7 +114,7 @@ func (f *workshopSuite) TestValidateSdkName(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkBase(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -129,7 +129,7 @@ base: ubuntu@24.04
 }
 
 func (f *workshopSuite) TestValidateSdkArchitecture(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	arches := append(slices.Clone(arch.AllowedArchitectures), "mock64")
 	defer testutil.FakeFunc(arches, &arch.AllowedArchitectures)()

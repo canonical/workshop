@@ -94,7 +94,7 @@ func (s *interfaceManagerSuite) SetUpTest(c *check.C) {
 	s.prj = *prj
 	s.ctx = context.WithValue(s.ctx, workshop.ContextProjectId, s.prj.ProjectId)
 
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil }))
 }
 
 func (s *interfaceManagerSuite) TearDownTest(c *check.C) {

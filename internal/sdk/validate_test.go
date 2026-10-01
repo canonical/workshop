@@ -30,7 +30,7 @@ var _ = check.Suite(&ValidateSuite{})
 
 func (s *ValidateSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) error { return nil }))
 	s.projectId = "prj-4242"
 }
 
@@ -70,9 +70,9 @@ func (s *ValidateSuite) TestValidateSlotPlugInterfaceName(c *check.C) {
 	}
 	for _, name := range invalid {
 		err := sdk.ValidateSlotName(name)
-		c.Assert(err, check.ErrorMatches, `invalid slot name: ".*"`)
+		c.Assert(err, check.ErrorMatches, "invalid slot name")
 		err = sdk.ValidatePlugName(name)
-		c.Assert(err, check.ErrorMatches, `invalid plug name: ".*"`)
+		c.Assert(err, check.ErrorMatches, "invalid plug name")
 		err = sdk.ValidateInterfaceName(name)
 		c.Assert(err, check.ErrorMatches, `invalid interface name: ".*"`)
 	}

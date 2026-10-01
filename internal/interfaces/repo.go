@@ -332,7 +332,7 @@ func (r *Repository) AddPlug(plug *sdk.PlugInfo) error {
 
 	// Reject plugs with invalid names
 	if err := sdk.ValidatePlugName(plug.Name); err != nil {
-		return err
+		return fmt.Errorf("%w: %q", err, plug.Name)
 	}
 	i := r.ifaces[plug.Interface]
 	if i == nil {
@@ -429,7 +429,7 @@ func (r *Repository) AddSlot(slot *sdk.SlotInfo) error {
 
 	// Reject slots with invalid names
 	if err := sdk.ValidateSlotName(slot.Name); err != nil {
-		return err
+		return fmt.Errorf("%w: %q", err, slot.Name)
 	}
 	// TODO: ensure that apps are correct
 	i := r.ifaces[slot.Interface]

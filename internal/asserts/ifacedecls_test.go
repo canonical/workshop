@@ -103,7 +103,7 @@ func attrs(yml string) *attrerObject {
 
 func (s *attrConstraintsSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil }))
 }
 
 func (s *attrConstraintsSuite) TearDownTest(c *check.C) {

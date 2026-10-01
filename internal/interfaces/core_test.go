@@ -45,7 +45,7 @@ var _ = Suite(&CoreSuite{})
 
 func (s *CoreSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil }))
 	s.projectId = "42424242"
 }
 

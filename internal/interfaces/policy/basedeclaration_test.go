@@ -45,7 +45,7 @@ func Test(t *testing.T) {
 }
 
 func (s *baseDeclSuite) SetUpSuite(c *check.C) {
-	s.restoreSanitize = sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})
+	s.restoreSanitize = sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })
 	s.baseDecl = asserts.BuiltinBaseDeclaration()
 }
 
