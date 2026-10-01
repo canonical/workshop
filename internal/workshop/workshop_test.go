@@ -15,9 +15,12 @@
 package workshop_test
 
 import (
+	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"gopkg.in/check.v1"
 
@@ -86,7 +89,7 @@ func (f *workshopSuite) TestExecArgsEffectiveCommandNoPrefix(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -100,7 +103,7 @@ func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkName(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -114,7 +117,7 @@ func (f *workshopSuite) TestValidateSdkName(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkBase(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -129,7 +132,7 @@ base: ubuntu@24.04
 }
 
 func (f *workshopSuite) TestValidateSdkArchitecture(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })()
 
 	arches := append(slices.Clone(arch.AllowedArchitectures), "mock64")
 	defer testutil.FakeFunc(arches, &arch.AllowedArchitectures)()
@@ -151,13 +154,17 @@ architecture: mock64
 }
 
 func (f *workshopSuite) TestValidateSdkPlugsAndSlots(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {
-		for plugName := range sdkInfo.Plugs {
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error {
+		var invalid []string
+		for _, plugName := range slices.Sorted(maps.Keys(sdkInfo.Plugs)) {
 			if err := sdk.ValidatePlugName(plugName); err != nil {
-				sdkInfo.BadInterfaces[plugName] = err.Error()
-				continue
+				invalid = append(invalid, plugName)
 			}
 		}
+		if len(invalid) > 0 {
+			return fmt.Errorf("invalid plug names: %s", strings.Join(invalid, ", "))
+		}
+		return nil
 	})()
 
 	wsYaml := `name: test-workshop
@@ -179,7 +186,7 @@ plugs:
     interface: gpu
 `
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml))
-	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has bad plugs or slots: D-Bus \(invalid plug name: "D-Bus"\); GPU \(invalid plug name: "GPU"\)`)
+	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: invalid plug names: D-Bus, GPU`)
 }
 
 func (f *workshopSuite) TestSdkSetupsByInstallOrder(c *check.C) {

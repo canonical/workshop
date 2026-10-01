@@ -20,8 +20,12 @@
 package builtin
 
 import (
+	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/sdk"
@@ -44,56 +48,98 @@ var (
 	allInterfaces map[string]interfaces.Interface
 )
 
-func SanitizePlugsSlots(sdkInfo *sdk.Info) {
-	var badPlugs []string
-	var badSlots []string
+func SanitizePlugsSlots(sdkInfo *sdk.Info) error {
+	badPlugs := map[string][]string{}
+	badSlots := map[string][]string{}
 
 	for plugName, plugInfo := range sdkInfo.Plugs {
-		iface, ok := allInterfaces[plugInfo.Interface]
-		if !ok {
-			sdkInfo.BadInterfaces[plugName] = fmt.Sprintf("unknown interface %q", plugInfo.Interface)
-			badPlugs = append(badPlugs, plugName)
-			continue
-		}
-		// Reject plug with invalid name
-		if err := sdk.ValidatePlugName(plugName); err != nil {
-			sdkInfo.BadInterfaces[plugName] = err.Error()
-			badPlugs = append(badPlugs, plugName)
-			continue
-		}
-		if err := interfaces.BeforePreparePlug(iface, plugInfo); err != nil {
-			sdkInfo.BadInterfaces[plugName] = err.Error()
-			badPlugs = append(badPlugs, plugName)
-			continue
+		if err := sanitizePlug(plugInfo); err != nil {
+			reason := err.Error()
+			badPlugs[reason] = append(badPlugs[reason], plugName)
 		}
 	}
 
 	for slotName, slotInfo := range sdkInfo.Slots {
-		iface, ok := allInterfaces[slotInfo.Interface]
-		if !ok {
-			sdkInfo.BadInterfaces[slotName] = fmt.Sprintf("unknown interface %q", slotInfo.Interface)
-			badSlots = append(badSlots, slotName)
-			continue
-		}
-		// Reject slot with invalid name
-		if err := sdk.ValidateSlotName(slotName); err != nil {
-			sdkInfo.BadInterfaces[slotName] = err.Error()
-			badSlots = append(badSlots, slotName)
-			continue
-		}
-		if err := interfaces.BeforePrepareSlot(iface, slotInfo); err != nil {
-			sdkInfo.BadInterfaces[slotName] = err.Error()
-			badSlots = append(badSlots, slotName)
-			continue
+		if err := sanitizeSlot(slotInfo); err != nil {
+			reason := err.Error()
+			badSlots[reason] = append(badSlots[reason], slotName)
 		}
 	}
 
 	// remove any bad plugs and slots
-	for _, plugName := range badPlugs {
-		delete(sdkInfo.Plugs, plugName)
+	for _, plugNames := range badPlugs {
+		for _, plugName := range plugNames {
+			delete(sdkInfo.Plugs, plugName)
+		}
 	}
-	for _, slotName := range badSlots {
-		delete(sdkInfo.Slots, slotName)
+	for _, slotNames := range badSlots {
+		for _, slotName := range slotNames {
+			delete(sdkInfo.Slots, slotName)
+		}
+	}
+
+	if len(badPlugs) == 0 && len(badSlots) == 0 {
+		return nil
+	}
+
+	var buf strings.Builder
+	if len(badPlugs) > 0 {
+		fmt.Fprintf(&buf, "%q SDK has bad plugs: ", sdkInfo.Name)
+		interfaceSummary(&buf, badPlugs)
+	}
+	if len(badSlots) > 0 {
+		if buf.Len() == 0 {
+			fmt.Fprintf(&buf, "%q SDK has bad slots: ", sdkInfo.Name)
+		} else {
+			buf.WriteString("and slots: ")
+		}
+		interfaceSummary(&buf, badSlots)
+	}
+	return errors.New(strings.TrimSuffix(buf.String(), "; "))
+}
+
+func sanitizePlug(plugInfo *sdk.PlugInfo) error {
+	iface, ok := allInterfaces[plugInfo.Interface]
+	if !ok {
+		return fmt.Errorf("unknown interface %q", plugInfo.Interface)
+	}
+	// Reject plug with invalid name
+	if err := sdk.ValidatePlugName(plugInfo.Name); err != nil {
+		return err
+	}
+	if err := interfaces.BeforePreparePlug(iface, plugInfo); err != nil {
+		return err
+	}
+	return nil
+}
+
+func sanitizeSlot(slotInfo *sdk.SlotInfo) error {
+	iface, ok := allInterfaces[slotInfo.Interface]
+	if !ok {
+		return fmt.Errorf("unknown interface %q", slotInfo.Interface)
+	}
+	// Reject slot with invalid name
+	if err := sdk.ValidateSlotName(slotInfo.Name); err != nil {
+		return err
+	}
+	if err := interfaces.BeforePrepareSlot(iface, slotInfo); err != nil {
+		return err
+	}
+	return nil
+}
+
+func interfaceSummary(buf *strings.Builder, bad map[string][]string) {
+	reasons := slices.Sorted(maps.Keys(bad))
+	for _, reason := range reasons {
+		names := bad[reason]
+		slices.Sort(names)
+		for i, name := range names {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			buf.WriteString(name)
+		}
+		fmt.Fprintf(buf, " (%s); ", reason)
 	}
 }
 

@@ -371,10 +371,6 @@ func (m *SdkManager) registerSdk(ctx context.Context, w, sk string) error {
 		return err
 	}
 
-	if len(info.BadInterfaces) > 0 {
-		return fmt.Errorf("%s", sdk.BadInterfacesSummary(info))
-	}
-
 	if err = policy.CheckInterfaces(info); err != nil {
 		return err
 	}

@@ -15,6 +15,7 @@
 package sdk
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -52,7 +53,7 @@ func Validate(sdk *Info) error {
 
 	for plugName, plug := range sdk.Plugs {
 		if err := ValidatePlugName(plugName); err != nil {
-			return err
+			return fmt.Errorf("%w: %q", err, plugName)
 		}
 		if err := ValidateInterfaceName(plug.Interface); err != nil {
 			return fmt.Errorf("invalid interface name %q for plug %q", plug.Interface, plugName)
@@ -60,7 +61,7 @@ func Validate(sdk *Info) error {
 	}
 	for slotName, slot := range sdk.Slots {
 		if err := ValidateSlotName(slotName); err != nil {
-			return err
+			return fmt.Errorf("%w: %q", err, slotName)
 		}
 		if err := ValidateInterfaceName(slot.Interface); err != nil {
 			return fmt.Errorf("invalid interface name %q for slot %q", slot.Interface, slotName)
@@ -88,7 +89,7 @@ func ValidateName(name string) error {
 // Slot names and plug names within one sdk must have unique names.
 func ValidatePlugName(name string) error {
 	if !validPlugSlotIface.MatchString(name) {
-		return fmt.Errorf("invalid plug name: %q", name)
+		return errors.New("invalid plug name")
 	}
 	return nil
 }
@@ -98,7 +99,7 @@ func ValidatePlugName(name string) error {
 // Slot names and plug names within one sdk must have unique names.
 func ValidateSlotName(name string) error {
 	if !validPlugSlotIface.MatchString(name) {
-		return fmt.Errorf("invalid slot name: %q", name)
+		return errors.New("invalid slot name")
 	}
 	return nil
 }
