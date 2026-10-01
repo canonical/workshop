@@ -28,7 +28,7 @@ import (
 
 	"github.com/canonical/workshop/client"
 	"github.com/canonical/workshop/cmd/internal/cmdutil"
-	_ "github.com/canonical/workshop/internal/interfaces/builtin"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
@@ -572,7 +572,7 @@ func validateSketchSdk(wp client.WorkshopInfo, content []byte) (map[string]strin
 	// Normally SDKs don't have a `hooks` field, but ValidateSdkInfo will
 	// ignore it if the SDK is named "sketch." We pass the entire sdk.yaml
 	// instead of a stripped version to preserve line numbers in errors.
-	if err := workshop.ValidateSketch(wp.ProjectId, wp.Name, wp.Base, content); err != nil {
+	if err := workshop.ValidateSketch(wp.ProjectId, wp.Name, wp.Base, wp.Runtime, content, builtin.Sanitize); err != nil {
 		return nil, err
 	}
 

@@ -79,7 +79,6 @@ plugs:
 
 func (s *RepositorySuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) error { return nil }))
 
 	consumer := sdk.MockInfo(c, consumerYaml, s.projectId, "ws")
 	s.plug = consumer.Plugs["plug"]
@@ -1230,7 +1229,6 @@ var _ = Suite(&AddRemoveSuite{})
 
 func (s *AddRemoveSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) error { return nil }))
 
 	s.repo = NewRepository()
 	err := s.repo.AddInterface(&ifacetest.TestInterface{InterfaceName: "iface"})
@@ -1281,7 +1279,6 @@ var _ = Suite(&DisconnectSdkSuite{})
 
 func (s *DisconnectSdkSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) error { return nil }))
 
 	s.repo = NewRepository()
 

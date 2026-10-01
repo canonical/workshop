@@ -30,7 +30,6 @@ var _ = check.Suite(&ValidateSuite{})
 
 func (s *ValidateSuite) SetUpTest(c *check.C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) error { return nil }))
 	s.projectId = "prj-4242"
 }
 
@@ -79,55 +78,37 @@ func (s *ValidateSuite) TestValidateSlotPlugInterfaceName(c *check.C) {
 }
 
 func (s *ValidateSuite) TestIllegalSdkName(c *check.C) {
-	info, err := sdk.ReadSdkInfo([]byte(`name: foo.something
-`), s.projectId, "ws", nil)
-	c.Assert(err, check.IsNil)
-
-	err = sdk.Validate(info)
+	_, err := sdk.ReadSdkInfo([]byte(`name: foo.something
+`), s.projectId, "ws", nil, sdk.Validate)
 	c.Check(err, check.ErrorMatches, `invalid SDK name "foo.something"`)
 }
 
 func (s *ValidateSuite) TestLongSdkName(c *check.C) {
-	info, err := sdk.ReadSdkInfo([]byte(`name: xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40
-`), s.projectId, "ws", nil)
+	_, err := sdk.ReadSdkInfo([]byte(`name: xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40
+`), s.projectId, "ws", nil, sdk.Validate)
 	c.Assert(err, check.IsNil)
 
-	err = sdk.Validate(info)
-	c.Check(err, check.IsNil)
-
-	info, err = sdk.ReadSdkInfo([]byte(`name: xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40x
-`), s.projectId, "ws", nil)
-	c.Assert(err, check.IsNil)
-
-	err = sdk.Validate(info)
+	_, err = sdk.ReadSdkInfo([]byte(`name: xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40x
+`), s.projectId, "ws", nil, sdk.Validate)
 	c.Check(err, check.ErrorMatches, `SDK name "xxx05xxx10xxx15xxx20xxx25xxx30xxx35xxx40x" too long`)
 }
 
 func (s *ValidateSuite) TestNoSdkBase(c *check.C) {
-	info, err := sdk.ReadSdkInfo([]byte(`name: foo
-`), s.projectId, "ws", nil)
-	c.Assert(err, check.IsNil)
-
-	err = sdk.Validate(info)
+	_, err := sdk.ReadSdkInfo([]byte(`name: foo
+`), s.projectId, "ws", nil, sdk.Validate)
 	c.Check(err, check.IsNil)
 }
 
 func (s *ValidateSuite) TestIllegalSdkBase(c *check.C) {
-	info, err := sdk.ReadSdkInfo([]byte(`name: foo
+	_, err := sdk.ReadSdkInfo([]byte(`name: foo
 base: ubuntu@21.04
-`), s.projectId, "ws", nil)
-	c.Assert(err, check.IsNil)
-
-	err = sdk.Validate(info)
+`), s.projectId, "ws", nil, sdk.Validate)
 	c.Check(err, check.ErrorMatches, `invalid SDK base "ubuntu@21.04"; valid bases: ubuntu@20.04, ubuntu@22.04, ubuntu@24.04, ubuntu@26.04`)
 }
 
 func (s *ValidateSuite) TestIllegalSdkArch(c *check.C) {
-	info, err := sdk.ReadSdkInfo([]byte(`name: foo
+	_, err := sdk.ReadSdkInfo([]byte(`name: foo
 architecture: '8086'
-`), s.projectId, "ws", nil)
-	c.Assert(err, check.IsNil)
-
-	err = sdk.Validate(info)
+`), s.projectId, "ws", nil, sdk.Validate)
 	c.Check(err, check.ErrorMatches, `invalid SDK architecture "8086"; supported architectures: amd64, arm64, armhf, i386, powerpc, ppc64, ppc64el, riscv64, s390x`)
 }

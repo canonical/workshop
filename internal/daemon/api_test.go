@@ -25,6 +25,7 @@ import (
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/interfaces"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/overlord"
@@ -97,7 +98,7 @@ func (s *apiSuite) SetUpTest(c *check.C) {
 	_, _, err = s.b.CreateOrLoadProject(s.ctx, s.project.Path)
 	c.Assert(err, check.IsNil)
 
-	s.restoreSanitize = sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) error { return nil })
+	s.restoreSanitize = builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })
 	s.secBackend = &ifacetest.TestSecurityBackend{BackendName: "api-suite"}
 	s.restoreSecBackend = ifacestate.MockSecurityBackends([]interfaces.SecurityBackend{s.secBackend})
 
