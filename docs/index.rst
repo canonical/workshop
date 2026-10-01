@@ -372,8 +372,9 @@ Tool integrations
 
    .. slice:: AI agents
 
-      :ref:`Use with AI agents <how_use_workshops_with_ai_agents>` domain
-      :ref:`AI agent reference <ref_ai_agents>`
+      :ref:`AI agent reference <ref_ai_agents>` domain
+      :ref:`Agent SDKs <ref_ai_agent_sdks>`
+      :ref:`Coding-agent security <security_coding_agents>`
       :ref:`use-workshop skill <ref_ai_use_workshop_skill>`
       :ref:`onboard-workshop skill <ref_ai_onboard_workshop_skill>`
       :ref:`design-sdk skill <ref_ai_design_sdk_skill>`
@@ -426,6 +427,7 @@ Security
    .. slice:: Data and SDK trust
 
       :ref:`Sensitive data and SDK trust <security_risks>`
+      :ref:`Coding agents <security_coding_agents>`
 
    .. slice:: CI runners
 
@@ -445,9 +447,10 @@ Use cases
 
    .. slice:: AI agents
 
-      :ref:`Use with AI agents <how_use_workshops_with_ai_agents>` domain
-      :ref:`Parallel agent runs <how_ai_agents_parallel_runs>`
-      :ref:`Role-based coding <how_ai_agents_role_based>`
+      :ref:`AI agent reference <ref_ai_agents>` domain
+      :ref:`Find and assess agent SDKs <ref_ai_agent_sdks>`
+      :ref:`Multi-workshop patterns <exp_multi_workshop_patterns>`
+      :ref:`Security boundaries for agents <security_coding_agents>`
 
    .. slice:: AI/ML and data science
 

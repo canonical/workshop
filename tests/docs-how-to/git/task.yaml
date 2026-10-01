@@ -29,6 +29,11 @@ execute: |
   sed -i "s/jammy/noble/g" workshop.yaml
   workshop_exec --project "$PROJECT/hotfix" launch
   sleep 1
+  # Git fails inside a workshop launched from a worktree
+  if workshop_exec --project "$PROJECT/hotfix" exec dev -- git status > "$PROJECT/git-status.log"; then
+    exit 1
+  fi
+  MATCH "fatal: not a git repository: $PROJECT/original/.git/worktrees/hotfix" < "$PROJECT/git-status.log"
   git commit -am "solve problem with hotfix"
   cd $PROJECT/original/
   git merge hotfix

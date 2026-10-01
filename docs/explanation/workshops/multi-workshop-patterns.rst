@@ -22,8 +22,8 @@ One workshop per project is the default,
 but real work often pulls in more than one.
 A monorepo holds a Go backend and a Node frontend,
 each with its own toolchain.
-A coding agent needs to run over a branch
-without seeing sibling branches or unrelated host directories.
+A coding agent needs a working copy of its own,
+apart from the one you edit.
 Two long builds must progress without blocking your editing.
 A regression has to be confirmed against a new base image
 without disturbing the working setup.
@@ -112,6 +112,10 @@ Each worktree is a distinct project from |ws_markup|'s point of view,
 gets its own project ID,
 and can run a workshop that's named identically to its sibling
 without any collision.
+However, a worktree's :file:`.git` is a file
+that points to the main repository's :file:`.git` directory,
+which lies outside the worktree and isn't mounted in its workshops,
+so Git commands for a worktree have to run on the host.
 The :command:`workshop list` command,
 invoked with :option:`!--global`,
 shows the workshops across the projects currently tracked by |ws_markup|,
@@ -121,7 +125,7 @@ Pick this pattern when the parts have to stay separated:
 different branches,
 different snapshots of the codebase,
 different base images for the same code,
-or different agents whose blast radius should not overlap.
+or different agents that shouldn't edit each other's files.
 
 
 At a glance
@@ -193,8 +197,9 @@ and links to the how-to that covers the mechanics.
   or a feature and a pull-request review.
   Each branch is checked out in its own worktree,
   and each worktree runs its own workshop.
-  Editing, building, and any agent activity in one worktree
-  has no effect on the others.
+  Editing and building in one worktree's workshop
+  leaves the other worktrees' files untouched;
+  Git operations for all of them run on the host.
 
 - *A/B comparison of bases or SDK channels.*
   Two worktrees hold the same code
@@ -205,14 +210,21 @@ and links to the how-to that covers the mechanics.
   or evaluate a base image upgrade
   side by side with the working setup.
 
-- *Confinement for code-running agents.*
-  A coding agent in a worktree or a subdirectory
-  sees only that slice of the repository;
-  sibling worktrees and unrelated host directories stay out of reach.
-  The workshop container adds a second isolation boundary
-  beneath the worktree boundary,
-  so even an agent invoked with relaxed permission flags
-  cannot reach the host filesystem outside of what the workshop mounts.
+- *Coding agents.*
+  A workshop mounts the entire project directory read-write,
+  including its :file:`.git` directory,
+  so starting an agent in a subdirectory narrows nothing.
+  A worktree narrows the files the agent sees,
+  but Git can't run inside its workshop.
+  A separate clone of the repository in its own project directory
+  gives an agent both its own files and its own :file:`.git`,
+  apart from your working copy.
+  In every layout,
+  an agent running with relaxed permission flags
+  can still change anything in the project mount,
+  reach the network,
+  and use the interfaces connected to the workshop;
+  the :ref:`security policy <security_coding_agents>` covers these limits.
 
 - *Long-running task offload.*
   A build, training run, migration, or large refactor
@@ -256,14 +268,16 @@ Explanation:
 - :ref:`exp_projects`
 - :ref:`exp_tunnel_interface`
 - :ref:`exp_workshop_concepts`
+- :ref:`security_coding_agents`
 
 How-to guides:
 
 - :ref:`how_forward_ports`
-- :ref:`how_use_workshops_with_ai_agents`
+- :ref:`how_git_workshops`
 
 Reference:
 
+- :ref:`ref_ai_agents`
 - :ref:`ref_workshop_definition`
 - :ref:`ref_workshop_launch`
 - :ref:`ref_workshop_list`

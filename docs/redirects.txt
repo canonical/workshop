@@ -10,6 +10,7 @@
 "explanation/sdks/sdkcraft-cli" "explanation/cli"
 "explanation/sdks/workshopctl-cli" "explanation/cli"
 "explanation/workshops/workshop-cli" "explanation/cli"
+"how-to/develop-with-workshops/use-workshops-with-ai-agents" "reference/ai-agents"
 "reference/commands/build.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-build"
 "reference/commands/clean.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-clean"
 "reference/commands/create-track.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-create-track"
