@@ -458,6 +458,7 @@ func (s *sdkStateSuite) TestRetrieveSystemSdkSuccess(c *check.C) {
 	chg := s.state.NewChange("sample", "...")
 	setWorkshopProject("ws", s.project, t)
 	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", "name: ws\nbase: ubuntu@22.04\n")
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{newSdk})

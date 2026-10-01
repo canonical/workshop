@@ -95,7 +95,7 @@ func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
 
 	sdkYaml := `incorrect yaml: -
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", []byte(sdkYaml))
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml))
 	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: yaml: block sequence entries are not allowed in this context`)
 }
 
@@ -109,7 +109,7 @@ func (f *workshopSuite) TestValidateSdkName(c *check.C) {
 
 	sdkYaml := `name: sdk-1
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", []byte(sdkYaml))
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml))
 	c.Check(err, check.ErrorMatches, `SDK must be named "test-sdk-1" \(now: "sdk-1"\)`)
 }
 
@@ -124,7 +124,7 @@ func (f *workshopSuite) TestValidateSdkBase(c *check.C) {
 	sdkYaml := `name: test-sdk-1
 base: ubuntu@24.04
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", []byte(sdkYaml))
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml))
 	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has "ubuntu@24.04" base; required: "ubuntu@22.04"`)
 }
 
@@ -146,7 +146,7 @@ func (f *workshopSuite) TestValidateSdkArchitecture(c *check.C) {
 	sdkYaml := `name: test-sdk-1
 architecture: mock64
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", []byte(sdkYaml))
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml))
 	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has "mock64" architecture; required: "mock32" or "all"`)
 }
 
