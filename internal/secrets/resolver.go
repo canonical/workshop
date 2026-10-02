@@ -55,19 +55,13 @@ func (r Resolver) Resolve(
 	provider, ok := r.providers[slot.Sdk]
 	if !ok || provider == nil {
 		return Secret{}, fmt.Errorf(
-			"getting secret provider for sdk %q slot %q: %w",
-			slot.Sdk, slot.Name, ErrorProviderNotFound,
+			"provider %q: %w", slot.Sdk, ErrorProviderNotFound,
 		)
 	}
 
 	value, err := provider.Resolve(ctx, slot)
 	if err != nil {
-
-		return Secret{}, fmt.Errorf(
-			"resolving secret through sdk %q: %w",
-			slot.Sdk,
-			err,
-		)
+		return Secret{}, fmt.Errorf("provider %q: %w", slot.Sdk, err)
 	}
 	return value, nil
 }
