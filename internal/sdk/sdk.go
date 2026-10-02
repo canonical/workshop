@@ -15,12 +15,10 @@
 package sdk
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -268,8 +266,6 @@ type Info struct {
 
 	Plugs map[string]*PlugInfo
 	Slots map[string]*SlotInfo
-	// Plugs or slots with issues (they are not included in Plugs or Slots)
-	BadInterfaces map[string]string
 }
 
 func (i *Info) Ref() Ref {
@@ -360,11 +356,9 @@ func (r Ref) ShortRef() string {
 	return fmt.Sprintf("%s/%s", r.Workshop, r.Sdk)
 }
 
-var SanitizePlugsSlots = func(snapInfo *Info) {
-	panic("SanitizePlugsSlots function not set")
-}
+type Sanitizer = func(info *Info) error
 
-func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additions) (*Info, error) {
+func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additions, sanitize Sanitizer) (*Info, error) {
 	var file File
 	if err := yaml.Unmarshal(yamlData, &file); err != nil {
 		return nil, err
@@ -375,21 +369,20 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additi
 	}
 
 	sdkInfo := &Info{
-		ProjectId:     projectId,
-		Workshop:      workshop,
-		Name:          file.Name,
-		Base:          file.Base,
-		Arch:          file.Arch,
-		Version:       file.Version,
-		Type:          file.Type,
-		BuiltAt:       file.BuiltAt,
-		Title:         file.Title,
-		Summary:       file.Summary,
-		Description:   file.Description,
-		License:       file.License,
-		Plugs:         make(map[string]*PlugInfo),
-		Slots:         make(map[string]*SlotInfo),
-		BadInterfaces: make(map[string]string),
+		ProjectId:   projectId,
+		Workshop:    workshop,
+		Name:        file.Name,
+		Base:        file.Base,
+		Arch:        file.Arch,
+		Version:     file.Version,
+		Type:        file.Type,
+		BuiltAt:     file.BuiltAt,
+		Title:       file.Title,
+		Summary:     file.Summary,
+		Description: file.Description,
+		License:     file.License,
+		Plugs:       make(map[string]*PlugInfo),
+		Slots:       make(map[string]*SlotInfo),
 	}
 
 	if err := setPlugsFromSdkYaml(&file, sdkInfo); err != nil {
@@ -415,7 +408,12 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additi
 		}
 	}
 
-	SanitizePlugsSlots(sdkInfo)
+	if sanitize != nil {
+		if err := sanitize(sdkInfo); err != nil {
+			return nil, err
+		}
+	}
+
 	return sdkInfo, nil
 }
 
@@ -664,16 +662,8 @@ func SdkHookPath(sdkName, hookName string) string {
 	return filepath.Join(SdkHooksDir(sdkName), hookName)
 }
 
-func MockSanitizePlugsSlots(f func(sdkInfo *Info)) (restore func()) {
-	old := SanitizePlugsSlots
-	SanitizePlugsSlots = f
-	return func() { SanitizePlugsSlots = old }
-}
-
 func MockInfo(c *check.C, yamlText string, projectId, workshop string) *Info {
-	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
-	defer restoreSanitize()
-	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop, nil)
+	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop, nil, nil)
 	c.Assert(err, check.IsNil)
 
 	err = Validate(info)
@@ -682,40 +672,9 @@ func MockInfo(c *check.C, yamlText string, projectId, workshop string) *Info {
 }
 
 func MockInvalidInfo(c *check.C, yamlText string) *Info {
-	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
-	defer restoreSanitize()
-
-	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws", nil)
+	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws", nil, nil)
 	c.Assert(err, check.IsNil)
 	err = Validate(sdkInfo)
 	c.Assert(err, check.NotNil)
 	return sdkInfo
-}
-
-// BadInterfacesSummary returns a summary of the problems of bad plugs
-// and slots in the sdk.
-func BadInterfacesSummary(sdkInfo *Info) string {
-	inverted := make(map[string][]string)
-	for name, reason := range sdkInfo.BadInterfaces {
-		inverted[reason] = append(inverted[reason], name)
-	}
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%q SDK has bad plugs or slots: ", sdkInfo.Name)
-	reasons := make([]string, 0, len(inverted))
-	for reason := range inverted {
-		reasons = append(reasons, reason)
-	}
-	sort.Strings(reasons)
-	for _, reason := range reasons {
-		names := inverted[reason]
-		sort.Strings(names)
-		for i, name := range names {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(name)
-		}
-		fmt.Fprintf(&buf, " (%s); ", reason)
-	}
-	return strings.TrimSuffix(buf.String(), "; ")
 }

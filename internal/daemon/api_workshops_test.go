@@ -1177,7 +1177,7 @@ line 1: cannot unmarshal !!seq into string`,
 
 	c.Assert(wp.Running, check.Equals, true)
 
-	sdkInfo, err := wp.SdkInfo(s.ctx, "system")
+	sdkInfo, err := wp.SdkInfo(s.ctx, "system", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(sdkInfo.Workshop, check.Equals, "basic")
 	c.Assert(sdkInfo.Name, check.Equals, sdk.System.String())
@@ -2703,7 +2703,7 @@ func (s *apiSuite) TestRefreshSaveAndRestoreState(c *check.C) {
 
 	wp, err := s.b.Workshop(s.ctx, "manysdks")
 	c.Assert(err, check.IsNil)
-	_, err = wp.SdkInfo(s.ctx, "test-sdk-2")
+	_, err = wp.SdkInfo(s.ctx, "test-sdk-2", nil)
 	c.Assert(err, check.IsNil)
 
 	s.checkHookCalls(c, "manysdks", []string{

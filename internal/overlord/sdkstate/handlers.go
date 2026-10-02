@@ -27,6 +27,7 @@ import (
 
 	"gopkg.in/tomb.v2"
 
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/policy"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
@@ -117,7 +118,7 @@ func (m *SdkManager) doRetrieveSdk(task *state.Task, tomb *tomb.Tomb) error {
 	// reuse an existing SDK volume, the workshop may add invalid plugs or
 	// slots to it. We also check the SDK's compatibility with the base image,
 	// to double-check that the Store gave us the revision we wanted.
-	return workshop.ValidateSdkInfo(project.ProjectId, file, rec.Name, sdkYaml)
+	return workshop.ValidateSdkInfo(project.ProjectId, file, rec.Name, sdkYaml, builtin.Sanitize)
 }
 
 func (m *SdkManager) retrieveOrReuseSdk(ctx context.Context, task *state.Task, rec sdk.Setup) (string, error) {
@@ -301,7 +302,7 @@ func (m *SdkManager) doInstallSdk(task *state.Task, tomb *tomb.Tomb) error {
 	})
 
 	// add SDK's plugs and slots
-	if err := m.registerSdk(ctx, w, sdkSetup.Name); err != nil {
+	if err := m.registerSdk(ctx, task, w, sdkSetup.Name); err != nil {
 		return err
 	}
 
@@ -338,7 +339,7 @@ func (m *SdkManager) doUninstallSdk(task *state.Task, tomb *tomb.Tomb) error {
 		cleanupCtx, cancel := context.WithTimeout(cleanupCtx, 30*time.Second)
 		defer cancel()
 
-		if reverr := m.registerSdk(cleanupCtx, w, sdkSetup.Name); reverr != nil {
+		if reverr := m.registerSdk(cleanupCtx, task, w, sdkSetup.Name); reverr != nil {
 			logger.Noticef("On doUninstallSdk: cannot re-register %q SDK on cleanup: %v", sdkSetup.Name, reverr)
 		}
 	})
@@ -360,19 +361,22 @@ func (m *SdkManager) doUninstallSdk(task *state.Task, tomb *tomb.Tomb) error {
 	return nil
 }
 
-func (m *SdkManager) registerSdk(ctx context.Context, w, sk string) error {
+func (m *SdkManager) registerSdk(ctx context.Context, task *state.Task, w, sk string) error {
 	wp, err := m.backend.Workshop(ctx, w)
 	if err != nil {
 		return err
 	}
 
-	info, err := wp.SdkInfo(ctx, sk)
+	var sanitizer builtin.Sanitizer
+	info, err := wp.SdkInfo(ctx, sk, sanitizer.Sanitize)
 	if err != nil {
 		return err
 	}
-
-	if len(info.BadInterfaces) > 0 {
-		return fmt.Errorf("%s", sdk.BadInterfacesSummary(info))
+	if sanitizer.Warning != nil {
+		st := task.State()
+		st.Lock()
+		task.Logf("%v", sanitizer.Warning)
+		st.Unlock()
 	}
 
 	if err = policy.CheckInterfaces(info); err != nil {

@@ -25,7 +25,6 @@ import (
 
 	"github.com/canonical/workshop/client"
 	"github.com/canonical/workshop/internal/osutil"
-	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 )
@@ -43,6 +42,7 @@ var _ = check.Suite(&workshopSketch{})
 var mockWorkshopWithSdksReady = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",
+    "runtime":"lxd-container",
     "project-id":"42424242",
     "status":"Ready",
     "sdks":[{
@@ -64,6 +64,7 @@ var mockWorkshopWithSdksReady = `{"type":"sync","status-code":200,"status":"OK",
 var mockWorkshopWithSdksWaiting = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",
+    "runtime":"lxd-container",
     "project-id":"42424242",
     "status":"Waiting",
     "notes":["wait-on-error"],
@@ -87,6 +88,7 @@ var mockWorkshopsListWithSketch = `{"type":"sync","status-code":200,"status":"OK
     "workshops":[{
         "name":"ws",
         "base":"ubuntu@22.04",
+        "runtime":"lxd-container",
         "project-id":"42424242",
         "status":"Ready",
         "sdks":[{
@@ -98,11 +100,13 @@ var mockWorkshopsListWithSketch = `{"type":"sync","status-code":200,"status":"OK
         },{
         "name":"nosketch",
         "base":"ubuntu@22.04",
+        "runtime":"lxd-container",
         "project-id":"42424242",
         "status":"Ready"
         },{
         "name":"both",
         "base":"ubuntu@22.04",
+        "runtime":"lxd-container",
         "project-id":"42424242",
         "status":"Ready",
         "sdks":[{
@@ -114,6 +118,7 @@ var mockWorkshopsListWithSketch = `{"type":"sync","status-code":200,"status":"OK
         },{
         "name":"none",
         "base":"ubuntu@22.04",
+        "runtime":"lxd-container",
         "project-id":"42424242",
         "status":"Ready"
     }]
@@ -137,7 +142,6 @@ func (m *workshopSketch) SetUpTest(c *check.C) {
 
 	m.userDataDir = workshop.UserDataRootDir(usr.HomeDir, nil)
 
-	m.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
 }
 
 func (m *workshopSketch) TearDownTest(c *check.C) {
@@ -160,6 +164,7 @@ func (m *workshopSketch) mockMinimalSketchSdk(c *check.C, ws string, current boo
 		ProjectId: m.prjId,
 		Name:      ws,
 		Base:      "ubuntu@26.04",
+		Runtime:   "lxd-container",
 	}
 	c.Assert(writeSketchHooks(sketchDir, wp, meta), check.IsNil)
 
@@ -410,6 +415,7 @@ hooks:
 		ProjectId: m.prjId,
 		Name:      "ws",
 		Base:      "ubuntu@26.04",
+		Runtime:   "lxd-container",
 	}
 	err := editSketchSdk(sketchDir, wp)
 	c.Assert(err, check.NotNil)
@@ -437,6 +443,7 @@ func (m *workshopSketch) TestEditSketchSdkInvalidName(c *check.C) {
 		ProjectId: m.prjId,
 		Name:      "ws",
 		Base:      "ubuntu@26.04",
+		Runtime:   "lxd-container",
 	}
 	err := editSketchSdk(sketchDir, wp)
 	c.Assert(err, check.NotNil)
@@ -465,6 +472,7 @@ bass: ubuntu@24.04
 		ProjectId: m.prjId,
 		Name:      "ws",
 		Base:      "ubuntu@26.04",
+		Runtime:   "lxd-container",
 	}
 	err := editSketchSdk(sketchDir, wp)
 	c.Assert(err, check.NotNil)

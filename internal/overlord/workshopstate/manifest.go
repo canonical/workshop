@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/canonical/workshop/internal/arch"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/overlord/conflict"
 	"github.com/canonical/workshop/internal/overlord/handlersetup"
@@ -780,7 +781,7 @@ func (a *artifactFinder) commitRevision(w, sk string, source sdk.Source, path st
 func validateSdkMeta(projectId string, file *workshop.File, sdks []sdk.Meta) ([]sdk.Setup, error) {
 	setups := make([]sdk.Setup, 0, len(sdks))
 	for _, s := range sdks {
-		if err := workshop.ValidateSdkInfo(projectId, file, s.Name, s.SdkYAML); err != nil {
+		if err := workshop.ValidateSdkInfo(projectId, file, s.Name, s.SdkYAML, builtin.Sanitize); err != nil {
 			return nil, err
 		}
 		setups = append(setups, s.Setup)
