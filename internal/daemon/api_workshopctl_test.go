@@ -23,6 +23,7 @@ import (
 
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
 	"github.com/canonical/workshop/internal/workshop"
 	"github.com/canonical/workshop/internal/workshop/fakebackend"
@@ -165,6 +166,8 @@ func (s *apiSuite) TestWorkshopCtlRejectsUnknownInstanceID(c *check.C) {
 // cookie reaches SDK validation in the authenticated workshop rather than
 // attempting to resolve placeholder project and workshop names.
 func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
+	logs, restore := logger.MockLogger()
+	defer restore()
 	s.daemon(c)
 	s.addWorkshopWithInstanceID("instance-id")
 	s.d.overlord.Loop()
@@ -189,7 +192,9 @@ func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 	c.Check(rsp.Status, check.Equals, http.StatusBadRequest)
 	c.Check(rsp.Type, check.Equals, ResponseTypeError)
 	c.Assert(rsp.Result, check.FitsTypeOf, &errorResult{})
-	c.Check(rsp.Result.(*errorResult).Message, check.Matches,
+	c.Check(rsp.Result.(*errorResult).Message, check.Equals,
+		`cannot retrieve secret for plug "sdk.secret": internal error`)
+	c.Check(logs.String(), check.Matches,
 		"(?s).*requested sdk is not installed in workshop.*")
 
 }

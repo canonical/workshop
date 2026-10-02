@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/jessevdk/go-flags"
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/interfaces"
+	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
 	"github.com/canonical/workshop/internal/overlord/state"
@@ -99,8 +101,8 @@ func (getSecretSuite) TestGetSecret(c *check.C) {
 	c.Check(err, check.Equals, io.EOF)
 }
 
-// TestGetSecretCancelled checks retrieval sees request cancellation and its
-// error is preserved by the command.
+// TestGetSecretCancelled checks cancellation returns a clean diagnostic and
+// exit code 255 without retaining the original cause.
 func (getSecretSuite) TestGetSecretCancelled(c *check.C) {
 	testState := state.New(nil)
 	hookCtx, err := hookstate.NewContext(
@@ -137,7 +139,60 @@ func (getSecretSuite) TestGetSecretCancelled(c *check.C) {
 
 	err = command.Execute(ctx, nil)
 
-	c.Check(errors.Is(err, context.Canceled), check.Equals, true)
+	c.Assert(err, check.NotNil)
+	c.Check(err.Error(), check.Equals, "secret request cancelled")
+	c.Check(errors.Is(err, context.Canceled), check.Equals, false)
+	code, ok := errors.AsType[ctlcmd.CommandExitCodeError](err)
+	c.Check(ok, check.Equals, true)
+	c.Check(code.ExitCode, check.Equals, 255)
+}
+
+// TestGetSecretDeadlineExceeded checks a deadline returns a clean diagnostic
+// and exit code 255 without retaining the original cause.
+func (getSecretSuite) TestGetSecretDeadlineExceeded(c *check.C) {
+	testState := state.New(nil)
+	hookCtx, err := hookstate.NewContext(
+		nil,
+		testState,
+		&hookstate.HookSetup{},
+		nil,
+		"",
+	)
+	c.Assert(err, check.IsNil)
+	hookCtx.SetWorkshopIdentity(hookstate.WorkshopIdentity{
+		Project: workshop.Project{
+			Path:      "/project",
+			ProjectId: "test-project",
+		},
+		User:     "test-user",
+		Workshop: "test-workshop",
+	})
+
+	ctx, cancel := context.WithDeadline(
+		context.Background(), time.Unix(0, 0),
+	)
+	defer cancel()
+	command := ctlcmd.NewGetSecretCommand(
+		hookCtx, "my-sdk.api-key", nil, nil,
+	)
+	command.GetSecret = func(
+		ctx context.Context,
+		_ *state.State,
+		_ workshop.Project,
+		_ sdk.PlugRef,
+	) (secrets.Secret, error) {
+		c.Check(ctx.Err(), check.Equals, context.DeadlineExceeded)
+		return secrets.Secret{}, ctx.Err()
+	}
+
+	err = command.Execute(ctx, nil)
+
+	c.Assert(err, check.NotNil)
+	c.Check(err.Error(), check.Equals, "secret request timed out")
+	c.Check(errors.Is(err, context.DeadlineExceeded), check.Equals, false)
+	code, ok := errors.AsType[ctlcmd.CommandExitCodeError](err)
+	c.Check(ok, check.Equals, true)
+	c.Check(code.ExitCode, check.Equals, 255)
 }
 
 // TestGetSecretInvalidFormat checks that a missing separator reports the
@@ -628,9 +683,12 @@ func (getSecretSuite) TestSecretRequestErrorSecretNotFound(c *check.C) {
 	c.Check(code.ExitCode, check.Equals, 1)
 }
 
-// TestSecretRequestErrorUnknown checks that unrecognised failures retain
-// their original error and diagnostic context.
+// TestSecretRequestErrorUnknown checks unrecognised failures log their
+// details but return an internal error and exit code 255 without the cause.
 func (getSecretSuite) TestSecretRequestErrorUnknown(c *check.C) {
+	logs, restore := logger.MockLogger()
+	defer restore()
+
 	testState := state.New(nil)
 	hookCtx, err := hookstate.NewContext(
 		nil,
@@ -667,11 +725,15 @@ func (getSecretSuite) TestSecretRequestErrorUnknown(c *check.C) {
 	err = command.Execute(context.Background(), nil)
 
 	c.Assert(err, check.NotNil)
-	c.Check(err.Error(), check.Equals, cause.Error())
-	c.Check(errors.Is(err, cause), check.Equals, true)
+	c.Check(err.Error(), check.Equals,
+		"cannot retrieve secret for plug \"my-sdk.api-key\": internal error")
+	c.Check(errors.Is(err, cause), check.Equals, false)
 	code, ok := errors.AsType[ctlcmd.CommandExitCodeError](err)
 	c.Check(ok, check.Equals, true)
 	c.Check(code.ExitCode, check.Equals, 255)
+	c.Check(strings.Contains(logs.String(),
+		"cannot retrieve secret for plug \"my-sdk.api-key\": "+cause.Error()),
+		check.Equals, true)
 }
 
 // TestSystemdSecretRequestErrorMultipleMatches checks ambiguous lookups
@@ -869,9 +931,12 @@ func (getSecretSuite) TestSystemdSecretRequestErrorSecretNotFound(
 	c.Check(code.ExitCode, check.Equals, 1)
 }
 
-// TestSystemdSecretRequestErrorUnknown checks unexpected failures retain
-// their original diagnostic and cause, with exit code 255.
+// TestSystemdSecretRequestErrorUnknown checks unexpected failures log their
+// details but return an internal error and exit code 255 without the cause.
 func (getSecretSuite) TestSystemdSecretRequestErrorUnknown(c *check.C) {
+	logs, restore := logger.MockLogger()
+	defer restore()
+
 	testState := state.New(nil)
 	hookCtx, err := hookstate.NewContext(
 		nil,
@@ -909,9 +974,13 @@ func (getSecretSuite) TestSystemdSecretRequestErrorUnknown(c *check.C) {
 	err = command.Execute(context.Background(), nil)
 
 	c.Assert(err, check.NotNil)
-	c.Check(err.Error(), check.Equals, cause.Error())
-	c.Check(errors.Is(err, cause), check.Equals, true)
+	c.Check(err.Error(), check.Equals,
+		"cannot retrieve secret for plug \"my-sdk.api-key\": internal error")
+	c.Check(errors.Is(err, cause), check.Equals, false)
 	code, ok := errors.AsType[ctlcmd.CommandExitCodeError](err)
 	c.Check(ok, check.Equals, true)
 	c.Check(code.ExitCode, check.Equals, 255)
+	c.Check(strings.Contains(logs.String(),
+		"cannot retrieve secret for plug \"my-sdk.api-key\": "+cause.Error()),
+		check.Equals, true)
 }

@@ -21,7 +21,6 @@ import (
 	"io"
 	"strings"
 
-	internalerrors "github.com/canonical/workshop/internal/errors"
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/overlord/secretstate"
@@ -170,9 +169,24 @@ func (c *getSecretCommand) Execute(ctx context.Context, _ []string) error {
 
 // secretRequestError replaces recognised failures with an ordinary request's
 // diagnostic and [CommandExitCodeError], discarding the domain error chain.
-// Unknown failures retain their cause with exit code 255. A nil error stays nil.
+// Unexpected failures are logged and masked with exit code 255. Cancellation
+// and timeout diagnostics omit internal details. A nil error stays nil.
 func secretRequestError(identifier string, err error) error {
+	if err == nil {
+		return nil
+	}
+
 	switch {
+	case errors.Is(err, context.Canceled):
+		return fmt.Errorf(
+			"secret request cancelled%w",
+			CommandExitCodeError{ExitCode: secretExitCodeSystemError},
+		)
+	case errors.Is(err, context.DeadlineExceeded):
+		return fmt.Errorf(
+			"secret request timed out%w",
+			CommandExitCodeError{ExitCode: secretExitCodeSystemError},
+		)
 	case errors.Is(err, interfaces.ErrorPlugNotConnected):
 		return fmt.Errorf(
 			"secret plug %q is not connected%w",
@@ -199,8 +213,15 @@ func secretRequestError(identifier string, err error) error {
 			CommandExitCodeError{ExitCode: secretExitCodeNotFound},
 		)
 	default:
-		return internalerrors.Add(
-			err,
+		// Unexpected failures may expose internal provider or host details.
+		// Keep those diagnostics in daemon logs and return only a safe
+		// message and exit code, without retaining the original error chain.
+		logger.Noticef(
+			"cannot retrieve secret for plug %q: %v", identifier, err,
+		)
+		return fmt.Errorf(
+			"cannot retrieve secret for plug %q: internal error%w",
+			identifier,
 			CommandExitCodeError{ExitCode: secretExitCodeSystemError},
 		)
 	}
