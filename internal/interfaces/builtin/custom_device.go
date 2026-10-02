@@ -143,6 +143,13 @@ func (iface *customDeviceInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.Sl
 	return true
 }
 
+func (iface *customDeviceInterface) CheckCompatiblePlug(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("custom-device interface only available to containers")
+	}
+	return nil
+}
+
 func (iface *customDeviceInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
 	device := workshop.CustomDevice{Name: plug.Name()}
 
