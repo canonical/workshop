@@ -34,8 +34,13 @@ import (
 // Results published after cancellation are closed and removed by task undo.
 //
 // The following errors may be expected:
-//   - [context.Canceled]: the request was cancelled.
-//   - [context.DeadlineExceeded]: the request deadline expired.
+//   - [github.com/canonical/workshop/internal/interfaces.ErrorPlugNotConnected]:
+//     the plug has no connected slot.
+//   - [secrets.ErrorMultipleSecrets]: multiple secrets match the slot.
+//   - [secrets.ErrorProviderLocked]: the provider needs to be unlocked.
+//   - [secrets.ErrorProviderNotFound]: no provider is registered for the slot.
+//   - [secrets.ErrorSecretNotFound]: no secret matches the slot.
+//   - [secrets.ErrorUserNotFound]: the provider cannot resolve the user.
 func GetSecret(
 	ctx context.Context,
 	st *state.State,
@@ -108,11 +113,18 @@ func GetSecret(
 	}
 
 	err = change.Err()
+	if task.Status() == state.ErrorStatus {
+		code, has := taskFailureCode(task)
+		if has {
+			failure := failureError(code)
+			if failure != nil {
+				err = failure
+			}
+		}
+	}
 	if err != nil {
 		return secrets.Secret{}, fmt.Errorf(
-			"checking secret retrieval change %s: %w",
-			change.ID(),
-			err,
+			"get secret task failed: %w", err,
 		)
 	}
 

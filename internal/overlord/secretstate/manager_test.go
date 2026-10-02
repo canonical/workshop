@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -760,7 +761,7 @@ func (s *managerSuite) TestGetSecretResolverError(c *C) {
 			},
 		}, nil
 	})
-	resolverErr := errors.New("provider unavailable")
+	resolverErr := fmt.Errorf("provider lookup: %w", secrets.ErrorProviderLocked)
 	resolver := secretResolver(func(
 		_ context.Context,
 		ref sdk.SlotRef,
@@ -776,16 +777,43 @@ func (s *managerSuite) TestGetSecretResolverError(c *C) {
 		repo:     repo,
 		resolver: resolver,
 	}
-	ref := sdk.PlugRef{
-		Name:      "api-key",
-		ProjectId: "test-project",
-		Sdk:       "ollama",
-		Workshop:  "test-workshop",
-	}
-
-	_, err = manager.getSecret(context.Background(), ref)
+	st := state.New(nil)
+	task := newSecretTask(c, st)
+	var taskTomb tomb.Tomb
+	err = manager.doGetSecret(task, &taskTomb)
 
 	c.Check(errors.Is(err, resolverErr), Equals, true)
+
+	st.Lock()
+	defer st.Unlock()
+	var code failureCode
+	c.Assert(task.Get(secretFailureKey, &code), IsNil)
+	c.Check(code, Equals, failureProviderLocked)
+}
+
+// TestGetSecretUnknownFailure checks unknown retrieval errors retain their
+// original error chain without recording a failure code.
+func (s *managerSuite) TestGetSecretUnknownFailure(c *C) {
+	st := state.New(nil)
+	task := newSecretTask(c, st)
+
+	lookupErr := errors.New("workshop backend unavailable")
+	backend := workshopBackendFunc(func(
+		context.Context,
+		string,
+	) (*workshop.Workshop, error) {
+		return nil, lookupErr
+	})
+	manager := SecretManager{backend: backend}
+	var taskTomb tomb.Tomb
+	err := manager.doGetSecret(task, &taskTomb)
+	c.Check(errors.Is(err, lookupErr), Equals, true)
+
+	st.Lock()
+	defer st.Unlock()
+	var code failureCode
+	c.Check(errors.Is(task.Get(secretFailureKey, &code), state.ErrNoState),
+		Equals, true)
 }
 
 // TestNewRegistersGetSecret checks construction registers the get-secret
