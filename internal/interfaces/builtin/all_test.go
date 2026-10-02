@@ -33,6 +33,15 @@ import (
 
 type AllSuite struct{}
 
+func checkCompatible(c *C, yaml, projectId, ws string, runtime workshop.Runtime) (*sdk.Info, error) {
+	var sanitizer builtin.Sanitizer
+	info, err := sdk.ReadSdkInfo([]byte(yaml), projectId, ws, nil, func(info *sdk.Info) error {
+		return sanitizer.Sanitize(info, runtime)
+	})
+	c.Assert(err, IsNil)
+	return info, sanitizer.Warning
+}
+
 var (
 	_        = Suite(&AllSuite{})
 	testuser = user.User{
