@@ -25,7 +25,6 @@ import (
 
 	"github.com/canonical/workshop/internal/overlord/cmdstate"
 	"github.com/canonical/workshop/internal/overlord/conflict"
-	"github.com/canonical/workshop/internal/overlord/handlersetup"
 	"github.com/canonical/workshop/internal/overlord/healthstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/ifacestate"
@@ -127,36 +126,34 @@ func reinstallSdks(st *state.State, sdks []sdk.Setup) *state.TaskSet {
 	return all
 }
 
-func launchWorkshop(st *state.State, file *workshop.File, intact []sdk.Setup) *state.TaskSet {
+func launchWorkshop(st *state.State, w string, intact []sdk.Setup) *state.TaskSet {
 	var lastIntact string
 	var summary string
 	if len(intact) == 0 {
-		summary = fmt.Sprintf("Create new %q workshop", file.Name)
+		summary = fmt.Sprintf("Create new %q workshop", w)
 	} else {
 		lastIntact = intact[len(intact)-1].Name
-		summary = fmt.Sprintf("Create new %q workshop from %q snapshot", file.Name, lastIntact)
+		summary = fmt.Sprintf("Create new %q workshop from %q snapshot", w, lastIntact)
 	}
 
 	create := st.NewTask("create-workshop", summary)
-	handlersetup.SetWorkshopFile(create, file)
 	if len(intact) > 0 {
 		create.Set("last-intact-sdk", lastIntact)
 	}
 	return state.NewTaskSet(create)
 }
 
-func rebuildWorkshop(st *state.State, file *workshop.File, intact []sdk.Setup) *state.TaskSet {
+func rebuildWorkshop(st *state.State, w string, intact []sdk.Setup) *state.TaskSet {
 	var lastIntact string
 	var summary string
 	if len(intact) == 0 {
-		summary = fmt.Sprintf("Rebuild %q workshop", file.Name)
+		summary = fmt.Sprintf("Rebuild %q workshop", w)
 	} else {
 		lastIntact = intact[len(intact)-1].Name
-		summary = fmt.Sprintf("Restore %q workshop from %q snapshot", file.Name, lastIntact)
+		summary = fmt.Sprintf("Restore %q workshop from %q snapshot", w, lastIntact)
 	}
 
 	create := st.NewTask("rebuild-workshop", summary)
-	handlersetup.SetWorkshopFile(create, file)
 	if len(intact) > 0 {
 		create.Set("last-intact-sdk", lastIntact)
 	}
@@ -202,7 +199,7 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 	createDirs := st.NewTask("create-workshop-storage", fmt.Sprintf("Create %q storage directories", manifest.File.Name))
 	addTaskSet(state.NewTaskSet(createDirs))
 
-	create := launchWorkshop(st, manifest.File, intactSdks)
+	create := launchWorkshop(st, manifest.File.Name, intactSdks)
 	addTaskSet(create)
 
 	// SDKs need to be mounted after restoring a snapshot.
@@ -420,7 +417,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	stash := st.NewTask("stash-workshop", fmt.Sprintf("Stash previous %q workshop", latest.File.Name))
 	addTaskSet(state.NewTaskSet(stash))
 
-	rebuild := rebuildWorkshop(st, latest.File, intactSdks)
+	rebuild := rebuildWorkshop(st, latest.File.Name, intactSdks)
 	addTaskSet(rebuild)
 
 	// Reinstall intact SDKs. The workshop definition can change plugs and

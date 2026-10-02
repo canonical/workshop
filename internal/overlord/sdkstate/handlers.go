@@ -90,7 +90,7 @@ func (m *SdkManager) doRetrieveSdk(task *state.Task, tomb *tomb.Tomb) error {
 
 	st := task.State()
 	st.Lock()
-	base, err := WorkshopBase(task.Change(), w, NewWorkshop)
+	file, err := WorkshopFile(task.Change(), w, NewWorkshop)
 	st.Unlock()
 	if err != nil {
 		return err
@@ -108,44 +108,53 @@ func (m *SdkManager) doRetrieveSdk(task *state.Task, tomb *tomb.Tomb) error {
 		return err
 	}
 
-	if _, err = m.backend.Sdk(ctx, rec); err == nil {
+	sdkYaml, err := m.retrieveOrReuseSdk(ctx, task, rec)
+	if err != nil {
+		return err
+	}
+
+	// Validate the SDK is compatible with the current workshop; even if we
+	// reuse an existing SDK volume, the workshop may add invalid plugs or
+	// slots to it. We also check the SDK's compatibility with the base image,
+	// to double-check that the Store gave us the revision we wanted.
+	return workshop.ValidateSdkInfo(project.ProjectId, file, rec.Name, sdkYaml)
+}
+
+func (m *SdkManager) retrieveOrReuseSdk(ctx context.Context, task *state.Task, rec sdk.Setup) (string, error) {
+	volume, err := m.backend.Sdk(ctx, rec)
+	if err == nil {
 		logger.Debugf("On doRetrieveSdk: reuse existing SDK volume %q", sdk.VolumeName(rec.Name, rec.Revision))
-		return nil
+		return volume.SdkYAML, nil
 	}
 
 	if err := m.retrieveSdk(ctx, task, rec); err != nil {
-		return err
+		return "", err
 	}
 
 	sdkYaml, err := extractSdkYAML(ctx, task, rec)
 	if err != nil {
-		return err
-	}
-	if err := workshop.ValidateSdkInfo(project.ProjectId, w, base.Name, rec.Name, sdkYaml); err != nil {
-		return err
+		return "", err
 	}
 	meta := sdk.Meta{Setup: rec, SdkYAML: sdkYaml}
 
 	reader, err := os.Open(rec.Filepath())
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer reader.Close()
 
-	err = m.backend.ImportSdk(ctx, meta, reader)
-	if errors.Is(err, workshop.ErrVolumeAlreadyExists) {
+	if err := m.backend.ImportSdk(ctx, meta, reader); errors.Is(err, workshop.ErrVolumeAlreadyExists) {
 		logger.Debugf("On doRetrieveSdk: reuse existing SDK volume %q", sdk.VolumeName(meta.Name, meta.Revision))
-		return nil
-	}
-	if err != nil {
-		return err
+		return sdkYaml, nil
+	} else if err != nil {
+		return "", err
 	}
 
 	// If the SDK was downloaded successfully, remove its previous rev if any.
 	if err := cleanupSdk(rec); err != nil {
 		logger.Noticef("On doRetrieveSdk: cannot cleanup previous download: %v", err)
 	}
-	return nil
+	return sdkYaml, nil
 }
 
 func (m *SdkManager) retrieveSdk(ctx context.Context, task *state.Task, rec sdk.Setup) error {
