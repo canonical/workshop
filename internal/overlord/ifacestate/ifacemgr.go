@@ -462,29 +462,24 @@ func (m *InterfaceManager) reloadConnections(workshopNames map[string][]string, 
 
 func (m *InterfaceManager) resolveWorkshopBindings(w *workshop.Workshop) error {
 	for _, s := range w.File.Sdks {
-		for name, plug := range s.Plugs {
-			if plug.Bind == nil {
+		for _, plug := range m.repo.Plugs(w.Project.ProjectId, w.Name, s.Name) {
+			bind := s.Plugs[plug.Name].Bind
+			if bind == nil {
 				continue
 			}
 
-			master := m.repo.Plug(w.Project.ProjectId, w.Name, plug.Bind.Sdk, plug.Bind.Name)
+			master := m.repo.Plug(w.Project.ProjectId, w.Name, bind.Sdk, bind.Name)
 			if master == nil {
-				sdkRef := sdk.Ref{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: plug.Bind.Sdk}
-				return fmt.Errorf("%q SDK has no plug named %q", sdkRef.ShortRef(), plug.Bind.Name)
+				sdkRef := sdk.Ref{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: bind.Sdk}
+				return fmt.Errorf("%q SDK has no plug named %q", sdkRef.ShortRef(), bind.Name)
 			}
 
-			slave := m.repo.Plug(w.Project.ProjectId, w.Name, s.Name, name)
-			if slave == nil {
-				sdkRef := sdk.Ref{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: s.Name}
-				return fmt.Errorf("internal error: %q SDK has no plug named %q", sdkRef.ShortRef(), name)
+			if plug.Interface != master.Interface {
+				return fmt.Errorf("%s plug %q incompatible with %s plug %q", plug.Interface, plug.Ref().ShortRef(), master.Interface, master.Ref().ShortRef())
 			}
 
-			if slave.Interface != master.Interface {
-				return fmt.Errorf("%s plug %q incompatible with %s plug %q", slave.Interface, slave.Ref().ShortRef(), master.Interface, master.Ref().ShortRef())
-			}
-
-			if slave.Label != master.Label || !reflect.DeepEqual(slave.Attrs, master.Attrs) {
-				return fmt.Errorf("plugs %q and %q have different attributes", slave.Ref().ShortRef(), master.Ref().ShortRef())
+			if plug.Label != master.Label || !reflect.DeepEqual(plug.Attrs, master.Attrs) {
+				return fmt.Errorf("plugs %q and %q have different attributes", plug.Ref().ShortRef(), master.Ref().ShortRef())
 			}
 		}
 	}
@@ -510,33 +505,27 @@ func (m *InterfaceManager) resolveWorkshopConnections(w *workshop.Workshop) erro
 }
 
 func (m *InterfaceManager) checkConflictingMounts(w *workshop.Workshop) error {
+	_, bound := w.Bound()
+
 	var plugs []*sdk.PlugInfo
 	for _, sk := range w.Sdks {
 		for _, plug := range m.repo.Plugs(w.Project.ProjectId, w.Name, sk.Name) {
+			if _, ok := bound[plug.Ref()]; ok {
+				// exclude bound plugs
+				continue
+			}
 			if plug.Interface == "mount" {
 				plugs = append(plugs, plug)
 			}
 		}
 	}
 
-	sdks := map[string]workshop.SdkRecord{}
-	for _, sk := range w.File.Sdks {
-		sdks[sk.Name] = sk
-	}
-
 	for _, plug := range plugs {
-		if sdks[plug.Sdk.Name].Plugs[plug.Name].Bind != nil {
-			continue
-		}
 		candidateTarget, _ := plug.Lookup("workshop-target")
 
 		idx := slices.IndexFunc(plugs, func(pi *sdk.PlugInfo) bool {
 			// exclude oneself
 			if pi.Sdk.Name == plug.Sdk.Name && pi.Name == plug.Name {
-				return false
-			}
-			// exclude bound plugs
-			if sdks[pi.Sdk.Name].Plugs[pi.Name].Bind != nil {
 				return false
 			}
 			target, _ := pi.Lookup("workshop-target")

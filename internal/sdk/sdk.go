@@ -128,32 +128,73 @@ func SetupContentID(setup Setup) ContentID {
 	return ContentID{Name: setup.Name, Sha3_384: setup.Sha3_384, IsVolume: setup.IsVolume()}
 }
 
-type sdkYaml struct {
-	Name        string `yaml:"name"`
-	Title       string `yaml:"title,omitempty"`
-	Version     string `yaml:"version,omitempty"`
-	Summary     string `yaml:"summary,omitempty"`
-	Description string `yaml:"description,omitempty"`
+type File struct {
+	Name        string
+	Title       string
+	Version     string
+	Summary     string
+	Description string
 
-	Base string `yaml:"base,omitempty"`
-	Arch string `yaml:"architecture,omitempty"`
+	Base string
+	Arch string
 
-	Contact    stringOrSlice `yaml:"contact,omitempty"`
-	Issues     stringOrSlice `yaml:"issues,omitempty"`
-	SourceCode string        `yaml:"source-code,omitempty"`
-	Website    string        `yaml:"website,omitempty"`
-	License    string        `yaml:"license,omitempty"`
+	License string
 
-	Type  string         `yaml:"type,omitempty"`
-	Plugs map[string]any `yaml:"plugs,omitempty"`
-	Slots map[string]any `yaml:"slots,omitempty"`
+	Type  Type
+	Plugs map[string]any
+	Slots map[string]any
 
-	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
+	BuiltAt *time.Time
 }
 
-func (s *sdkYaml) UnmarshalYAML(value *yaml.Node) error {
-	type sdk sdkYaml
-	err := yamlutil.UnmarshalStrict((*sdk)(s), value)
+func (s *File) UnmarshalYAML(value *yaml.Node) error {
+	// Keep this in sync with sdkcraft.models.Metadata (+ Type).
+	var f struct {
+		Name        string `yaml:"name"`
+		Title       string `yaml:"title,omitempty"`
+		Version     string `yaml:"version,omitempty"`
+		Summary     string `yaml:"summary,omitempty"`
+		Description string `yaml:"description,omitempty"`
+
+		Base string `yaml:"base,omitempty"`
+		Arch string `yaml:"architecture,omitempty"`
+
+		Contact    stringOrSlice `yaml:"contact,omitempty"`
+		Issues     stringOrSlice `yaml:"issues,omitempty"`
+		SourceCode string        `yaml:"source-code,omitempty"`
+		Website    string        `yaml:"website,omitempty"`
+		License    string        `yaml:"license,omitempty"`
+
+		Type  Type           `yaml:"type,omitempty"`
+		Plugs map[string]any `yaml:"plugs,omitempty"`
+		Slots map[string]any `yaml:"slots,omitempty"`
+
+		BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
+	}
+	err := yamlutil.UnmarshalStrict(&f, value)
+
+	switch f.Type {
+	case "":
+		f.Type = Regular
+	case Regular, System:
+	default:
+		return fmt.Errorf("invalid SDK type %q", f.Type)
+	}
+
+	*s = File{
+		Name:        f.Name,
+		Title:       f.Title,
+		Version:     f.Version,
+		Summary:     f.Summary,
+		Description: f.Description,
+		Base:        f.Base,
+		Arch:        f.Arch,
+		License:     f.License,
+		Type:        f.Type,
+		Plugs:       f.Plugs,
+		Slots:       f.Slots,
+		BuiltAt:     (*time.Time)(f.BuiltAt),
+	}
 
 	context := "SDK definition YAML"
 	if s.Name == Sketch {
@@ -225,9 +266,8 @@ type Info struct {
 	Description string
 	License     string
 
-	Plugs     map[string]*PlugInfo
-	PlugBinds map[string]PlugRef
-	Slots     map[string]*SlotInfo
+	Plugs map[string]*PlugInfo
+	Slots map[string]*SlotInfo
 	// Plugs or slots with issues (they are not included in Plugs or Slots)
 	BadInterfaces map[string]string
 }
@@ -240,22 +280,30 @@ func (i *Info) Ref() Ref {
 	}
 }
 
-func (i *Info) SetupPlugBinds(binds map[string]PlugRef) error {
-	for name, plug := range binds {
-		if _, ok := i.Plugs[name]; ok {
+// Additions lists extra plugs, slots, and plug bindings, e.g. those added in
+// the workshop definition file.
+type Additions struct {
+	Plugs map[string]any
+	Slots map[string]any
+	Binds map[string]PlugRef
+}
+
+func bindPlugs(binds map[string]PlugRef, i *Info) error {
+	for name, bind := range binds {
+		plug, ok := i.Plugs[name]
+		if !ok {
 			// Check plugs that are bound. The existence of plugs that are
 			// "bound to" it will be checked at the connecting stage, i.e. when
 			// all plugs from all SDKs are in the repository already.
-			i.PlugBinds[name] = plug
-		} else {
 			return fmt.Errorf("plug binding failed: SDK %q has no plug named %q", i.Ref().ShortRef(), name)
 		}
+		plug.Bind = &bind
 	}
 	return nil
 }
 
 // Adds slots defined for this SDK in a workshop file.
-func (i *Info) SetupWorkshopSlots(slots map[string]any) error {
+func extendSlots(slots map[string]any, i *Info) error {
 	for name, data := range slots {
 		if _, exist := i.Slots[name]; exist {
 			return fmt.Errorf("cannot add slot %q to %q SDK: already exists", name, i.Name)
@@ -273,12 +321,11 @@ func (i *Info) SetupWorkshopSlots(slots map[string]any) error {
 		}
 	}
 
-	SanitizePlugsSlots(i)
 	return nil
 }
 
-// Adds slots defined for this SDK in a workshop file.
-func (i *Info) SetupWorkshopPlugs(plugs map[string]any) error {
+// Adds plugs defined for this SDK in a workshop file.
+func extendPlugs(plugs map[string]any, i *Info) error {
 	for name, data := range plugs {
 		if _, exist := i.Plugs[name]; exist {
 			return fmt.Errorf("cannot add plug %q to %q SDK: already exists", name, i.Name)
@@ -296,7 +343,6 @@ func (i *Info) SetupWorkshopPlugs(plugs map[string]any) error {
 		}
 	}
 
-	SanitizePlugsSlots(i)
 	return nil
 }
 
@@ -318,52 +364,62 @@ var SanitizePlugsSlots = func(snapInfo *Info) {
 	panic("SanitizePlugsSlots function not set")
 }
 
-func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
-	var sdkYaml sdkYaml
-	err := yaml.Unmarshal(yamlData, &sdkYaml)
-	if err != nil {
+func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additions) (*Info, error) {
+	var file File
+	if err := yaml.Unmarshal(yamlData, &file); err != nil {
 		return nil, err
 	}
 
-	if sdkYaml.Type == "" {
-		sdkYaml.Type = Regular.String()
-	}
-	if sdkYaml.Type == System.String() && !IsSystem(sdkYaml.Name) {
-		return nil, fmt.Errorf("type %q is reserved for the system SDK", sdkYaml.Type)
+	if file.Type == System && !IsSystem(file.Name) {
+		return nil, fmt.Errorf("type %q is reserved for the system SDK", file.Type)
 	}
 
 	sdkInfo := &Info{
 		ProjectId:     projectId,
 		Workshop:      workshop,
-		Name:          sdkYaml.Name,
-		Base:          sdkYaml.Base,
-		Arch:          sdkYaml.Arch,
-		Version:       sdkYaml.Version,
-		Type:          Type(sdkYaml.Type),
-		BuiltAt:       (*time.Time)(sdkYaml.BuiltAt),
-		Title:         sdkYaml.Title,
-		Summary:       sdkYaml.Summary,
-		Description:   sdkYaml.Description,
-		License:       sdkYaml.License,
+		Name:          file.Name,
+		Base:          file.Base,
+		Arch:          file.Arch,
+		Version:       file.Version,
+		Type:          file.Type,
+		BuiltAt:       file.BuiltAt,
+		Title:         file.Title,
+		Summary:       file.Summary,
+		Description:   file.Description,
+		License:       file.License,
 		Plugs:         make(map[string]*PlugInfo),
-		PlugBinds:     make(map[string]PlugRef),
 		Slots:         make(map[string]*SlotInfo),
 		BadInterfaces: make(map[string]string),
 	}
 
-	if err := setPlugsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
+	if err := setPlugsFromSdkYaml(&file, sdkInfo); err != nil {
 		return nil, err
 	}
+	for _, a := range additions {
+		if err := extendPlugs(a.Plugs, sdkInfo); err != nil {
+			return nil, err
+		}
+	}
+	for _, a := range additions {
+		if err := bindPlugs(a.Binds, sdkInfo); err != nil {
+			return nil, err
+		}
+	}
 
-	if err := setSlotsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
+	if err := setSlotsFromSdkYaml(&file, sdkInfo); err != nil {
 		return nil, err
+	}
+	for _, a := range additions {
+		if err := extendSlots(a.Slots, sdkInfo); err != nil {
+			return nil, err
+		}
 	}
 
 	SanitizePlugsSlots(sdkInfo)
 	return sdkInfo, nil
 }
 
-func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
+func setPlugsFromSdkYaml(y *File, sdk *Info) error {
 	for name, data := range y.Plugs {
 		iface, label, attrs, err := convertToSlotOrPlugData("plug", name, data)
 		if err != nil {
@@ -381,7 +437,7 @@ func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
 	return nil
 }
 
-func setSlotsFromSdkYaml(y *sdkYaml, sdk *Info) error {
+func setSlotsFromSdkYaml(y *File, sdk *Info) error {
 	for name, data := range y.Slots {
 		iface, label, attrs, err := convertToSlotOrPlugData("slot", name, data)
 		if err != nil {
@@ -535,6 +591,7 @@ type PlugInfo struct {
 	Interface string
 	Attrs     map[string]any
 	Label     string
+	Bind      *PlugRef
 }
 
 func (plug *PlugInfo) Attr(key string, val any) error {
@@ -616,7 +673,7 @@ func MockSanitizePlugsSlots(f func(sdkInfo *Info)) (restore func()) {
 func MockInfo(c *check.C, yamlText string, projectId, workshop string) *Info {
 	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
 	defer restoreSanitize()
-	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop)
+	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop, nil)
 	c.Assert(err, check.IsNil)
 
 	err = Validate(info)
@@ -628,7 +685,7 @@ func MockInvalidInfo(c *check.C, yamlText string) *Info {
 	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
 	defer restoreSanitize()
 
-	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws")
+	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws", nil)
 	c.Assert(err, check.IsNil)
 	err = Validate(sdkInfo)
 	c.Assert(err, check.NotNil)
