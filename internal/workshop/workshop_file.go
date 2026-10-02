@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 const MAX_WORKSHOP_NAME_LENGTH = 40
@@ -161,17 +162,34 @@ func (s SdkRecord) MarshalYAML() (any, error) {
 }
 
 func (s *SdkRecord) UnmarshalYAML(value *yaml.Node) error {
-	type record SdkRecord
-	if err := value.Decode((*record)(s)); err != nil {
-		return err
+	// Omit Source field so it counts as an "unknown field." Apart from that,
+	// keep this in sync with SdkRecord.
+	var record struct {
+		Name    string                `yaml:"name"`
+		Channel string                `yaml:"channel,omitempty"`
+		Plugs   map[string]PlugOrBind `yaml:"plugs,omitempty"`
+		Slots   map[string]any        `yaml:"slots,omitempty"`
+	}
+	if err := yamlutil.UnmarshalStrict(&record, value); err != nil {
+		context := "workshop definition YAML: SDK"
+		if record.Name != "" {
+			context = fmt.Sprintf("%q SDK", record.Name)
+		}
+		return yamlutil.AttachContext(context, err)
 	}
 
-	name, source, err := ParseSdkName(s.Name)
+	name, source, err := ParseSdkName(record.Name)
 	if err != nil {
 		return err
 	}
 
-	s.Name, s.Source = name, source
+	*s = SdkRecord{
+		Name:    name,
+		Channel: record.Channel,
+		Source:  source,
+		Plugs:   record.Plugs,
+		Slots:   record.Slots,
+	}
 	return nil
 }
 
@@ -206,6 +224,12 @@ func ParseSdkName(name string) (string, sdk.Source, error) {
 type Connection struct {
 	PlugRef PlugRef `yaml:"plug"`
 	SlotRef SlotRef `yaml:"slot"`
+}
+
+func (c *Connection) UnmarshalYAML(value *yaml.Node) error {
+	type connection Connection
+	err := yamlutil.UnmarshalStrict((*connection)(c), value)
+	return yamlutil.AttachContext("workshop definition YAML: connections entry", err)
 }
 
 type Action string
@@ -247,6 +271,12 @@ type File struct {
 	Sdks        []SdkRecord       `yaml:"sdks,omitempty"`
 	Connections []Connection      `yaml:"connections,omitempty"`
 	Actions     map[string]Action `yaml:"actions,omitempty"`
+}
+
+func (f *File) UnmarshalYAML(value *yaml.Node) error {
+	type file File
+	err := yamlutil.UnmarshalStrict((*file)(f), value)
+	return yamlutil.AttachContext("workshop definition YAML", err)
 }
 
 func (a Action) String() string {
@@ -336,11 +366,6 @@ func readWorkshop(path string) (*File, error) {
 		return nil, err
 	}
 	if err = yaml.Unmarshal(buf, &file); err != nil {
-		te, ok := err.(*yaml.TypeError)
-		if ok {
-			errs := strings.Join(te.Errors, "\n")
-			return nil, fmt.Errorf("workshop definition YAML:\n%s", errs)
-		}
 		return nil, err
 	}
 

@@ -19,16 +19,15 @@ execute: |
   echo "Reject unknown sketch SDK YAML fields"
   ! sudo TERM=ansi EDITOR=ex -u ubuntu -- workshop sketch-sdk > error.log 2>&1 <<EOF || false
   1/^name: sketch$/a
-  base: ubuntu@24.04
+  bass: ubuntu@22.04
   .
   wq
   EOF
-  MATCH 'cannot sketch: sketch SDK YAML contains unknown fields:' < error.log
-  MATCH '"base" at line [0-9]+, column [0-9]+' < error.log
+  MATCH 'cannot sketch: invalid "sketch" SDK: sketch SDK YAML contains unknown fields: "bass" at line [0-9]+, column [0-9]+' < error.log
 
   echo "Restore valid sketch SDK YAML"
   sudo TERM=ansi EDITOR=ex -u ubuntu -- workshop sketch-sdk <<EOF
-  /^base: ubuntu@24.04$/d
+  /^bass: ubuntu@22.04$/d
   wq
   EOF
 
