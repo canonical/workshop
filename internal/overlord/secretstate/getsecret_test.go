@@ -623,7 +623,169 @@ func (s *getSecretSuite) TestUnexpectedStatus(c *C) {
 	c.Check(s.st.Cached(secretResultKey(task.ID())), IsNil)
 }
 
-// TestTaskFailure checks task errors propagate without returning cached data.
+// TestPlugNotConnected checks the real manager and runner preserve a domain
+// failure through task metadata rather than the runner's logged error text.
+func (s *getSecretSuite) TestPlugNotConnected(c *C) {
+	project := workshop.Project{
+		Path:      c.MkDir(),
+		ProjectId: "test-project",
+	}
+	ref := sdk.PlugRef{
+		Name:      "api-key",
+		ProjectId: project.ProjectId,
+		Sdk:       "ollama",
+		Workshop:  "test-workshop",
+	}
+	repo := interfaces.NewRepository()
+	iface, err := interfaces.ByName("secret")
+	c.Assert(err, IsNil)
+	c.Assert(repo.AddInterface(iface), IsNil)
+	c.Assert(repo.AddPlug(&sdk.PlugInfo{
+		Interface: "secret",
+		Name:      ref.Name,
+		Sdk: &sdk.Info{
+			Name:      ref.Sdk,
+			ProjectId: ref.ProjectId,
+			Type:      sdk.Regular,
+			Workshop:  ref.Workshop,
+		},
+	}), IsNil)
+	backend := workshopBackendFunc(func(
+		context.Context,
+		string,
+	) (*workshop.Workshop, error) {
+		return &workshop.Workshop{
+			Name: "test-workshop",
+			Sdks: map[string]workshop.SdkInstallation{
+				"ollama": {Setup: sdk.Setup{Name: "ollama"}},
+			},
+		}, nil
+	})
+	New(s.runner, backend, repo, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+	results := s.start(ctx, project, ref)
+	task := s.awaitTask(c)
+
+	err = s.runner.Ensure()
+	c.Assert(err, IsNil)
+	s.runner.Wait()
+	result := <-results
+	c.Check(errors.Is(result.err, interfaces.ErrorPlugNotConnected),
+		Equals, true)
+
+	s.st.Lock()
+	defer s.st.Unlock()
+	c.Check(task.Status(), Equals, state.ErrorStatus)
+	var code failureCode
+	c.Assert(task.Get(secretFailureKey, &code), IsNil)
+	c.Check(code, Equals, failurePlugNotConnected)
+	c.Check(task.Change().Err(), NotNil)
+}
+
+// TestTaskFailureCancelled checks cancellation wins over a recorded failure
+// even when the failed change is already ready.
+func (s *getSecretSuite) TestTaskFailureCancelled(c *C) {
+	project := workshop.Project{
+		Path:      c.MkDir(),
+		ProjectId: "test-project",
+	}
+	ref := sdk.PlugRef{
+		Name:      "api-key",
+		ProjectId: project.ProjectId,
+		Sdk:       "ollama",
+		Workshop:  "test-workshop",
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+	results := s.start(ctx, project, ref)
+	task := s.awaitTask(c)
+
+	s.st.Lock()
+	task.Set(secretFailureKey, failureProviderLocked)
+	task.Errorf("secret provider is locked")
+	task.SetStatus(state.ErrorStatus)
+	cancel()
+	s.st.Unlock()
+
+	result := <-results
+	c.Check(errors.Is(result.err, context.Canceled), Equals, true)
+}
+
+// TestTaskFailureMalformed checks malformed codes preserve logged failures.
+func (s *getSecretSuite) TestTaskFailureMalformed(c *C) {
+	project := workshop.Project{
+		Path:      c.MkDir(),
+		ProjectId: "test-project",
+	}
+	ref := sdk.PlugRef{
+		Name:      "api-key",
+		ProjectId: project.ProjectId,
+		Sdk:       "ollama",
+		Workshop:  "test-workshop",
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+	results := s.start(ctx, project, ref)
+	task := s.awaitTask(c)
+
+	s.st.Lock()
+	task.Set(secretFailureKey, map[string]string{"code": "provider-locked"})
+	task.Errorf("secret provider unavailable")
+	task.SetStatus(state.ErrorStatus)
+	changeErr := task.Change().Err()
+	s.st.Unlock()
+
+	result := <-results
+	c.Assert(changeErr, NotNil)
+	c.Assert(result.err, NotNil)
+	c.Check(result.err.Error(), Equals, fmt.Sprintf(
+		"get secret task failed: %s",
+		changeErr,
+	))
+	c.Check(errors.Unwrap(result.err), NotNil)
+}
+
+// TestTaskFailureUnknown checks future codes preserve logged failures.
+func (s *getSecretSuite) TestTaskFailureUnknown(c *C) {
+	project := workshop.Project{
+		Path:      c.MkDir(),
+		ProjectId: "test-project",
+	}
+	ref := sdk.PlugRef{
+		Name:      "api-key",
+		ProjectId: project.ProjectId,
+		Sdk:       "ollama",
+		Workshop:  "test-workshop",
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = context.WithValue(ctx, workshop.ContextUser, "test-user")
+	results := s.start(ctx, project, ref)
+	task := s.awaitTask(c)
+
+	s.st.Lock()
+	task.Set(secretFailureKey, "future-failure")
+	task.Errorf("secret provider unavailable")
+	task.SetStatus(state.ErrorStatus)
+	changeErr := task.Change().Err()
+	s.st.Unlock()
+
+	result := <-results
+	c.Assert(changeErr, NotNil)
+	c.Assert(result.err, NotNil)
+	c.Check(result.err.Error(), Equals, fmt.Sprintf(
+		"get secret task failed: %s",
+		changeErr,
+	))
+	c.Check(errors.Unwrap(result.err), NotNil)
+}
+
+// TestTaskFailure checks missing codes preserve logged task errors without
+// returning cached data.
 func (s *getSecretSuite) TestTaskFailure(c *C) {
 	project := workshop.Project{
 		Path:      c.MkDir(),
@@ -666,8 +828,7 @@ func (s *getSecretSuite) TestTaskFailure(c *C) {
 	changeErr := task.Change().Err()
 	c.Assert(changeErr, ErrorMatches, "(?s).*secret provider unavailable.*")
 	c.Check(result.err.Error(), Equals, fmt.Sprintf(
-		"checking secret retrieval change %s: %s",
-		task.Change().ID(),
+		"get secret task failed: %s",
 		changeErr,
 	))
 	c.Check(task.Status(), Equals, state.ErrorStatus)

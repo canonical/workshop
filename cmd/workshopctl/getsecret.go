@@ -21,8 +21,6 @@ import (
 	"strings"
 
 	"golang.org/x/sys/unix"
-
-	"github.com/canonical/workshop/client"
 )
 
 // systemdSecretRequest describes a decoded systemd LoadCredential request:
@@ -41,14 +39,6 @@ type systemdSecretRequest struct {
 }
 
 const (
-	// exitCodeProviderLocked indicates the secret provider is locked and
-	// the secret cannot be accessed until it is unlocked.
-	exitCodeProviderLocked = 2
-
-	// exitCodeSecretError indicates the requested secret does not exist or
-	// matches no entries in the secret provider.
-	exitCodeSecretError = 1
-
 	// exitCodeSecretSystemError indicates an internal infrastructure error,
 	// such as the secret provider being unavailable.
 	exitCodeSecretSystemError = 255
@@ -80,12 +70,16 @@ func decodeSystemdSecretRequest(fd uintptr) (systemdSecretRequest, error) {
 //
 // With --systemd, workshopctl is invoked by the workshop-secret socket unit
 // with the accepted connection on stdin. The request is decoded locally,
-// then forwarded to the daemon as a regular get-secret invocation.
+// then forwarded with --systemd and the resolved secret identifier. Both
+// invocation modes use API-provided exit codes, with 255 as the fallback.
 func interceptGetSecret(
 	req workshopctlRequest,
 	stdin fdReader,
 	stdout, stderr io.Writer,
 ) (workshopctlRequest, error) {
+	req.responseHandler = defaultResponseHandler(
+		stdout, stderr, exitCodeSecretSystemError,
+	)
 	args := req.Args[1:]
 	if len(args) != 1 || args[0] != "--systemd" {
 		return req, nil
@@ -93,7 +87,7 @@ func interceptGetSecret(
 
 	systemdSecretReq, err := decodeSystemdSecretRequest(stdin.Fd())
 	if err != nil {
-		return workshopctlRequest{}, err
+		return req, err
 	}
 
 	fmt.Fprintf(
@@ -106,55 +100,14 @@ func interceptGetSecret(
 
 	req.Args = []string{
 		getSecretCommandName,
+		"--systemd",
 		systemdSecretReq.SDK + "." + systemdSecretReq.Secret,
 	}
 	// The connection was consumed locally to decode the request; it must
 	// not be forwarded to the daemon as the invocation's stdin.
 	req.Stdin = nil
-	req.responseHandler = handleSystemdSecretResponse(systemdSecretReq, stdout, stderr)
+
 	return req, nil
-}
-
-// handleSystemdSecretResponse returns the response handler for a get-secret
-// request made on behalf of a systemd LoadCredential connection. The
-// returned handler produces the process exit code, using the requested
-// secret's identity in error messages.
-func handleSystemdSecretResponse(
-	secretReq systemdSecretRequest,
-	stdout, stderr io.Writer,
-) func([]byte, []byte, error) int {
-	credential := secretReq.SDK + "." + secretReq.Secret
-
-	return func(responseStdout, responseStderr []byte, err error) int {
-		switch {
-		case errors.Is(err, client.ErrorPlugNotConnected):
-			// An unconnected plug is not an error: systemd receives a
-			// zero-byte credential and the unit handles the missing value.
-			return 0
-		case errors.Is(err, client.ErrorSecretNotFound):
-			fmt.Fprintf(
-				stderr, "error: credential %q not found\n", credential)
-			return exitCodeSecretError
-		case errors.Is(err, client.ErrorSecretProviderLocked):
-			fmt.Fprintf(
-				stderr,
-				"error: cannot get credential %q: unlock the secret provider and try again\n",
-				credential,
-			)
-			return exitCodeProviderLocked
-		case err != nil:
-			fmt.Fprintf(
-				stderr,
-				"error: cannot get credential %q: %s\n",
-				credential,
-				err,
-			)
-			return exitCodeSecretSystemError
-		}
-
-		stdout.Write(responseStdout)
-		return 0
-	}
 }
 
 // parseSystemdPeerAddressName decodes a LoadCredential peer address name of

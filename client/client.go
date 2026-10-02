@@ -462,6 +462,21 @@ const (
 	// ErrorKindNoWaitingChange identifies an abort or continue request made
 	// when no paused change is waiting for the workshop.
 	ErrorKindNoWaitingChange = "no-waiting-change-in-progress"
+
+	// ErrorKindPlugNotConnected identifies a plug with no connected slot.
+	ErrorKindPlugNotConnected = "plug-not-connected"
+
+	// ErrorKindSecretMultipleMatches identifies a lookup that matches more
+	// than one secret and cannot safely select a value.
+	ErrorKindSecretMultipleMatches = "secret-multiple-matches"
+
+	// ErrorKindSecretNotFound identifies a connected secret that does not
+	// exist or matches no entries in the provider.
+	ErrorKindSecretNotFound = "secret-not-found"
+
+	// ErrorKindSecretProviderLocked identifies a secret provider that must
+	// be unlocked before retrieval can succeed.
+	ErrorKindSecretProviderLocked = "secret-provider-locked"
 )
 
 func IsNoUpdatesAvailable(err error) bool {

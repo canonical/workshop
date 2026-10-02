@@ -17,7 +17,27 @@ package ctlcmd
 import (
 	"context"
 	"fmt"
+	"io"
+
+	"github.com/canonical/workshop/internal/overlord/hookstate"
 )
+
+// NewGetSecretCommand exposes command construction without running the parser.
+func NewGetSecretCommand(
+	hookContext *hookstate.Context,
+	identifier string,
+	stdout io.Writer,
+	stderr io.Writer,
+) *getSecretCommand {
+	command := &getSecretCommand{
+		getSecretPositional: getSecretPositional{Secret: identifier},
+	}
+	command.setName("get-secret")
+	command.setContext(hookContext)
+	command.setStdout(stdout)
+	command.setStderr(stderr)
+	return command
+}
 
 func AddMockCommand(name string) *MockCommand {
 	return addMockCmd(name, false)

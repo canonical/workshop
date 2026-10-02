@@ -58,11 +58,15 @@ type WorkshopBackend interface {
 }
 
 // doGetSecret extracts the caller and secret consumer from task metadata
-// before attempting retrieval outside the state lock.
+// before attempting retrieval outside the state lock. Recognised failures
+// are recorded as persisted codes for [GetSecret] to translate; the original
+// error is returned for task logging.
 func (m SecretManager) doGetSecret(
 	task *state.Task,
 	tomb *tomb.Tomb,
 ) error {
+	st := task.State()
+
 	user, project, workshopName, err :=
 		handlersetup.UserProjectWorkshop(task)
 	if err != nil {
@@ -70,7 +74,6 @@ func (m SecretManager) doGetSecret(
 	}
 
 	var sdkName, plugName string
-	st := task.State()
 
 	st.Lock()
 	err = task.Get("sdk", &sdkName)
@@ -102,6 +105,7 @@ func (m SecretManager) doGetSecret(
 
 	value, err := m.getSecret(ctx, ref)
 	if err != nil {
+		setTaskFailureCode(task, err)
 		return fmt.Errorf(
 			"getting secret value for sdk %q and plug %q in workshop %q: %w",
 			ref.Sdk, ref.Name, ref.Workshop, err,
@@ -179,7 +183,7 @@ func (m SecretManager) getSecret(
 	)
 
 	if len(connections) == 0 {
-		return secrets.Secret{}, errors.New("secret plug is not connected")
+		return secrets.Secret{}, interfaces.ErrorPlugNotConnected
 	}
 
 	if len(connections) > 1 {

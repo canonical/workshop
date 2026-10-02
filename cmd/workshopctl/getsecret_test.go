@@ -27,85 +27,166 @@ import (
 	"github.com/canonical/workshop/client"
 )
 
-// getSecretSuite tests decoding of systemd LoadCredential secret requests.
+// getSecretSuite tests secret request interception and systemd decoding.
 type getSecretSuite struct{}
 
 var _ = check.Suite(&getSecretSuite{})
 
-// TestHandleSystemdSecretResponse checks that the response handler delivers
-// the secret value on stdout.
-func (s *getSecretSuite) TestHandleSystemdSecretResponse(c *check.C) {
-	secretReq := systemdSecretRequest{
-		Unit:   "ollama.service",
-		SDK:    "ollama",
-		Secret: "ollama-api-key",
-	}
-
+// TestInterceptGetSecretAPIOutput checks that API metadata, not the domain
+// kind, determines the exit code and output even for wrapped errors.
+func (s *getSecretSuite) TestInterceptGetSecretAPIOutput(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	handler := handleSystemdSecretResponse(secretReq, &stdout, &stderr)
+	req, err := interceptArgs(
+		[]string{"get-secret", "ollama.ollama-api-key"},
+		nil,
+		&stdout,
+		&stderr,
+	)
+	c.Assert(err, check.IsNil)
+	err = fmt.Errorf("lookup: %w", &client.Error{
+		Kind:    client.ErrorKindSecretNotFound,
+		Message: "fallback message",
+		Value: map[string]any{
+			"exit-code": float64(7),
+			"stderr":    "API diagnostic\n",
+			"stdout":    "API output\n",
+		},
+	})
 
-	exitCode := handler([]byte("secret-value"), nil, nil)
-	c.Check(exitCode, check.Equals, 0)
-	c.Check(stdout.String(), check.Equals, "secret-value")
-	c.Check(stderr.String(), check.Equals, "")
+	exitCode := req.responseHandler(nil, nil, err)
+
+	c.Check(exitCode, check.Equals, 7)
+	c.Check(stdout.String(), check.Equals, "API output\n")
+	c.Check(stderr.String(), check.Equals, "API diagnostic\n")
 }
 
-// TestHandleSystemdSecretResponsePlugNotConnected checks that an unconnected
-// plug yields a zero-byte credential and exit code 0.
-func (s *getSecretSuite) TestHandleSystemdSecretResponsePlugNotConnected(c *check.C) {
-	secretReq := systemdSecretRequest{
-		Unit:   "ollama.service",
-		SDK:    "ollama",
-		Secret: "ollama-api-key",
-	}
-
+// TestInterceptGetSecretDecodeFailure checks that failed local decoding
+// retains the request and its secret fallback handler.
+func (s *getSecretSuite) TestInterceptGetSecretDecodeFailure(c *check.C) {
+	stdin, err := os.CreateTemp(c.MkDir(), "stdin")
+	c.Assert(err, check.IsNil)
+	defer stdin.Close()
+	args := []string{"get-secret", "--systemd"}
 	var stdout, stderr bytes.Buffer
-	handler := handleSystemdSecretResponse(secretReq, &stdout, &stderr)
 
-	exitCode := handler(nil, nil, client.ErrorPlugNotConnected)
-	c.Check(exitCode, check.Equals, 0)
+	req, err := interceptArgs(args, stdin, &stdout, &stderr)
+
+	c.Assert(err, check.ErrorMatches, "cannot decode secret request: .*")
+	c.Check(req.Args, check.DeepEquals, args)
+	c.Assert(req.responseHandler, check.NotNil)
+	c.Check(req.responseHandler(nil, nil, err), check.Equals, 255)
 	c.Check(stdout.String(), check.Equals, "")
-	c.Check(stderr.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: "+err.Error()+"\n")
 }
 
-// TestHandleSystemdSecretResponseError checks that the response handler maps
-// daemon errors to the exit codes defined by the secrets spec.
-func (s *getSecretSuite) TestHandleSystemdSecretResponseError(c *check.C) {
-	secretReq := systemdSecretRequest{
-		Unit:   "ollama.service",
-		SDK:    "ollama",
-		Secret: "ollama-api-key",
+// TestInterceptGetSecretInvalidExitCode checks that invalid API metadata
+// uses the secret fallback instead of mapping the domain kind.
+func (s *getSecretSuite) TestInterceptGetSecretInvalidExitCode(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	req, err := interceptArgs(
+		[]string{"get-secret", "ollama.ollama-api-key"},
+		nil,
+		&stdout,
+		&stderr,
+	)
+	c.Assert(err, check.IsNil)
+	err = &client.Error{
+		Kind:    client.ErrorKindSecretProviderLocked,
+		Message: "provider locked",
+		Value:   map[string]any{"exit-code": 0.5},
 	}
 
-	table := []struct {
-		err      error
-		exitCode int
-		stderr   string
-	}{
-		{
-			err:      client.ErrorSecretNotFound,
-			exitCode: 1,
-			stderr:   "error: credential \"ollama.ollama-api-key\" not found\n",
-		}, {
-			err:      client.ErrorSecretProviderLocked,
-			exitCode: 2,
-			stderr:   "error: cannot get credential \"ollama.ollama-api-key\": unlock the secret provider and try again\n",
-		}, {
-			err:      errors.New("daemon unavailable"),
-			exitCode: 255,
-			stderr:   "error: cannot get credential \"ollama.ollama-api-key\": daemon unavailable\n",
+	exitCode := req.responseHandler(nil, nil, err)
+
+	c.Check(exitCode, check.Equals, 255)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: provider locked\n")
+}
+
+// TestInterceptGetSecretMissingExitCode checks that a domain error without
+// API exit metadata uses the secret fallback rather than a local mapping.
+func (s *getSecretSuite) TestInterceptGetSecretMissingExitCode(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	req, err := interceptArgs(
+		[]string{"get-secret", "ollama.ollama-api-key"},
+		nil,
+		&stdout,
+		&stderr,
+	)
+	c.Assert(err, check.IsNil)
+
+	exitCode := req.responseHandler(nil, nil, client.ErrorPlugNotConnected)
+
+	c.Check(exitCode, check.Equals, 255)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: plug not connected\n")
+}
+
+// TestInterceptGetSecretSuccess checks that ordinary requests retain their
+// arguments and preserve both response streams on success.
+func (s *getSecretSuite) TestInterceptGetSecretSuccess(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	args := []string{"get-secret", "ollama.ollama-api-key"}
+	req, err := interceptArgs(args, nil, &stdout, &stderr)
+	c.Assert(err, check.IsNil)
+
+	exitCode := req.responseHandler(
+		[]byte("secret-value"),
+		[]byte("diagnostic"),
+		nil,
+	)
+
+	c.Check(exitCode, check.Equals, 0)
+	c.Check(req.Args, check.DeepEquals, args)
+	c.Check(stdout.String(), check.Equals, "secret-value")
+	c.Check(stderr.String(), check.Equals, "diagnostic")
+}
+
+// TestInterceptGetSecretUnknownError checks that unknown failures use the
+// secret fallback and retain their diagnostic.
+func (s *getSecretSuite) TestInterceptGetSecretUnknownError(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	req, err := interceptArgs(
+		[]string{"get-secret", "ollama.ollama-api-key"},
+		nil,
+		&stdout,
+		&stderr,
+	)
+	c.Assert(err, check.IsNil)
+
+	exitCode := req.responseHandler(nil, nil, errors.New("daemon unavailable"))
+
+	c.Check(exitCode, check.Equals, 255)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: daemon unavailable\n")
+}
+
+// TestInterceptGetSecretZeroExitCode checks that explicit API success takes
+// precedence over both the domain kind and the secret fallback.
+func (s *getSecretSuite) TestInterceptGetSecretZeroExitCode(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	req, err := interceptArgs(
+		[]string{"get-secret", "ollama.ollama-api-key"},
+		nil,
+		&stdout,
+		&stderr,
+	)
+	c.Assert(err, check.IsNil)
+	err = &client.Error{
+		Kind:    client.ErrorKindPlugNotConnected,
+		Message: "plug not connected",
+		Value: map[string]any{
+			"exit-code": float64(0),
+			"stderr":    "no credential available\n",
+			"stdout":    "",
 		},
 	}
 
-	for _, t := range table {
-		var stdout, stderr bytes.Buffer
-		handler := handleSystemdSecretResponse(secretReq, &stdout, &stderr)
+	exitCode := req.responseHandler(nil, nil, err)
 
-		exitCode := handler(nil, nil, t.err)
-		c.Check(exitCode, check.Equals, t.exitCode, check.Commentf("err %v", t.err))
-		c.Check(stdout.String(), check.Equals, "", check.Commentf("err %v", t.err))
-		c.Check(stderr.String(), check.Equals, t.stderr, check.Commentf("err %v", t.err))
-	}
+	c.Check(exitCode, check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "no credential available\n")
 }
 
 // TestParseSystemdPeerAddressName checks that a valid LoadCredential peer

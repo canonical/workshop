@@ -16,6 +16,7 @@ package secretstate
 
 import (
 	"context"
+	"errors"
 
 	. "gopkg.in/check.v1"
 
@@ -128,8 +129,7 @@ func (s *managerSuite) TestGetSecretConnectionScopedToProject(c *C) {
 
 	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(err, ErrorMatches,
-		`secret plug is not connected`)
+	c.Check(errors.Is(err, interfaces.ErrorPlugNotConnected), Equals, true)
 }
 
 // TestGetSecretConnectionScopedToWorkshop checks a connection belonging to
@@ -196,6 +196,5 @@ func (s *managerSuite) TestGetSecretConnectionScopedToWorkshop(c *C) {
 
 	_, err = manager.getSecret(ctx, ref)
 
-	c.Check(err, ErrorMatches,
-		`secret plug is not connected`)
+	c.Check(errors.Is(err, interfaces.ErrorPlugNotConnected), Equals, true)
 }

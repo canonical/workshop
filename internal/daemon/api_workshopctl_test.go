@@ -17,10 +17,14 @@ package daemon
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/logger"
+	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
 	"github.com/canonical/workshop/internal/workshop"
 	"github.com/canonical/workshop/internal/workshop/fakebackend"
 )
@@ -35,6 +39,62 @@ func (s *apiSuite) addWorkshopWithInstanceID(instanceID string) {
 			},
 		},
 	}
+}
+
+// TestWorkshopCtlErrorExitCode checks that wrapped exit-code metadata is
+// transported with the outer error's diagnostic, not the metadata's empty text.
+func (s *apiSuite) TestWorkshopCtlErrorExitCode(c *check.C) {
+	err := fmt.Errorf(
+		"unlock the secret provider and try again%w",
+		ctlcmd.CommandExitCodeError{ExitCode: 2},
+	)
+
+	rsp := workshopctlErrorResponse(err).(*resp)
+
+	c.Check(rsp.Status, check.Equals, http.StatusBadRequest)
+	c.Check(rsp.Type, check.Equals, ResponseTypeError)
+	c.Check(rsp.Result, check.DeepEquals, &errorResult{
+		Message: "unlock the secret provider and try again",
+		Value: map[string]any{
+			"exit-code": 2,
+			"stderr":    "unlock the secret provider and try again",
+		},
+	})
+}
+
+// TestWorkshopCtlErrorZeroExitCode checks that explicit process success is
+// preserved even when carried by an API error response.
+func (s *apiSuite) TestWorkshopCtlErrorZeroExitCode(c *check.C) {
+	err := fmt.Errorf(
+		"optional value unavailable%w",
+		ctlcmd.CommandExitCodeError{ExitCode: 0},
+	)
+
+	rsp := workshopctlErrorResponse(err).(*resp)
+
+	c.Check(rsp.Status, check.Equals, http.StatusBadRequest)
+	c.Check(rsp.Type, check.Equals, ResponseTypeError)
+	c.Check(rsp.Result, check.DeepEquals, &errorResult{
+		Message: "optional value unavailable",
+		Value: map[string]any{
+			"exit-code": 0,
+			"stderr":    "optional value unavailable",
+		},
+	})
+}
+
+// TestWorkshopCtlErrorUnknown checks that errors without exit-code metadata
+// retain the generic response without fabricated output or process status.
+func (s *apiSuite) TestWorkshopCtlErrorUnknown(c *check.C) {
+	err := errors.New("command failed")
+
+	rsp := workshopctlErrorResponse(err).(*resp)
+
+	c.Check(rsp.Status, check.Equals, http.StatusBadRequest)
+	c.Check(rsp.Type, check.Equals, ResponseTypeError)
+	c.Check(rsp.Result, check.DeepEquals, &errorResult{
+		Message: err.Error(),
+	})
 }
 
 // TestWorkshopHelpCtlWithoutCookie checks that help works through the
@@ -106,6 +166,8 @@ func (s *apiSuite) TestWorkshopCtlRejectsUnknownInstanceID(c *check.C) {
 // cookie reaches SDK validation in the authenticated workshop rather than
 // attempting to resolve placeholder project and workshop names.
 func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
+	logs, restore := logger.MockLogger()
+	defer restore()
 	s.daemon(c)
 	s.addWorkshopWithInstanceID("instance-id")
 	s.d.overlord.Loop()
@@ -130,7 +192,9 @@ func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 	c.Check(rsp.Status, check.Equals, http.StatusBadRequest)
 	c.Check(rsp.Type, check.Equals, ResponseTypeError)
 	c.Assert(rsp.Result, check.FitsTypeOf, &errorResult{})
-	c.Check(rsp.Result.(*errorResult).Message, check.Matches,
+	c.Check(rsp.Result.(*errorResult).Message, check.Equals,
+		`cannot retrieve secret for plug "sdk.secret": internal error`)
+	c.Check(logs.String(), check.Matches,
 		"(?s).*requested sdk is not installed in workshop.*")
 
 }

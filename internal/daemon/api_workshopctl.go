@@ -16,6 +16,7 @@ package daemon
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/jessevdk/go-flags"
@@ -75,12 +76,10 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 	}
 
 	stdout, stderr, err := ctlcmd.Run(r.Context(), hookContext, reqData.Args, uid)
-	if err != nil {
-		if e, ok := err.(*flags.Error); ok && e.Type == flags.ErrHelp {
-			stdout = []byte(e.Error())
-		} else {
-			return statusBadRequest("%w", err)
-		}
+	if fe, is := errors.AsType[*flags.Error](err); is && fe.Type == flags.ErrHelp {
+		stdout = []byte(fe.Error())
+	} else if err != nil {
+		return workshopctlErrorResponse(err)
 	}
 
 	result := workshopctlOutput{
@@ -89,6 +88,27 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 	}
 
 	return SyncResponse(result, http.StatusOK)
+}
+
+// workshopctlErrorResponse includes a command's requested exit code and
+// verbatim stderr diagnostic when exit-code metadata is available. Other
+// errors retain the generic bad-request response.
+func workshopctlErrorResponse(err error) Response {
+	exitError, ok := errors.AsType[ctlcmd.CommandExitCodeError](err)
+	if !ok {
+		return statusBadRequest("%w", err)
+	}
+	return &resp{
+		Result: &errorResult{
+			Message: err.Error(),
+			Value: map[string]any{
+				"exit-code": exitError.ExitCode,
+				"stderr":    err.Error(),
+			},
+		},
+		Status: http.StatusBadRequest,
+		Type:   ResponseTypeError,
+	}
 }
 
 // workshopctlHookContext returns the hook context used to execute a
