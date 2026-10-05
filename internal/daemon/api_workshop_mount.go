@@ -108,6 +108,9 @@ func v1PostWorkshopMount(c *Command, r *http.Request, _ *userState) Response {
 
 	taskset, err := o.WorkshopManager().Remount(r.Context(), st, reqData.Plug, reqData.HostSource)
 	if err != nil {
+		if rsp := changeConflictResponse(err); rsp != nil {
+			return rsp
+		}
 		return statusBadRequest("%w", err)
 	}
 
