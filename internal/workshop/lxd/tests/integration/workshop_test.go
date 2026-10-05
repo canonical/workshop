@@ -1471,3 +1471,23 @@ cname=test.42424242.wp,test-42424242.wp,0  # hostname-fallback
 	c.Assert(err, check.IsNil)
 	c.Assert(op.Wait(), check.IsNil)
 }
+
+// If this changes, consider updating the baseline we set for
+// limits.max_bus_ports when constructing a workshop with no SDKs.
+func (f *wsOps) TestLxdBackendDefaultMaxBusPorts(c *check.C) {
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	metadata, err := conn.GetMetadataConfiguration()
+	c.Assert(err, check.IsNil)
+
+	keys := metadata.Configs["instance"]["resource-limits"].Keys
+	idx := slices.IndexFunc(keys, func(keys map[string]api.MetadataConfigurationConfigKey) bool {
+		_, ok := keys["limits.max_bus_ports"]
+		return ok
+	})
+	c.Assert(idx, check.Not(check.Equals), -1, check.Commentf("limits.max_bus_ports metadata key not found"))
+
+	c.Check(keys[idx]["limits.max_bus_ports"].DefaultDescription, check.Equals, "`8`")
+}
