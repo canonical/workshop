@@ -1560,7 +1560,7 @@ runcmd:
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
 
-		// Speeds up boot, and allows SDKs to install unsigned kernel modules.
+		// Allows SDKs to install unsigned kernels and kernel modules.
 		cfg["boot.mode"] = "uefi-nosecureboot"
 
 		// Skip 3s pause in firmware boot menu.
