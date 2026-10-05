@@ -117,8 +117,8 @@ func ValidateSdkInfo(pid, w, base, sk, sdkYaml string) error {
 		return fmt.Errorf("invalid %q SDK: %w", sk, err)
 	}
 
-	if err := sdk.Validate(info); err != nil {
-		return err
+	if len(info.BadInterfaces) > 0 {
+		return fmt.Errorf("%s", sdk.BadInterfacesSummary(info))
 	}
 
 	if info.Name != sk {
