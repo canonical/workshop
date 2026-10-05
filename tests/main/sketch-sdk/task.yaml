@@ -82,25 +82,21 @@ execute: |
 
   echo "Add a breaking change to sketch"
   ! sudo TERM=ansi EDITOR=ex -u ubuntu -- workshop sketch-sdk <<EOF || false
-  1/^plugs:$/a
-    unique-mount-plug-name:
-      interface: mount
-      workshop-typo: /mnt
+  1/^    # uv sync$/c
+      false  # fail on purpose
   .
   wq
   EOF
 
   echo "Fix the breaking change"
   sudo TERM=ansi EDITOR=ex -u ubuntu -- workshop sketch-sdk <<EOF
-  %s/workshop-typo/workshop-target/
+  %s/false  # fail/true  # succeed/
   wq
   EOF
 
   echo "Add another breaking change to sketch"
   ! sudo TERM=ansi EDITOR=ex -u ubuntu -- workshop sketch-sdk <<EOF || false
-  1/^  unique-mount-plug-name:$/a
-      unknown-attribute: true
-  .
+  %s/true  # succeed/false  # break/
   wq
   EOF
 
