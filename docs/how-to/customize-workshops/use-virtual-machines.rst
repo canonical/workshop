@@ -256,6 +256,28 @@ that contain unsupported plugs and slots,
 but these plugs and slots will not be listed in :command:`workshop connections`.
 
 
+Virtual hardware is restrictive
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Virtual machines are modeled on physical hardware,
+and have some of the same limitations.
+When the workshop starts,
+the following quantities are set in stone:
+
+- The number of processors.
+- Total system memory.
+- The root filesystem size.
+
+Interfaces can be connected and disconnected while the workshop is running,
+but much like devices plugged into a physical machine,
+there's a limit to the total number of interface connections.
+
+The simplest way to avoid these limits is to disconnect unused interfaces.
+In some cases, |ws_markup| uses the number of SDKs to predict hardware requirements;
+adding an SDK without many plugs or slots
+can help to compensate for one with several active connections.
+
+
 SDK health checks do not run
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -292,3 +314,4 @@ Reference:
 - :ref:`ref_workshop_remove`
 - :ref:`ref_workshop_start`
 - :ref:`ref_workshop_stop`
+- :ref:`ref_workshop_interfaces_in_vms`
