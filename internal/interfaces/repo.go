@@ -876,11 +876,6 @@ func (r *Repository) SdkSpecification(ctx context.Context, securitySystem Securi
 // Unknown interfaces and plugs/slots that don't validate are not added.
 // Information about those failures are returned to the caller.
 func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
-	err := sdk.Validate(sdkInfo)
-	if err != nil {
-		return err
-	}
-
 	r.m.Lock()
 	defer r.m.Unlock()
 

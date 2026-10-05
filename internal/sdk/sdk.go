@@ -154,6 +154,16 @@ func ReadSdkFile(yamlData []byte) (*File, error) {
 		return nil, fmt.Errorf("SDK definition YAML: only the %q SDK supports inline hooks", Sketch)
 	}
 
+	if err := ValidateName(sdkYaml.Name); err != nil {
+		return nil, err
+	}
+	if err := ValidateBase(sdkYaml.Base); err != nil {
+		return nil, err
+	}
+	if err := ValidateArch(sdkYaml.Arch); err != nil {
+		return nil, err
+	}
+
 	switch sdkYaml.Type {
 	case "":
 		sdkYaml.Type = Regular
