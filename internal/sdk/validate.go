@@ -37,20 +37,9 @@ var (
 	validPlugSlotIface = regexp.MustCompile("^[a-z](?:-?[a-z0-9])*$")
 )
 
-// Validate checks whether sdk contains a valid SDK definition.
+// Validate does some basic plug and slot validation. Useful for tests that
+// can't or don't pull in builtin.Sanitize.
 func Validate(sdk *Info) error {
-	if err := ValidateName(sdk.Name); err != nil {
-		return err
-	}
-
-	if sdk.Base != "" && !slices.Contains(AllowedBases, sdk.Base) {
-		return fmt.Errorf("invalid SDK base %q; valid bases: %s", sdk.Base, strings.Join(AllowedBases, ", "))
-	}
-	if !slices.Contains([]string{"", "all"}, sdk.Arch) && !slices.Contains(arch.AllowedArchitectures, sdk.Arch) {
-		arches := strings.Join(arch.AllowedArchitectures, ", ")
-		return fmt.Errorf("invalid SDK architecture %q; supported architectures: %s", sdk.Arch, arches)
-	}
-
 	for plugName, plug := range sdk.Plugs {
 		if err := ValidatePlugName(plugName); err != nil {
 			return fmt.Errorf("%w: %q", err, plugName)
@@ -80,6 +69,21 @@ func ValidateName(name string) error {
 	}
 	if len(name) > MAX_SDK_NAME_LENGTH {
 		return fmt.Errorf("SDK name %q too long", name)
+	}
+	return nil
+}
+
+func ValidateBase(base string) error {
+	if base != "" && !slices.Contains(AllowedBases, base) {
+		return fmt.Errorf("invalid SDK base %q; valid bases: %s", base, strings.Join(AllowedBases, ", "))
+	}
+	return nil
+}
+
+func ValidateArch(architecture string) error {
+	if !slices.Contains([]string{"", "all"}, architecture) && !slices.Contains(arch.AllowedArchitectures, architecture) {
+		arches := strings.Join(arch.AllowedArchitectures, ", ")
+		return fmt.Errorf("invalid SDK architecture %q; supported architectures: %s", architecture, arches)
 	}
 	return nil
 }
