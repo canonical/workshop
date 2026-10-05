@@ -887,7 +887,7 @@ func (m *workshopSketch) TestSketchSdkEjectInvalidName(c *check.C) {
 	c.Check(
 		err,
 		check.ErrorMatches,
-		`cannot eject: invalid SDK name ""`,
+		`cannot eject: SDK must be named "sketch" \(now: ""\)`,
 	)
 }
 
