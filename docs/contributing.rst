@@ -60,7 +60,7 @@ and take full responsibility for its contents.
 
 In practice:
 
-- Copilot automatically reviews each pull request against :samp:`main`,
+- Copilot automatically reviews each pull request against its base branch,
   except drafts, and reviews it again after every push.
   Treat its comments like any other reviewer's.
 
