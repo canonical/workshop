@@ -356,6 +356,8 @@ new behavior, changed flags, or removed features all belong in the docs.
 See :ref:`contributing_documentation` for how to write, build, and test them.
 
 
+.. _contributing_dev_commit:
+
 Commit
 ~~~~~~
 
