@@ -550,17 +550,30 @@ func editSketchSdk(sketchdir string, wp client.WorkshopInfo) error {
 	if err := writeSketchSdk(target, content); err != nil {
 		return err
 	}
+
+	rev := revert.New()
+	defer rev.Fail()
+
 	content, err = runTextEditor(target, content)
 	if err != nil {
 		return err
 	}
-	if err := writeSketchHooks(temp, wp, content); err != nil {
-		// If writeSketchHooks failed, we don't want to refresh but we do want
-		// to remember the user's edits for next time.
+	rev.Add(func() {
+		// If something goes wrong after this, we don't want to refresh but we
+		// do want to remember the user's edits for next time.
 		_ = osutil.Exchange(temp, sketchdir)
+	})
+
+	hooks, err := validateSketchSdk(wp, content)
+	if err != nil {
 		return err
 	}
 
+	if err := writeHooks(temp, hooks); err != nil {
+		return err
+	}
+
+	rev.Success()
 	return osutil.Exchange(temp, sketchdir)
 }
 
@@ -569,15 +582,6 @@ func writeSketchSdk(path string, content []byte) error {
 		return err
 	}
 	return os.WriteFile(path, content, 0644)
-}
-
-func writeSketchHooks(sketchdir string, wp client.WorkshopInfo, content []byte) error {
-	hooks, err := validateSketchSdk(wp, content)
-	if err != nil {
-		return err
-	}
-
-	return writeHooks(sketchdir, hooks)
 }
 
 func validateSketchSdk(wp client.WorkshopInfo, content []byte) (map[string]string, error) {

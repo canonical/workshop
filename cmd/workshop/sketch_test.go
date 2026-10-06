@@ -161,7 +161,9 @@ func (m *workshopSketch) mockMinimalSketchSdk(c *check.C, ws string, current boo
 		Name:      ws,
 		Base:      "ubuntu@26.04",
 	}
-	c.Assert(writeSketchHooks(sketchDir, wp, meta), check.IsNil)
+	hooks, err := validateSketchSdk(wp, meta)
+	c.Assert(err, check.IsNil)
+	c.Assert(writeHooks(sketchDir, hooks), check.IsNil)
 
 	return sketchDir, filepath.Join(sketchDir, "hooks")
 }
