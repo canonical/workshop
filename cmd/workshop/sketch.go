@@ -584,7 +584,7 @@ func validateSketchSdk(wp client.WorkshopInfo, content []byte) (map[string]strin
 	// Normally SDKs don't have a `hooks` field, but ValidateSdkInfo will
 	// ignore it if the SDK is named "sketch." We pass the entire sdk.yaml
 	// instead of a stripped version to preserve line numbers in errors.
-	if err := workshop.ValidateSdkInfo(wp.ProjectId, wp.Name, wp.Base, "sketch", string(content)); err != nil {
+	if err := workshop.ValidateSdkInfo(wp.ProjectId, wp.Name, wp.Base, "sketch", content); err != nil {
 		return nil, err
 	}
 
