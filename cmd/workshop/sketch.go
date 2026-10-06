@@ -216,7 +216,7 @@ func (c *CmdSketch) inferSdkName(project string) error {
 	return err
 }
 
-func ejectSketch(project, sketchdir string, wp *client.WorkshopInfo, name string) (*revert.Reverter, error) {
+func ejectSketch(project, sketchdir string, wp client.WorkshopInfo, name string) (*revert.Reverter, error) {
 	target := workshop.ProjectSdkPath(project, name)
 	if osutil.FileExists(target) {
 		return nil, &os.PathError{Op: "mkdir", Path: target, Err: os.ErrExist}
@@ -472,7 +472,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 			return fmt.Errorf("cannot eject: %w", err)
 		}
 
-		ejectReverter, err = ejectSketch(p.Path, sketchdir, &wp.WorkshopInfo, c.name)
+		ejectReverter, err = ejectSketch(p.Path, sketchdir, wp.WorkshopInfo, c.name)
 		if err != nil {
 			return fmt.Errorf("cannot eject: %w", err)
 		}
@@ -509,7 +509,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 		return nil
 	}
 
-	if err = editSketchSdk(sketchdir, &wp.WorkshopInfo); err != nil {
+	if err = editSketchSdk(sketchdir, wp.WorkshopInfo); err != nil {
 		return fmt.Errorf("cannot sketch: %w", err)
 	}
 
@@ -525,7 +525,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 	return nil
 }
 
-func editSketchSdk(sketchdir string, wp *client.WorkshopInfo) error {
+func editSketchSdk(sketchdir string, wp client.WorkshopInfo) error {
 	content, err := os.ReadFile(filepath.Join(sketchdir, "sdk.yaml"))
 	if errors.Is(err, os.ErrNotExist) {
 		if err := os.MkdirAll(sketchdir, 0755); err != nil {
@@ -571,7 +571,7 @@ func writeSketchSdk(path string, content []byte) error {
 	return os.WriteFile(path, content, 0644)
 }
 
-func writeSketchHooks(sketchdir string, wp *client.WorkshopInfo, content []byte) error {
+func writeSketchHooks(sketchdir string, wp client.WorkshopInfo, content []byte) error {
 	hooks, err := validateSketchSdk(wp, content)
 	if err != nil {
 		return err
@@ -580,7 +580,7 @@ func writeSketchHooks(sketchdir string, wp *client.WorkshopInfo, content []byte)
 	return writeHooks(sketchdir, hooks)
 }
 
-func validateSketchSdk(wp *client.WorkshopInfo, content []byte) (map[string]string, error) {
+func validateSketchSdk(wp client.WorkshopInfo, content []byte) (map[string]string, error) {
 	// Normally SDKs don't have a `hooks` field, but ValidateSdkInfo will
 	// ignore it if the SDK is named "sketch." We pass the entire sdk.yaml
 	// instead of a stripped version to preserve line numbers in errors.

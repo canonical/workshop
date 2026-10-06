@@ -156,7 +156,7 @@ func (m *workshopSketch) mockMinimalSketchSdk(c *check.C, ws string, current boo
 	}
 
 	c.Assert(writeSketchSdk(filepath.Join(sketchDir, "sdk.yaml"), meta), check.IsNil)
-	wp := &client.WorkshopInfo{
+	wp := client.WorkshopInfo{
 		ProjectId: m.prjId,
 		Name:      ws,
 		Base:      "ubuntu@26.04",
@@ -406,7 +406,7 @@ hooks:
 	})
 	defer restore()
 
-	wp := &client.WorkshopInfo{
+	wp := client.WorkshopInfo{
 		ProjectId: m.prjId,
 		Name:      "ws",
 		Base:      "ubuntu@26.04",
@@ -433,7 +433,7 @@ func (m *workshopSketch) TestEditSketchSdkInvalidName(c *check.C) {
 	})
 	defer restore()
 
-	wp := &client.WorkshopInfo{
+	wp := client.WorkshopInfo{
 		ProjectId: m.prjId,
 		Name:      "ws",
 		Base:      "ubuntu@26.04",
@@ -461,7 +461,7 @@ bass: ubuntu@24.04
 	})
 	defer restore()
 
-	wp := &client.WorkshopInfo{
+	wp := client.WorkshopInfo{
 		ProjectId: m.prjId,
 		Name:      "ws",
 		Base:      "ubuntu@26.04",
