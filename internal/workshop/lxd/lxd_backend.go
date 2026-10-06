@@ -72,8 +72,7 @@ const (
 )
 
 var (
-	startCommandTimeout = 1 * time.Minute
-	storagePoolDriver   string
+	storagePoolDriver string
 
 	workshopFormatsChecked = false
 )
@@ -383,6 +382,11 @@ func ensureBackendReady() error {
 		// Set once, during the initial check before the daemon serves
 		// requests, so reads of storagePoolDriver never race with a write.
 		storagePoolDriver = existingPool.Driver
+	} else if storagePoolDriver != existingPool.Driver {
+		// The pool was recreated on another driver while the daemon was
+		// running. Adopting the new driver would mean mutating
+		// storagePoolDriver after it has been read, so refuse instead.
+		return fmt.Errorf("storage pool %q changed driver: %q (expected %q)", storagePool, existingPool.Driver, storagePoolDriver)
 	}
 
 	network, etag, err := conn.GetNetwork(networkName)
