@@ -268,13 +268,13 @@ func workshopToInfoFull(ctx context.Context, username string, w *workshop.Worksh
 	}
 	info.Runtime = string(runtime)
 
-	sdks, err := w.SdkInfosByInstallOrder(ctx)
+	files, err := w.SdkFilesByInstallOrder(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	mnts := w.Mounts(sdks)
-	tunnels := w.Tunnels(sdks)
+	mnts := w.Mounts()
+	tunnels := w.Tunnels()
 
 	usr, env, err := osutil.UserAndEnv(username)
 	if err != nil {
@@ -282,7 +282,8 @@ func workshopToInfoFull(ctx context.Context, username string, w *workshop.Worksh
 	}
 	userDataDir := workshop.UserDataRootDir(usr.HomeDir, env)
 
-	for _, sk := range sdks {
+	for _, file := range files {
+		sk := w.Sdks[file.Name]
 		source := workshop.SdkSourcePath(userDataDir, w.Project, w.Name, sk.Name, sk.Source)
 
 		var healthInfo *HealthCheckInfo
@@ -303,12 +304,12 @@ func workshopToInfoFull(ctx context.Context, username string, w *workshop.Worksh
 
 		info.Sdks = append(info.Sdks, &SdkInfo{
 			Name:        sk.Name,
-			Version:     sk.Version,
+			Version:     file.Version,
 			Channel:     sk.Channel,
 			Source:      source,
 			Revision:    sk.Revision.String(),
-			BuiltAt:     sk.BuiltAt,
-			InstalledAt: w.Sdks[sk.Name].InstalledAt,
+			BuiltAt:     file.BuiltAt,
+			InstalledAt: sk.InstalledAt,
 			Health:      healthInfo,
 			Mounts:      mntInfos,
 			Tunnels:     tunnelInfos,
