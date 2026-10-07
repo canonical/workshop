@@ -461,16 +461,17 @@ func (m *InterfaceManager) reloadConnections(workshopNames map[string][]string, 
 }
 
 func (m *InterfaceManager) resolveWorkshopBindings(w *workshop.Workshop) error {
+	masters, slaves := w.Bound()
 	for _, s := range w.Sdks {
 		for _, plug := range m.repo.Plugs(w.Project.ProjectId, w.Name, s.Name) {
 			// Check that bound plugs are added or skipped as one unit.
-			mref, slaves := MaybeBound(w, plug.Ref())
-			if mref == plug.Ref() {
-				for _, s := range slaves {
-					if m.repo.Plug(s.ProjectId, s.Workshop, s.Sdk, s.Name) == nil {
-						return fmt.Errorf("plug %q was skipped while bound to plug %q", s.ShortRef(), plug.Ref().ShortRef())
-					}
+			for _, s := range masters[plug.Ref()] {
+				if m.repo.Plug(s.ProjectId, s.Workshop, s.Sdk, s.Name) == nil {
+					return fmt.Errorf("plug %q was skipped while bound to plug %q", s.ShortRef(), plug.Ref().ShortRef())
 				}
+			}
+			mref, ok := slaves[plug.Ref()]
+			if !ok {
 				continue
 			}
 			master := m.repo.Plug(mref.ProjectId, mref.Workshop, mref.Sdk, mref.Name)
