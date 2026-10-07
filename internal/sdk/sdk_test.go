@@ -71,6 +71,51 @@ base: ubuntu@24.04
 	c.Assert(info.Slots, check.HasLen, 0)
 }
 
+func (s *SdkSuite) TestUnmarshalUnusedMetadata(c *check.C) {
+	mockYaml := []byte(`name: sdk
+contact: contact@example.com
+issues: https://example.com/issues
+source-code: https://github.com/canonical/craft-application
+website: https://example.com
+`)
+	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+
+	mockYaml = []byte(`name: sdk
+contact: [contact@example.com, https://example.com/contact]
+issues: [issues@example.com, https://example.com/issues]
+source-code: https://github.com/canonical/craft-application
+website: https://example.com
+`)
+	_, err = sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *SdkSuite) TestUnmarshalRegularSDKWithHooks(c *check.C) {
+	mockYaml := []byte(`name: foo
+hooks:
+  setup-project: |
+    true
+`)
+	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	c.Check(err, check.ErrorMatches, `SDK definition YAML: only the "sketch" SDK supports inline hooks`)
+}
+
+func (s *SdkSuite) TestUnmarshalSketchSDK(c *check.C) {
+	mockYaml := []byte(`name: sketch
+hooks: false
+`)
+	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	c.Check(err, check.IsNil)
+
+	mockYaml = []byte(`name: sketch
+hooks: true
+foo: bar
+`)
+	_, err = sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	c.Check(err, check.ErrorMatches, `sketch SDK YAML contains unknown fields: "foo" at line 3, column 6`)
+}
+
 func (s *SdkSuite) TestMinimalisticPlug(c *check.C) {
 	var mockYaml = []byte(`name: sdk
 base: ubuntu@24.04

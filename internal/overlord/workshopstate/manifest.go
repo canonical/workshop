@@ -15,7 +15,6 @@
 package workshopstate
 
 import (
-	"bytes"
 	"cmp"
 	"context"
 	"errors"
@@ -768,11 +767,6 @@ func (a *artifactFinder) commitRevision(w, sk string, source sdk.Source, path st
 	if err != nil {
 		return nil, fmt.Errorf("invalid %q SDK: %w", sk, err)
 	}
-	if source == sdk.ProjectSource {
-		if err := sdk.ValidateYaml(bytes.NewReader(sdkYaml)); err != nil {
-			return nil, fmt.Errorf("invalid %q SDK: %w", sk, err)
-		}
-	}
 
 	setup := sdk.Setup{
 		Name:     sk,
@@ -786,7 +780,7 @@ func (a *artifactFinder) commitRevision(w, sk string, source sdk.Source, path st
 func validateSdkMeta(projectId string, file *workshop.File, sdks []sdk.Meta) ([]sdk.Setup, error) {
 	setups := make([]sdk.Setup, 0, len(sdks))
 	for _, s := range sdks {
-		if err := workshop.ValidateSdkInfo(projectId, file.Name, file.Base, s.Name, s.SdkYAML); err != nil {
+		if err := workshop.ValidateSdkInfo(projectId, file.Name, file.Base, s.Name, []byte(s.SdkYAML)); err != nil {
 			return nil, err
 		}
 		setups = append(setups, s.Setup)

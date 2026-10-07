@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,6 +23,7 @@ import (
 
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/client"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
@@ -136,6 +136,8 @@ func (m *workshopSketch) SetUpTest(c *check.C) {
 	})
 
 	m.userDataDir = workshop.UserDataRootDir(usr.HomeDir, nil)
+
+	m.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
 }
 
 func (m *workshopSketch) TearDownTest(c *check.C) {
@@ -154,9 +156,14 @@ func (m *workshopSketch) mockMinimalSketchSdk(c *check.C, ws string, current boo
 	}
 
 	c.Assert(writeSketchSdk(filepath.Join(sketchDir, "sdk.yaml"), meta), check.IsNil)
-	file, err := sdk.ParseSketchYaml(bytes.NewReader(meta))
+	wp := client.WorkshopInfo{
+		ProjectId: m.prjId,
+		Name:      ws,
+		Base:      "ubuntu@26.04",
+	}
+	hooks, err := validateSketchSdk(wp, meta)
 	c.Assert(err, check.IsNil)
-	c.Assert(writeHooks(sketchDir, file), check.IsNil)
+	c.Assert(writeHooks(sketchDir, hooks), check.IsNil)
 
 	return sketchDir, filepath.Join(sketchDir, "hooks")
 }
@@ -401,7 +408,12 @@ hooks:
 	})
 	defer restore()
 
-	err := editSketchSdk(sketchDir)
+	wp := client.WorkshopInfo{
+		ProjectId: m.prjId,
+		Name:      "ws",
+		Base:      "ubuntu@26.04",
+	}
+	err := editSketchSdk(sketchDir, wp)
 	c.Assert(err, check.NotNil)
 	c.Check(
 		err,
@@ -423,12 +435,17 @@ func (m *workshopSketch) TestEditSketchSdkInvalidName(c *check.C) {
 	})
 	defer restore()
 
-	err := editSketchSdk(sketchDir)
+	wp := client.WorkshopInfo{
+		ProjectId: m.prjId,
+		Name:      "ws",
+		Base:      "ubuntu@26.04",
+	}
+	err := editSketchSdk(sketchDir, wp)
 	c.Assert(err, check.NotNil)
 	c.Check(
 		err,
 		check.ErrorMatches,
-		`sketch SDK YAML must keep name set to "sketch"`,
+		`SDK must be named "sketch" \(now: "tools"\)`,
 	)
 	c.Check(filepath.Join(sketchDir, "sdk.yaml"), testutil.FileEquals, content)
 }
@@ -438,7 +455,7 @@ func (m *workshopSketch) TestEditSketchSdkInvalidName(c *check.C) {
 func (m *workshopSketch) TestEditSketchSdkUnknownFields(c *check.C) {
 	sketchDir := filepath.Join(c.MkDir(), "current")
 	content := `name: sketch
-base: ubuntu@24.04
+bass: ubuntu@24.04
 `
 	restore := MockTextEditor(func(inPath string, inContent []byte) ([]byte, error) {
 		c.Assert(writeSketchSdk(inPath, []byte(content)), check.IsNil)
@@ -446,12 +463,17 @@ base: ubuntu@24.04
 	})
 	defer restore()
 
-	err := editSketchSdk(sketchDir)
+	wp := client.WorkshopInfo{
+		ProjectId: m.prjId,
+		Name:      "ws",
+		Base:      "ubuntu@26.04",
+	}
+	err := editSketchSdk(sketchDir, wp)
 	c.Assert(err, check.NotNil)
 	c.Check(
 		err,
 		check.ErrorMatches,
-		`sketch SDK YAML contains unknown fields: "base" at line 2, column 7`,
+		`invalid "sketch" SDK: sketch SDK YAML contains unknown fields: "bass" at line 2, column 7`,
 	)
 	c.Check(filepath.Join(sketchDir, "sdk.yaml"), testutil.FileEquals, content)
 }
@@ -867,7 +889,7 @@ func (m *workshopSketch) TestSketchSdkEjectInvalidName(c *check.C) {
 	c.Check(
 		err,
 		check.ErrorMatches,
-		`cannot eject: sketch SDK YAML must keep name set to "sketch"`,
+		`cannot eject: SDK must be named "sketch" \(now: ""\)`,
 	)
 }
 
@@ -880,7 +902,7 @@ func (m *workshopSketch) TestSketchSdkEjectUnknownField(c *check.C) {
 	m.mockSketchHappyRefreshPath(c, "ws", "transactional")
 	sketchDir := workshop.SketchSdkCurrent(m.userDataDir, m.prjId, "ws")
 	content := []byte(`name: sketch
-base: ubuntu@24.04
+bass: ubuntu@24.04
 `)
 	c.Assert(writeSketchSdk(filepath.Join(sketchDir, "sdk.yaml"), content), check.IsNil)
 
@@ -889,7 +911,7 @@ base: ubuntu@24.04
 	c.Check(
 		err,
 		check.ErrorMatches,
-		`cannot eject: sketch SDK YAML contains unknown fields: "base" at line 2, column 7`,
+		`cannot eject: invalid "sketch" SDK: sketch SDK YAML contains unknown fields: "bass" at line 2, column 7`,
 	)
 }
 

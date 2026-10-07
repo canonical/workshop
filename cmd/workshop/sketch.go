@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -29,10 +28,12 @@ import (
 
 	"github.com/canonical/workshop/client"
 	"github.com/canonical/workshop/cmd/internal/cmdutil"
+	_ "github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/revert"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/workshop"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 type CmdSketch struct {
@@ -215,7 +216,7 @@ func (c *CmdSketch) inferSdkName(project string) error {
 	return err
 }
 
-func ejectSketch(project, sketchdir string, name string) (*revert.Reverter, error) {
+func ejectSketch(project, sketchdir string, wp client.WorkshopInfo, name string) (*revert.Reverter, error) {
 	target := workshop.ProjectSdkPath(project, name)
 	if osutil.FileExists(target) {
 		return nil, &os.PathError{Op: "mkdir", Path: target, Err: os.ErrExist}
@@ -227,21 +228,19 @@ func ejectSketch(project, sketchdir string, name string) (*revert.Reverter, erro
 	} else if err != nil {
 		return nil, err
 	}
-	file, err := sdk.ParseSketchYaml(bytes.NewReader(content))
+	hooks, err := validateSketchSdk(wp, content)
 	if err != nil {
-		return nil, parseSketchYamlUserError(err)
+		return nil, err
 	}
 
 	var document yaml.Node
 	if err := yaml.Unmarshal(content, &document); err != nil {
 		return nil, err
 	}
-	projectFile := file
-	projectFile.Name = name
-
-	if err := sketchToProjectSdk(&document, projectFile.Name); err != nil {
+	if err := sketchToProjectSdk(&document, name); err != nil {
 		return nil, err
 	}
+
 	// This won't be cleaned up on failure. In most cases, the user
 	// is likely to retry the eject after fixing the underlying issue.
 	if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
@@ -267,7 +266,7 @@ func ejectSketch(project, sketchdir string, name string) (*revert.Reverter, erro
 	if err := encoder.Encode(&document); err != nil {
 		return nil, err
 	}
-	if err := writeHooks(temp, file); err != nil {
+	if err := writeHooks(temp, hooks); err != nil {
 		return nil, err
 	}
 
@@ -284,18 +283,20 @@ func ejectSketch(project, sketchdir string, name string) (*revert.Reverter, erro
 
 func sketchToProjectSdk(document *yaml.Node, name string) error {
 	var nodes struct {
-		Name  NodeRef `yaml:"name"`
-		Hooks NodeRef `yaml:"hooks"`
+		Name  yamlutil.NodeRef `yaml:"name"`
+		Hooks yamlutil.NodeRef `yaml:"hooks"`
 	}
-	err := document.Decode(&nodes)
-	if err != nil {
+	if err := document.Decode(&nodes); err != nil {
 		return err
 	}
 
+	if nodes.Name.Node == nil {
+		return errors.New(`"sketch" SDK name not found`)
+	}
 	nodes.Name.Node.Value = name
 
 	if nodes.Hooks.Node != nil {
-		RemoveNodes(document, nodes.Hooks.Node)
+		yamlutil.RemoveNodes(document, nodes.Hooks.Node)
 	}
 
 	return nil
@@ -455,7 +456,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 			return fmt.Errorf("cannot eject: %w", err)
 		}
 
-		ejectReverter, err = ejectSketch(p.Path, sketchdir, c.name)
+		ejectReverter, err = ejectSketch(p.Path, sketchdir, wp.WorkshopInfo, c.name)
 		if err != nil {
 			return fmt.Errorf("cannot eject: %w", err)
 		}
@@ -492,7 +493,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 		return nil
 	}
 
-	if err = editSketchSdk(sketchdir); err != nil {
+	if err = editSketchSdk(sketchdir, wp.WorkshopInfo); err != nil {
 		return fmt.Errorf("cannot sketch: %w", err)
 	}
 
@@ -508,7 +509,7 @@ func (c *CmdSketch) Run(cmd *cobra.Command, av []string) error {
 	return nil
 }
 
-func editSketchSdk(sketchdir string) error {
+func editSketchSdk(sketchdir string, wp client.WorkshopInfo) error {
 	content, err := os.ReadFile(filepath.Join(sketchdir, "sdk.yaml"))
 	if errors.Is(err, os.ErrNotExist) {
 		if err := os.MkdirAll(sketchdir, 0755); err != nil {
@@ -533,71 +534,31 @@ func editSketchSdk(sketchdir string) error {
 	if err := writeSketchSdk(target, content); err != nil {
 		return err
 	}
+
+	rev := revert.New()
+	defer rev.Fail()
+
 	content, err = runTextEditor(target, content)
 	if err != nil {
 		return err
 	}
-	file, err := sdk.ParseSketchYaml(bytes.NewReader(content))
-	if err != nil {
-		// If parsing failed, we don't want to refresh but we do want to
-		// remember the user's edits for next time.
+	rev.Add(func() {
+		// If something goes wrong after this, we don't want to refresh but we
+		// do want to remember the user's edits for next time.
 		_ = osutil.Exchange(temp, sketchdir)
-		return parseSketchYamlUserError(err)
-	}
+	})
 
-	if err := writeHooks(temp, file); err != nil {
-		// If writeHooks failed, we don't want to refresh but we do want to
-		// remember the user's edits for next time.
-		_ = osutil.Exchange(temp, sketchdir)
+	hooks, err := validateSketchSdk(wp, content)
+	if err != nil {
 		return err
 	}
 
-	return osutil.Exchange(temp, sketchdir)
-}
-
-// parseSketchYamlUserError converts structured [sdk.ParseSketchYaml] errors
-// into messages that tell sketch SDK users what to fix in their YAML. Use it
-// when reporting parse failures from sketch command flows, where raw validator
-// errors can be too generic or expose SDK-internal terms.
-func parseSketchYamlUserError(err error) error {
-	var (
-		invalidHook  sdk.InvalidSDKHookNameError
-		unknownField *sdk.UnknownYamlFieldsError
-	)
-
-	switch {
-	case errors.Is(err, sdk.ErrorInvalidSDKName):
-		return fmt.Errorf(
-			"sketch SDK YAML must keep name set to %q",
-			sdk.Sketch,
-		)
-	case errors.As(err, &invalidHook):
-		return fmt.Errorf(
-			"sketch SDK YAML contains unsupported hook %q; supported hooks: %s",
-			string(invalidHook),
-			strings.Join(sdk.AllowedHooks, ", "),
-		)
-	case errors.As(err, &unknownField):
-		parts := make([]string, 0, len(unknownField.Fields))
-		for name, field := range unknownField.Fields {
-			parts = append(
-				parts,
-				fmt.Sprintf(
-					"%q at line %d, column %d",
-					name,
-					field.Line,
-					field.Column,
-				),
-			)
-		}
-
-		return fmt.Errorf(
-			"sketch SDK YAML contains unknown fields: %s",
-			strings.Join(parts, ", "),
-		)
-	default:
-		return fmt.Errorf("could not parse sketch SDK YAML: %v", err)
+	if err := writeHooks(temp, hooks); err != nil {
+		return err
 	}
+
+	rev.Success()
+	return osutil.Exchange(temp, sketchdir)
 }
 
 func writeSketchSdk(path string, content []byte) error {
@@ -607,21 +568,43 @@ func writeSketchSdk(path string, content []byte) error {
 	return os.WriteFile(path, content, 0644)
 }
 
-func writeHooks(sdkdir string, file sdk.SketchSDKYaml) error {
+func validateSketchSdk(wp client.WorkshopInfo, content []byte) (map[string]string, error) {
+	// Normally SDKs don't have a `hooks` field, but ValidateSdkInfo will
+	// ignore it if the SDK is named "sketch." We pass the entire sdk.yaml
+	// instead of a stripped version to preserve line numbers in errors.
+	if err := workshop.ValidateSdkInfo(wp.ProjectId, wp.Name, wp.Base, "sketch", content); err != nil {
+		return nil, err
+	}
+
+	var hooks struct {
+		Hooks map[string]string `yaml:"hooks"`
+	}
+	if err := yaml.Unmarshal(content, &hooks); err != nil {
+		return nil, err
+	}
+	for hookName := range hooks.Hooks {
+		if !slices.Contains(sdk.AllowedHooks, hookName) {
+			return nil, fmt.Errorf("sketch SDK YAML contains unsupported hook %q; supported hooks: %s", hookName, strings.Join(sdk.AllowedHooks, ", "))
+		}
+	}
+
+	return hooks.Hooks, nil
+}
+
+func writeHooks(sdkdir string, hooks map[string]string) error {
 	hooksdir := filepath.Join(sdkdir, "hooks")
-	if len(file.Hooks) > 0 {
+	if len(hooks) > 0 {
 		if err := os.MkdirAll(hooksdir, 0755); err != nil {
 			return err
 		}
 	}
 
-	for hook, script := range file.Hooks {
+	for hook, script := range hooks {
 		hookpath := filepath.Join(hooksdir, hook)
 		if !strings.HasSuffix(script, "\n") {
 			script += "\n"
 		}
-		err := os.WriteFile(hookpath, []byte(script), 0644)
-		if err != nil {
+		if err := os.WriteFile(hookpath, []byte(script), 0644); err != nil {
 			return err
 		}
 	}

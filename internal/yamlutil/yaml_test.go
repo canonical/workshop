@@ -12,22 +12,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package yamlutil_test
 
 import (
 	"slices"
 	"strings"
+	"testing"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
+
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 type yamlSuite struct{}
 
 var _ = check.Suite(&yamlSuite{})
 
+func Test(t *testing.T) { check.TestingT(t) }
+
 func (y *yamlSuite) TestNodeRefIsUnmarshaler(c *check.C) {
-	var ref NodeRef
+	var ref yamlutil.NodeRef
 	var u yaml.Unmarshaler = &ref
 	var node yaml.Node
 	c.Assert(u.UnmarshalYAML(&node), check.IsNil)
@@ -36,7 +41,7 @@ func (y *yamlSuite) TestNodeRefIsUnmarshaler(c *check.C) {
 
 func (y *yamlSuite) TestNodeRefField(c *check.C) {
 	var nodes struct {
-		Field NodeRef
+		Field yamlutil.NodeRef
 	}
 
 	document := unmarshalAndDecode(c, &nodes, `field: data
@@ -47,7 +52,7 @@ func (y *yamlSuite) TestNodeRefField(c *check.C) {
 
 func (y *yamlSuite) TestNodeRefAlias(c *check.C) {
 	var nodes struct {
-		Field NodeRef
+		Field yamlutil.NodeRef
 	}
 
 	document := unmarshalAndDecode(c, &nodes, `x-field: &f data
@@ -59,7 +64,7 @@ field: *f
 
 func (y *yamlSuite) TestNodeRefSlice(c *check.C) {
 	var nodes struct {
-		Slice []NodeRef
+		Slice []yamlutil.NodeRef
 	}
 
 	document := unmarshalAndDecode(c, &nodes, `slice: [1, 2, 3]
@@ -74,14 +79,14 @@ func (y *yamlSuite) TestNodeRefNested(c *check.C) {
 	var nodes struct {
 		One struct {
 			Nest struct {
-				A NodeRef
-				B NodeRef
-				C NodeRef
+				A yamlutil.NodeRef
+				B yamlutil.NodeRef
+				C yamlutil.NodeRef
 			}
 		}
 		Two struct {
-			A NodeRef
-			B NodeRef
+			A yamlutil.NodeRef
+			B yamlutil.NodeRef
 		}
 	}
 
@@ -123,9 +128,49 @@ func contains(root, node *yaml.Node) bool {
 	}
 }
 
+type strict struct {
+	A string
+	B int
+}
+
+func (s *strict) UnmarshalYAML(value *yaml.Node) error {
+	// Use distinct type to avoid infinite recursion.
+	type relaxed strict
+	return yamlutil.UnmarshalStrict((*relaxed)(s), value)
+}
+
+func (y *yamlSuite) TestStrictUnmarshal(c *check.C) {
+	var result strict
+
+	content := `a: foo
+b: 42
+`
+	c.Assert(yaml.Unmarshal([]byte(content), &result), check.IsNil)
+	c.Check(result.A, check.Equals, "foo")
+	c.Check(result.B, check.Equals, 42)
+
+	content = `a: bar
+b: -42
+c: cccc
+aa:    aaaa
+`
+	c.Check(yaml.Unmarshal([]byte(content), &result), check.ErrorMatches, `unknown YAML fields: "c" at line 3, column 4; "aa" at line 4, column 8`)
+	c.Check(result.A, check.Equals, "bar")
+	c.Check(result.B, check.Equals, -42)
+
+	content = `a: a
+b: 1
+c: null
+d: d
+`
+	c.Check(yaml.Unmarshal([]byte(content), &result), check.ErrorMatches, `unknown YAML fields: "c"; "d" at line 4, column 4`)
+	c.Check(result.A, check.Equals, "a")
+	c.Check(result.B, check.Equals, 1)
+}
+
 func (y *yamlSuite) TestRemoveNodesMapping(c *check.C) {
 	var nodes struct {
-		Field NodeRef
+		Field yamlutil.NodeRef
 	}
 
 	before := `field: f
@@ -159,14 +204,14 @@ after: a
 }
 
 func (y *yamlSuite) TestRemoveNodesSequence(c *check.C) {
-	var one [1]NodeRef
+	var one [1]yamlutil.NodeRef
 	before := `- b
 `
 	after := `[]
 `
 	checkRemoveNodes(c, before, after, &one, &one[0])
 
-	var two [2]NodeRef
+	var two [2]yamlutil.NodeRef
 	before = `- b
 - c
 `
@@ -181,7 +226,7 @@ func (y *yamlSuite) TestRemoveNodesSequence(c *check.C) {
 `
 	checkRemoveNodes(c, before, after, &two, &two[1])
 
-	var three [3]NodeRef
+	var three [3]yamlutil.NodeRef
 	before = `- a
 - b
 - c
@@ -194,7 +239,7 @@ func (y *yamlSuite) TestRemoveNodesSequence(c *check.C) {
 
 func (y *yamlSuite) TestRemoveNodesFlowStyle(c *check.C) {
 	var nodes struct {
-		Field NodeRef
+		Field yamlutil.NodeRef
 	}
 	before := `{"before": "b", "field": "f", "after": "a"}
 `
@@ -202,7 +247,7 @@ func (y *yamlSuite) TestRemoveNodesFlowStyle(c *check.C) {
 `
 	checkRemoveNodes(c, before, after, &nodes, &nodes.Field)
 
-	var items [3]NodeRef
+	var items [3]yamlutil.NodeRef
 	before = `["a", "b", "c"]
 `
 	after = `["a", "c"]
@@ -212,7 +257,7 @@ func (y *yamlSuite) TestRemoveNodesFlowStyle(c *check.C) {
 
 func (y *yamlSuite) TestRemoveNodesWithComments(c *check.C) {
 	var nodes struct {
-		Field NodeRef
+		Field yamlutil.NodeRef
 	}
 
 	before := `# document head
@@ -307,7 +352,7 @@ after: a # a line
 
 	var nested struct {
 		Nodes struct {
-			Field NodeRef
+			Field yamlutil.NodeRef
 		}
 	}
 	before = `# document head
@@ -334,7 +379,7 @@ nodes: {}
 
 func (y *yamlSuite) TestRemoveNodesAliases(c *check.C) {
 	var nodes struct {
-		Field NodeRef
+		Field yamlutil.NodeRef
 	}
 
 	before := `x-field: &f data
@@ -347,8 +392,8 @@ field: *f
 
 func (y *yamlSuite) TestRemoveNodesMultiple(c *check.C) {
 	var nodes struct {
-		One NodeRef
-		Two NodeRef
+		One yamlutil.NodeRef
+		Two yamlutil.NodeRef
 	}
 
 	before := `zero: 0
@@ -395,13 +440,13 @@ three: 3
 func (y *yamlSuite) TestRemoveNodesMerged(c *check.C) {
 	var nodes struct {
 		A struct {
-			One NodeRef
-			Two NodeRef
+			One yamlutil.NodeRef
+			Two yamlutil.NodeRef
 		}
 		B struct {
-			One   NodeRef
-			Two   NodeRef
-			Three NodeRef
+			One   yamlutil.NodeRef
+			Two   yamlutil.NodeRef
+			Three yamlutil.NodeRef
 		}
 	}
 
@@ -437,8 +482,8 @@ b:
 	checkRemoveNodes(c, before, after, &nodes, &nodes.B.Three)
 
 	var maps struct {
-		A NodeRef
-		B NodeRef
+		A yamlutil.NodeRef
+		B yamlutil.NodeRef
 	}
 
 	after = `b:
@@ -453,14 +498,14 @@ b:
 	checkRemoveNodes(c, before, after, &maps, &maps.B)
 }
 
-func checkRemoveNodes(c *check.C, before, after string, v any, nodeRefs ...*NodeRef) {
+func checkRemoveNodes(c *check.C, before, after string, v any, nodeRefs ...*yamlutil.NodeRef) {
 	document := unmarshalAndDecode(c, v, before)
 
 	nodes := make([]*yaml.Node, 0, len(nodeRefs))
 	for _, n := range nodeRefs {
 		nodes = append(nodes, n.Node)
 	}
-	RemoveNodes(document, nodes...)
+	yamlutil.RemoveNodes(document, nodes...)
 
 	var builder strings.Builder
 	e := yaml.NewEncoder(&builder)

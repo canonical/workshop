@@ -2,3 +2,6 @@ name: ws-launch-abort
 base: ubuntu@22.04
 sdks:
   - name: project-test-sdk-mount-broken
+connections:
+  - plug: test-sdk-mount-broken:two
+    slot: test-sdk-mount-broken:one

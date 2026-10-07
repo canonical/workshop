@@ -28,6 +28,7 @@ import (
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/metautil"
 	"github.com/canonical/workshop/internal/timeutil"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 type Meta struct {
@@ -126,29 +127,42 @@ func SetupContentID(setup Setup) ContentID {
 }
 
 type sdkYaml struct {
-	Name        string            `yaml:"name"`
-	Base        string            `yaml:"base"`
-	Arch        string            `yaml:"architecture"`
-	Version     string            `yaml:"version,omitempty"`
-	Title       string            `yaml:"title"`
-	Summary     string            `yaml:"summary"`
-	Description string            `yaml:"description"`
-	License     string            `yaml:"license"`
-	Type        string            `yaml:"type"`
-	BuiltAt     *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
-	Plugs       map[string]any    `yaml:"plugs,omitempty"`
-	Slots       map[string]any    `yaml:"slots,omitempty"`
+	Name        string `yaml:"name"`
+	Title       string `yaml:"title,omitempty"`
+	Version     string `yaml:"version,omitempty"`
+	Summary     string `yaml:"summary,omitempty"`
+	Description string `yaml:"description,omitempty"`
+
+	Base string `yaml:"base,omitempty"`
+	Arch string `yaml:"architecture,omitempty"`
+
+	Contact    stringOrSlice `yaml:"contact,omitempty"`
+	Issues     stringOrSlice `yaml:"issues,omitempty"`
+	SourceCode string        `yaml:"source-code,omitempty"`
+	Website    string        `yaml:"website,omitempty"`
+	License    string        `yaml:"license,omitempty"`
+
+	Plugs map[string]any `yaml:"plugs,omitempty"`
+	Slots map[string]any `yaml:"slots,omitempty"`
+
+	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
+
+	Type string `yaml:"type,omitempty"`
+	// Avoid UnknownFieldsError for "hooks". It's a known field, just not
+	// used for anything except the sketch SDK.
+	Hooks yamlutil.NodeRef `yaml:"hooks"`
 }
 
-// SketchSDKYaml describes the editable YAML shape of a sketch SDK.
-type SketchSDKYaml struct {
-	Description string            `yaml:"description"`
-	Hooks       map[string]string `yaml:"hooks,omitempty"`
-	Name        string            `yaml:"name"`
-	Plugs       map[string]any    `yaml:"plugs,omitempty"`
-	Slots       map[string]any    `yaml:"slots,omitempty"`
-	Summary     string            `yaml:"summary"`
-	Title       string            `yaml:"title"`
+func (s *sdkYaml) UnmarshalYAML(value *yaml.Node) error {
+	// Use distinct type to avoid infinite recursion.
+	type sdk sdkYaml
+	err := yamlutil.UnmarshalStrict((*sdk)(s), value)
+
+	context := "SDK definition YAML"
+	if s.Name == Sketch {
+		context = "sketch SDK YAML"
+	}
+	return yamlutil.AttachContext(context, err)
 }
 
 type Type string
@@ -170,6 +184,13 @@ func IsSystem(name string) bool {
 
 func IsSketch(name string) bool {
 	return name == Sketch
+}
+
+type stringOrSlice []string
+
+func (s *stringOrSlice) UnmarshalText(text []byte) error {
+	*s = []string{string(text)}
+	return nil
 }
 
 type Info struct {
@@ -288,6 +309,10 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
 	err := yaml.Unmarshal(yamlData, &sdkYaml)
 	if err != nil {
 		return nil, err
+	}
+
+	if sdkYaml.Name != Sketch && sdkYaml.Hooks.Node != nil {
+		return nil, fmt.Errorf("SDK definition YAML: only the %q SDK supports inline hooks", Sketch)
 	}
 
 	if sdkYaml.Type == "" {

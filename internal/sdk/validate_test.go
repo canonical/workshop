@@ -15,9 +15,6 @@
 package sdk_test
 
 import (
-	"errors"
-	"strings"
-
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/sdk"
@@ -39,92 +36,6 @@ func (s *ValidateSuite) SetUpTest(c *check.C) {
 
 func (s *ValidateSuite) TearDownTest(c *check.C) {
 	s.BaseTest.TearDownTest(c)
-}
-
-// TestParseSketchYaml accepts the sketch SDK YAML shape, including hooks and
-// descriptive metadata that are not part of the old command-local shape.
-func (s *ValidateSuite) TestParseSketchYaml(c *check.C) {
-	parsed, err := sdk.ParseSketchYaml(strings.NewReader(`name: sketch
-title: Sketch SDK
-summary: Local prototype SDK
-description: Used to prototype workshop customisations.
-hooks:
-  setup-project: |
-    echo setup
-plugs:
-  models:
-    interface: mount
-slots:
-  service:
-    interface: tunnel
-`))
-
-	c.Assert(err, check.IsNil)
-	c.Check(parsed.Name, check.Equals, sdk.Sketch)
-	c.Check(parsed.Hooks, check.HasLen, 1)
-}
-
-// TestValidateSketchYaml accepts a parsed sketch SDK YAML value with valid
-// sketch-specific fields.
-func (s *ValidateSuite) TestValidateSketchYaml(c *check.C) {
-	err := sdk.ValidateSketchYaml(&sdk.SketchSDKYaml{
-		Hooks: map[string]string{"setup-project": "echo setup\n"},
-		Name:  sdk.Sketch,
-	})
-
-	c.Check(err, check.IsNil)
-}
-
-// TestValidateSketchYamlInvalidHookName rejects hook names that are not part
-// of the sketch SDK hook lifecycle.
-func (s *ValidateSuite) TestValidateSketchYamlInvalidHookName(c *check.C) {
-	err := sdk.ValidateSketchYaml(&sdk.SketchSDKYaml{
-		Hooks: map[string]string{"setup-prject": "echo typo\n"},
-		Name:  sdk.Sketch,
-	})
-
-	c.Assert(err, check.NotNil)
-	c.Check(
-		errors.Is(err, sdk.InvalidSDKHookNameError("setup-prject")),
-		check.Equals,
-		true,
-	)
-}
-
-// TestValidateSketchYamlInvalidName requires the sketch SDK YAML to describe
-// the reserved sketch SDK name.
-func (s *ValidateSuite) TestValidateSketchYamlInvalidName(c *check.C) {
-	err := sdk.ValidateSketchYaml(&sdk.SketchSDKYaml{Name: "tools"})
-
-	c.Assert(err, check.NotNil)
-	c.Check(errors.Is(err, sdk.ErrorInvalidSDKName), check.Equals, true)
-}
-
-// TestParseSketchYamlUnknownFields reports full SDK metadata fields as unknown
-// when they are not meaningful for sketch SDK YAML.
-func (s *ValidateSuite) TestParseSketchYamlUnknownFields(c *check.C) {
-	_, err := sdk.ParseSketchYaml(strings.NewReader(`name: sketch
-architecture: amd64
-base: ubuntu@24.04
-version: 1.0
-`))
-
-	c.Assert(err, check.ErrorMatches, `unknown SDK YAML fields: .*`)
-
-	var unknown *sdk.UnknownYamlFieldsError
-	ok := errors.As(err, &unknown)
-	c.Assert(ok, check.Equals, true)
-	c.Check(unknown.Fields, check.HasLen, 3)
-
-	field, ok := unknown.Fields["architecture"]
-	c.Assert(ok, check.Equals, true)
-	c.Check(field.Line, check.Equals, 2)
-	c.Check(field.Column, check.Equals, 15)
-
-	_, ok = unknown.Fields["base"]
-	c.Check(ok, check.Equals, true)
-	_, ok = unknown.Fields["version"]
-	c.Check(ok, check.Equals, true)
 }
 
 func (s *ValidateSuite) TestValidateSlotPlugInterfaceName(c *check.C) {
@@ -165,56 +76,6 @@ func (s *ValidateSuite) TestValidateSlotPlugInterfaceName(c *check.C) {
 		err = sdk.ValidateInterfaceName(name)
 		c.Assert(err, check.ErrorMatches, `invalid interface name: ".*"`)
 	}
-}
-
-// TestValidateYaml accepts SDK YAML with known top-level fields and valid
-// semantic content.
-func (s *ValidateSuite) TestValidateYaml(c *check.C) {
-	err := sdk.ValidateYaml(strings.NewReader(`name: valid
-base: ubuntu@24.04
-architecture: amd64
-plugs:
-  models:
-    interface: mount
-slots:
-  service:
-    interface: tunnel
-`))
-
-	c.Check(err, check.IsNil)
-}
-
-// TestValidateYamlInvalidContent reports semantic validation failures after
-// YAML decoding succeeds.
-func (s *ValidateSuite) TestValidateYamlInvalidContent(c *check.C) {
-	err := sdk.ValidateYaml(strings.NewReader(`name: invalid.name
-`))
-
-	c.Check(err, check.ErrorMatches, `invalid SDK name "invalid.name"`)
-}
-
-// TestValidateYamlUnknownFields reports unknown top-level keys as a structured
-// error that callers can inspect with [errors.As].
-func (s *ValidateSuite) TestValidateYamlUnknownFields(c *check.C) {
-	err := sdk.ValidateYaml(strings.NewReader(`name: valid
-zzz-field: later
-aaa-field: first
-`))
-
-	c.Assert(err, check.ErrorMatches, `unknown SDK YAML fields: .*`)
-
-	var unknown *sdk.UnknownYamlFieldsError
-	ok := errors.As(err, &unknown)
-	c.Assert(ok, check.Equals, true)
-	c.Check(unknown.Fields, check.HasLen, 2)
-
-	field, ok := unknown.Fields["zzz-field"]
-	c.Assert(ok, check.Equals, true)
-	c.Check(field.Line, check.Equals, 2)
-	c.Check(field.Column, check.Equals, 12)
-
-	_, ok = unknown.Fields["aaa-field"]
-	c.Check(ok, check.Equals, true)
 }
 
 func (s *ValidateSuite) TestIllegalSdkName(c *check.C) {
