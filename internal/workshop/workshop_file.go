@@ -227,6 +227,7 @@ type Connection struct {
 }
 
 func (c *Connection) UnmarshalYAML(value *yaml.Node) error {
+	// Use distinct type to avoid infinite recursion.
 	type connection Connection
 	err := yamlutil.UnmarshalStrict((*connection)(c), value)
 	return yamlutil.AttachContext("workshop definition YAML: connections entry", err)
@@ -274,6 +275,7 @@ type File struct {
 }
 
 func (f *File) UnmarshalYAML(value *yaml.Node) error {
+	// Use distinct type to avoid infinite recursion.
 	type file File
 	err := yamlutil.UnmarshalStrict((*file)(f), value)
 	return yamlutil.AttachContext("workshop definition YAML", err)
