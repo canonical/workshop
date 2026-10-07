@@ -16,10 +16,8 @@ package sdk
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -150,9 +148,13 @@ type sdkYaml struct {
 	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
 
 	Type string `yaml:"type,omitempty"`
+	// Avoid UnknownFieldsError for "hooks". It's a known field, just not
+	// used for anything except the sketch SDK.
+	Hooks yamlutil.NodeRef `yaml:"hooks"`
 }
 
 func (s *sdkYaml) UnmarshalYAML(value *yaml.Node) error {
+	// Use distinct type to avoid infinite recursion.
 	type sdk sdkYaml
 	err := yamlutil.UnmarshalStrict((*sdk)(s), value)
 
@@ -160,23 +162,6 @@ func (s *sdkYaml) UnmarshalYAML(value *yaml.Node) error {
 	if s.Name == Sketch {
 		context = "sketch SDK YAML"
 	}
-
-	// Allow hooks in the sketch SDK, but don't validate them here.
-	unknownErr, ok := errors.AsType[*yamlutil.UnknownFieldsError](err)
-	if !ok {
-		return yamlutil.AttachContext(context, err)
-	}
-	if s.Name == Sketch {
-		unknownErr.Fields = slices.DeleteFunc(unknownErr.Fields, func(f yamlutil.UnknownField) bool {
-			return f.Name == "hooks"
-		})
-		if len(unknownErr.Fields) == 0 {
-			return nil
-		}
-	} else if len(unknownErr.Fields) == 1 && unknownErr.Fields[0].Name == "hooks" {
-		return fmt.Errorf("SDK definition YAML: only the %q SDK supports inline hooks", Sketch)
-	}
-
 	return yamlutil.AttachContext(context, err)
 }
 
@@ -324,6 +309,10 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
 	err := yaml.Unmarshal(yamlData, &sdkYaml)
 	if err != nil {
 		return nil, err
+	}
+
+	if sdkYaml.Name != Sketch && sdkYaml.Hooks.Node != nil {
+		return nil, fmt.Errorf("SDK definition YAML: only the %q SDK supports inline hooks", Sketch)
 	}
 
 	if sdkYaml.Type == "" {

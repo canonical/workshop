@@ -91,6 +91,16 @@ website: https://example.com
 	c.Assert(err, check.IsNil)
 }
 
+func (s *SdkSuite) TestUnmarshalRegularSDKWithHooks(c *check.C) {
+	mockYaml := []byte(`name: foo
+hooks:
+  setup-project: |
+    true
+`)
+	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws")
+	c.Check(err, check.ErrorMatches, `SDK definition YAML: only the "sketch" SDK supports inline hooks`)
+}
+
 func (s *SdkSuite) TestUnmarshalSketchSDK(c *check.C) {
 	mockYaml := []byte(`name: sketch
 hooks: false
