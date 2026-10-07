@@ -134,6 +134,7 @@ type strict struct {
 }
 
 func (s *strict) UnmarshalYAML(value *yaml.Node) error {
+	// Use distinct type to avoid infinite recursion.
 	type relaxed strict
 	return yamlutil.UnmarshalStrict((*relaxed)(s), value)
 }
