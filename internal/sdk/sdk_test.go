@@ -626,3 +626,27 @@ plugs:
 	_, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws", []sdk.Additions{{Plugs: plugs}})
 	c.Assert(err, check.ErrorMatches, `cannot add plug "training" to "sdk" SDK: already exists`)
 }
+
+func (s *SdkSuite) TestAddingWorkshopPlugBindingOK(c *check.C) {
+	var mockYaml = []byte(`name: sdk
+base: ubuntu@24.04
+plugs:
+  training:
+    interface: mount
+    workshop-target: /project
+`)
+
+	plug := sdk.PlugRef{ProjectId: "prj24prj24", Workshop: "dev", Sdk: "other", Name: "train"}
+	binds := map[string]sdk.PlugRef{"training": plug}
+	info, err := sdk.ReadSdkInfo(mockYaml, s.projectId, "ws", []sdk.Additions{{Binds: binds}})
+	c.Assert(err, check.IsNil)
+	c.Assert(info.Slots, check.HasLen, 0)
+	c.Assert(info.Plugs, check.HasLen, 1)
+	c.Assert(*info.Plugs["training"], check.DeepEquals, sdk.PlugInfo{
+		Sdk:       info,
+		Name:      "training",
+		Interface: "mount",
+		Attrs:     map[string]any{"workshop-target": "/project"},
+		Bind:      &plug,
+	})
+}
