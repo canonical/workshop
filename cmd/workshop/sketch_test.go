@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"gopkg.in/check.v1"
+	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/client"
 	"github.com/canonical/workshop/internal/osutil"
@@ -1069,5 +1070,68 @@ func (m *workshopSketch) TestSketchSdkWorkshopStatusNotReady(c *check.C) {
 		err := cmd.Run(cmdStash, nil)
 		c.Assert(err, check.NotNil)
 		c.Assert(n, check.Equals, i*2)
+	}
+}
+
+func (m *workshopSketch) TestSketchToProjectSdkClearsNameTag(c *check.C) {
+	var document yaml.Node
+	c.Assert(yaml.Unmarshal([]byte("name: !!binary c2tldGNo\n"), &document), check.IsNil)
+
+	// "test" is valid base64, so keeping the tag would decode it to garbage.
+	c.Assert(sketchToProjectSdk(&document, "test"), check.IsNil)
+
+	out, err := yaml.Marshal(&document)
+	c.Assert(err, check.IsNil)
+	c.Check(string(out), check.Equals, "name: test\n")
+}
+
+func (m *workshopSketch) TestSketchToProjectSdkNullHooksShadowingMergedHooks(c *check.C) {
+	var document yaml.Node
+	c.Assert(yaml.Unmarshal([]byte(`name: sketch
+<<: [{hooks: null}, {hooks: {setup-base: two}}]
+`), &document), check.IsNil)
+
+	c.Assert(sketchToProjectSdk(&document, "renamed"), check.IsNil)
+
+	// The null hides the later hooks, and null hooks are treated as absent.
+	out, err := yaml.Marshal(&document)
+	c.Assert(err, check.IsNil)
+	c.Check(string(out), check.Equals, `name: renamed
+!!merge <<: [{hooks: null}, {hooks: {setup-base: two}}]
+`)
+}
+
+func (m *workshopSketch) TestSketchToProjectSdkTaggedHooksKey(c *check.C) {
+	var document yaml.Node
+	c.Assert(yaml.Unmarshal([]byte(`name: sketch
+!!binary aG9va3M=: {setup-base: x}
+`), &document), check.IsNil)
+
+	c.Assert(sketchToProjectSdk(&document, "renamed"), check.IsNil)
+
+	out, err := yaml.Marshal(&document)
+	c.Assert(err, check.IsNil)
+	c.Check(string(out), check.Equals, "name: renamed\n")
+}
+
+func (m *workshopSketch) TestSketchToProjectSdkChangedMeaning(c *check.C) {
+	for _, input := range []string{
+		// NaN isn't equal to itself, so this is rejected even though the
+		// meaning hasn't changed.
+		"name: sketch\nversion: .nan\n",
+		// The anchor is removed with the hooks.
+		"name: sketch\nhooks: {setup-base: &s echo}\ndescription: *s\n",
+		// Renaming changes the shared anchor.
+		"description: &n sketch\nname: *n\n",
+		// Removing "hooks" exposes merged hooks.
+		"name: sketch\n<<: {hooks: {setup-base: one}}\nhooks: {setup-base: two}\n",
+		"name: sketch\n<<: [{hooks: {setup-base: one}}, {hooks: {setup-base: two}}]\n",
+		// yaml.v3 encodes the merged null as "hooks: ''".
+		"name: sketch\n<<: {hooks}\nhooks: {}\n",
+	} {
+		var document yaml.Node
+		c.Assert(yaml.Unmarshal([]byte(input), &document), check.IsNil)
+		err := sketchToProjectSdk(&document, "renamed")
+		c.Check(err, check.ErrorMatches, "unable to convert sketch SDK YAML", check.Commentf("%q", input))
 	}
 }

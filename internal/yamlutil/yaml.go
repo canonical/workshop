@@ -142,6 +142,15 @@ func AttachContext(document string, err error) error {
 	return err
 }
 
+// SetString sets the value of a scalar node to the given string, dropping
+// any explicit tag (e.g. "!!binary") which would change how the value is
+// decoded. The encoder quotes the value if needed.
+func SetString(node *yaml.Node, value string) {
+	node.Tag = "!!str"
+	node.Style &^= yaml.TaggedStyle
+	node.Value = value
+}
+
 // RemoveNodes removes the given nodes from the document.
 func RemoveNodes(root *yaml.Node, nodes ...*yaml.Node) {
 	r := &nodeRemover{nodes}
