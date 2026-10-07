@@ -482,6 +482,9 @@ func (m *InterfaceManager) resolveWorkshopBindings(w *workshop.Workshop) error {
 			if plug.Interface != master.Interface {
 				return fmt.Errorf("%s plug %q incompatible with %s plug %q", plug.Interface, plug.Ref().ShortRef(), master.Interface, mref.ShortRef())
 			}
+			if plug.Sdk.Type != master.Sdk.Type {
+				return fmt.Errorf("bound plugs %q and %q are on different sides of the host-workshop boundary", plug.Ref().ShortRef(), mref.ShortRef())
+			}
 			if plug.Label != master.Label || !reflect.DeepEqual(plug.Attrs, master.Attrs) {
 				return fmt.Errorf("plugs %q and %q have different attributes", plug.Ref().ShortRef(), mref.ShortRef())
 			}
