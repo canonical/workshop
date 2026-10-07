@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -282,6 +283,13 @@ func ejectSketch(project, sketchdir string, wp client.WorkshopInfo, name string)
 }
 
 func sketchToProjectSdk(document *yaml.Node, name string) error {
+	var want map[string]any
+	if err := document.Decode(&want); err != nil {
+		return err
+	}
+	delete(want, "hooks")
+	want["name"] = name
+
 	var nodes struct {
 		Name  yamlutil.NodeRef `yaml:"name"`
 		Hooks yamlutil.NodeRef `yaml:"hooks"`
@@ -293,10 +301,31 @@ func sketchToProjectSdk(document *yaml.Node, name string) error {
 	if nodes.Name.Node == nil {
 		return errors.New(`"sketch" SDK name not found`)
 	}
-	nodes.Name.Node.Value = name
+	yamlutil.SetString(nodes.Name.Node, name)
 
 	if nodes.Hooks.Node != nil {
 		yamlutil.RemoveNodes(document, nodes.Hooks.Node)
+	}
+
+	// YAML has many quirks (anchors, merge keys, tags, and values which
+	// don't survive re-encoding), so check that the encoded result means
+	// the same as the original, apart from the intended changes.
+	out, err := yaml.Marshal(document)
+	if err != nil {
+		return err
+	}
+	var got map[string]any
+	if err := yaml.Unmarshal(out, &got); err != nil {
+		return errors.New("unable to convert sketch SDK YAML")
+	}
+	// Null hooks are treated as absent.
+	if hooks, ok := got["hooks"]; ok && hooks == nil {
+		delete(got, "hooks")
+	}
+	// This rejects NaN values (e.g. "version: .nan"), since NaN isn't equal
+	// to itself, but that's an acceptable limitation.
+	if !reflect.DeepEqual(got, want) {
+		return errors.New("unable to convert sketch SDK YAML")
 	}
 
 	return nil

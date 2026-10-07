@@ -168,6 +168,39 @@ d: d
 	c.Check(result.B, check.Equals, 1)
 }
 
+func (y *yamlSuite) TestSetString(c *check.C) {
+	var nodes struct {
+		Field yamlutil.NodeRef
+	}
+
+	for _, t := range []struct{ before, value, after string }{
+		{"field: f\n", "new", "field: new\n"},
+		{"field: 'f'\n", "new", "field: 'new'\n"},
+		{"field: !!str f\n", "new", "field: new\n"},
+		{"field: !foo f\n", "new", "field: new\n"},
+		// "test" is valid base64, so keeping the tag would decode it to garbage.
+		{"field: !!binary c2tldGNo\n", "test", "field: test\n"},
+		{"field: !!int 1\n", "new", "field: new\n"},
+		{"field: f\n", "123", "field: \"123\"\n"},
+		{"field: f\n", "true", "field: \"true\"\n"},
+		{"field: f\n", "null", "field: \"null\"\n"},
+		{"field: &a f\nother: *a\n", "new", "field: &a new\nother: *a\n"},
+	} {
+		document := unmarshalAndDecode(c, &nodes, t.before)
+		yamlutil.SetString(nodes.Field.Node, t.value)
+
+		var builder strings.Builder
+		e := yaml.NewEncoder(&builder)
+		e.SetIndent(2)
+		c.Assert(e.Encode(document), check.IsNil)
+		c.Check(builder.String(), check.Equals, t.after, check.Commentf("%q", t.before))
+
+		var decoded struct{ Field string }
+		c.Assert(yaml.Unmarshal([]byte(builder.String()), &decoded), check.IsNil)
+		c.Check(decoded.Field, check.Equals, t.value)
+	}
+}
+
 func (y *yamlSuite) TestRemoveNodesMapping(c *check.C) {
 	var nodes struct {
 		Field yamlutil.NodeRef
