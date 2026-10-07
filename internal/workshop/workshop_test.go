@@ -178,8 +178,8 @@ plugs:
   GPU:
     interface: gpu
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", []byte(sdkYaml))
-	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has bad plugs or slots: GPU \(invalid plug name: "GPU"\)`)
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml))
+	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has bad plugs or slots: D-Bus \(invalid plug name: "D-Bus"\); GPU \(invalid plug name: "GPU"\)`)
 }
 
 func (f *workshopSuite) TestSdkSetupsByInstallOrder(c *check.C) {

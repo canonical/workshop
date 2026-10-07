@@ -89,7 +89,8 @@ func setWorkshopProject(w string, p workshop.Project, tasks ...*state.Task) {
 
 var ErrTrigger = errors.New("error out")
 
-var sdkYaml = `
+var (
+	sdkYaml = `
 name: test
 base: ubuntu@22.04
 plugs:
@@ -99,9 +100,9 @@ plugs:
   plug2:
     interface: test-interface
     attr2: value2
-`
+`[1:]
 
-var sdkYamlViolatesPolicy = `
+	sdkYamlViolatesPolicy = `
 name: test-broken
 base: ubuntu@22.04
 plugs:
@@ -114,7 +115,16 @@ plugs:
 slots:
   slot:
     interface: ssh-agent
-`
+`[1:]
+
+	workshopYaml = `
+name: ws
+base: ubuntu@22.04
+sdks:
+  - name: test
+    channel: latest/stable
+`[1:]
+)
 
 func (s *sdkStateSuite) SetUpTest(c *check.C) {
 	var err error
@@ -458,7 +468,7 @@ func (s *sdkStateSuite) TestRetrieveSystemSdkSuccess(c *check.C) {
 	chg := s.state.NewChange("sample", "...")
 	setWorkshopProject("ws", s.project, t)
 	chg.Set("user", "testuser")
-	chg.Set("ws_new_file", "name: ws\nbase: ubuntu@22.04\n")
+	chg.Set("ws_new_file", workshopYaml)
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{newSdk})
@@ -527,6 +537,7 @@ func (s *sdkStateSuite) TestRetrieveSdkExistingTarballValidatesSdk(c *check.C) {
 	chg := s.state.NewChange("sample", "...")
 	setWorkshopProject("ws", s.project, t)
 	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", workshopYaml)
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{newSdk})
@@ -563,6 +574,7 @@ func (s *sdkStateSuite) TestRetrieveSdkExistingVolumeValidatesSdk(c *check.C) {
 	chg := s.state.NewChange("sample", "...")
 	setWorkshopProject("ws", s.project, t)
 	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", workshopYaml)
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{newSdk.Setup})
@@ -612,6 +624,7 @@ func (s *sdkStateSuite) TestRetrieveSdkConcurrentImportValidatesSdk(c *check.C) 
 	chg := s.state.NewChange("sample", "...")
 	setWorkshopProject("ws", s.project, t)
 	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", workshopYaml)
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{newSdk.Setup})
