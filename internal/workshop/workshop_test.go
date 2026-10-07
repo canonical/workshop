@@ -150,6 +150,38 @@ architecture: mock64
 	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has "mock64" architecture; required: "mock32" or "all"`)
 }
 
+func (f *workshopSuite) TestValidateSdkPlugsAndSlots(c *check.C) {
+	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {
+		for plugName := range sdkInfo.Plugs {
+			if err := sdk.ValidatePlugName(plugName); err != nil {
+				sdkInfo.BadInterfaces[plugName] = err.Error()
+				continue
+			}
+		}
+	})()
+
+	wsYaml := `name: test-workshop
+base: ubuntu@22.04
+sdks:
+  - name: test-sdk-1
+    plugs:
+      D-Bus:
+        interface: tunnel
+`
+	wpath := filepath.Join(f.project.Path, "workshop.yaml")
+	writeFile(c, wpath, wsYaml)
+	file, err := workshop.ReadWorkshop(wpath)
+	c.Assert(err, check.IsNil)
+
+	sdkYaml := `name: test-sdk-1
+plugs:
+  GPU:
+    interface: gpu
+`
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", []byte(sdkYaml))
+	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has bad plugs or slots: GPU \(invalid plug name: "GPU"\)`)
+}
+
 func (f *workshopSuite) TestSdkSetupsByInstallOrder(c *check.C) {
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
