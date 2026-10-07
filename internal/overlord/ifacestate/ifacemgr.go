@@ -461,25 +461,29 @@ func (m *InterfaceManager) reloadConnections(workshopNames map[string][]string, 
 }
 
 func (m *InterfaceManager) resolveWorkshopBindings(w *workshop.Workshop) error {
-	for _, s := range w.File.Sdks {
+	for _, s := range w.Sdks {
 		for _, plug := range m.repo.Plugs(w.Project.ProjectId, w.Name, s.Name) {
-			bind := s.Plugs[plug.Name].Bind
-			if bind == nil {
+			// Check that bound plugs are added or skipped as one unit.
+			mref, slaves := MaybeBound(w, plug.Ref())
+			if mref == plug.Ref() {
+				for _, s := range slaves {
+					if m.repo.Plug(s.ProjectId, s.Workshop, s.Sdk, s.Name) == nil {
+						return fmt.Errorf("plug %q was skipped while bound to plug %q", s.ShortRef(), plug.Ref().ShortRef())
+					}
+				}
 				continue
 			}
-
-			master := m.repo.Plug(w.Project.ProjectId, w.Name, bind.Sdk, bind.Name)
+			master := m.repo.Plug(mref.ProjectId, mref.Workshop, mref.Sdk, mref.Name)
 			if master == nil {
-				sdkRef := sdk.Ref{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: bind.Sdk}
-				return fmt.Errorf("%q SDK has no plug named %q", sdkRef.ShortRef(), bind.Name)
+				return fmt.Errorf("%q SDK has no plug named %q", mref.SdkRef().ShortRef(), mref.Name)
 			}
 
+			// Check that bound plugs are essentially identical.
 			if plug.Interface != master.Interface {
-				return fmt.Errorf("%s plug %q incompatible with %s plug %q", plug.Interface, plug.Ref().ShortRef(), master.Interface, master.Ref().ShortRef())
+				return fmt.Errorf("%s plug %q incompatible with %s plug %q", plug.Interface, plug.Ref().ShortRef(), master.Interface, mref.ShortRef())
 			}
-
 			if plug.Label != master.Label || !reflect.DeepEqual(plug.Attrs, master.Attrs) {
-				return fmt.Errorf("plugs %q and %q have different attributes", plug.Ref().ShortRef(), master.Ref().ShortRef())
+				return fmt.Errorf("plugs %q and %q have different attributes", plug.Ref().ShortRef(), mref.ShortRef())
 			}
 		}
 	}
