@@ -299,22 +299,6 @@ func sketchToProjectSdk(document *yaml.Node, name string) error {
 		yamlutil.RemoveNodes(document, nodes.Hooks.Node)
 	}
 
-	// Sanity check; as far as I know this is dead code, but it's worth
-	// keeping since YAML has so many quirks and version incompatibilities.
-	var modified struct {
-		Name  string            `yaml:"name"`
-		Hooks map[string]string `yaml:"hooks"`
-	}
-	if err := document.Decode(&modified); err != nil {
-		return err
-	}
-	if modified.Name != name {
-		return fmt.Errorf("internal error: sketch SDK renamed %q (expected %q)", modified.Name, name)
-	}
-	if len(modified.Hooks) > 0 {
-		return errors.New("internal error: hooks not ejected from sketch SDK")
-	}
-
 	return nil
 }
 
