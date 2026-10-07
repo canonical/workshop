@@ -144,11 +144,12 @@ type sdkYaml struct {
 	Website    string        `yaml:"website,omitempty"`
 	License    string        `yaml:"license,omitempty"`
 
-	Type  string         `yaml:"type,omitempty"`
 	Plugs map[string]any `yaml:"plugs,omitempty"`
 	Slots map[string]any `yaml:"slots,omitempty"`
 
 	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
+
+	Type string `yaml:"type,omitempty"`
 }
 
 func (s *sdkYaml) UnmarshalYAML(value *yaml.Node) error {
