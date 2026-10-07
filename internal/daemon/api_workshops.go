@@ -687,6 +687,9 @@ func v1PostProjectWorkshop(c *Command, r *http.Request, _ *userState) Response {
 	}
 	for age, manifests := range manifestsByAge {
 		for _, m := range manifests {
+			if age == handlersetup.NewWorkshop {
+				handlersetup.SetWorkshopFile(change, m.File, age)
+			}
 			change.Set(handlersetup.WorkshopFormatKey(m.File.Name, age), m.Format)
 			change.Set(handlersetup.WorkshopBaseKey(m.File.Name, age), m.Image)
 			change.Set(handlersetup.WorkshopSdksKey(m.File.Name, age), m.Sdks)
