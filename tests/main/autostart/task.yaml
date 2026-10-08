@@ -44,6 +44,12 @@ execute: |
     lxc list --format csv --columns s --project workshop.ubuntu "$filter" | MATCH '^RUNNING|READY$'
     ! systemctl is-active snap.workshop.workshopd.service || false
     retry 3 check_dns
+
+    if [ "$RUNTIME" = lxd-container ]; then
+      echo "Make sure workshopctl socket-activates the workshop daemon"
+      lxc exec --project workshop.ubuntu "ws-autostart-$(< .workshop.lock)" -- workshopctl --help | MATCH 'Usage:'
+      systemctl is-active snap.workshop.workshopd.service
+    fi
   fi
 
   echo "Make sure a stopped workshop remains stopped after reboot"

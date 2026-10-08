@@ -36,6 +36,9 @@ apps:
       unix:
         listen-stream: $SNAP_COMMON/workshop/workshop.socket
         socket-mode: 0666
+      untrusted:
+        listen-stream: $SNAP_COMMON/workshop/workshop.socket.untrusted
+        socket-mode: 0666
   configure-dns:
     command: bin/workshopd configure-dns
   sdk:
