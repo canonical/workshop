@@ -69,6 +69,12 @@ const (
 
 	startTimeoutContainer = 5 * time.Minute
 	startTimeoutVM        = 10 * time.Minute
+	// Sometimes a workshop reboots during the initial boot process. If that
+	// happens, rather than failing immediately we wait a few seconds for a
+	// (re)started event, and continue waiting if we receive one. LXD only
+	// reports the shutdown event after waiting for the QEMU process to stop,
+	// so the restart should be at least as quick as `lxc start`.
+	restartGracePeriod = 10 * time.Second
 )
 
 var (
@@ -764,20 +770,49 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 	defer func() { _ = listener.RemoveHandler(target) }()
 
-	ready, err := s.isInstanceReady(conn, instance)
+	state, _, err := conn.GetInstanceState(instance)
+	if err != nil {
+		return err
+	}
+	if state.StatusCode == api.Ready {
+		return nil
+	}
+
+	var restartDeadline <-chan time.Time
 	for {
-		if err != nil {
-			return err
-		}
-		if ready {
-			return nil
-		}
 		select {
 		case event := <-events:
-			ready, err = s.isReadyEvent(event, instance)
+			action, err := s.maybeAction(event, instance)
+			if err != nil {
+				return err
+			}
+
+			switch action {
+			case api.EventLifecycleInstanceReady:
+				return nil
+			case api.EventLifecycleInstanceShutdown, api.EventLifecycleInstanceStopped:
+				restartDeadline = time.After(restartGracePeriod)
+			case api.EventLifecycleInstanceStarted, api.EventLifecycleInstanceRestarted:
+				restartDeadline = nil
+			case api.EventLifecycleInstanceDeleted:
+				return errors.New("workshop removed")
+			}
+		case <-restartDeadline:
+			state, _, err := conn.GetInstanceState(instance)
+			if err != nil {
+				return err
+			}
+			switch state.StatusCode {
+			case api.Ready:
+				return nil
+			case api.Starting, api.Started, api.Running:
+				restartDeadline = nil
+			default:
+				return fmt.Errorf("workshop stopped without restarting within %v", restartGracePeriod)
+			}
 		case <-ctx.Done():
-			ready, err := s.isInstanceReady(conn, instance)
-			if err == nil && ready {
+			state, _, err := conn.GetInstanceState(instance)
+			if err == nil && state.StatusCode == api.Ready {
 				return nil
 			}
 			return ctx.Err()
@@ -785,32 +820,15 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 }
 
-func (s *Backend) isInstanceReady(conn lxd.InstanceServer, instance string) (bool, error) {
-	state, _, err := conn.GetInstanceState(instance)
-	if err != nil {
-		return false, err
-	}
-	return state.StatusCode == api.Ready, nil
-}
-
-func (s *Backend) isReadyEvent(event api.Event, instance string) (bool, error) {
+func (s *Backend) maybeAction(event api.Event, instance string) (string, error) {
 	var lifecycle api.EventLifecycle
 	if err := json.Unmarshal(event.Metadata, &lifecycle); err != nil {
-		return false, err
+		return "", err
 	}
-
 	if lifecycle.Name != instance {
-		return false, nil
+		return "", nil
 	}
-
-	switch lifecycle.Action {
-	case api.EventLifecycleInstanceReady:
-		return true, nil
-	case api.EventLifecycleInstanceShutdown, api.EventLifecycleInstanceStopped:
-		return false, fmt.Errorf("received %q event", lifecycle.Action)
-	default:
-		return false, nil
-	}
+	return lifecycle.Action, nil
 }
 
 func (s *Backend) StopWorkshop(ctx context.Context, name string, force bool) error {
@@ -1617,7 +1635,6 @@ runcmd:
 [device "qemu_tablet"]
 
 [machine]
-i8042 = "off"
 hpet = "off"
 sata = "off"
 `[1:]
