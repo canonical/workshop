@@ -871,10 +871,6 @@ func (r *Repository) SdkSpecification(ctx context.Context, securitySystem Securi
 // ensuring that the sdk is not present in the repository in any way prior to
 // calling this function. If this constraint is violated then no changes are
 // made and an error is returned.
-//
-// Each added plug/slot is validated according to the corresponding interface.
-// Unknown interfaces and plugs/slots that don't validate are not added.
-// Information about those failures are returned to the caller.
 func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
 	r.m.Lock()
 	defer r.m.Unlock()
