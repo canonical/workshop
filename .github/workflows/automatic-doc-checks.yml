@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   documentation-checks:
-    uses: canonical/documentation-workflows/.github/workflows/documentation-checks.yaml@309dd382b6a07cbd23d84e3912fb05e6bc1f4ffb # main
+    uses: canonical/documentation-workflows/.github/workflows/documentation-checks.yaml@a40be455965cb08dcb48ff67042555a0f83a8de5 # main
     with:
       working-directory: "docs"
       fetch-depth: 0

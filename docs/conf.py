@@ -124,9 +124,11 @@ llms_txt_description = textwrap.dedent(
 
 llms_txt_suffix_mode = "url-suffix"
 
-# The base URL for references built by sphinx-markdown-builder.
+# The base URL for references built by sphinx-markdown-builder, which adds
+# its own slash; the markdown_links extension maps section-index links to
+# the url-suffix layout above.
 if os.environ.get("READTHEDOCS"):
-    markdown_http_base = html_baseurl
+    markdown_http_base = html_baseurl.rstrip("/")
 
 ###########################
 # Link checker exceptions #
@@ -168,6 +170,7 @@ extensions = [
     "sphinxcontrib.cairosvgconverter",
     "sphinx_sitemap",
     "flat_toctree",
+    "markdown_links",
     "sphinx_structured_toc",
     "structured_toc",
     # "category_nav",  # disabled on this branch; extension kept in _extensions/
@@ -180,6 +183,7 @@ exclude_patterns = [
     "reference/cli/sdk-*.rst",
     "reference/cli/workshop-*.rst",
     "reference/cli/sdkcraft-*.rst",
+    "reference/definition-files/_interfaces/*",
     "coverage.md",
     "examples/*",
 ]

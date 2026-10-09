@@ -168,9 +168,11 @@ the output of :command:`workshop info` should include something like this:
    $ workshop info
 
      ...
-     sketch:
-       tracking:   ~/.local/share/workshop/id/6b79e889/dev/sdk/sketch/current
-       installed:  2025-08-27  (x1)
+     sdks:
+       sketch:
+         tracking:   ~/.local/share/workshop/id/6b79e889/dev/sdk/sketch/current
+         installed:  2025-08-27  (x1)
+     ...
 
 
 The sketch SDK entry shows the last update time and its revision (:samp:`x1`).
