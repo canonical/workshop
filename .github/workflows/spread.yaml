@@ -36,11 +36,15 @@ jobs:
               tests/main/autostart
               tests/main/compatible-backend
               tests/main/firewall-docker
-              tests/main/launch
               tests/main/launch-abort
               tests/main/launch-continue
               tests/main/launch-multiple
               tests/main/launch-sdk
+            paths-slow: >-
+              tests/main/launch
+            paths-fast: >-
+              tests/main/launch/ctr26
+              tests/main/launch/vm26
           - name: main-lifecycle
             label: main / lifecycle
             paths: >-
@@ -110,7 +114,22 @@ jobs:
           # Lower-level LXD integration scenarios.
           - name: integration
             label: integration
-            paths: tests/integration/
+            paths: >-
+              tests/integration/dns
+              tests/integration/interface-backend
+              tests/integration/osutil
+              tests/integration/project-tracking
+              tests/integration/sdk-store
+              tests/integration/ssh
+              tests/integration/workshop-exec
+              tests/integration/workshop-network
+              tests/integration/workshop-ops
+            paths-slow: >-
+              tests/integration/workshop-snapshots
+            paths-fast: >-
+              tests/integration/workshop-snapshots:ctrformat
+              tests/integration/workshop-snapshots:ctr24
+              tests/integration/workshop-snapshots:vm24
     runs-on: [self-hosted, linux, jammy, x64, xlarge]
     steps:
       - name: Install LXD
@@ -153,7 +172,7 @@ jobs:
           sudo apt-get install -y zip
       - name: Run spread
         env:
-          SUITE_PATHS: ${{ matrix.suite.paths }}
+          SUITE_PATHS: ${{ matrix.suite.paths }} ${{ case(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch', matrix.suite.paths-slow, matrix.suite.paths-fast) }}
           LXD_CHANNEL: ${{ inputs.lxd_channel || '6/stable' }}
           ARTIFACTS: ${{ github.workspace }}.cover
           ARTIFACT: ${{ github.workspace }}/code-coverage-${{ matrix.suite.name }}.zip

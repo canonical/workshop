@@ -66,6 +66,12 @@ const (
 
 	startTimeoutContainer = 5 * time.Minute
 	startTimeoutVM        = 10 * time.Minute
+	// Sometimes a workshop reboots during the initial boot process. If that
+	// happens, rather than failing immediately we wait a few seconds for a
+	// (re)started event, and continue waiting if we receive one. LXD only
+	// reports the shutdown event after waiting for the QEMU process to stop,
+	// so the restart should be at least as quick as `lxc start`.
+	restartGracePeriod = 10 * time.Second
 )
 
 var (
@@ -761,20 +767,49 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 	defer func() { _ = listener.RemoveHandler(target) }()
 
-	ready, err := s.isInstanceReady(conn, instance)
+	state, _, err := conn.GetInstanceState(instance)
+	if err != nil {
+		return err
+	}
+	if state.StatusCode == api.Ready {
+		return nil
+	}
+
+	var restartDeadline <-chan time.Time
 	for {
-		if err != nil {
-			return err
-		}
-		if ready {
-			return nil
-		}
 		select {
 		case event := <-events:
-			ready, err = s.isReadyEvent(event, instance)
+			action, err := s.maybeAction(event, instance)
+			if err != nil {
+				return err
+			}
+
+			switch action {
+			case api.EventLifecycleInstanceReady:
+				return nil
+			case api.EventLifecycleInstanceShutdown, api.EventLifecycleInstanceStopped:
+				restartDeadline = time.After(restartGracePeriod)
+			case api.EventLifecycleInstanceStarted, api.EventLifecycleInstanceRestarted:
+				restartDeadline = nil
+			case api.EventLifecycleInstanceDeleted:
+				return errors.New("workshop removed")
+			}
+		case <-restartDeadline:
+			state, _, err := conn.GetInstanceState(instance)
+			if err != nil {
+				return err
+			}
+			switch state.StatusCode {
+			case api.Ready:
+				return nil
+			case api.Starting, api.Started, api.Running:
+				restartDeadline = nil
+			default:
+				return fmt.Errorf("workshop stopped without restarting within %v", restartGracePeriod)
+			}
 		case <-ctx.Done():
-			ready, err := s.isInstanceReady(conn, instance)
-			if err == nil && ready {
+			state, _, err := conn.GetInstanceState(instance)
+			if err == nil && state.StatusCode == api.Ready {
 				return nil
 			}
 			return ctx.Err()
@@ -782,32 +817,15 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 }
 
-func (s *Backend) isInstanceReady(conn lxd.InstanceServer, instance string) (bool, error) {
-	state, _, err := conn.GetInstanceState(instance)
-	if err != nil {
-		return false, err
-	}
-	return state.StatusCode == api.Ready, nil
-}
-
-func (s *Backend) isReadyEvent(event api.Event, instance string) (bool, error) {
+func (s *Backend) maybeAction(event api.Event, instance string) (string, error) {
 	var lifecycle api.EventLifecycle
 	if err := json.Unmarshal(event.Metadata, &lifecycle); err != nil {
-		return false, err
+		return "", err
 	}
-
 	if lifecycle.Name != instance {
-		return false, nil
+		return "", nil
 	}
-
-	switch lifecycle.Action {
-	case api.EventLifecycleInstanceReady:
-		return true, nil
-	case api.EventLifecycleInstanceShutdown, api.EventLifecycleInstanceStopped:
-		return false, fmt.Errorf("received %q event", lifecycle.Action)
-	default:
-		return false, nil
-	}
+	return lifecycle.Action, nil
 }
 
 func (s *Backend) StopWorkshop(ctx context.Context, name string, force bool) error {
@@ -1406,8 +1424,49 @@ func (s *Backend) workshopConfig(
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
 
-		// Speeds up boot, and allows SDKs to install unsigned kernel modules.
+		// Allows SDKs to install unsigned kernels and kernel modules.
 		cfg["boot.mode"] = "uefi-nosecureboot"
+
+		// Each virtiofs mount consumes a PCIe port and 3 interrupt vectors.
+		// The port consumes another interrupt vector on top of that. KVM
+		// allocates up to 32 slots, with 8 functions each, but some are
+		// reserved. So we set a conservative upper bound of 192 ports.
+		// Interrupt vectors are also capped at around 256 per vCPU. A single
+		// CPU only has headroom for about 160 interrupt vectors, so we make
+		// another conservative estimate of 128 interrupt vectors per CPU.
+		// Extra CPUs have more headroom than the first, but we don't lose
+		// much by adding more CPUs by default. We want to hit the port limit
+		// well before the IRQ limit because LXD doesn't handle the latter
+		// well: see https://github.com/canonical/lxd/issues/19164.
+		// Typical SDKs have one mount for the SDK itself and another for
+		// config or cache, but some (e.g. node) have several different cache
+		// mounts. Each port we allocate costs about 100ms on first boot, and
+		// 75ms after that. So allowing 4 per SDK seems like a good balance of
+		// allowing some headroom without slowing down the boot too much. The
+		// system SDK reserves 8 ports to match LXD defaults and allow some
+		// headroom if the only other SDK is something like node (or there's a
+		// sketch SDK, which we can't observe from the File alone).
+		const (
+			minPorts    = 8
+			portsPerSdk = 4
+			maxPorts    = 192
+
+			minCPUs      = 2
+			irqsPerMount = 4
+			irqsPerCPU   = 128
+		)
+		regularSdks := len(file.Sdks)
+		for _, s := range file.Sdks {
+			if s.Source == sdk.SystemSource || s.Source == sdk.SketchSource {
+				regularSdks--
+			}
+		}
+		maxBusPorts := min(minPorts+portsPerSdk*regularSdks, maxPorts)
+		cfg["limits.max_bus_ports"] = fmt.Sprint(maxBusPorts)
+
+		minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
+		vCPUs := max(minCPUs, minCPUsForPCI)
+		cfg["limits.cpu"] = fmt.Sprint(vCPUs)
 
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
@@ -1422,7 +1481,6 @@ func (s *Backend) workshopConfig(
 [device "qemu_tablet"]
 
 [machine]
-i8042 = "off"
 hpet = "off"
 sata = "off"
 `[1:]
