@@ -213,6 +213,8 @@ and any interface-specific attributes.
 
 .. include:: _interfaces/tunnel.rst
 
+.. include:: _interfaces/virtualization.rst
+
 
 JSON Schema
 -----------

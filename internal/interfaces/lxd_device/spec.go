@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -276,6 +277,51 @@ func (s *Specification) SetCamera(camera workshop.Camera) error {
 			"ownership.inherit": "true",
 		}
 		s.config[lxdbackend.DeviceTypeConfigKey(name)] = "camera"
+	}
+
+	return nil
+}
+
+// virtualizationDevices are the host character devices exposed to the workshop
+// by the virtualization interface. They enable hardware-accelerated virtual
+// machines (KVM) together with vhost/vsock acceleration. /dev/net/tun is not
+// listed here because LXD already provides it inside the container.
+var virtualizationDevices = []string{
+	"/dev/kvm",
+	"/dev/vhost-net",
+	"/dev/vhost-vsock",
+	"/dev/vsock",
+}
+
+// SetVirtualization exposes the virtualization character devices to the
+// workshop as LXD "unix-char" devices. Each device is owned by the workshop
+// user (uid/gid) with mode 0660 so that the user can access them directly. The
+// devices are marked non-required so that a host missing e.g. the vsock modules
+// does not prevent the workshop from starting.
+func (s *Specification) SetVirtualization(virt workshop.Virtualization) error {
+	s.Profile.Virtualization = &virt
+
+	name := lxdbackend.DeviceName(s.Profile.Sdk, virt.Name)
+	s.devices[name] = map[string]string{"type": "none"}
+	buf, err := json.Marshal(virt)
+	if err != nil {
+		return err
+	}
+	s.config[lxdbackend.DeviceConfigKey(name)] = string(buf)
+	s.config[lxdbackend.DeviceTypeConfigKey(name)] = "virtualization"
+
+	for _, dev := range virtualizationDevices {
+		name := lxdbackend.DeviceName(s.Profile.Sdk, virt.Name, filepath.Base(dev))
+		s.devices[name] = map[string]string{
+			"type":     "unix-char",
+			"source":   dev,
+			"path":     dev,
+			"uid":      workshop.User.Uid,
+			"gid":      workshop.User.Gid,
+			"mode":     "0660",
+			"required": "false",
+		}
+		s.config[lxdbackend.DeviceTypeConfigKey(name)] = "virtualization"
 	}
 
 	return nil
