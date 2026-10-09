@@ -150,12 +150,15 @@ Currently, |ws_markup| and |sdk_markup| support the following interface plugs:
 - :ref:`Desktop <ref_desktop_interface>`
 - :ref:`GPU <ref_gpu_interface>`
 - :ref:`Mount <ref_mount_interface>`
+- :ref:`Secret <ref_secret_interface>`
 - :ref:`SSH <ref_ssh_interface>`
 - :ref:`Tunnel <ref_tunnel_interface>`
 
 
 Regular SDKs can define slots only for the :samp:`mount` and :samp:`tunnel` interfaces.
-Slots for the other interfaces are built into the :samp:`system` SDK
+Secret slots exist only on the :samp:`system` SDK,
+where the workshop definition adds them.
+Slots for the remaining interfaces are built into the :samp:`system` SDK
 and cannot be added to it under another name.
 
 .. _ref_camera_interface:
@@ -298,6 +301,31 @@ This exposes the :samp:`workshop-source` directory inside the workshop
 to be mounted to another directory within the workshop.
 The :envvar:`$SDK` variable can be used to refer to the SDK installation path
 inside the workshop.
+
+
+.. _ref_secret_interface:
+
+Secret interface
+~~~~~~~~~~~~~~~~
+
+.. @artefact secret interface
+
+A secret plug in the definition must specify the plug name and the interface:
+
+.. code-block:: yaml
+   :caption: sdk.yaml
+
+   # ...
+   plugs:
+     <NAME>:
+       interface: secret
+
+
+This lets processes in the workshop request a credential from the host keyring
+as :samp:`{SDK}.{NAME}`
+after the user connects the plug to a secret slot of the :samp:`system` SDK.
+The slot is defined in the workshop definition;
+see :ref:`ref_workshop_definition_interfaces`.
 
 
 .. _ref_ssh_interface:
@@ -508,7 +536,7 @@ The options :samp:`errexit` and :samp:`pipefail`
 are set by default,
 so most commands which return a nonzero exit code
 cause the hook to exit with the same code.
-If :option:`!--verbose` is passed to :command:`workshop launch` or :command:`workshop refresh`,
+If :option:`!--verbose` is passed to :command:`workshop launch` or :command:`workshop refresh`,
 the option :samp:`xtrace` is also set.
 
 .. note::

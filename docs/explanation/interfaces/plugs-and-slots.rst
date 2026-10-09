@@ -45,6 +45,9 @@ What a slot exposes depends on its interface:
 - A :ref:`GPU interface <exp_gpu_interface>` slot
   exposes a GPU device.
 
+- A :ref:`secret interface <exp_secret_interface>` slot
+  exposes a credential from the host keyring.
+
 - A :ref:`camera interface <exp_camera_interface>`,
   :ref:`custom device interface <exp_custom_device_interface>`,
   :ref:`desktop interface <exp_desktop_interface>`,
@@ -139,6 +142,11 @@ In the SDK-type columns, *any* means either a regular SDK or the system SDK.
      - system
      - No
 
+   * - :ref:`secret <exp_secret_interface>`
+     - regular
+     - system
+     - No
+
    * - :ref:`ssh-agent <exp_ssh_interface>`
      - regular
      - system
@@ -157,7 +165,7 @@ is a loopback address or a Unix domain socket.
 See :ref:`exp_tunnel_connection` for the full policy.
 
 Interfaces marked No are wired manually
-with :command:`workshop connect`.
+with :command:`workshop connect`.
 
 
 When more than one slot is policy-eligible for the same plug,
@@ -188,7 +196,7 @@ gives you two distinct YAML mechanisms for shaping the topology:
   rather than the system SDK's.
   The pair still has to satisfy the interface's auto-connection policy,
   so interfaces that block auto-connection outright
-  (such as :samp:`ssh-agent`)
+  (such as :samp:`secret` and :samp:`ssh-agent`)
   cannot be wired this way
   and must be connected with :command:`workshop connect`.
 
@@ -316,6 +324,7 @@ Explanation:
 - :ref:`exp_interface_concepts`
 - :ref:`exp_mount_interface`
 - :ref:`exp_sdks`
+- :ref:`exp_secret_interface`
 - :ref:`exp_ssh_interface`
 - :ref:`exp_tunnel_interface`
 - :ref:`exp_workshop`

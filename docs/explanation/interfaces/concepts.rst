@@ -42,6 +42,7 @@ Currently, |ws_markup| and |sdk_markup| support the following:
 - :ref:`Desktop interface <exp_desktop_interface>` (manually connected)
 - :ref:`GPU interface <exp_gpu_interface>` (auto-connected)
 - :ref:`Mount interface <exp_mount_interface>` (auto-connected)
+- :ref:`Secret interface <exp_secret_interface>` (manually connected)
 - :ref:`SSH interface <exp_ssh_interface>` (manually connected)
 - :ref:`Tunnel interface <exp_tunnel_interface>` (conditionally auto-connected)
 
@@ -102,8 +103,8 @@ the :ref:`mount <exp_mount_interface>`
 and the :ref:`GPU <exp_gpu_interface>` interfaces are auto-connected,
 whereas the :ref:`camera <exp_camera_interface>`,
 :ref:`custom device <exp_custom_device_interface>`,
-:ref:`desktop <exp_desktop_interface>`, and :ref:`SSH <exp_ssh_interface>`
-interfaces require manual connection.
+:ref:`desktop <exp_desktop_interface>`, :ref:`secret <exp_secret_interface>`,
+and :ref:`SSH <exp_ssh_interface>` interfaces require manual connection.
 
 Auto-connection also depends on where a plug or slot lives.
 Additional slots defined for the system SDK,

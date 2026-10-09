@@ -344,6 +344,13 @@ Shared resources
       :ref:`SSH agent interface <exp_ssh_interface>`
       :ref:`SSH agent interface reference <ref_ssh_interface>`
 
+   .. slice:: Secrets
+
+      :ref:`Secret interface <exp_secret_interface>`
+      :ref:`Secret interface reference <ref_secret_interface>`
+      :ref:`Use secrets in a workshop <how_provide_secrets>`
+      :ref:`Use secrets in an SDK <how_use_secrets>`
+
 .. _home_tool_integrations:
 
 Tool integrations

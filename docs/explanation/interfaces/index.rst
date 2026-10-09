@@ -42,12 +42,14 @@ such as displays, GPUs, and cameras:
 Data and connectivity
 ---------------------
 
-Filesystem mounts, SSH agent forwarding, and network sharing
+Filesystem mounts, host keyring secrets, SSH agent forwarding,
+and network sharing
 pass through this group of interfaces:
 
 .. toctree::
    :maxdepth: 1
 
    mount-interface
+   secret-interface
    ssh-interface
    tunnel-interface

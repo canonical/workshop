@@ -226,6 +226,8 @@ and any interface-specific attributes.
 
 .. include:: _interfaces/mount.rst
 
+.. include:: _interfaces/secret.rst
+
 .. include:: _interfaces/ssh-agent.rst
 
 .. include:: _interfaces/tunnel.rst

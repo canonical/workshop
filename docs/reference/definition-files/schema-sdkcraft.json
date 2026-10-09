@@ -236,6 +236,7 @@
           "desktop": "#/$defs/DesktopPlug",
           "gpu": "#/$defs/GPUPlug",
           "mount": "#/$defs/MountPlug",
+          "secret": "#/$defs/SecretPlug",
           "ssh-agent": "#/$defs/SSHAgentPlug",
           "tunnel": "#/$defs/TunnelPlug"
         },
@@ -256,6 +257,9 @@
         },
         {
           "$ref": "#/$defs/MountPlug"
+        },
+        {
+          "$ref": "#/$defs/SecretPlug"
         },
         {
           "$ref": "#/$defs/SSHAgentPlug"
@@ -315,6 +319,22 @@
         "interface"
       ],
       "title": "SSHAgentPlug",
+      "type": "object"
+    },
+    "SecretPlug": {
+      "additionalProperties": false,
+      "description": "SDKcraft project secret plug definition.",
+      "properties": {
+        "interface": {
+          "const": "secret",
+          "title": "Interface",
+          "type": "string"
+        }
+      },
+      "required": [
+        "interface"
+      ],
+      "title": "SecretPlug",
       "type": "object"
     },
     "Slot": {

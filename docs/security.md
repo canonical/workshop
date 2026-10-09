@@ -50,7 +50,7 @@ manager](https://snapcraft.io/docs/interface-management/):
 * Interfaces define and control what resources a workshop can use, ensuring that
   permissions are explicitly granted and limited in scope.
 * They are used to explicitly provide access to resources such as files, the
-  GPU, or the SSH agent.
+  GPU, the SSH agent, or credentials in the host keyring.
 * SDKs in a workshop, or the workshop itself, must declare the interfaces and
   the connections they need. This limits the resources a workshop can access.
 * Some interfaces, such as mounts, are connected automatically by default;
@@ -70,9 +70,12 @@ sensitive data within workshops. Instead, use mounts to provide access to data
 only to the SDKs that require it. Another example is avoiding the connection of
 sensitive interfaces, such as the SSH agent, unless absolutely necessary.
 
-You can use environment variables in Workshop commands for access tokens or the
+To handle sensitive data in your SDKs, use the
+{ref}`secret interface <exp_secret_interface>`
+for access tokens kept in the host keyring, environment variables of a single
+Workshop command for one-off values, or the
 [SSH interface](https://ubuntu.com/workshop/docs/explanation/interfaces/ssh-interface/)
-for transparent key-based access to securely handle sensitive data in your SDKs.
+for transparent key-based access.
 
 The SDKs available in a workshop are sourced from the SDK Store and are
 generally reliable at this stage of development. However, if you are cautious
@@ -117,6 +120,10 @@ autonomy:
     [SSH interface](https://ubuntu.com/workshop/docs/explanation/interfaces/ssh-interface/)
     lets any process in the workshop authenticate with the identities in your
     host's SSH agent while it's connected.
+  * The
+    {ref}`secret interface <exp_secret_interface>`
+    lets any process in the workshop request the credential from your host
+    keyring while it's connected.
   * [Mounts](https://ubuntu.com/workshop/docs/explanation/interfaces/mount-interface/)
     of host directories are writable unless the plug sets `read-only`; mounting
     an agent's configuration directory from your home exposes its credentials
@@ -183,6 +190,15 @@ these values are not used for access control.
 User‑exposed crypto and providers
 - SSH agent interface: forwards the host's `ssh-agent` into the workshop via an LXD proxy device, 
 allowing tools inside the container to authenticate without copying private keys.
+- Secret interface: reads a credential from the host keyring through the freedesktop.org Secret Service
+on the user's D-Bus session bus each time a process in the workshop requests it,
+and writes a direct request to the requesting command's standard output.
+For a systemd request, the value is a credential file readable by the unit's
+user and root; ordinary workshop processes share the `workshop` user.
+While the plug is connected, any process in the workshop can make a new request.
+Workshop doesn't persist the value;
+it handles the value only transiently while fulfilling the request.
+The Secret Service session uses the `plain` algorithm, so the value isn't encrypted on that local bus.
 - SSH host trust: a per-user Ed25519 certificate authority signs a host certificate for every
 workshop and a user certificate for connecting to them, so SSH clients trust any CA-signed
 host key without a manual host-key prompt.
@@ -191,4 +207,5 @@ owned by the daemon and the user key by the target host user.
 - Algorithms: follow host OpenSSH (commonly Ed25519, ECDSA P‑256/P‑384/P‑521, RSA 2048/3072/4096).
 - Providers: Go standard library (`crypto/tls`, `crypto/x509`, `crypto/rand`), 
 Canonical LXD Go client (TLS handling), system CA store,
-and OpenSSH packages from Ubuntu.
+OpenSSH packages from Ubuntu,
+and the host's Secret Service implementation, such as GNOME Keyring.

@@ -177,7 +177,7 @@ Unknown keys
   Any top-level key outside the table above,
   including the built-SDKs-only keys
   :samp:`contact`, :samp:`issues`, :samp:`source-code`, and :samp:`website`,
-  fails :command:`workshop launch`:
+  fails :command:`workshop launch`:
 
   .. code-block:: text
 
@@ -185,7 +185,7 @@ Unknown keys
 
   The message names every unknown key with its line and column.
 
-- A built :file:`sdk.yaml`, as shipped by Store SDKs and SDKs from :command:`sdkcraft try`,
+- A built :file:`sdk.yaml`, as shipped by Store SDKs and SDKs from :command:`sdkcraft try`,
   is read leniently:
   |ws_markup| picks the fields it understands and ignores the rest.
 
@@ -208,6 +208,8 @@ and any interface-specific attributes.
 .. include:: _interfaces/gpu.rst
 
 .. include:: _interfaces/mount.rst
+
+.. include:: _interfaces/secret.rst
 
 .. include:: _interfaces/ssh-agent.rst
 
