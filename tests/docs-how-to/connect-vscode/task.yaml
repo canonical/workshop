@@ -9,7 +9,7 @@ execute: |
   chown -R ubuntu:ubuntu .
 
   echo "The Add New Workshop wizard runs workshop init with the channel it recommends; the CLI form creates the same definition."
-  workshop_exec init dev --sdks go/1.27/stable | MATCH '"dev" workshop created at .*/\.workshop/dev\.yaml$'
+  workshop_exec init dev --sdks go/1.27/stable | MATCH '"dev" workshop definition created at .*/\.workshop/dev\.yaml$'
   test -f .workshop/dev.yaml
   cat .workshop/dev.yaml | MATCH '^    channel: 1\.27/stable$'
   workshop_exec list | MATCH '^dev[[:space:]]+Off'

@@ -99,7 +99,7 @@ func (c *CmdInit) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Fprintf(Stdout, "%q workshop created at %s\n", name, path)
+	fmt.Fprintf(Stdout, "%q workshop definition created at %s\n", name, path)
 	return nil
 }
 

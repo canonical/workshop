@@ -114,7 +114,7 @@ Generate a definition with the :option:`!--runtime` flag:
 
    $ workshop init <NAME> --runtime lxd-vm
 
-     "<NAME>" workshop created at /home/user/my-project/.workshop/<NAME>.yaml
+     "<NAME>" workshop definition created at /home/user/my-project/.workshop/<NAME>.yaml
 
 
 The generated definition carries the runtime:
