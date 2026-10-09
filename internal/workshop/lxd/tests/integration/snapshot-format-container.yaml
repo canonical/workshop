@@ -12,6 +12,7 @@ launched:
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
+    security.devlxd.images: 'true'
     security.nesting: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
@@ -51,6 +52,7 @@ started:
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
+    security.devlxd.images: 'true'
     security.nesting: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
@@ -90,6 +92,7 @@ sdk-attached:
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
+    security.devlxd.images: 'true'
     security.nesting: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
@@ -141,6 +144,7 @@ sdk-mounted:
       uid 1000 1000
       gid 1000 1000
     raw.lxc: lxc.mount.entry = tmpfs tmp tmpfs defaults
+    security.devlxd.images: 'true'
     security.nesting: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'

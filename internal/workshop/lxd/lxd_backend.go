@@ -1432,9 +1432,12 @@ func (s *Backend) workshopConfig(
 	// Include all options we might change, even those with default values,
 	// so that workshops can be rebuilt.
 	cfg := map[string]string{
-		"boot.autostart":                 "false",
-		"cloud-init.user-data":           cloudConfig.String(),
-		"raw.idmap":                      formatIdmap(idmapSet),
+		"boot.autostart":       "false",
+		"cloud-init.user-data": cloudConfig.String(),
+		"raw.idmap":            formatIdmap(idmapSet),
+		// Security: the workshop gains read-only access to cached, or public,
+		// LXD images that already exist on the host.
+		"security.devlxd.images":         "true",
 		"user.workshop.format-revision":  format.String(),
 		"user.workshop.project-id":       projectId,
 		"user.workshop.name":             file.Name,
