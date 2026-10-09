@@ -6,11 +6,14 @@
 # The old path must be a file that doesn"t exist in the source. The current path must be
 # a file that does exist in the source.
 
+"customize-workshops" "how-to/customize-workshops/index"
 "explanation/sdks/sdk-cli" "explanation/cli"
 "explanation/sdks/sdkcraft-cli" "explanation/cli"
 "explanation/sdks/workshopctl-cli" "explanation/cli"
 "explanation/workshops/workshop-cli" "explanation/cli"
 "how-to/develop-with-workshops/use-workshops-with-ai-agents" "reference/ai-agents"
+"how-to/install" "https://ubuntu.com/workshop/docs/tutorial/part-1-get-started/#tut-install"
+"how-to/use-workshops-with-ai-agents" "reference/ai-agents"
 "reference/commands/build.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-build"
 "reference/commands/clean.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-clean"
 "reference/commands/create-track.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-create-track"
@@ -28,4 +31,5 @@
 "reference/commands/upload.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-upload"
 "reference/commands/version.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-version"
 "reference/commands/whoami.rst" "https://ubuntu.com/workshop/docs/reference/cli/sdkcraft/#sdkcraft-whoami"
+"reference/sdk-definition" "reference/definition-files/sdk-definition"
 
