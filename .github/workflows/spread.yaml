@@ -203,9 +203,13 @@ jobs:
           path: /usr/local/bin
       - name: Install spread
         run: sudo chmod +x /usr/local/bin/spread
-      - name: Set LXD storage size
+      - name: Configure spread VMs
         run: |
           lxc profile device set default root size=64GiB
+          # Allow LXD inside spread VMs to download images from the host. This
+          # is here mostly to document the profile we recommended for running
+          # spread locally; it doesn't seem to help much in CI.
+          lxc profile set default security.devlxd.images=true
       - name: Install zip
         # Needed to workaround https://github.com/actions/upload-artifact/issues/546.
         run: |
