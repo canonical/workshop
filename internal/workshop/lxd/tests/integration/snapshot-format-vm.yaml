@@ -35,6 +35,7 @@ launched:
       [machine]
       hpet = "off"
       sata = "off"
+    security.devlxd.images: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -90,6 +91,7 @@ started:
       [machine]
       hpet = "off"
       sata = "off"
+    security.devlxd.images: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -145,6 +147,7 @@ sdk-attached:
       [machine]
       hpet = "off"
       sata = "off"
+    security.devlxd.images: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -212,6 +215,7 @@ sdk-mounted:
       [machine]
       hpet = "off"
       sata = "off"
+    security.devlxd.images: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
