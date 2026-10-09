@@ -70,7 +70,7 @@ func (s *workshopInit) TestInitBasic(c *check.C) {
 	c.Assert(strings.Contains(string(content), "go"), check.Equals, true)
 	c.Assert(strings.Contains(string(content), "python"), check.Equals, true)
 
-	c.Assert(s.stdout.String(), check.Matches, `"dev" workshop created at .*\n`)
+	c.Assert(s.stdout.String(), check.Matches, `"dev" workshop definition created at .*\n`)
 }
 
 func (s *workshopInit) TestInitEmptySdks(c *check.C) {
@@ -445,7 +445,7 @@ func (s *workshopInit) TestInitOutputFormat(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	expectedPath := workshop.Filepath(projectDir, "dev")
-	c.Assert(s.stdout.String(), check.Equals, "\"dev\" workshop created at "+expectedPath+"\n")
+	c.Assert(s.stdout.String(), check.Equals, "\"dev\" workshop definition created at "+expectedPath+"\n")
 }
 
 func (s *workshopInit) TestInitProjectFlagOverride(c *check.C) {
