@@ -183,6 +183,7 @@ exclude_patterns = [
     "reference/cli/sdk-*.rst",
     "reference/cli/workshop-*.rst",
     "reference/cli/sdkcraft-*.rst",
+    "reference/definition-files/_interfaces/*",
     "coverage.md",
     "examples/*",
 ]
