@@ -1,0 +1,117 @@
+summary: Verify the SDK secret consumption patterns
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  install_sdkcraft
+  install_secret_service
+  start_secret_service
+restore: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  if [ -d ~ubuntu/secret-demo-workshop ]; then
+    (cd ~ubuntu/secret-demo-workshop && workshop_exec remove) || true
+  fi
+  rm -rf ~ubuntu/secret-demo ~ubuntu/secret-demo-workshop
+  stop_secret_service
+execute: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  TESTROOT=$(pwd)
+  SDKDIR=~ubuntu/secret-demo
+  PROJECTDIR=~ubuntu/secret-demo-workshop
+
+  mkdir -p "$SDKDIR" "$PROJECTDIR"
+  chown ubuntu:ubuntu "$SDKDIR" "$PROJECTDIR"
+  (cd "$SDKDIR" && run_sdkcraft init)
+  rm -f "$SDKDIR/hooks/"*
+  mkdir -p "$SDKDIR/files/bin"
+  cp "$TESTROOT/sdkcraft.yaml" "$SDKDIR/"
+  cp "$TESTROOT/files/bin/secret-demo-tool" "$SDKDIR/files/bin/"
+  cp "$TESTROOT/workshop.yaml" "$PROJECTDIR/"
+  chmod +x "$SDKDIR/files/bin/secret-demo-tool"
+  chown -R ubuntu:ubuntu "$SDKDIR" "$PROJECTDIR"
+
+  echo "Build the SDK with its secret plug and demo tool"
+  (cd "$SDKDIR" && run_sdkcraft try)
+
+  echo "Store the deterministic 23-byte test value"
+  store_secret not-a-real-secret-value \
+      service secret-demo account test
+
+  echo "Launch the test workshop"
+  cd "$PROJECTDIR"
+  workshop_exec launch
+
+  echo "Check an unconnected request reports exit code 3"
+  exitcode=0
+  workshop_exec exec dev -- \
+      workshopctl get-secret secret-demo.api-key \
+      > unconnected.out || exitcode="$?"
+  [ "$exitcode" -eq 3 ]
+  MATCH 'secret plug "secret-demo.api-key" is not connected' \
+      < unconnected.out
+
+  echo "Connect the plug and check direct retrieval without printing the value"
+  workshop_exec connect \
+      dev/secret-demo:api-key dev/system:demo-key
+  workshop_exec exec dev -- \
+      sh -c 'workshopctl get-secret secret-demo.api-key | wc -c' \
+      > direct.out
+  MATCH '^[[:space:]]*23[[:space:]]*$' < direct.out
+
+  echo "Add the wrapper and its PATH hook"
+  cp "$TESTROOT/files/bin/secret-demo" "$SDKDIR/files/bin/"
+  cp "$TESTROOT/hooks/setup-base-wrapper" "$SDKDIR/hooks/setup-base"
+  chmod +x "$SDKDIR/files/bin/secret-demo" "$SDKDIR/hooks/setup-base"
+  chown -R ubuntu:ubuntu "$SDKDIR"
+  (cd "$SDKDIR" && run_sdkcraft try)
+  workshop_exec refresh
+
+  echo "Check the wrapper passes the key only to the tool"
+  workshop_exec exec dev -- sh -c \
+      'secret-demo; printf "after: %s\n" "${SECRET_DEMO_API_KEY-<unset>}"' \
+      > wrapper.out
+  MATCH 'secret-demo-tool: authenticated with a 23-character key' \
+      < wrapper.out
+  MATCH '^after: <unset>$' < wrapper.out
+
+  echo "Check the wrapper deliberately preserves get-secret stderr"
+  workshop_exec disconnect dev/secret-demo:api-key
+  exitcode=0
+  workshop_exec exec dev -- secret-demo \
+      > fallback.out || exitcode="$?"
+  [ "$exitcode" -eq 1 ]
+  MATCH 'secret plug "secret-demo.api-key" is not connected' \
+      < fallback.out
+  MATCH 'secret-demo-tool: no API key' < fallback.out
+  workshop_exec connect \
+      dev/secret-demo:api-key dev/system:demo-key
+
+  echo "Add the systemd consumer and complete setup hook"
+  cp "$TESTROOT/files/bin/secret-demo-service" "$SDKDIR/files/bin/"
+  cp "$TESTROOT/hooks/setup-base" "$SDKDIR/hooks/setup-base"
+  chmod +x \
+      "$SDKDIR/files/bin/secret-demo-service" \
+      "$SDKDIR/hooks/setup-base"
+  chown -R ubuntu:ubuntu "$SDKDIR"
+  (cd "$SDKDIR" && run_sdkcraft try)
+  workshop_exec refresh
+
+  echo "Check the service receives the credential"
+  workshop_exec exec dev -- \
+      sudo systemctl restart secret-demo.service
+  workshop_exec exec dev -- \
+      systemctl is-active secret-demo.service \
+      > service.out
+  MATCH '^active$' < service.out
+  workshop_exec exec dev -- \
+      sudo journalctl --no-pager -u secret-demo.service \
+      > journal.out
+  MATCH 'secret-demo-service: started with a 23-byte key' < journal.out
+
+  echo "Check secret requests appear in recent changes"
+  workshop_exec changes > changes.out
+  MATCH 'Retrieve secret "dev/secret-demo:api-key"' < changes.out

@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+cat >/etc/profile.d/secret-demo.sh <<PROFILE
+export PATH="${SDK}/bin:\$PATH"
+PROFILE

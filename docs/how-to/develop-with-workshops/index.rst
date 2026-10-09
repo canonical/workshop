@@ -38,4 +38,5 @@ and other development workflows:
    Manage Python environments <manage-python-environments>
    Run GitHub Actions locally <run-github-actions-locally>
    Run workshops in GitHub Actions <run-workshops-in-github-actions>
+   Use secrets in a workshop <provide-secrets>
    Use workshops with Git <use-git>

@@ -1,0 +1,22 @@
+#!/usr/bin/bash
+cat >/etc/profile.d/secret-demo.sh <<PROFILE
+export PATH="${SDK}/bin:\$PATH"
+PROFILE
+
+cat >/etc/systemd/system/secret-demo.service <<UNIT
+[Unit]
+Description=Secret demo service
+
+[Service]
+User=workshop
+LoadCredential=secret-demo.api-key:${SDK_SYSTEMD_SECRET_SOCKET}
+ExecStart=${SDK}/bin/secret-demo-service
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now secret-demo.service

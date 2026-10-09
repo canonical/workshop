@@ -19,8 +19,14 @@ in an SDK definition,
 so that an SDK can consume capabilities from other SDKs
 or expose its own to them.
 The examples cover the :samp:`mount` and :samp:`tunnel` interfaces;
-plugs and slots for the other supported interfaces
-follow the same shape.
+these are the interfaces for which a regular SDK
+can declare both plugs and slots.
+Other interfaces have their own ownership rules.
+For example,
+a regular SDK can declare a :samp:`secret` plug,
+but only the :samp:`system` SDK can provide its slot.
+To receive a credential through that plug,
+see :ref:`how_use_secrets`.
 
 
 Prerequisites
@@ -128,7 +134,7 @@ or through a :samp:`connections:` entry in the workshop definition,
 and only when that plug's endpoint
 is a loopback address or a Unix domain socket.
 Other pairings have to be connected manually
-with :command:`workshop connect`.
+with :command:`workshop connect`.
 The endpoint syntax accepts shorthand forms,
 including bare port numbers and unix socket paths.
 See :ref:`ref_tunnel_interface` for the full grammar.
