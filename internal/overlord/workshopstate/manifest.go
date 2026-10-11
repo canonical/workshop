@@ -142,6 +142,9 @@ func (w *WorkshopManager) RemoveManifests(ctx context.Context, projectId string,
 	running = make(map[string]bool, len(names))
 	for _, name := range names {
 		wp, err := w.backend.Workshop(ctx, name)
+		if errors.Is(err, workshop.ErrWorkshopNotLaunched) {
+			err = errAlreadyRemoved{}
+		}
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("cannot remove %q: %w", name, err)
 		}
@@ -169,6 +172,16 @@ func (w *WorkshopManager) RemoveManifests(ctx context.Context, projectId string,
 	}
 
 	return stashed, current, running, nil
+}
+
+type errAlreadyRemoved struct{}
+
+func (errAlreadyRemoved) Error() string {
+	return "workshop already removed"
+}
+
+func (errAlreadyRemoved) Unwrap() error {
+	return workshop.ErrWorkshopNotLaunched
 }
 
 func (w *WorkshopManager) maybeDiscardWaitingRefresh(projectId string, file *workshop.File) (*Manifest, error) {
