@@ -309,12 +309,43 @@ func (iface *mountInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo)
 }
 
 // MaintainConnection implements [interfaces.Interface]. It keeps the
-// connection regardless of changes to the plug or slot definition.
+// connection while every definition attribute on the plug and slot is
+// unchanged. A system mount slot carries no attributes.
 func (iface *mountInterface) MaintainConnection(
-	_ *sdk.PlugInfo, _ map[string]any,
-	_ *sdk.SlotInfo, _ map[string]any,
+	plug *sdk.PlugInfo, oldPlugAttrs map[string]any,
+	slot *sdk.SlotInfo, oldSlotAttrs map[string]any,
 ) bool {
+	return mountAttrsEqual(oldPlugAttrs, plug.Attrs, knownPlugAttributes) &&
+		mountAttrsEqual(oldSlotAttrs, slot.Attrs, knownSlotAttributes)
+}
+
+// mountAttrsEqual reports whether the two attribute maps agree on all keys.
+func mountAttrsEqual(oldAttrs, newAttrs map[string]any, keys []string) bool {
+	for _, key := range keys {
+		if !attributeEqual(oldAttrs[key], newAttrs[key]) {
+			return false
+		}
+	}
 	return true
+}
+
+// attributeEqual reports whether two normalised attribute values are equal.
+func attributeEqual(oldValue, newValue any) bool {
+	switch old := oldValue.(type) {
+	case nil:
+		return newValue == nil
+	case string:
+		new, ok := newValue.(string)
+		return ok && old == new
+	case bool:
+		new, ok := newValue.(bool)
+		return ok && old == new
+	case int64:
+		new, ok := newValue.(int64)
+		return ok && old == new
+	default:
+		return false
+	}
 }
 
 // Interactions with the mount backend.

@@ -86,6 +86,90 @@ func (s *mountSuite) TestInterfaces(c *check.C) {
 	c.Check(builtin.Interfaces(), testutil.DeepContains, s.iface)
 }
 
+// TestMaintainConnectionUnchanged checks that a connection is kept while every
+// definition attribute is unchanged.
+func (s *mountSuite) TestMaintainConnectionUnchanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{
+		"workshop-target": "/target",
+		"mode":            int64(0o755),
+		"uid":             int64(1000),
+		"gid":             int64(1000),
+		"read-only":       false,
+	}}
+	oldPlug := map[string]any{
+		"workshop-target": "/target",
+		"mode":            int64(0o755),
+		"uid":             int64(1000),
+		"gid":             int64(1000),
+		"read-only":       false,
+	}
+	slot := &sdk.SlotInfo{Attrs: map[string]any{"workshop-source": "/source"}}
+	oldSlot := map[string]any{"workshop-source": "/source"}
+
+	c.Check(s.iface.MaintainConnection(plug, oldPlug, slot, oldSlot),
+		check.Equals, true)
+}
+
+// TestMaintainConnectionTargetChanged checks that a changed workshop-target
+// drops the connection.
+func (s *mountSuite) TestMaintainConnectionTargetChanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{"workshop-target": "/other"}}
+	oldPlug := map[string]any{"workshop-target": "/target"}
+
+	c.Check(s.iface.MaintainConnection(plug, oldPlug, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionSourceChanged checks that a changed workshop-source
+// drops the connection.
+func (s *mountSuite) TestMaintainConnectionSourceChanged(c *check.C) {
+	slot := &sdk.SlotInfo{Attrs: map[string]any{"workshop-source": "/other"}}
+	oldSlot := map[string]any{"workshop-source": "/source"}
+
+	c.Check(s.iface.MaintainConnection(&sdk.PlugInfo{}, nil, slot, oldSlot),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionModeChanged checks that a changed mode drops the
+// connection.
+func (s *mountSuite) TestMaintainConnectionModeChanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{"mode": int64(0o700)}}
+	oldPlug := map[string]any{"mode": int64(0o755)}
+
+	c.Check(s.iface.MaintainConnection(plug, oldPlug, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionReadOnlyChanged checks that a changed read-only drops
+// the connection.
+func (s *mountSuite) TestMaintainConnectionReadOnlyChanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{"read-only": true}}
+	oldPlug := map[string]any{"read-only": false}
+
+	c.Check(s.iface.MaintainConnection(plug, oldPlug, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionAttributeRemoved checks that removing a definition
+// attribute drops the connection.
+func (s *mountSuite) TestMaintainConnectionAttributeRemoved(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{}}
+	oldPlug := map[string]any{"workshop-target": "/target"}
+
+	c.Check(s.iface.MaintainConnection(plug, oldPlug, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionSystemSlot checks that a system slot, which carries no
+// attributes, keeps a connection while the plug is unchanged.
+func (s *mountSuite) TestMaintainConnectionSystemSlot(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{"workshop-target": "/target"}}
+	oldPlug := map[string]any{"workshop-target": "/target"}
+
+	c.Check(s.iface.MaintainConnection(plug, oldPlug, &sdk.SlotInfo{}, nil),
+		check.Equals, true)
+}
+
 func (s *mountSuite) TestInstallSystemSdkSlot(c *check.C) {
 	info := sdk.MockInfo(c, `name: system
 base: ubuntu@22.04
