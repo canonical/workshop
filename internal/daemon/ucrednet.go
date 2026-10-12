@@ -15,81 +15,37 @@
 package daemon
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"net"
-	"regexp"
-	"strconv"
 	"sync"
 	"syscall"
 )
 
-var errNoID = errors.New("no pid/uid found")
-
 const (
-	// ucrednetNoProcess is -1 to avoid the case when pid=0 is returned from the kernel
-	// because the connecting process is in an unrelated process namespace.
-	ucrednetNoProcess = int32(-1)
-	ucrednetNobody    = uint32((1 << 32) - 1)
+	ucrednetNobody = uint32((1 << 32) - 1)
+
+	contextUcrednet = contextKeyUcrednet("ucrednet")
 )
 
-var raddrRegexp = regexp.MustCompile(`^pid=(\d+);uid=(\d+);socket=([^;]*);$`)
-
-func ucrednetGet(remoteAddr string) (pid int32, uid uint32, socket string, err error) {
-	// NOTE treat remoteAddr at one point included a user-controlled
-	// string. In case that happens again by accident, treat it as tainted,
-	// and be very suspicious of it.
-	pid = ucrednetNoProcess
-	uid = ucrednetNobody
-	subs := raddrRegexp.FindStringSubmatch(remoteAddr)
-	if subs != nil {
-		if v, err := strconv.ParseInt(subs[1], 10, 32); err == nil {
-			pid = int32(v)
-		}
-		if v, err := strconv.ParseUint(subs[2], 10, 32); err == nil {
-			uid = uint32(v)
-		}
-		socket = subs[3]
-	}
-	if pid == ucrednetNoProcess || uid == ucrednetNobody {
-		err = errNoID
-	}
-
-	return pid, uid, socket, err
-}
+type contextKeyUcrednet string
 
 type ucrednet struct {
-	pid    int32
-	uid    uint32
-	socket string
+	pid int32
+	uid uint32
 }
 
-func (un *ucrednet) String() string {
-	if un == nil {
-		return "pid=;uid=;socket=;"
+func ucrednetConnContext(ctx context.Context, c net.Conn) context.Context {
+	uc, ok := c.(*ucrednetConn)
+	if !ok {
+		return ctx
 	}
-	return fmt.Sprintf("pid=%d;uid=%d;socket=%s;", un.pid, un.uid, un.socket)
-}
-
-type ucrednetAddr struct {
-	net.Addr
-	*ucrednet
-}
-
-func (wa *ucrednetAddr) String() string {
-	// NOTE we drop the original (user-supplied) net.Addr from the
-	// serialization entirely. We carry it this far so it helps debugging
-	// (via %#v logging), but from here on in it's not helpful.
-	return wa.ucrednet.String()
+	return context.WithValue(ctx, contextUcrednet, uc.ucrednet)
 }
 
 type ucrednetConn struct {
 	net.Conn
-	*ucrednet
-}
-
-func (wc *ucrednetConn) RemoteAddr() net.Addr {
-	return &ucrednetAddr{wc.Conn.RemoteAddr(), wc.ucrednet}
+	ucrednet
 }
 
 type ucrednetListener struct {
@@ -107,33 +63,32 @@ func (wl *ucrednetListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	var unet *ucrednet
-	if ucon, ok := con.(*net.UnixConn); ok {
-		rawConn, err := ucon.SyscallConn()
-		if err != nil {
-			return nil, err
-		}
-		var ucred *syscall.Ucred
-		var ucredErr error
-		// Call getUcred inside a Control() block to ensure fd is valid for
-		// the duration of the call, avoiding a race condition.
-		err = rawConn.Control(func(fd uintptr) {
-			ucred, ucredErr = getUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-		})
-		if err != nil {
-			return nil, err
-		}
-		if ucredErr != nil {
-			return nil, ucredErr
-		}
-		unet = &ucrednet{
-			pid:    ucred.Pid,
-			uid:    ucred.Uid,
-			socket: ucon.LocalAddr().String(),
-		}
+	ucon, ok := con.(*net.UnixConn)
+	if !ok {
+		return nil, fmt.Errorf("internal error: cannot get peer credentials of %T", con)
+	}
+	rawConn, err := ucon.SyscallConn()
+	if err != nil {
+		return nil, err
+	}
+	var ucred *syscall.Ucred
+	var ucredErr error
+	// Call getUcred inside a Control() block to ensure fd is valid for
+	// the duration of the call, avoiding a race condition.
+	err = rawConn.Control(func(fd uintptr) {
+		ucred, ucredErr = getUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if ucredErr != nil {
+		return nil, ucredErr
 	}
 
-	return &ucrednetConn{con, unet}, nil
+	return &ucrednetConn{con, ucrednet{
+		pid: ucred.Pid,
+		uid: ucred.Uid,
+	}}, nil
 }
 
 func (wl *ucrednetListener) Close() error {

@@ -200,12 +200,12 @@ func (s *apiSuite) TestWorkshopCtlAcceptsOwnedInstanceID(c *check.C) {
 }
 
 // TestWorkshopCtlPreservesInstanceIdentity checks the ephemeral context carries
-// the project, workshop and authenticated user resolved from the instance ID.
+// the project, workshop and owning user resolved from the instance ID.
 func (s *apiSuite) TestWorkshopCtlPreservesInstanceIdentity(c *check.C) {
 	s.daemon(c)
 	s.addWorkshopWithInstanceID("instance-id")
 	wctl := apiCmd("/v1/workshopctl")
-	req, err := s.createProjectsRequest("POST", "/v1/workshopctl", nil)
+	req, err := http.NewRequest("POST", "/v1/workshopctl", nil)
 	c.Assert(err, check.IsNil)
 	req = req.WithContext(context.WithValue(
 		req.Context(),
@@ -221,8 +221,7 @@ func (s *apiSuite) TestWorkshopCtlPreservesInstanceIdentity(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(identity.Project, check.DeepEquals, s.project)
 	c.Check(identity.Workshop, check.Equals, "test-workshop")
-	c.Check(identity.User, check.Equals,
-		req.Context().Value(workshop.ContextUser))
+	c.Check(identity.User, check.Equals, s.user.Username)
 }
 
 // TestWorkshopCtlRejectsUnknownCookie checks that an invalid cookie produces

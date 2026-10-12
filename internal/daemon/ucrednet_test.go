@@ -15,6 +15,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"net"
 	"path/filepath"
@@ -46,7 +47,7 @@ func (s *ucrednetSuite) TearDownSuite(c *check.C) {
 	getUcred = sys.GetsockoptUcred
 }
 
-func (s *ucrednetSuite) TestAcceptConnRemoteAddrString(c *check.C) {
+func (s *ucrednetSuite) TestAcceptConnContext(c *check.C) {
 	s.ucred = &sys.Ucred{Pid: 100, Uid: 42}
 	d := c.MkDir()
 	sock := filepath.Join(d, "sock")
@@ -65,14 +66,12 @@ func (s *ucrednetSuite) TestAcceptConnRemoteAddrString(c *check.C) {
 
 	conn, err := wl.Accept()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
 
-	remoteAddr := conn.RemoteAddr().String()
-	c.Check(remoteAddr, check.Matches, "pid=100;uid=42;.*")
-	pid, uid, _, err := ucrednetGet(remoteAddr)
-	c.Check(pid, check.Equals, int32(100))
-	c.Check(uid, check.Equals, uint32(42))
-	c.Check(err, check.IsNil)
+	ctx := ucrednetConnContext(context.Background(), conn)
+	cred, ok := ctx.Value(contextUcrednet).(ucrednet)
+	c.Assert(ok, check.Equals, true)
+	c.Check(cred.pid, check.Equals, int32(100))
+	c.Check(cred.uid, check.Equals, uint32(42))
 }
 
 func (s *ucrednetSuite) TestNonUnix(c *check.C) {
@@ -90,16 +89,17 @@ func (s *ucrednetSuite) TestNonUnix(c *check.C) {
 		cli.Close()
 	}()
 
-	conn, err := wl.Accept()
-	c.Assert(err, check.IsNil)
+	_, err = wl.Accept()
+	c.Assert(err, check.ErrorMatches, "internal error: cannot get peer credentials of \\*net.TCPConn")
+}
+
+func (s *ucrednetSuite) TestNonUcrednetListener(c *check.C) {
+	conn, peer := net.Pipe()
+	peer.Close()
 	defer conn.Close()
 
-	remoteAddr := conn.RemoteAddr().String()
-	c.Check(remoteAddr, check.Matches, "pid=;uid=;.*")
-	pid, uid, _, err := ucrednetGet(remoteAddr)
-	c.Check(pid, check.Equals, ucrednetNoProcess)
-	c.Check(uid, check.Equals, ucrednetNobody)
-	c.Check(err, check.Equals, errNoID)
+	_, ok := ucrednetConnContext(context.Background(), conn).Value(contextUcrednet).(ucrednet)
+	c.Check(ok, check.Equals, false)
 }
 
 func (s *ucrednetSuite) TestAcceptErrors(c *check.C) {
@@ -149,56 +149,4 @@ func (s *ucrednetSuite) TestIdempotentClose(c *check.C) {
 
 	c.Assert(wl.Close(), check.IsNil)
 	c.Assert(wl.Close(), check.IsNil)
-}
-
-func (s *ucrednetSuite) TestGetNoUid(c *check.C) {
-	pid, uid, _, err := ucrednetGet("pid=100;uid=;socket=;")
-	c.Check(err, check.Equals, errNoID)
-	c.Check(pid, check.Equals, ucrednetNoProcess)
-	c.Check(uid, check.Equals, ucrednetNobody)
-}
-
-func (s *ucrednetSuite) TestGetBadUid(c *check.C) {
-	pid, uid, _, err := ucrednetGet("pid=100;uid=4294967296;socket=;")
-	c.Check(err, check.NotNil)
-	c.Check(pid, check.Equals, int32(100))
-	c.Check(uid, check.Equals, ucrednetNobody)
-}
-
-func (s *ucrednetSuite) TestGetNonUcrednet(c *check.C) {
-	pid, uid, _, err := ucrednetGet("hello")
-	c.Check(err, check.Equals, errNoID)
-	c.Check(pid, check.Equals, ucrednetNoProcess)
-	c.Check(uid, check.Equals, ucrednetNobody)
-}
-
-func (s *ucrednetSuite) TestGetNothing(c *check.C) {
-	pid, uid, _, err := ucrednetGet("")
-	c.Check(err, check.Equals, errNoID)
-	c.Check(pid, check.Equals, ucrednetNoProcess)
-	c.Check(uid, check.Equals, ucrednetNobody)
-}
-
-func (s *ucrednetSuite) TestGet(c *check.C) {
-	pid, uid, socket, err := ucrednetGet("pid=100;uid=42;socket=/run/.workshop.socket;")
-	c.Check(err, check.IsNil)
-	c.Check(pid, check.Equals, int32(100))
-	c.Check(uid, check.Equals, uint32(42))
-	c.Check(socket, check.Equals, "/run/.workshop.socket")
-}
-
-func (s *ucrednetSuite) TestGetSneak(c *check.C) {
-	pid, uid, socket, err := ucrednetGet("pid=100;uid=42;socket=/run/.workshop.socket;pid=0;uid=0;socket=/tmp/my.socket")
-	c.Check(err, check.Equals, errNoID)
-	c.Check(pid, check.Equals, ucrednetNoProcess)
-	c.Check(uid, check.Equals, ucrednetNobody)
-	c.Check(socket, check.Equals, "")
-}
-
-func (s *ucrednetSuite) TestGetWithZeroPid(c *check.C) {
-	pid, uid, socket, err := ucrednetGet("pid=0;uid=42;socket=/run/.workshop.socket;")
-	c.Check(err, check.IsNil)
-	c.Check(pid, check.Equals, int32(0))
-	c.Check(uid, check.Equals, uint32(42))
-	c.Check(socket, check.Equals, "/run/.workshop.socket")
 }

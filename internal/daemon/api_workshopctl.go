@@ -136,9 +136,8 @@ func workshopctlHookContextFromContextID(
 	return hookContext, nil
 }
 
-// workshopctlHookContextFromInstanceID validates that the requesting user owns
-// the workshop instance identified by the request context, then creates a
-// taskless context for this individual workshopctl invocation.
+// workshopctlHookContextFromInstanceID creates a taskless context for the
+// workshop instance identified by the request context.
 func workshopctlHookContextFromInstanceID(
 	c *Command,
 	r *http.Request,
@@ -164,10 +163,9 @@ func workshopctlHookContextFromInstanceID(
 		logger.Noticef("cannot create workshop context: %v", err)
 		return nil, statusInternalError("internal error occurred")
 	}
-	username, _ := r.Context().Value(workshop.ContextUser).(string)
 	hookContext.SetWorkshopIdentity(hookstate.WorkshopIdentity{
+		User:     identity.User,
 		Project:  identity.Project,
-		User:     username,
 		Workshop: identity.Workshop,
 	})
 	return hookContext, nil
