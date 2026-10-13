@@ -331,6 +331,14 @@ func mountAttrsEqual(oldAttrs, newAttrs map[string]any, keys []string) bool {
 
 // attributeEqual reports whether two normalised attribute values are equal.
 func attributeEqual(oldValue, newValue any) bool {
+	// A recorded snapshot round-trips through JSON, turning the definition's
+	// int64 attributes (mode, uid, gid) into float64. Compare numbers as
+	// float64 so the type difference is not mistaken for a value change.
+	if oldNumber, ok := attributeNumber(oldValue); ok {
+		newNumber, ok := attributeNumber(newValue)
+		return ok && oldNumber == newNumber
+	}
+
 	switch old := oldValue.(type) {
 	case nil:
 		return newValue == nil
@@ -340,11 +348,20 @@ func attributeEqual(oldValue, newValue any) bool {
 	case bool:
 		new, ok := newValue.(bool)
 		return ok && old == new
-	case int64:
-		new, ok := newValue.(int64)
-		return ok && old == new
 	default:
 		return false
+	}
+}
+
+// attributeNumber returns an int64 or float64 attribute value as a float64.
+func attributeNumber(value any) (float64, bool) {
+	switch number := value.(type) {
+	case int64:
+		return float64(number), true
+	case float64:
+		return number, true
+	default:
+		return 0, false
 	}
 }
 

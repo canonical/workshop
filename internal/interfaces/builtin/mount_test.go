@@ -87,7 +87,8 @@ func (s *mountSuite) TestInterfaces(c *check.C) {
 }
 
 // TestMaintainConnectionUnchanged checks that a connection is kept while every
-// definition attribute is unchanged.
+// definition attribute is unchanged. The recorded snapshot uses float64 for
+// the numeric attributes, because it round-trips through JSON.
 func (s *mountSuite) TestMaintainConnectionUnchanged(c *check.C) {
 	plug := &sdk.PlugInfo{Attrs: map[string]any{
 		"workshop-target": "/target",
@@ -98,9 +99,9 @@ func (s *mountSuite) TestMaintainConnectionUnchanged(c *check.C) {
 	}}
 	oldPlug := map[string]any{
 		"workshop-target": "/target",
-		"mode":            int64(0o755),
-		"uid":             int64(1000),
-		"gid":             int64(1000),
+		"mode":            float64(0o755),
+		"uid":             float64(1000),
+		"gid":             float64(1000),
 		"read-only":       false,
 	}
 	slot := &sdk.SlotInfo{Attrs: map[string]any{"workshop-source": "/source"}}
