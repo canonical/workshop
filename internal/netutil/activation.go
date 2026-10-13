@@ -20,35 +20,50 @@
 package netutil
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"runtime"
-	unix "syscall"
 
 	"github.com/coreos/go-systemd/activation"
+	"github.com/mdlayher/vsock"
+	"golang.org/x/sys/unix"
 
 	"github.com/canonical/workshop/internal/logger"
 )
 
+var activationFiles = activation.Files
+
+// Addr uniquely identifies a listener address.
+type Addr struct {
+	Network string
+	Address string
+}
+
+func newAddr(addr net.Addr) Addr {
+	return Addr{Network: addr.Network(), Address: addr.String()}
+}
+
 // GetListener tries to get a listener for the given socket path from
 // the listener map, and if it fails it tries to set it up directly.
-func GetListener(socketPath string, listenerMap map[string]net.Listener) (net.Listener, error) {
-	if listener, ok := listenerMap[socketPath]; ok {
+func GetListener(socketPath string, listenerMap map[Addr]net.Listener) (net.Listener, error) {
+	address, err := net.ResolveUnixAddr("unix", socketPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if listener, ok := listenerMap[newAddr(address)]; ok {
 		return listener, nil
 	}
 
-	if c, err := net.Dial("unix", socketPath); err == nil {
+	c, err := net.DialUnix("unix", nil, address)
+	if err == nil {
 		c.Close()
 		return nil, fmt.Errorf("socket %q already in use", socketPath)
 	}
 
 	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	address, err := net.ResolveUnixAddr("unix", socketPath)
-	if err != nil {
 		return nil, err
 	}
 
@@ -66,25 +81,53 @@ func GetListener(socketPath string, listenerMap map[string]net.Listener) (net.Li
 	return listener, nil
 }
 
+// GetVsockListener tries to get a listener for the given vsock address from
+// the listener map, and if it fails it tries to set it up directly.
+func GetVsockListener(contextID, port uint32, listenerMap map[Addr]net.Listener) (net.Listener, error) {
+	addr := &vsock.Addr{ContextID: contextID, Port: port}
+	if listener, ok := listenerMap[newAddr(addr)]; ok {
+		return listener, nil
+	}
+
+	listener, err := vsock.ListenContextID(contextID, port, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf("socket %q was not activated; listening", addr)
+
+	return listener, nil
+}
+
 // ActivationListeners builds a map of addresses to listeners that were passed
 // during systemd activation
-func ActivationListeners() (lns map[string]net.Listener, err error) {
+func ActivationListeners() (lns map[Addr]net.Listener, err error) {
 	// pass false to keep LISTEN_* environment variables passed by systemd
-	files := activation.Files(false)
+	files := activationFiles(false)
 	defer func() {
 		for _, f := range files {
 			f.Close()
 		}
 	}()
 
-	lns = make(map[string]net.Listener, len(files))
+	lns = make(map[Addr]net.Listener, len(files))
 	for _, f := range files {
-		ln, err := net.FileListener(f)
+		ln, err := fileListener(f)
 		if err != nil {
 			return nil, err
 		}
-		addr := ln.Addr().String()
+		addr := newAddr(ln.Addr())
 		lns[addr] = ln
 	}
 	return lns, nil
+}
+
+// fileListener wraps net.FileListener with support for vsock.
+func fileListener(f *os.File) (net.Listener, error) {
+	ln, err := net.FileListener(f)
+	if !errors.Is(err, unix.EAFNOSUPPORT) {
+		return ln, err
+	}
+
+	return vsock.FileListener(f)
 }
