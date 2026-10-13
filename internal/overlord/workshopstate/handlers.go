@@ -79,7 +79,7 @@ func (m *WorkshopManager) doConstructWorkshop(task *state.Task, tomb *tomb.Tomb)
 	defer cancel()
 
 	st.Lock()
-	wf, err := WorkshopFile(task, w)
+	wf, err := WorkshopFile(task.Change(), w, NewWorkshop)
 	st.Unlock()
 	if err != nil {
 		return err

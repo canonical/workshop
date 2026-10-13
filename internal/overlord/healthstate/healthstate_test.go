@@ -251,11 +251,11 @@ func (s *healthSuite) TestWorkshopHealthOperationInProgress(c *check.C) {
 
 	chg := s.state.NewChange("launch", "test")
 	chg.Set("project-id", s.project.ProjectId)
+	chg.Set("ws_new_file", "name: ws\nbase: ubuntu@24.04\n")
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	task := s.state.NewTask("create-workshop", "test task")
-	task.Set("workshop-file", "name: ws\nbase: ubuntu@24.04\n")
 	setWorkshopProject("ws", s.project, task)
 	chg.AddTask(task)
 
@@ -279,12 +279,12 @@ func (s *healthSuite) TestWorkshopHealthOperationWaitingWithNotes(c *check.C) {
 
 	chg := s.state.NewChange("refresh", "test")
 	chg.Set("project-id", s.project.ProjectId)
+	chg.Set("ws_new_file", "name: ws\nbase: ubuntu@24.04\n")
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.SetStatus(state.WaitStatus)
 	task := s.state.NewTask("create-workshop", "test task")
-	task.Set("workshop-file", "name: ws\nbase: ubuntu@24.04\n")
 	setWorkshopProject("ws", s.project, task)
 	chg.AddTask(task)
 
@@ -349,12 +349,12 @@ func (s *healthSuite) TestCheckStatusPending(c *check.C) {
 
 	chg := s.state.NewChange("refresh", "test")
 	chg.Set("project-id", s.project.ProjectId)
+	chg.Set("ws_new_file", "name: ws\nbase: ubuntu@24.04\n")
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.SetStatus(state.DoingStatus)
 	task := s.state.NewTask("create-workshop", "test task")
-	task.Set("workshop-file", "name: ws\nbase: ubuntu@24.04\n")
 	setWorkshopProject("ws", s.project, task)
 	chg.AddTask(task)
 
@@ -383,12 +383,12 @@ func (s *healthSuite) TestCheckStatusWaiting(c *check.C) {
 
 	chg := s.state.NewChange("refresh", "test")
 	chg.Set("project-id", s.project.ProjectId)
+	chg.Set("ws_new_file", "name: ws\nbase: ubuntu@24.04\n")
 	chg.Set("ws_new_format", sdk.R(1))
 	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@24.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{})
 	chg.SetStatus(state.WaitStatus)
 	task := s.state.NewTask("create-workshop", "test task")
-	task.Set("workshop-file", "name: ws\nbase: ubuntu@24.04\n")
 	setWorkshopProject("ws", s.project, task)
 	chg.AddTask(task)
 
