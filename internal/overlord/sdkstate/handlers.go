@@ -121,7 +121,7 @@ func (m *SdkManager) doRetrieveSdk(task *state.Task, tomb *tomb.Tomb) error {
 	if err != nil {
 		return err
 	}
-	if err := workshop.ValidateSdkInfo(project.ProjectId, w, base.Name, rec.Name, sdkYaml); err != nil {
+	if err := workshop.ValidateSdkInfo(project.ProjectId, w, base.Name, rec.Name, []byte(sdkYaml)); err != nil {
 		return err
 	}
 	meta := sdk.Meta{Setup: rec, SdkYAML: sdkYaml}

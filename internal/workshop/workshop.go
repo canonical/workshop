@@ -111,10 +111,14 @@ func (w *Workshop) metaFromFile(ctx context.Context, setup sdk.Setup) (string, e
 	return string(meta), err
 }
 
-func ValidateSdkInfo(pid, w, base, sk, sdkYaml string) error {
-	info, err := sdk.ReadSdkInfo([]byte(sdkYaml), pid, w)
+func ValidateSdkInfo(pid, w, base, sk string, sdkYaml []byte) error {
+	info, err := sdk.ReadSdkInfo(sdkYaml, pid, w)
 	if err != nil {
-		return fmt.Errorf("invalid %q SDK definition: %w", sk, err)
+		return fmt.Errorf("invalid %q SDK: %w", sk, err)
+	}
+
+	if len(info.BadInterfaces) > 0 {
+		return fmt.Errorf("%s", sdk.BadInterfacesSummary(info))
 	}
 
 	if info.Name != sk {

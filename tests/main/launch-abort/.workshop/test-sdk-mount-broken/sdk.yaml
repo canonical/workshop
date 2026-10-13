@@ -8,4 +8,8 @@ sdkcraft-started-at: "2025-04-03T02:01:00.123456+00:00"
 slots:
   one:
     interface: mount
-    host-source: /root
+    workshop-source: /doesnt/exist
+plugs:
+  two:
+    interface: mount
+    workshop-target: /mnt

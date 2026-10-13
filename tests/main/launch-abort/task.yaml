@@ -27,4 +27,4 @@ execute: |
   cp workshop.setup-fail.yaml workshop.yaml
 
   workshop_exec launch --abort
-  workshop_exec tasks | tail -2 | MATCH '.*"test-sdk-mount-broken" SDK has bad plugs or slots: one \(unknown attribute for mount interface slot: "host-source"\)'
+  workshop_exec tasks | tail -2 | MATCH '.*stat /doesnt/exist: file does not exist'
