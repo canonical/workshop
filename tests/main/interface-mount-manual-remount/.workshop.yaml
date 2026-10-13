@@ -1,0 +1,9 @@
+name: ws-mount-remount
+base: ubuntu@22.04
+sdks:
+  - name: test-sdk-mount
+    channel: stable
+    plugs:
+      data:
+        interface: mount
+        workshop-target: /mnt/data
