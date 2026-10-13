@@ -43,6 +43,11 @@ type TestInterface struct {
 	// BeforePrepareSlotCallback is the callback invoked inside BeforePrepareSlot()
 	BeforePrepareSlotCallback func(slot *sdk.SlotInfo) error
 
+	// CheckCompatiblePlugCallback is the callback invoked inside CheckCompatiblePlug()
+	CheckCompatiblePlugCallback func(plug *sdk.PlugInfo, runtime workshop.Runtime) error
+	// CheckCompatibleSlotCallback is the callback invoked inside CheckCompatibleSlot()
+	CheckCompatibleSlotCallback func(slot *sdk.SlotInfo, runtime workshop.Runtime) error
+
 	BeforeConnectPlugCallback func(plug *interfaces.ConnectedPlug) error
 	BeforeConnectSlotCallback func(slot *interfaces.ConnectedSlot) error
 
@@ -85,6 +90,22 @@ func (t *TestInterface) BeforePreparePlug(plug *sdk.PlugInfo) error {
 func (t *TestInterface) BeforePrepareSlot(slot *sdk.SlotInfo) error {
 	if t.BeforePrepareSlotCallback != nil {
 		return t.BeforePrepareSlotCallback(slot)
+	}
+	return nil
+}
+
+// CheckCompatiblePlug checks if a plug is compatible with a workshop runtime.
+func (t *TestInterface) CheckCompatiblePlug(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+	if t.CheckCompatiblePlugCallback != nil {
+		return t.CheckCompatiblePlugCallback(plug, runtime)
+	}
+	return nil
+}
+
+// CheckCompatibleSlot checks if a slot is compatible with a workshop runtime.
+func (t *TestInterface) CheckCompatibleSlot(slot *sdk.SlotInfo, runtime workshop.Runtime) error {
+	if t.CheckCompatibleSlotCallback != nil {
+		return t.CheckCompatibleSlotCallback(slot, runtime)
 	}
 	return nil
 }

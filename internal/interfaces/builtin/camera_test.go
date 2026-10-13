@@ -92,3 +92,19 @@ slots:
 	expectedDevice := &workshop.Camera{Name: "camera"}
 	c.Assert(deviceSpec.Profile.Camera, check.DeepEquals, expectedDevice)
 }
+
+func (s *cameraSuite) TestCameraInterfaceRequiresContainer(c *check.C) {
+	yaml := `name: consumer
+base: ubuntu@22.04
+plugs:
+ camera:
+  interface: camera
+`
+	info, warning := checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDContainer)
+	c.Check(info.Plugs["camera"], check.NotNil)
+	c.Check(warning, check.IsNil)
+
+	info, warning = checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDVM)
+	c.Check(info.Plugs["camera"], check.IsNil)
+	c.Check(warning, check.ErrorMatches, `"consumer" SDK has incompatible plugs: camera \(camera interface only available to containers\)`)
+}

@@ -15,6 +15,7 @@
 package sdk
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -36,23 +37,12 @@ var (
 	validPlugSlotIface = regexp.MustCompile("^[a-z](?:-?[a-z0-9])*$")
 )
 
-// Validate checks whether sdk contains a valid SDK definition.
+// Validate does some basic plug and slot validation. Useful for tests that
+// can't or don't pull in builtin.Sanitize.
 func Validate(sdk *Info) error {
-	if err := ValidateName(sdk.Name); err != nil {
-		return err
-	}
-
-	if sdk.Base != "" && !slices.Contains(AllowedBases, sdk.Base) {
-		return fmt.Errorf("invalid SDK base %q; valid bases: %s", sdk.Base, strings.Join(AllowedBases, ", "))
-	}
-	if !slices.Contains([]string{"", "all"}, sdk.Arch) && !slices.Contains(arch.AllowedArchitectures, sdk.Arch) {
-		arches := strings.Join(arch.AllowedArchitectures, ", ")
-		return fmt.Errorf("invalid SDK architecture %q; supported architectures: %s", sdk.Arch, arches)
-	}
-
 	for plugName, plug := range sdk.Plugs {
 		if err := ValidatePlugName(plugName); err != nil {
-			return err
+			return fmt.Errorf("%w: %q", err, plugName)
 		}
 		if err := ValidateInterfaceName(plug.Interface); err != nil {
 			return fmt.Errorf("invalid interface name %q for plug %q", plug.Interface, plugName)
@@ -60,7 +50,7 @@ func Validate(sdk *Info) error {
 	}
 	for slotName, slot := range sdk.Slots {
 		if err := ValidateSlotName(slotName); err != nil {
-			return err
+			return fmt.Errorf("%w: %q", err, slotName)
 		}
 		if err := ValidateInterfaceName(slot.Interface); err != nil {
 			return fmt.Errorf("invalid interface name %q for slot %q", slot.Interface, slotName)
@@ -83,12 +73,27 @@ func ValidateName(name string) error {
 	return nil
 }
 
+func ValidateBase(base string) error {
+	if base != "" && !slices.Contains(AllowedBases, base) {
+		return fmt.Errorf("invalid SDK base %q; valid bases: %s", base, strings.Join(AllowedBases, ", "))
+	}
+	return nil
+}
+
+func ValidateArch(architecture string) error {
+	if !slices.Contains([]string{"", "all"}, architecture) && !slices.Contains(arch.AllowedArchitectures, architecture) {
+		arches := strings.Join(arch.AllowedArchitectures, ", ")
+		return fmt.Errorf("invalid SDK architecture %q; supported architectures: %s", architecture, arches)
+	}
+	return nil
+}
+
 // ValidatePlug checks if a string can be used as a slot name.
 //
 // Slot names and plug names within one sdk must have unique names.
 func ValidatePlugName(name string) error {
 	if !validPlugSlotIface.MatchString(name) {
-		return fmt.Errorf("invalid plug name: %q", name)
+		return errors.New("invalid plug name")
 	}
 	return nil
 }
@@ -98,7 +103,7 @@ func ValidatePlugName(name string) error {
 // Slot names and plug names within one sdk must have unique names.
 func ValidateSlotName(name string) error {
 	if !validPlugSlotIface.MatchString(name) {
-		return fmt.Errorf("invalid slot name: %q", name)
+		return errors.New("invalid slot name")
 	}
 	return nil
 }

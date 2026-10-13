@@ -329,3 +329,19 @@ slots:
 
 	c.Assert(deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot), check.ErrorMatches, "desktop interface requires local X server")
 }
+
+func (s *desktopSuite) TestDesktopInterfaceRequiresContainer(c *check.C) {
+	yaml := `name: consumer
+base: ubuntu@22.04
+plugs:
+ desktop:
+  interface: desktop
+`
+	info, warning := checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDContainer)
+	c.Check(info.Plugs["desktop"], check.NotNil)
+	c.Check(warning, check.IsNil)
+
+	info, warning = checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDVM)
+	c.Check(info.Plugs["desktop"], check.IsNil)
+	c.Check(warning, check.ErrorMatches, `"consumer" SDK has incompatible plugs: desktop \(desktop interface only available to containers\)`)
+}

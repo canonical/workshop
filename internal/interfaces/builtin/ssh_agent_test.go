@@ -103,3 +103,19 @@ slots:
 	}}
 	c.Assert(deviceSpec.Profile.Agent, check.DeepEquals, expectedProxy)
 }
+
+func (s *sshAgentSuite) TestSshAgentInterfaceRequiresContainer(c *check.C) {
+	yaml := `name: consumer
+base: ubuntu@22.04
+plugs:
+  ssh-agent:
+    interface: ssh-agent
+`
+	info, warning := checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDContainer)
+	c.Check(info.Plugs["ssh-agent"], check.NotNil)
+	c.Check(warning, check.IsNil)
+
+	info, warning = checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDVM)
+	c.Check(info.Plugs["ssh-agent"], check.IsNil)
+	c.Check(warning, check.ErrorMatches, `"consumer" SDK has incompatible plugs: ssh-agent \(ssh-agent interface only available to containers\)`)
+}

@@ -1286,3 +1286,26 @@ plugs:
 	c.Check(iface.AutoConnect(info.Plugs["wildcard4"], nil), check.Equals, false)
 	c.Check(iface.AutoConnect(info.Plugs["wildcard6"], nil), check.Equals, false)
 }
+
+func (s *tunnelSuite) TestTunnelInterfaceRequiresContainer(c *check.C) {
+	yaml := `name: consumer
+base: ubuntu@22.04
+plugs:
+  tunnel-plug:
+    interface: tunnel
+    endpoint: 1.1.1.1:8080/tcp
+slots:
+  tunnel-slot:
+    interface: tunnel
+    endpoint: '[::]:4567'
+`
+	info, warning := checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDContainer)
+	c.Check(info.Plugs["tunnel-plug"], check.NotNil)
+	c.Check(info.Slots["tunnel-slot"], check.NotNil)
+	c.Check(warning, check.IsNil)
+
+	info, warning = checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDVM)
+	c.Check(info.Plugs["tunnel-plug"], check.IsNil)
+	c.Check(info.Slots["tunnel-slot"], check.IsNil)
+	c.Check(warning, check.ErrorMatches, `"consumer" SDK has incompatible plugs: tunnel-plug \(tunnel interface only available to containers\); and slots: tunnel-slot \(tunnel interface only available to containers\)`)
+}

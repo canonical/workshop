@@ -32,6 +32,7 @@ import (
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/interfaces"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/overlord"
@@ -115,6 +116,16 @@ plugs:
 slots:
   slot:
     interface: ssh-agent
+`[1:]
+
+	sdkYamlIncompatibleInterfaces = `
+name: test
+plugs:
+  plug:
+    interface: vm-only
+slots:
+  slot:
+    interface: vm-only
 `[1:]
 
 	workshopYaml = `
@@ -250,7 +261,7 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	newSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -293,7 +304,7 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	c.Check(props.Sdks["test"].Setup, check.DeepEquals, newSdk.Setup)
 	c.Check(props.Sdks["test"].InstalledAt, check.Equals, s.installedAt)
 
-	sdkInfo, err := props.SdkInfo(s.ctx, "test")
+	sdkInfo, err := props.SdkInfo(s.ctx, "test", builtin.Sanitize)
 	c.Assert(err, check.IsNil)
 	c.Assert(sdkInfo.Plugs, check.HasLen, 2)
 	c.Assert(sdkInfo.Slots, check.HasLen, 0)
@@ -307,7 +318,7 @@ func (s *sdkStateSuite) TestDoInstallSdkFailedPolicyCheck(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	testSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -389,18 +400,69 @@ func (s *sdkStateSuite) TestDoInstallSdkBadInterfacesFound(c *check.C) {
 	}
 	s.state.Lock()
 
-	c.Assert(chg.Err(), check.ErrorMatches, `(?s).*"test" SDK has bad plugs or slots: plug, plug2 \(unknown interface "test-interface"\).*`)
+	c.Assert(chg.Err(), check.ErrorMatches, `(?s).*"test" SDK has bad plugs: plug, plug2 \(unknown interface "test-interface"\).*`)
 
 	c.Assert(s.repo.Plugs(s.project.ProjectId, "ws", "test"), check.HasLen, 0)
 	c.Assert(s.repo.Plug(s.project.ProjectId, "ws", "test", "plug"), check.IsNil)
 	c.Assert(s.repo.Plug(s.project.ProjectId, "ws", "test", "plug2"), check.IsNil)
 }
 
+func (s *sdkStateSuite) TestDoInstallSdkIncompatibleInterfacesFound(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	defer builtin.MockInterface(&ifacetest.TestInterface{
+		InterfaceName: "vm-only",
+		CheckCompatiblePlugCallback: func(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+			return errors.New("requires a VM")
+		},
+		CheckCompatibleSlotCallback: func(slot *sdk.SlotInfo, runtime workshop.Runtime) error {
+			return errors.New("requires a VM")
+		},
+	})()
+
+	newSdk := sdk.Meta{
+		Setup: sdk.Setup{
+			Name:      "test",
+			PackageID: "a9J51jhjzpckN8VxhqoZ8dNKcZ7pOrBb",
+			Channel:   "latest/stable",
+			Revision:  sdk.R(1),
+			Sha3_384:  "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd",
+		},
+		SdkYAML: sdkYamlIncompatibleInterfaces,
+	}
+	s.mockSdk(c, newSdk)
+	t := s.state.NewTask("install-sdk", "test")
+	t.Set("sdk", newSdk.Name)
+
+	chg := s.state.NewChange("sample", "...")
+	setWorkshopProject("ws", s.project, t)
+
+	chg.Set("user", "testuser")
+	chg.Set("ws_new_sdks", []sdk.Setup{newSdk.Setup})
+	chg.AddTask(t)
+
+	s.state.Unlock()
+	c.Check(s.se.Ensure(), check.IsNil)
+	s.se.Wait()
+	s.state.Lock()
+
+	c.Check(chg.Err(), check.IsNil)
+	c.Check(chg.Status(), check.Equals, state.DoneStatus)
+
+	log := t.Log()
+	c.Assert(log, check.HasLen, 1)
+	c.Check(log[0], check.Matches, `.* "test" SDK has incompatible plugs: plug \(requires a VM\); and slots: slot \(requires a VM\)`)
+
+	c.Check(s.repo.Plugs(s.project.ProjectId, "ws", "test"), check.HasLen, 0)
+	c.Check(s.repo.Slots(s.project.ProjectId, "ws", "test"), check.HasLen, 0)
+}
+
 func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	newSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -818,7 +880,7 @@ func (s *sdkStateSuite) TestSDKVolumeRemovedAfterCooldownOK(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestSDKVolumeRemovedAfterFailedLaunch(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	newSdk := sdk.Meta{
@@ -862,7 +924,7 @@ func (s *sdkStateSuite) TestSDKVolumeRemovedAfterFailedLaunch(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestSDKVolumeExitCleanupAfterSuccessfulLaunch(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	newSdk := sdk.Meta{
@@ -944,7 +1006,7 @@ func (s *sdkStateSuite) TestSDKVolumeNotRemovedBeforeCooldown(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestTaskSDKVolumeExitCleanupIfUsedAgain(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	oldSdk := sdk.Meta{
@@ -995,8 +1057,6 @@ func (s *sdkStateSuite) TestTaskSDKVolumeExitCleanupIfUsedAgain(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestTaskSDKVolumeRetriesCleanupIfBlockingChangesArePresent(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
-
 	s.state.Lock()
 	oldSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -1125,7 +1185,7 @@ func (s *sdkStateSuite) TestSDKVolumeCleanupPerformedByLatestUser(c *check.C) {
 // Check that uninstall-sdk blocks cleanup for the cooldown period, even if
 // the clenanup handler for another Task runs immediately afterwards.
 func (s *sdkStateSuite) TestSDKVolumeCleanupBlockedBeforeUninstall(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	oldSdk := sdk.Meta{

@@ -513,7 +513,6 @@ func (s *interfaceHandlersSuite) TestAutoconnectBoundPlugSkipped(c *check.C) {
 	// Simulate SanitizePlugsSlots, keeping "plug" but skipping "bound".
 	info := sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")
 	delete(info.Plugs, "bound")
-	info.BadInterfaces["bound"] = `unknown interface "mock-network"`
 	c.Assert(repo.AddSdk(info), check.IsNil)
 
 	// Execute

@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/interfaces"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/osutil"
@@ -94,7 +95,7 @@ func (s *interfaceManagerSuite) SetUpTest(c *check.C) {
 	s.prj = *prj
 	s.ctx = context.WithValue(s.ctx, workshop.ContextProjectId, s.prj.ProjectId)
 
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {}))
+	s.AddCleanup(builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil }))
 }
 
 func (s *interfaceManagerSuite) TearDownTest(c *check.C) {

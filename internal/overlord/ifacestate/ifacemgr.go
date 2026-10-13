@@ -218,7 +218,7 @@ func (m *InterfaceManager) ensureBackendInit() error {
 					return fmt.Errorf("cannot create internal mounts for %q workshop: %w", workshop.Name, err)
 				}
 
-				infos, err := workshop.SdkInfosByInstallOrder(pctx)
+				infos, err := workshop.SdkInfosByInstallOrder(pctx, builtin.Sanitize)
 				if err != nil {
 					return fmt.Errorf("cannot obtain the installed SDKs for %q workshop: %w", workshop.Name, err)
 				}

@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 // BeforePreparePlug sanitizes a plug with a given interface.
@@ -43,16 +44,16 @@ func BeforePreparePlug(iface Interface, plugInfo *sdk.PlugInfo) error {
 	return nil
 }
 
-func BeforeConnectPlug(iface Interface, plug *ConnectedPlug) error {
-	if iface.Name() != plug.plugInfo.Interface {
-		return fmt.Errorf("cannot sanitize connection for plug %q (interface %q) using interface %q",
-			plug.plugInfo.Ref().ShortRef(), plug.plugInfo.Interface, iface.Name())
+// CheckCompatiblePlug checks if a plug is compatible with a given workshop runtime.
+func CheckCompatiblePlug(iface Interface, plugInfo *sdk.PlugInfo, runtime workshop.Runtime) error {
+	if iface.Name() != plugInfo.Interface {
+		return fmt.Errorf("cannot check plug %q (interface %q) using interface %q",
+			plugInfo.Ref().ShortRef(), plugInfo.Interface, iface.Name())
 	}
-	var err error
-	if iface, ok := iface.(ConnPlugSanitizer); ok {
-		err = iface.BeforeConnectPlug(plug)
+	if iface, ok := iface.(PlugCompatibleChecker); ok {
+		return iface.CheckCompatiblePlug(plugInfo, runtime)
 	}
-	return err
+	return nil
 }
 
 // ByName returns an Interface for the given interface name. Note that in order for
@@ -74,6 +75,18 @@ func BeforePrepareSlot(iface Interface, slotInfo *sdk.SlotInfo) error {
 	// Slots which accept attributes should define BeforePrepareSlot.
 	for name := range slotInfo.Attrs {
 		return fmt.Errorf("unknown attribute for %s interface slot: %q", iface.Name(), name)
+	}
+	return nil
+}
+
+// CheckCompatibleSlot checks if a slot is compatible with a given workshop runtime.
+func CheckCompatibleSlot(iface Interface, slotInfo *sdk.SlotInfo, runtime workshop.Runtime) error {
+	if iface.Name() != slotInfo.Interface {
+		return fmt.Errorf("cannot check slot %q (interface %q) using interface %q",
+			slotInfo.Ref().ShortRef(), slotInfo.Interface, iface.Name())
+	}
+	if iface, ok := iface.(SlotCompatibleChecker); ok {
+		return iface.CheckCompatibleSlot(slotInfo, runtime)
 	}
 	return nil
 }
@@ -166,20 +179,24 @@ type Interface interface {
 	AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool
 }
 
-// ConnPlugSanitizer can be implemented by Interfaces that have reasons to sanitize
-// their plugs specifically before a connection is performed.
-type ConnPlugSanitizer interface {
-	BeforeConnectPlug(plug *ConnectedPlug) error
-}
-
 // PlugSanitizer can be implemented by Interfaces that have reasons to sanitize their plugs.
 type PlugSanitizer interface {
 	BeforePreparePlug(plug *sdk.PlugInfo) error
 }
 
+// PlugCompatibleChecker can be implemented by Interfaces that aren't compatible with every runtime.
+type PlugCompatibleChecker interface {
+	CheckCompatiblePlug(plug *sdk.PlugInfo, runtime workshop.Runtime) error
+}
+
 // SlotSanitizer can be implemented by Interfaces that have reasons to sanitize their slots.
 type SlotSanitizer interface {
 	BeforePrepareSlot(slot *sdk.SlotInfo) error
+}
+
+// SlotCompatibleChecker can be implemented by Interfaces that aren't compatible with every runtime.
+type SlotCompatibleChecker interface {
+	CheckCompatibleSlot(slot *sdk.SlotInfo, runtime workshop.Runtime) error
 }
 
 // StaticInfo describes various static-info of a given interface.
