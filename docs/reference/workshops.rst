@@ -257,6 +257,67 @@ In particular, this includes interface-based SSH or desktop sessions,
 which are also limited to the default workshop user.
 
 
+.. _ref_workshop_interfaces_in_vms:
+
+Interfaces in virtual machines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Interface connections in virtual machine workshops are modeled on physical devices.
+For example, the :samp:`mount` interface creates a separate PCIe device for each host-workshop connection.
+
+The number of virtual PCIe devices,
+and in turn the number of :samp:`mount` connections,
+is limited.
+By default, |ws_markup| allocates 8 PCIe ports for the :samp:`system` SDK.
+Some of these ports are occupied by the :file:`/project/` mount, the network interface card, and other default devices.
+
+Each additional SDK (except for :samp:`sketch`) increases the budget by 4 ports,
+at the cost of slowing down :command:`workshop start`.
+The maximum number of ports is 192,
+which corresponds to 46 SDKs.
+
+These ports are shared between all SDKs,
+so the limit can be hit by a single SDK with many :samp:`mount` plugs
+or a very long list of SDKs.
+Exceeding the budget can lead to errors like the following:
+
+.. code-block:: console
+
+   $ workshop connect dev/go:mod-cache
+
+   error: cannot perform the following tasks:
+   - Connect "dev/go:mod-cache" to "dev/system:mount" (The following instances failed updating (profile change still saved):
+    - Project: workshop.user, Instance: dev-cc2b326b: Failed starting device "go_mod-cache": No unused PCIe ports available for hotplugging
+   )
+
+   $ workshop start
+
+   error: cannot perform the following tasks:
+   - Start "dev" workshop (Failed setting up disk device "go_mod-cache": Failed allocating bus for virtiofs disk device: PCI devices limit reached: used 12 of 12 slots; increase limits.max_bus_ports to allow more devices)
+
+
+Each mount also consumes about 4 interrupt vectors.
+To avoid running out,
+|ws_markup| allocates an additional processor for every 8 SDKs
+(technically, for every 32 PCIe ports).
+
+The PCIe port limit ensures that :samp:`mount` devices
+consume at most 128 interrupt vectors per processor,
+so workshops should never run out of interrupt vectors.
+However, the host may not have enough cores
+to run a workshop with this many processors.
+This can cause errors like the following:
+
+.. code-block:: console
+
+   $ workshop start
+
+   error: cannot perform the following tasks:
+   - Start "dev" workshop (Failed adding CPUs: Cannot allocate more CPUs than available)
+
+
+
+
 See also
 --------
 
