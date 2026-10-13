@@ -201,10 +201,10 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 	err = fs.WriteFile("/etc/config-file", nil, 0644)
 	c.Assert(err, check.IsNil)
 
-	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
+	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
-	pinfo, err := sdk.ReadSdkInfo(producer, f.pid, "test")
+	pinfo, err := sdk.ReadSdkInfo(producer, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
 	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
@@ -327,10 +327,10 @@ func (f *backendDeviceSuite) TestSetupWorkshopMounts(c *check.C) {
 func (f *backendDeviceSuite) TestSetupHostWorkshopMounts(c *check.C) {
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
-	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
+	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
-	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test")
+	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
 	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
@@ -371,10 +371,10 @@ func (f *backendDeviceSuite) TestSetupHostWorkshopMounts(c *check.C) {
 func (f *backendDeviceSuite) TestSetupUpdateProfile(c *check.C) {
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
-	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
+	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
-	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test")
+	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
 	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
@@ -411,10 +411,10 @@ func (f *backendDeviceSuite) TestSetupSshAgent(c *check.C) {
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 	defer mockWorkshopRunDir()()
 
-	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
+	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
-	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test")
+	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
 	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)
@@ -469,10 +469,10 @@ func (f *backendDeviceSuite) TestSetupMultipleInterfaces(c *check.C) {
 	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 	defer mockWorkshopRunDir()()
 
-	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test")
+	cinfo, err := sdk.ReadSdkInfo(consumer, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
-	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test")
+	sinfo, err := sdk.ReadSdkInfo(system, f.pid, "test", nil)
 	c.Assert(err, check.IsNil)
 
 	c.Assert(f.repo.AddSdk(cinfo), check.IsNil)

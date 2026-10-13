@@ -500,6 +500,43 @@ func (s *interfaceHandlersSuite) TestAutoconnectBindMasterPlugNotFound(c *check.
 	c.Check(err, check.IsNil)
 }
 
+func (s *interfaceHandlersSuite) TestAutoconnectBoundPlugSkipped(c *check.C) {
+	// Setup
+	// Create an already installed workshop with a candidate SDK/slot
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	wp := s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs})
+	wp.File.Sdks[0].Plugs = make(map[string]workshop.PlugOrBind)
+	wp.File.Sdks[0].Plugs["bound"] = workshop.PlugOrBind{Bind: &workshop.PlugRef{Sdk: "consumer", Name: "plug"}}
+	// Simulate SanitizePlugsSlots, keeping "plug" but skipping "bound".
+	info := sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")
+	delete(info.Plugs, "bound")
+	info.BadInterfaces["bound"] = `unknown interface "mock-network"`
+	c.Assert(repo.AddSdk(info), check.IsNil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.ErrorMatches, `(?s).*invalid plug binding: plug "ws/consumer:bound" was skipped while bound to plug "ws/consumer:plug".*`)
+
+	// Validate
+	pconns, err := repo.Connections(s.prj.ProjectId, "ws", "consumer")
+	c.Check(pconns, check.HasLen, 0)
+	c.Check(err, check.IsNil)
+
+	ref, err := repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
+	c.Check(ref, check.HasLen, 0)
+	c.Check(err, check.IsNil)
+}
+
 func (s *interfaceHandlersSuite) TestAutoconnectBackendSetupFail(c *check.C) {
 	// Setup
 	// Create an already launched workshop with a candidate SDK/slot
