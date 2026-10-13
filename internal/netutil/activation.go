@@ -71,8 +71,13 @@ func GetListener(socketPath string, listenerMap map[string]net.Listener) (net.Li
 func ActivationListeners() (lns map[string]net.Listener, err error) {
 	// pass false to keep LISTEN_* environment variables passed by systemd
 	files := activation.Files(false)
-	lns = make(map[string]net.Listener, len(files))
+	defer func() {
+		for _, f := range files {
+			f.Close()
+		}
+	}()
 
+	lns = make(map[string]net.Listener, len(files))
 	for _, f := range files {
 		ln, err := net.FileListener(f)
 		if err != nil {
