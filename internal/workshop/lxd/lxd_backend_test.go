@@ -165,7 +165,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "483c74d693d45ddcfcd515cdd59195241e5a96d04d596e674ea75ec75e30d036b814f46539b8497ff6184c31baeac77c")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "70df58008b19ac66b8440235c69f29a8d704ddde2018e86ac5ce9b76c5596795fd384932e8b5b92c21173264ed56e2eb")
 }
 
 // The cloud-init user-data must install and enable the systemd socket unit

@@ -211,6 +211,20 @@ write_files:
     content: |
       w /sys/kernel/mm/transparent_hugepage/shmem_enabled - - - - advise
 {{- end}}
+{{- if ne .FsFreezePath ""}}
+  - path: /etc/systemd/system/workshop-growpart.service
+    content: |
+      [Unit]
+      Description=Grow root partition and filesystem into available space
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/cloud-init single --name growpart --frequency always
+      ExecStart=/usr/bin/cloud-init single --name resizefs --frequency always
+
+      [Install]
+      WantedBy=multi-user.target
+{{- end}}
   - path: /etc/systemd/system/workshop-secret.socket
     content: |
       [Unit]
@@ -245,6 +259,7 @@ runcmd:
   - ln -sf ../../bin/workshopctl /usr/local/lib/workshop/waitready
 {{- if ne .FsFreezePath ""}}
   - ln -sf ../../bin/workshopctl {{shquote .FsFreezePath}}
+  - systemctl enable workshop-growpart.service
 {{- end}}
   - systemctl enable --now workshop-waitready.service
   - systemctl enable --now workshop-secret.socket
