@@ -42,8 +42,8 @@ execute: |
   echo "Check the connection is dropped and the mount is gone"
   workshop_exec connections ws-mount-disconnect |
       NOMATCH "ws-mount-disconnect/test-sdk-mount:data.+ws-mount-disconnect/test-sdk-mount:jobs.+manual"
-  workshop_exec exec ws-mount-disconnect -- bash -c \
-      "! mountpoint -q /mnt/data && ! mountpoint -q /mnt/data2"
+  ! workshop_exec exec ws-mount-disconnect -- mountpoint -q /mnt/data || false
+  ! workshop_exec exec ws-mount-disconnect -- mountpoint -q /mnt/data2 || false
 
   echo "Check the drop is reported as a warning"
   workshop_exec warnings |
