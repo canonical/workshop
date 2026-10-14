@@ -17,13 +17,14 @@ description: |
   manageable transactions, reducing the need to battle with your tooling every
   day.
 
-confinement: classic
+confinement: strict
 apps:
   workshop:
     environment:
       WORKSHOP_SOCKET: $SNAP_COMMON/workshop/workshop.socket
     command: bin/workshop
   workshopd:
+    plugs: [lxd, network, network-bind]
     environment:
       PATH: ${SNAP}/bin:${PATH}
       WORKSHOP_DATA: $SNAP_DATA
@@ -40,6 +41,7 @@ apps:
         listen-stream: $SNAP_COMMON/workshop/workshop.socket.untrusted
         socket-mode: 0666
   configure-dns:
+    plugs: [lxd, network-control]
     command: bin/workshopd configure-dns
   sdk:
     environment:
@@ -47,6 +49,9 @@ apps:
     command: bin/sdk
     aliases:
       - sdk
+hooks:
+  remove:
+    plugs: [lxd]
 parts:
   workshop:
     plugin: go

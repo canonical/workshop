@@ -17,9 +17,9 @@ execute: |
 
   echo "Run workshop as another user to have multiple LXD projects"
   sudo useradd -m -s /bin/bash abc
-  sudo -u abc 2>&1 -- workshop list --project $(pwd)/project-1 
+  sudo -u abc 2>&1 -- workshop list --project $(pwd)/project-1
 
-  echo "Check that workshops will be removed on snap removal"       
+  echo "Check that workshops will be removed on snap removal"
   snap remove workshop
   sudo deluser --remove-home abc
 
@@ -35,7 +35,7 @@ execute: |
   ! rmdir /var/lib/snapd/desktop/fish || false
   ! rmdir /usr/local/share/zsh || false
 
-  snap install --dangerous --classic /workshop/tests/*.snap
+  snap install --dangerous --classic "$PROJECT_PATH"/tests/*.snap
   [[ $(workshop_exec list --global | wc -c) -eq 0 ]] || (echo "no workshops must remain after snap removal" && exit 1)
 
   echo "Check that cache storage has been removed"

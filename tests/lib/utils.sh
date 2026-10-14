@@ -87,11 +87,28 @@ EOF
     retry 5 snap install --classic --channel=1.26/stable go
     retry 5 snap install yq
 
-    chown -R ubuntu:ubuntu /workshop
+    chown -R ubuntu:ubuntu "$PROJECT_PATH"
 }
 
 function setup_workshop() {
-    snap install --dangerous --classic /workshop/tests/*.snap
+    case "${WORKSHOP_CONFINEMENT:-classic}" in
+        classic)
+            snap install --dangerous --classic "$PROJECT_PATH"/tests/workshop_*.snap || return
+            ;;
+        strict)
+            if [[ "$(snap debug confinement)" != strict ]]; then
+                echo "strict tests require a host with strict confinement support" >&2
+                return 1
+            fi
+            snap install --dangerous "$PROJECT_PATH"/tests/workshop_*.snap || return
+            snap connect workshop:lxd lxd:lxd || return
+            snap connect workshop:network-control || return
+            ;;
+        *)
+            echo "unsupported WORKSHOP_CONFINEMENT: $WORKSHOP_CONFINEMENT" >&2
+            return 1
+            ;;
+    esac
 
     snap set workshop workshop.debug=1
     snap set workshop workshop.experimental-vms=1
@@ -106,7 +123,7 @@ function setup_workshop() {
 function cleanup_workshop() {
     snap remove workshop --purge
     snap remove sdkcraft --purge
-    find /workshop -name .workshop.lock -delete
+    find "$PROJECT_PATH" -name .workshop.lock -delete
     loginctl disable-linger ubuntu
 }
 
