@@ -500,12 +500,17 @@ func (s *daemonSuite) TestStartStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	l2, err := net.Listen("tcp", "127.0.0.1:0")
 	c.Assert(err, check.IsNil)
+	l3, err := net.Listen("tcp", "127.0.0.1:0")
+	c.Assert(err, check.IsNil)
 
 	generalAccept := make(chan struct{})
 	d.generalListener = &witnessAcceptListener{Listener: l1, accept: generalAccept}
 
 	untrustedAccept := make(chan struct{})
 	d.untrustedListener = &witnessAcceptListener{Listener: l2, accept: untrustedAccept}
+
+	vsockAccept := make(chan struct{})
+	d.vsockListener = &witnessAcceptListener{Listener: l3, accept: vsockAccept}
 
 	err = d.Start()
 	c.Assert(err, check.IsNil)
@@ -530,8 +535,19 @@ func (s *daemonSuite) TestStartStop(c *check.C) {
 		close(untrustedDone)
 	}()
 
+	vsockDone := make(chan struct{})
+	go func() {
+		select {
+		case <-vsockAccept:
+		case <-time.After(2 * time.Second):
+			c.Fatal("vsock listener accept was not called")
+		}
+		close(vsockDone)
+	}()
+
 	<-generalDone
 	<-untrustedDone
+	<-vsockDone
 
 	err = d.Stop(nil)
 	c.Check(err, check.IsNil)

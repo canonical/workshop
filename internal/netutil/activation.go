@@ -99,6 +99,28 @@ func GetVsockListener(contextID, port uint32, listenerMap map[Addr]net.Listener)
 	return listener, nil
 }
 
+// GetVsockGuestListener attempts to listen to VM guests on the given port. If
+// the vhost_vsock kernel module isn't loaded, loads it first. If that fails,
+// and limitToGuests is false, it binds to the wildcard address.
+func GetVsockGuestListener(port uint32, limitToGuests bool, listenerMap map[Addr]net.Listener) (net.Listener, error) {
+	listener, err := GetVsockListener(unix.VMADDR_CID_HOST, port, listenerMap)
+	if !errors.Is(err, unix.EADDRNOTAVAIL) {
+		return listener, err
+	}
+
+	f, err1 := os.OpenFile("/dev/vhost-vsock", os.O_RDWR, 0)
+	if err1 == nil {
+		f.Close()
+		return GetVsockListener(unix.VMADDR_CID_HOST, port, nil)
+	}
+	if !limitToGuests {
+		logger.Noticef("Cannot listen on vsock host context ID, listening on any: %v", err1)
+		return GetVsockListener(unix.VMADDR_CID_ANY, port, nil)
+	}
+
+	return listener, err
+}
+
 // ActivationListeners builds a map of addresses to listeners that were passed
 // during systemd activation
 func ActivationListeners() (lns map[Addr]net.Listener, err error) {

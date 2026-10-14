@@ -62,6 +62,12 @@ type Options struct {
 	// the workshop directory.
 	SocketPath string
 
+	// VsockPort is an optional vsock port for untrusted connections from VMs.
+	VsockPort uint32
+	// VsockLimitToGuests forces the daemon to listen on VMADDR_CID_HOST,
+	// failing if the vhost_vsock kernel module is unavailable.
+	VsockLimitToGuests bool
+
 	// HTTPAddress is the address for the plain HTTP API server, for example
 	// ":4000" to listen on any address, port 4000. If not set, the HTTP API
 	// server is not started.
@@ -75,11 +81,14 @@ type Daemon struct {
 	workshopDir         string
 	normalSocketPath    string
 	untrustedSocketPath string
+	vsockPort           uint32
+	vsockLimitToGuests  bool
 	httpAddress         string
 	overlord            *overlord.Overlord
 	state               *state.State
 	generalListener     net.Listener
 	untrustedListener   net.Listener
+	vsockListener       net.Listener
 	httpListener        net.Listener
 	connTracker         *connTracker
 	serve               *http.Server
@@ -365,7 +374,16 @@ func (d *Daemon) Init() error {
 		// the listeners, so check it before using it.
 		d.untrustedListener = listener
 	} else {
-		logger.Debugf("cannot get listener for %q: %v", d.untrustedSocketPath, err)
+		logger.Debugf("Cannot get listener for %q: %v", d.untrustedSocketPath, err)
+	}
+
+	if d.vsockPort != 0 {
+		listener, err := netutil.GetVsockGuestListener(d.vsockPort, d.vsockLimitToGuests, listenerMap)
+		if err == nil {
+			d.vsockListener = listener
+		} else {
+			logger.Debugf("Cannot get vsock listener on port %d: %v", d.vsockPort, err)
+		}
 	}
 
 	d.addRoutes()
@@ -487,6 +505,14 @@ func (d *Daemon) Start() error {
 		if d.untrustedListener != nil {
 			d.tomb.Go(func() error {
 				if err := d.serve.Serve(d.untrustedListener); err != http.ErrServerClosed && d.tomb.Err() == tomb.ErrStillAlive {
+					return err
+				}
+				return nil
+			})
+		}
+		if d.vsockListener != nil {
+			d.tomb.Go(func() error {
+				if err := d.serve.Serve(d.vsockListener); err != http.ErrServerClosed && d.tomb.Err() == tomb.ErrStillAlive {
 					return err
 				}
 				return nil
@@ -741,6 +767,8 @@ func New(opts *Options) (*Daemon, error) {
 		workshopDir:         opts.Dir,
 		normalSocketPath:    opts.SocketPath,
 		untrustedSocketPath: opts.SocketPath + ".untrusted",
+		vsockPort:           opts.VsockPort,
+		vsockLimitToGuests:  opts.VsockLimitToGuests,
 		httpAddress:         opts.HTTPAddress,
 	}
 

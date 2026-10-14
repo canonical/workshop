@@ -132,8 +132,10 @@ func runDaemon(rcmd *cmdRun, ch chan os.Signal, ready chan<- func()) error {
 		}
 	}
 	dopts := daemon.Options{
-		Dir:        dirs.DataDir,
-		SocketPath: dirs.SocketPath,
+		Dir:                dirs.DataDir,
+		SocketPath:         dirs.SocketPath,
+		VsockPort:          dirs.VsockPort,
+		VsockLimitToGuests: dirs.VsockLimitToGuests,
 	}
 
 	dopts.HTTPAddress = rcmd.HTTP

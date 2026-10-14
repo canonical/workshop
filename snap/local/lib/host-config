@@ -4,11 +4,13 @@ configure_host() {
     configure_shell_completion
     configure_workshop_managed_networks
     configure_dns_resolver "$mode"
+    configure_vsock_socket "$mode"
     configure_openssh_client
 }
 
 undo_configure_host() {
     undo_configure_openssh_client
+    undo_configure_vsock_socket
     undo_configure_dns_resolver
     undo_configure_workshop_managed_networks
     undo_configure_shell_completion
@@ -87,6 +89,33 @@ undo_configure_dns_resolver() {
     if command -v systemctl &>/dev/null; then
         systemctl disable snap.workshop.configure-dns.service || true
         rm -f /etc/systemd/system/snap.workshop.configure-dns.service
+        systemctl daemon-reload || true
+    fi
+}
+
+# Install a separate vsock unit for platforms that don't support vsock,
+# and because snapcraft.yaml doesn't support vsock units.
+configure_vsock_socket() {
+    local mode="$1"
+
+    if [ -d /etc/systemd/system ] && [ -w /etc/systemd/system ] && command -v systemctl &>/dev/null; then
+        if [ ! -e "/etc/systemd/system/snap.workshop.workshopd.vsock.socket" ]; then
+            mode=install
+        fi
+
+        install_file 0644 "$SNAP/snap/lib/snap.workshop.workshopd.vsock.socket" /etc/systemd/system
+        systemctl daemon-reload
+
+        if [ "$mode" = install ]; then
+            systemctl enable snap.workshop.workshopd.vsock.socket
+        fi
+    fi
+}
+
+undo_configure_vsock_socket() {
+    if command -v systemctl &>/dev/null; then
+        systemctl disable --now snap.workshop.workshopd.vsock.socket || true
+        rm -f /etc/systemd/system/snap.workshop.workshopd.vsock.socket
         systemctl daemon-reload || true
     fi
 }

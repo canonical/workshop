@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 const (
@@ -66,6 +67,18 @@ var (
 
 	// Symlink to workshopctl that freezes VM filesystems.
 	FsFreezePath = "/usr/local/lib/workshop/fsfreeze"
+)
+
+var (
+	// Equivalent of WorkshopSocketPath for VMs.
+	VsockPort uint32
+	// Whether to restrict vsock connections to guests only. Should be enabled
+	// for production but can be disabled for unprivileged local development.
+	VsockLimitToGuests bool
+
+	// Strings that can be overridden with -ldflags '-X ...'.
+	vsockPort          = "1870"
+	vsockLimitToGuests = "false"
 )
 
 // Variables for workshopd (host paths)
@@ -136,6 +149,20 @@ func getWorkshopCtlPath() string {
 	return filepath.Join(binDir, "workshopctl")
 }
 
+func parseVsockOptions() (uint32, bool) {
+	port, err := strconv.ParseUint(vsockPort, 10, 32)
+	if err != nil {
+		panic(fmt.Errorf("cannot parse vsock port: %w", err))
+	}
+
+	limitToGuests, err := strconv.ParseBool(vsockLimitToGuests)
+	if err != nil {
+		panic(fmt.Errorf("cannot parse vsock guest limit: %w", err))
+	}
+
+	return uint32(port), limitToGuests
+}
+
 func init() {
 	XdgRuntimeDirBase = "/run/user"
 	DataDir, CommonDir, CacheDir, SocketPath = getEnvPaths()
@@ -143,6 +170,7 @@ func init() {
 	setCommonDir(CommonDir)
 	setCacheDir(CacheDir)
 	WorkshopCtlPath = getWorkshopCtlPath()
+	VsockPort, VsockLimitToGuests = parseVsockOptions()
 }
 
 // SetRootDir is used by tests to set all host directories in one go.
