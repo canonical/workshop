@@ -66,6 +66,10 @@ configure_dns_resolver() {
     local mode="$1"
 
     if [ -d /etc/systemd/system ] && [ -w /etc/systemd/system ] && command -v systemctl &>/dev/null; then
+        if [ ! -e "/etc/systemd/system/snap.workshop.configure-dns.service" ]; then
+            mode=install
+        fi
+
         install_file 0644 "$SNAP/snap/lib/snap.workshop.configure-dns.service" /etc/systemd/system
         systemctl daemon-reload
 
