@@ -2,6 +2,7 @@ name: ws-mount-disconnect
 base: ubuntu@22.04
 sdks:
   - name: test-sdk-mount
+    channel: stable
     plugs:
       data:
         interface: mount

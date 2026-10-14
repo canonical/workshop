@@ -23,10 +23,13 @@ execute: |
       MATCH "^mount.+ws-mount-disconnect/test-sdk-mount:data.+ws-mount-disconnect/test-sdk-mount:jobs.+manual$"
   workshop_exec exec ws-mount-disconnect -- mountpoint -q /mnt/data
 
-  echo "Refresh without changing the definition"
-  # The plug carries mode/uid/gid attributes that round-trip through JSON as
-  # float64, so this guards against reading that type difference as a change.
-  workshop_exec refresh ws-mount-disconnect
+  echo "Refresh without changing the mount definition"
+  # A no-op refresh reports "no updates available" and skips the reconnect
+  # logic, so change the SDK channel to force a real refresh. The mount plug
+  # definition is unchanged, which also guards against the recorded mode/uid/gid
+  # attributes being read as changed after their JSON round-trip.
+  sed -i 's/channel: stable/channel: edge/' .workshop.yaml
+  workshop_exec refresh ws-mount-disconnect | MATCH 'refreshed$'
   workshop_exec connections ws-mount-disconnect |
       MATCH "^mount.+ws-mount-disconnect/test-sdk-mount:data.+ws-mount-disconnect/test-sdk-mount:jobs.+manual$"
   workshop_exec exec ws-mount-disconnect -- mountpoint -q /mnt/data
