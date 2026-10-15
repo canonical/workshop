@@ -187,34 +187,6 @@ func (f *workshopFile) TestSingleWorkshopFileError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*is a directory")
 }
 
-func (f *workshopFile) TestRuntime(c *check.C) {
-	yaml := `name: xbert-gpu
-base: ubuntu@24.04
-runtime: lxd-container
-`
-	f.createSingleWFile(c, "workshop.yaml", yaml)
-	file, err := f.project.Workshop("xbert-gpu")
-	c.Assert(err, check.IsNil)
-	c.Check(file.Runtime, check.Equals, workshop.RuntimeLXDContainer)
-
-	yaml = strings.Replace(yaml, "lxd-container", "lxd-vm", 1)
-	f.createSingleWFile(c, "workshop.yaml", yaml)
-	file, err = f.project.Workshop("xbert-gpu")
-	c.Assert(err, check.IsNil)
-	c.Check(file.Runtime, check.Equals, workshop.RuntimeLXDVM)
-}
-
-func (f *workshopFile) TestRuntimeError(c *check.C) {
-	yaml := `name: xbert-gpu
-base: ubuntu@24.04
-runtime: classic
-`
-	f.createSingleWFile(c, "workshop.yaml", yaml)
-	file, err := f.project.Workshop("xbert-gpu")
-	c.Check(file, check.IsNil)
-	c.Check(err, check.ErrorMatches, `invalid file ".*": invalid runtime "classic"; valid runtimes: lxd-container, lxd-vm`)
-}
-
 func (f *workshopFile) TestWorkshopFileDuplicate(c *check.C) {
 	yaml := `name: xbert-gpu
 base: ubuntu@22.04
@@ -227,6 +199,19 @@ base: ubuntu@22.04
 	path := filepath.Join(f.project.Path, "workshop.yaml")
 	message := fmt.Sprintf(`multiple workshops found, but %q not in ".workshop" subdirectory`, path)
 	c.Assert(err, check.ErrorMatches, message)
+}
+
+func (f *workshopFile) TestUnknownField(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+connection:
+  - plug: plug
+    slot: slot
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, `workshop definition YAML contains unknown fields: "connection" at line 4, column 3`)
 }
 
 func (f *workshopFile) TestWorkshopNamesDifferent(c *check.C) {
@@ -275,6 +260,34 @@ base: foo@24.04
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(file, check.IsNil)
 	c.Assert(err, check.ErrorMatches, `base "foo@24.04" not supported`)
+}
+
+func (f *workshopFile) TestRuntime(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+runtime: lxd-container
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.Runtime, check.Equals, workshop.RuntimeLXDContainer)
+
+	yaml = strings.Replace(yaml, "lxd-container", "lxd-vm", 1)
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err = f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.Runtime, check.Equals, workshop.RuntimeLXDVM)
+}
+
+func (f *workshopFile) TestRuntimeError(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+runtime: classic
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, `invalid runtime "classic"; valid runtimes: lxd-container, lxd-vm`)
 }
 
 func (f *workshopFile) TestWorkshopFileDuplicateSdks(c *check.C) {
@@ -358,6 +371,31 @@ sdks:
 	file, err := f.project.Workshop("xbert-gpu")
 	c.Assert(file, check.IsNil)
 	c.Assert(err, check.ErrorMatches, `"cuda" SDK: invalid risk "foo" in channel "latest/foo"`)
+}
+
+func (f *workshopFile) TestWorkshopUnknownSdkField(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: cuda
+    foo: bar
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `"cuda" SDK contains unknown fields: "foo" at line 5, column 10`)
+}
+
+func (f *workshopFile) TestWorkshopUnknownSdkNameAndField(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - foo: bar
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `workshop definition YAML: SDK contains unknown fields: "foo" at line 4, column 10`)
 }
 
 func (f *workshopFile) TestShortcuts(c *check.C) {
@@ -737,4 +775,19 @@ connections:
 	f.createWFile(c, "xbert-gpu", yaml)
 	_, err := f.project.Workshop("xbert-gpu")
 	c.Assert(err, check.ErrorMatches, `cannot connect plug "data-sdk:data" to slot "system:mount": plug is bound`)
+}
+
+func (f *workshopFile) TestWorkshopConnectionsUnknownField(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: data-sdk
+connections:
+  - plug: data-sdk:mount
+    slot: system:mount
+    interface: mount
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	_, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.ErrorMatches, `workshop definition YAML: connections entry contains unknown fields: "interface" at line 8, column 16`)
 }
