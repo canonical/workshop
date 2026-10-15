@@ -229,10 +229,8 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 	setupProject := runHooks(st, manifest.Sdks, 0, hookstate.SetupProject)
 	addTaskSet(setupProject)
 
-	if manifest.File.Runtime == workshop.RuntimeLXDContainer {
-		checkHealth := runHooks(st, manifest.Sdks, checkHealthTimeout, hookstate.CheckHealth)
-		addTaskSet(checkHealth)
-	}
+	checkHealth := runHooks(st, manifest.Sdks, checkHealthTimeout, hookstate.CheckHealth)
+	addTaskSet(checkHealth)
 
 	for _, task := range all.Tasks() {
 		task.Set("workshop", manifest.File.Name)
@@ -458,10 +456,8 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	restoreState := runHooks(st, restoreSdks, 0, hookstate.RestoreState)
 	addTaskSet(restoreState)
 
-	if latest.File.Runtime == workshop.RuntimeLXDContainer {
-		checkHealth := runHooks(st, latest.Sdks, 0, hookstate.CheckHealth)
-		addTaskSet(checkHealth)
-	}
+	checkHealth := runHooks(st, latest.Sdks, 0, hookstate.CheckHealth)
+	addTaskSet(checkHealth)
 
 	length := len(refresh.Tasks())
 	last := refresh.Tasks()[length-1]
