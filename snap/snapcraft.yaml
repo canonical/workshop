@@ -23,6 +23,7 @@ apps:
     environment:
       WORKSHOP_SOCKET: $SNAP_COMMON/workshop/workshop.socket
     command: bin/workshop
+    completer: completions/workshop.bash
   workshopd:
     plugs: [lxd, network, network-bind]
     environment:
@@ -47,6 +48,7 @@ apps:
     environment:
       WORKSHOP_SOCKET: $SNAP_COMMON/workshop/workshop.socket
     command: bin/sdk
+    completer: completions/sdk.bash
     aliases:
       - sdk
 hooks:
@@ -78,6 +80,13 @@ parts:
       CGO_ENABLED=0 go build -o "${CRAFT_PART_INSTALL}/lib/workshop/guest/workshopctl" ./cmd/workshopctl
       CGO_ENABLED=0 go build -o "${CRAFT_PART_INSTALL}/bin/sdk" ./cmd/sdk
 
+      install -d "${CRAFT_PART_INSTALL}/completions"
+      for command in workshop sdk; do
+        for shell in bash fish zsh; do
+          "${CRAFT_PART_INSTALL}/bin/${command}" completion "$shell" >"${CRAFT_PART_INSTALL}/completions/${command}.${shell}"
+        done
+      done
+
       # Set snap version including git commit hash
       VERSION="$("${CRAFT_PART_INSTALL}/bin/workshop" --version)"
       if [ -d .git ]; then
@@ -93,6 +102,7 @@ parts:
       - bin/workshop-ss-tool
       - lib/workshop/guest/workshopctl
       - bin/sdk
+      - completions/
   zstd:
     plugin: nil
     stage-packages:

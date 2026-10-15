@@ -28,12 +28,11 @@ execute: |
   (lxc network list -f compact | awk 'NR>1 {print $1}' | (! grep -q workshopbr0)) || (echo "workshop network must be removed" && exit 1)
 
   echo "Check that shell completion files have been removed"
-  [ ! -f /var/lib/snapd/desktop/bash-completion/completions/workshop ]
-  [ ! -f /var/lib/snapd/desktop/fish/vendor_completions.d/workshop.fish ]
-  [ ! -f /usr/local/share/zsh/site-functions/_workshop ]
-  # Should not exist, or maybe something else is using it
-  ! rmdir /var/lib/snapd/desktop/fish || false
-  ! rmdir /usr/local/share/zsh || false
+  for command in workshop workshop.sdk sdk; do
+    path="/var/lib/snapd/desktop/bash-completion/completions/$command"
+    [ ! -e "$path" ]
+    [ ! -L "$path" ]
+  done
 
   snap install --dangerous --classic "$PROJECT_PATH"/tests/*.snap
   [[ $(workshop_exec list --global | wc -c) -eq 0 ]] || (echo "no workshops must remain after snap removal" && exit 1)
