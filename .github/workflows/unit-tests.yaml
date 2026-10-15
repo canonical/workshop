@@ -20,6 +20,9 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Enable binding on vsock loopback address
+        run: sudo modprobe vsock_loopback
+
       - name: Test
         run: mkdir -p ${{ github.workspace }}.cover/unit/cover && go test -cover -coverpkg=./... ./... -args -test.gocoverdir=${{ github.workspace }}.cover/unit/cover
 
@@ -40,6 +43,9 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26"
+
+      - name: Enable binding on vsock loopback address
+        run: sudo modprobe vsock_loopback
 
       - name: Check for races
         run: go test -race ./...

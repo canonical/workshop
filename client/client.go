@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/mdlayher/vsock"
 
 	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/wsutil"
@@ -84,6 +85,13 @@ func unixDialer(socketPath string) func(context.Context, string, string) (net.Co
 	}
 }
 
+func vsockDialer(cid, port uint32) func(context.Context, string, string) (net.Conn, error) {
+	return func(context.Context, string, string) (net.Conn, error) {
+		// TODO: use DialContext when we update to vsock > v1.3.0.
+		return vsock.Dial(cid, port, nil)
+	}
+}
+
 type doer interface {
 	Do(*http.Request) (*http.Response, error)
 }
@@ -96,6 +104,9 @@ type Config struct {
 
 	// Socket is the path to the unix socket to use.
 	Socket string
+
+	// Vsock is the vsock address to connect to, if set.
+	Vsock *vsock.Addr
 
 	// DisableKeepAlive indicates that the connections should not be kept
 	// alive for later reuse (the default is to keep them alive).
@@ -150,22 +161,28 @@ func New(config *Config) (*Client, error) {
 		config = &Config{}
 	}
 
-	var client *Client
-	var transport *http.Transport
+	if config.Socket != "" && config.Vsock != nil {
+		return nil, errors.New("unix socket path conflicts with vsock address")
+	}
 
-	if config.BaseURL == "" {
-		// By default talk over a unix socket.
-		transport = &http.Transport{DialContext: unixDialer(config.Socket), DisableKeepAlives: config.DisableKeepAlive}
-		baseURL := url.URL{Scheme: "http", Host: "localhost"}
-		client = &Client{baseURL: baseURL}
-	} else {
-		// Otherwise talk regular HTTP-over-TCP.
-		baseURL, err := url.Parse(config.BaseURL)
+	transport := &http.Transport{DisableKeepAlives: config.DisableKeepAlive}
+	if config.Socket != "" {
+		transport.DialContext = unixDialer(config.Socket)
+	} else if config.Vsock != nil {
+		transport.DialContext = vsockDialer(config.Vsock.ContextID, config.Vsock.Port)
+	}
+
+	client := &Client{}
+	if config.BaseURL != "" {
+		u, err := url.Parse(config.BaseURL)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse base URL: %v", err)
 		}
-		transport = &http.Transport{DisableKeepAlives: config.DisableKeepAlive}
-		client = &Client{baseURL: *baseURL}
+		client.baseURL = *u
+	} else if transport.DialContext != nil {
+		client.baseURL = url.URL{Scheme: "http", Host: "localhost"}
+	} else {
+		return nil, errors.New("must specify base URL, unix socket path or vsock address")
 	}
 
 	var roundTripper http.RoundTripper = transport

@@ -9,6 +9,7 @@ debug: |
   systemctl status sys-subsystem-net-devices-workshopbr0.device || true
   systemctl status snap.workshop.configure-dns.service || true
   journalctl -xeu snap.workshop.configure-dns.service || true
+  systemctl status snap.workshop.workshopd-vsock.socket || true
 prepare: |
   . "$TESTSLIB"/utils.sh
   envsubst '${RUNTIME}' < workshop.yaml.in > workshop.yaml
@@ -45,10 +46,8 @@ execute: |
     ! systemctl is-active snap.workshop.workshopd.service || false
     retry 3 check_dns
 
-    if [ "$RUNTIME" = lxd-container ]; then
-      echo "Make sure workshopctl socket-activates the workshop daemon"
-      lxc exec --project workshop.ubuntu "ws-autostart-$(< .workshop.lock)" -- workshopctl --help | MATCH 'Usage:'
-    fi
+    echo "Make sure workshopctl socket-activates the workshop daemon"
+    lxc exec --project workshop.ubuntu "ws-autostart-$(< .workshop.lock)" -- workshopctl --help | MATCH 'Usage:'
   fi
 
   echo "Make sure a stopped workshop remains stopped after reboot"
