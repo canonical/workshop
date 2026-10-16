@@ -30,9 +30,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mdlayher/vsock"
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/client"
+	"github.com/canonical/workshop/internal/testutil"
 )
 
 func TestT(t *testing.T) { check.TestingT(t) }
@@ -42,6 +44,8 @@ type workshopctlSuite struct {
 	expectedContextID string
 	expectedArgs      []string
 	expectedStdin     []byte
+
+	restoreClient func()
 }
 
 var _ = check.Suite(&workshopctlSuite{})
@@ -70,14 +74,17 @@ func (s *workshopctlSuite) SetUpTest(c *check.C) {
 
 		n++
 	}))
+	s.restoreClient = testutil.Backup(&clientConfig)
 	clientConfig.BaseURL = s.server.URL
+	clientConfig.Socket = ""
+	clientConfig.Vsock = nil
 	s.expectedContextID = "workshop-context-test"
 	s.expectedArgs = []string{}
 }
 
 func (s *workshopctlSuite) TearDownTest(c *check.C) {
 	c.Assert(os.Unsetenv("WORKSHOP_COOKIE"), check.IsNil)
-	clientConfig.BaseURL = ""
+	s.restoreClient()
 	s.server.Close()
 }
 
@@ -204,4 +211,62 @@ func (s *workshopctlSuite) TestWorkshopctlGetSecretSystemd(c *check.C) {
 		"processed systemd load credential request for unit "+
 			"\"ollama.service\", \"ollama\" SDK and secret "+
 			"\"ollama-api-key\"\ntest stderr")
+}
+
+func (s *workshopctlSuite) TestWorkshopctlUnixSocket(c *check.C) {
+	clientConfig.BaseURL = ""
+	clientConfig.Socket = filepath.Join(c.MkDir(), "workshop.socket.untrusted")
+	clientConfig.Vsock = &vsock.Addr{ContextID: vsock.Local, Port: 8080}
+
+	l, err := net.Listen("unix", clientConfig.Socket)
+	c.Assert(err, check.IsNil)
+
+	n := 0
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		n++
+		s.server.Config.Handler.ServeHTTP(w, r)
+	}
+	srv := &httptest.Server{
+		Listener: l,
+		Config:   &http.Server{Handler: http.HandlerFunc(handler)},
+	}
+	srv.Start()
+	defer srv.Close()
+
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{}, nil, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals, "test stderr")
+	c.Check(n, check.Equals, 1)
+}
+
+func (s *workshopctlSuite) TestWorkshopctlVsock(c *check.C) {
+	// Binding the local CID requires the vsock_loopback kernel module.
+	l, err := vsock.ListenContextID(vsock.Local, 0, nil)
+	if err != nil {
+		c.Skip("vsock not available: " + err.Error())
+	}
+	port := l.Addr().(*vsock.Addr).Port
+
+	clientConfig.BaseURL = ""
+	clientConfig.Socket = filepath.Join(c.MkDir(), "workshop.socket.untrusted")
+	clientConfig.Vsock = &vsock.Addr{ContextID: vsock.Local, Port: port}
+
+	n := 0
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		n++
+		s.server.Config.Handler.ServeHTTP(w, r)
+	}
+	srv := &httptest.Server{
+		Listener: l,
+		Config:   &http.Server{Handler: http.HandlerFunc(handler)},
+	}
+	srv.Start()
+	defer srv.Close()
+
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{}, nil, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals, "test stderr")
+	c.Check(n, check.Equals, 1)
 }

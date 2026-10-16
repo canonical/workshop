@@ -30,6 +30,9 @@ import (
 
 // WorkshopIdentity identifies a workshop within its owning project.
 type WorkshopIdentity struct {
+	// User is the username of the project's owner.
+	User string
+
 	// Project is the project containing the workshop.
 	Project workshop.Project
 
@@ -41,6 +44,8 @@ type WorkshopManager struct {
 	backend         workshop.Backend
 	state           *state.State
 	firewallChecker func(string) string
+
+	vmsUnavailable error
 }
 
 var (
@@ -78,6 +83,10 @@ func New(st *state.State, runner *state.TaskRunner) *WorkshopManager {
 	runner.AddCleanup("remove-workshop-stash", manager.doDeleteUnusedSnapshots)
 
 	return manager
+}
+
+func (w *WorkshopManager) SetVMsUnavailable(reason error) {
+	w.vmsUnavailable = reason
 }
 
 func (m *WorkshopManager) StartUp() error {
@@ -135,55 +144,46 @@ func (w *WorkshopManager) Workshop(ctx context.Context, name, pId string) (*work
 	return workshop, nil
 }
 
-// OwnsWorkshopInstanceID reports whether the user in ctx owns a workshop with
-// the specified backend instance identifier. If ctx does not identify a user,
-// it returns false without an error.
-func (w *WorkshopManager) OwnsWorkshopInstanceID(
-	ctx context.Context,
-	instanceID string,
-) (bool, error) {
-	identity, err := w.ResolveWorkshopInstanceID(ctx, instanceID)
-	return identity != nil, err
-}
-
-// ResolveWorkshopInstanceID finds a workshop owned by the user in ctx with
-// the specified backend instance identifier. It returns nil without an error
-// if the identifier is empty or unknown, or ctx does not identify a user.
+// ResolveWorkshopInstanceID finds a workshop the specified backend instance
+// identifier. It returns nil without an error if the identifier is unknown.
 func (w *WorkshopManager) ResolveWorkshopInstanceID(
 	ctx context.Context,
 	instanceID string,
 ) (*WorkshopIdentity, error) {
-	user, ok := ctx.Value(workshop.ContextUser).(string)
-	if instanceID == "" || !ok || user == "" {
+	if instanceID == "" {
 		return nil, nil
 	}
 
-	projects, err := w.backend.UserProjects(ctx)
+	allProjects, err := w.backend.Projects(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, project := range projects {
-		projectCtx := context.WithValue(
-			ctx,
-			workshop.ContextProjectId,
-			project.ProjectId,
-		)
-		workshops, err := w.backend.ProjectWorkshops(projectCtx)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"cannot list workshops for project %q: %w",
+	for user, projects := range allProjects {
+		userCtx := context.WithValue(ctx, workshop.ContextUser, user)
+		for _, project := range projects {
+			projectCtx := context.WithValue(
+				userCtx,
+				workshop.ContextProjectId,
 				project.ProjectId,
-				err,
 			)
-		}
+			workshops, err := w.backend.ProjectWorkshops(projectCtx)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"cannot list workshops for project %q: %w",
+					project.ProjectId,
+					err,
+				)
+			}
 
-		for _, candidate := range workshops {
-			if candidate.InstanceID == instanceID {
-				return &WorkshopIdentity{
-					Project:  project,
-					Workshop: candidate.Name,
-				}, nil
+			for _, candidate := range workshops {
+				if candidate.InstanceID == instanceID {
+					return &WorkshopIdentity{
+						User:     user,
+						Project:  project,
+						Workshop: candidate.Name,
+					}, nil
+				}
 			}
 		}
 	}

@@ -26,6 +26,8 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/mdlayher/vsock"
+
 	"github.com/canonical/workshop/client"
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/fsfreeze"
@@ -55,6 +57,9 @@ var clientConfig = client.Config{
 	// we need the less privileged workshop socket in workshopctl, proxied to a
 	// fixed path inside the workshop by the daemon (see dirs.WorkshopSocketPath)
 	Socket: dirs.WorkshopSocketPath + ".untrusted",
+	// For VMs we use vsock instead of unix domain sockets. One of the
+	// addresses will be removed before instantiating the Client.
+	Vsock: &vsock.Addr{ContextID: vsock.Host, Port: dirs.VsockPort},
 }
 
 // defaultResponseHandler returns a response handler implementing the
@@ -130,6 +135,7 @@ func run(args []string, stdin fdReader, stdout, stderr io.Writer) int {
 	}
 
 	config := clientConfig
+	chooseUnixOrVsock(&config)
 	config.RoundTripperWrapper = client.NewWorkshopInstanceIDRoundTripper(stderr)
 
 	cli, err := client.New(&config)
@@ -168,4 +174,16 @@ func interceptArgs(
 	}
 
 	return req, nil
+}
+
+func chooseUnixOrVsock(config *client.Config) {
+	if config.Socket == "" || config.Vsock == nil {
+		return
+	}
+
+	if _, err := os.Stat(config.Socket); errors.Is(err, os.ErrNotExist) {
+		config.Socket = ""
+	} else {
+		config.Vsock = nil
+	}
 }

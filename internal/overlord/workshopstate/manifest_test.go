@@ -1118,6 +1118,28 @@ func (s *manifestSuite) TestRefreshSortsSdks(c *check.C) {
 	c.Check(sorted, check.DeepEquals, expected)
 }
 
+func (s *manifestSuite) TestLaunchRejectsUnavailableVMs(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	s.createWFile(c, "vm", "ubuntu@24.04", nil)
+	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "vm"), os.O_APPEND|os.O_WRONLY, 0644)
+	c.Assert(err, check.IsNil)
+	_, err = f.WriteString("runtime: lxd-vm\n")
+	c.Assert(f.Close(), check.IsNil)
+	c.Assert(err, check.IsNil)
+
+	os.Setenv("WORKSHOP_EXPERIMENTAL_VMS", "1")
+	defer os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS")
+
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
+	c.Check(err, check.IsNil)
+
+	s.manager.SetVMsUnavailable(errors.New("no vsock"))
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
+	c.Check(err, check.ErrorMatches, `cannot launch "vm": virtual machines are unavailable: no vsock`)
+}
+
 func (s *manifestSuite) TestLaunchRejectsVMsWithSDKs(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()

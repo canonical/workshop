@@ -102,16 +102,13 @@ func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsIdentity(
 	)
 	project := s.addWorkshop(c, ctx, "test-workshop", "instance-id")
 
-	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "instance-id")
+	identity, err := s.manager.ResolveWorkshopInstanceID(context.Background(), "instance-id")
 
 	c.Assert(err, check.IsNil)
 	c.Assert(identity, check.NotNil)
+	c.Check(identity.User, check.Equals, "test-user")
 	c.Check(identity.Project, check.DeepEquals, project)
 	c.Check(identity.Workshop, check.Equals, "test-workshop")
-
-	owns, err := s.manager.OwnsWorkshopInstanceID(ctx, "instance-id")
-	c.Assert(err, check.IsNil)
-	c.Check(owns, check.Equals, true)
 }
 
 // TestResolveWorkshopInstanceIDReturnsNilForUnknownID checks that the manager
@@ -126,14 +123,10 @@ func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsNilForUnknownID(
 	)
 	s.addWorkshop(c, ctx, "test-workshop", "instance-id")
 
-	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "unknown-id")
+	identity, err := s.manager.ResolveWorkshopInstanceID(context.Background(), "unknown-id")
 
 	c.Assert(err, check.IsNil)
 	c.Check(identity, check.IsNil)
-
-	owns, err := s.manager.OwnsWorkshopInstanceID(ctx, "unknown-id")
-	c.Assert(err, check.IsNil)
-	c.Check(owns, check.Equals, false)
 }
 
 // TestResolveWorkshopInstanceIDReturnsNilForEmptyID checks that an empty
@@ -141,41 +134,7 @@ func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsNilForUnknownID(
 func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsNilForEmptyID(
 	c *check.C,
 ) {
-	ctx := context.WithValue(
-		context.Background(),
-		workshop.ContextUser,
-		"test-user",
-	)
-
-	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "")
-
-	c.Assert(err, check.IsNil)
-	c.Check(identity, check.IsNil)
-}
-
-// TestResolveWorkshopInstanceIDRejectsAnotherUsersWorkshop checks that
-// workshop ownership is scoped to the user in context.
-func (s *managerSuite) TestResolveWorkshopInstanceIDRejectsAnotherUsersWorkshop(
-	c *check.C,
-) {
-	ownerCtx := context.WithValue(
-		context.Background(),
-		workshop.ContextUser,
-		"owner",
-	)
-	s.addWorkshop(c, ownerCtx, "test-workshop", "instance-id")
-	requestCtx := context.WithValue(
-		context.Background(),
-		workshop.ContextUser,
-		"another-user",
-	)
-
-	s.addWorkshop(c, requestCtx, "test-workshop", "another-instance-id")
-
-	identity, err := s.manager.ResolveWorkshopInstanceID(
-		requestCtx,
-		"instance-id",
-	)
+	identity, err := s.manager.ResolveWorkshopInstanceID(context.Background(), "")
 
 	c.Assert(err, check.IsNil)
 	c.Check(identity, check.IsNil)

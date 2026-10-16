@@ -146,6 +146,7 @@ func (c *getSecretCommand) Execute(ctx context.Context, _ []string) error {
 		Workshop:  identity.Workshop,
 	}
 
+	ctx = context.WithValue(ctx, workshop.ContextUser, identity.User)
 	value, err := c.GetSecret(
 		ctx,
 		hookContext.State(),

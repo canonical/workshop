@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/canonical/x-go/strutil"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/canonical/workshop/internal/logger"
@@ -120,32 +119,14 @@ func addCommand(name, shortHelp, longHelp string, generator func() command) *com
 	return cmd
 }
 
-// ForbiddenCommandError conveys that a command cannot be invoked in some context
-type ForbiddenCommandError struct {
-	Message string
-}
-
-func (f ForbiddenCommandError) Error() string {
-	return f.Message
-}
-
-// nonRootAllowed lists the commands that can be performed even when workshopctl
-// is invoked not by root.
-var nonRootAllowed = []string{"get-secret", "set-health"}
-
 // Run runs the requested command.
 func Run(
 	ctx context.Context,
 	hookContext *hookstate.Context,
 	args []string,
-	uid uint32,
 ) (stdout, stderr []byte, err error) {
 	if len(args) == 0 {
 		return nil, nil, fmt.Errorf("workshopctl cannot run without args")
-	}
-
-	if !isAllowedToRun(uid, args) {
-		return nil, nil, &ForbiddenCommandError{Message: fmt.Sprintf("cannot use %q with uid %d, try with sudo", args[0], uid)}
 	}
 
 	parser := flags.NewNamedParser("workshopctl", flags.PassDoubleDash|flags.HelpFlag)
@@ -179,16 +160,4 @@ func Run(
 
 	_, err = parser.ParseArgs(args)
 	return stdoutBuffer.Bytes(), stderrBuffer.Bytes(), err
-}
-
-func isAllowedToRun(uid uint32, args []string) bool {
-	// A command can run if any of the following are true:
-	//	* It runs as root
-	//	* It's contained in nonRootAllowed
-	//	* It's used with the -h or --help flags
-	// note: commands still need valid context and workshops can only access own config.
-	return uid == 0 ||
-		strutil.ListContains(nonRootAllowed, args[0]) ||
-		strutil.ListContains(args, "-h") ||
-		strutil.ListContains(args, "--help")
 }

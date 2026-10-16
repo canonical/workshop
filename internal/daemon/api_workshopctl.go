@@ -59,11 +59,6 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 		return statusBadRequest("cannot decode data from request body: %w", err)
 	}
 
-	_, uid, _, err := ucrednetGet(r.RemoteAddr)
-	if err != nil {
-		return statusForbidden("cannot get remote user: %w", err)
-	}
-
 	hookContext, response := workshopctlHookContext(c, r, reqData.ContextID)
 	if response != nil {
 		return response
@@ -75,7 +70,7 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 		hookContext.Unlock()
 	}
 
-	stdout, stderr, err := ctlcmd.Run(r.Context(), hookContext, reqData.Args, uid)
+	stdout, stderr, err := ctlcmd.Run(r.Context(), hookContext, reqData.Args)
 	if fe, is := errors.AsType[*flags.Error](err); is && fe.Type == flags.ErrHelp {
 		stdout = []byte(fe.Error())
 	} else if err != nil {
@@ -141,9 +136,8 @@ func workshopctlHookContextFromContextID(
 	return hookContext, nil
 }
 
-// workshopctlHookContextFromInstanceID validates that the requesting user owns
-// the workshop instance identified by the request context, then creates a
-// taskless context for this individual workshopctl invocation.
+// workshopctlHookContextFromInstanceID creates a taskless context for the
+// workshop instance identified by the request context.
 func workshopctlHookContextFromInstanceID(
 	c *Command,
 	r *http.Request,
@@ -169,10 +163,9 @@ func workshopctlHookContextFromInstanceID(
 		logger.Noticef("cannot create workshop context: %v", err)
 		return nil, statusInternalError("internal error occurred")
 	}
-	username, _ := r.Context().Value(workshop.ContextUser).(string)
 	hookContext.SetWorkshopIdentity(hookstate.WorkshopIdentity{
+		User:     identity.User,
 		Project:  identity.Project,
-		User:     username,
 		Workshop: identity.Workshop,
 	})
 	return hookContext, nil

@@ -62,6 +62,12 @@ type Options struct {
 	// the workshop directory.
 	SocketPath string
 
+	// VsockPort is an optional vsock port for untrusted connections from VMs.
+	VsockPort uint32
+	// VsockLimitToGuests forces the daemon to listen on VMADDR_CID_HOST,
+	// failing if the vhost_vsock kernel module is unavailable.
+	VsockLimitToGuests bool
+
 	// HTTPAddress is the address for the plain HTTP API server, for example
 	// ":4000" to listen on any address, port 4000. If not set, the HTTP API
 	// server is not started.
@@ -75,11 +81,14 @@ type Daemon struct {
 	workshopDir         string
 	normalSocketPath    string
 	untrustedSocketPath string
+	vsockPort           uint32
+	vsockLimitToGuests  bool
 	httpAddress         string
 	overlord            *overlord.Overlord
 	state               *state.State
 	generalListener     net.Listener
 	untrustedListener   net.Listener
+	vsockListener       net.Listener
 	httpListener        net.Listener
 	connTracker         *connTracker
 	serve               *http.Server
@@ -130,7 +139,6 @@ type accessResult int
 const (
 	accessOK accessResult = iota
 	accessUnauthorized
-	accessForbidden
 )
 
 // canAccess checks the following properties:
@@ -154,26 +162,10 @@ func (c *Command) canAccess(r *http.Request, user *userState) accessResult {
 		return accessOK
 	}
 
-	// isUser means we have a UID for the request
-	isUser := false
-	pid, uid, socket, err := ucrednetGet(r.RemoteAddr)
-	if err == nil {
-		isUser = true
-	} else if err != errNoID {
-		logger.Noticef("unexpected error when attempting to get UID: %s", err)
-		return accessForbidden
-	}
-
-	isUntrusted := (socket == c.d.untrustedSocketPath)
-
-	_ = pid
-	_ = uid
-
-	if isUntrusted {
-		if c.UntrustedOK {
-			return accessOK
-		}
-		return accessUnauthorized
+	// isUser means we have a UID for the request, from a trusted socket.
+	cred, isUser := r.Context().Value(contextUcrednet).(ucrednet)
+	if isUser && cred.uid == ucrednetNobody {
+		isUser = false
 	}
 
 	// the !AdminOnly check is redundant, but belt-and-suspenders
@@ -192,12 +184,14 @@ func (c *Command) canAccess(r *http.Request, user *userState) accessResult {
 		}
 	}
 
-	// Remaining admin checks rely on identifying peer uid
 	if !isUser {
+		if c.UntrustedOK {
+			return accessOK
+		}
 		return accessUnauthorized
 	}
 
-	if uid == 0 {
+	if cred.uid == 0 {
 		// Superuser can do anything.
 		return accessOK
 	}
@@ -235,9 +229,6 @@ func (c *Command) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case accessUnauthorized:
 		statusUnauthorized("%w", ErrAccessDenied).ServeHTTP(w, r)
 		return
-	case accessForbidden:
-		statusForbidden("forbidden").ServeHTTP(w, r)
-		return
 	}
 
 	var rspf ResponseFunc
@@ -254,19 +245,16 @@ func (c *Command) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rspf = c.DELETE
 	}
 
-	_, uid, _, err := ucrednetGet(r.RemoteAddr)
-	if err != nil {
-		statusInternalError("cannot get an associated uid: %w", err).ServeHTTP(w, r)
-		return
+	ctx := r.Context()
+	cred, ok := ctx.Value(contextUcrednet).(ucrednet)
+	if ok {
+		usr, err := LookupUserId(strconv.FormatUint(uint64(cred.uid), 10))
+		if err != nil {
+			statusInternalError("cannot get an associated user name: %w", err).ServeHTTP(w, r)
+			return
+		}
+		ctx = context.WithValue(ctx, workshop.ContextUser, usr.Username)
 	}
-
-	usr, err := LookupUserId(strconv.FormatUint(uint64(uid), 10))
-	if err != nil {
-		statusInternalError("cannot get an associated user name: %w", err).ServeHTTP(w, r)
-		return
-	}
-
-	ctx := context.WithValue(r.Context(), workshop.ContextUser, usr.Username)
 
 	if rspf != nil {
 		rsp = rspf(c, r.WithContext(ctx), user)
@@ -356,11 +344,10 @@ func logit(handler http.Handler) http.Handler {
 			return
 		}
 
-		if strings.HasSuffix(r.RemoteAddr, ";") {
-			logger.Debugf(
-				"%s %s %s %s %d",
-				r.RemoteAddr, r.Method, r.URL, t, ww.status(),
-			)
+		cred, ok := r.Context().Value(contextUcrednet).(ucrednet)
+		if ok {
+			socket := fmt.Sprintf("pid=%d;uid=%d;socket=%s;", cred.pid, cred.uid, r.RemoteAddr)
+			logger.Debugf("%s %s %s %s %d", socket, r.Method, r.URL, t, ww.status())
 			logger.Noticef("%s %s %s %d", r.Method, r.URL, t, ww.status())
 		} else {
 			logger.Noticef("%s %s %s %s %d", r.RemoteAddr, r.Method, r.URL, t, ww.status())
@@ -383,11 +370,18 @@ func (d *Daemon) Init() error {
 	}
 
 	if listener, err := netutil.GetListener(d.untrustedSocketPath, listenerMap); err == nil {
-		// This listener may also be nil if that socket wasn't among
-		// the listeners, so check it before using it.
-		d.untrustedListener = &ucrednetListener{Listener: listener}
+		d.untrustedListener = listener
 	} else {
-		logger.Debugf("cannot get listener for %q: %v", d.untrustedSocketPath, err)
+		return fmt.Errorf("when trying to listen on %s: %w", d.untrustedSocketPath, err)
+	}
+
+	if d.vsockPort == 0 {
+		d.overlord.WorkshopManager().SetVMsUnavailable(errors.New("vsock port is not configured"))
+	} else if listener, err := netutil.GetVsockGuestListener(d.vsockPort, d.vsockLimitToGuests, listenerMap); err == nil {
+		d.vsockListener = listener
+	} else {
+		logger.Noticef("Cannot get vsock listener, virtual machines are unavailable: %v", err)
+		d.overlord.WorkshopManager().SetVMsUnavailable(err)
 	}
 
 	d.addRoutes()
@@ -496,8 +490,9 @@ func (d *Daemon) Start() error {
 	}
 	d.connTracker = &connTracker{conns: make(map[net.Conn]struct{})}
 	d.serve = &http.Server{
-		Handler:   logit(d.router),
-		ConnState: d.connTracker.trackConn,
+		Handler:     logit(d.router),
+		ConnState:   d.connTracker.trackConn,
+		ConnContext: ucrednetConnContext,
 	}
 
 	d.initStandbyHandling()
@@ -513,6 +508,14 @@ func (d *Daemon) Start() error {
 				return nil
 			})
 		}
+		if d.vsockListener != nil {
+			d.tomb.Go(func() error {
+				if err := d.serve.Serve(d.vsockListener); err != http.ErrServerClosed && d.tomb.Err() == tomb.ErrStillAlive {
+					return err
+				}
+				return nil
+			})
+		}
 		if err := d.serve.Serve(d.generalListener); err != http.ErrServerClosed && d.tomb.Err() == tomb.ErrStillAlive {
 			return err
 		}
@@ -520,8 +523,9 @@ func (d *Daemon) Start() error {
 	})
 
 	if d.httpListener != nil {
-		// Start additional HTTP API (currently only GuestOK endpoints are
-		// available because the HTTP API has no authentication right now).
+		// Start additional HTTP API (currently only GuestOK and UntrustedOK
+		// endpoints are available because the HTTP API has no authentication
+		// right now).
 		d.tomb.Go(func() error {
 			err := d.serve.Serve(d.httpListener)
 			if err != http.ErrServerClosed && d.tomb.Err() == tomb.ErrStillAlive {
@@ -761,6 +765,8 @@ func New(opts *Options) (*Daemon, error) {
 		workshopDir:         opts.Dir,
 		normalSocketPath:    opts.SocketPath,
 		untrustedSocketPath: opts.SocketPath + ".untrusted",
+		vsockPort:           opts.VsockPort,
+		vsockLimitToGuests:  opts.VsockLimitToGuests,
 		httpAddress:         opts.HTTPAddress,
 	}
 

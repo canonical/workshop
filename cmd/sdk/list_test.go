@@ -32,6 +32,8 @@ type sdkSuite struct {
 	testutil.BaseTest
 	stdout bytes.Buffer
 	stderr bytes.Buffer
+
+	restoreClient func()
 }
 
 var _ = check.Suite(&sdkSuite{})
@@ -43,6 +45,9 @@ func (s *sdkSuite) SetUpTest(c *check.C) {
 
 	Stdout = &s.stdout
 	Stderr = &s.stderr
+
+	s.restoreClient = testutil.Backup(&ClientConfig)
+	ClientConfig.Socket = ""
 }
 
 func (s *sdkSuite) TearDownTest(_ *check.C) {
@@ -50,7 +55,8 @@ func (s *sdkSuite) TearDownTest(_ *check.C) {
 	s.stderr.Reset()
 	Stdout = os.Stdout
 	Stderr = os.Stderr
-	ClientConfig.BaseURL = ""
+
+	s.restoreClient()
 }
 
 func (s *sdkSuite) Stdout() string {

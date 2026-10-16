@@ -337,7 +337,7 @@ func (getSecretSuite) TestGetSecretInvalidSDK(c *check.C) {
 // identifier before the command can execute.
 func (getSecretSuite) TestGetSecretMissingArg(c *check.C) {
 	_, _, err := ctlcmd.Run(
-		context.Background(), nil, []string{"get-secret"}, 0,
+		context.Background(), nil, []string{"get-secret"},
 	)
 
 	c.Check(err, check.ErrorMatches,

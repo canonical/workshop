@@ -15,6 +15,7 @@
 package daemon
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/user"
 	"path/filepath"
 	"sync"
 	"syscall"
@@ -39,6 +41,7 @@ import (
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/systemd"
 	"github.com/canonical/workshop/internal/testutil"
+	"github.com/canonical/workshop/internal/workshop"
 	"github.com/canonical/workshop/internal/workshop/fakebackend"
 )
 
@@ -49,6 +52,7 @@ type daemonSuite struct {
 	socketPath  string
 	httpAddress string
 	statePath   string
+	ctx         context.Context
 	authorized  bool
 	err         error
 	notified    []string
@@ -61,6 +65,8 @@ func (s *daemonSuite) SetUpTest(c *check.C) {
 	dirs.SetRootDir(filepath.Dir(s.workshopDir))
 	c.Assert(dirs.CreateDirs(), check.IsNil)
 	s.statePath = filepath.Join(s.workshopDir, "state.json")
+
+	s.ctx = context.WithValue(context.Background(), contextUcrednet, ucrednet{pid: 100, uid: 0})
 
 	systemdSdNotify = func(notif string) error {
 		s.notified = append(s.notified, notif)
@@ -143,16 +149,15 @@ func (s *daemonSuite) TestCommandMethodDispatch(c *check.C) {
 		c.Check(rec.Code, check.Equals, 401, check.Commentf(method))
 
 		rec = httptest.NewRecorder()
-		req.RemoteAddr = "pid=100;uid=0;socket=;"
+		req = req.WithContext(s.ctx)
 
 		cmd.ServeHTTP(rec, req)
 		c.Check(handler.lastMethod, check.Equals, method)
 		c.Check(rec.Code, check.Equals, 200)
 	}
 
-	req, err := http.NewRequest("POTATO", "", nil)
+	req, err := http.NewRequestWithContext(s.ctx, "POTATO", "", nil)
 	c.Assert(err, check.IsNil)
-	req.RemoteAddr = "pid=100;uid=0;socket=;"
 
 	rec := httptest.NewRecorder()
 	cmd.ServeHTTP(rec, req)
@@ -166,9 +171,8 @@ func (s *daemonSuite) TestCommandRestartingState(c *check.C) {
 	cmd.GET = func(*Command, *http.Request, *userState) Response {
 		return SyncResponse(nil, http.StatusOK)
 	}
-	req, err := http.NewRequest("GET", "", nil)
+	req, err := http.NewRequestWithContext(s.ctx, "GET", "", nil)
 	c.Assert(err, check.IsNil)
-	req.RemoteAddr = "pid=100;uid=0;socket=;"
 
 	rec := httptest.NewRecorder()
 	cmd.ServeHTTP(rec, req)
@@ -216,9 +220,8 @@ func (s *daemonSuite) TestFillsWarnings(c *check.C) {
 	cmd.GET = func(*Command, *http.Request, *userState) Response {
 		return SyncResponse(nil, http.StatusOK)
 	}
-	req, err := http.NewRequest("GET", "", nil)
+	req, err := http.NewRequestWithContext(s.ctx, "GET", "", nil)
 	c.Assert(err, check.IsNil)
-	req.RemoteAddr = "pid=100;uid=0;socket=;"
 
 	rec := httptest.NewRecorder()
 	cmd.ServeHTTP(rec, req)
@@ -244,6 +247,42 @@ func (s *daemonSuite) TestFillsWarnings(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(rst.WarningCount, check.Equals, 1)
 	c.Check(rst.WarningTimestamp, check.NotNil)
+}
+
+func (s *daemonSuite) TestContextUser(c *check.C) {
+	d := s.newDaemon(c)
+
+	restore := testutil.FakeFunc(func(uid string) (*user.User, error) {
+		return &user.User{Uid: uid, Username: "user" + uid}, nil
+	}, &LookupUserId)
+	defer restore()
+
+	cmd := &Command{d: d, UntrustedOK: true}
+	cmd.POST = func(_ *Command, req *http.Request, _ *userState) Response {
+		user, ok := req.Context().Value(workshop.ContextUser).(string)
+		if ok {
+			return SyncResponse(user, http.StatusOK)
+		}
+		return SyncResponse(nil, http.StatusForbidden)
+	}
+
+	req, err := http.NewRequestWithContext(s.ctx, "POST", "", nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	cmd.ServeHTTP(rec, req)
+	c.Check(rec.Code, check.Equals, 200)
+	var rst struct {
+		Result string `json:"result"`
+	}
+	err = json.Unmarshal(rec.Body.Bytes(), &rst)
+	c.Assert(err, check.IsNil)
+	c.Check(rst.Result, check.Equals, "user0")
+
+	req, err = http.NewRequest("POST", "", nil)
+	c.Assert(err, check.IsNil)
+	rec = httptest.NewRecorder()
+	cmd.ServeHTTP(rec, req)
+	c.Check(rec.Code, check.Equals, 403)
 }
 
 func (s *daemonSuite) TestGuestAccess(c *check.C) {
@@ -277,34 +316,8 @@ func (s *daemonSuite) TestGuestAccess(c *check.C) {
 	c.Check(cmd.canAccess(put, nil), check.Equals, accessUnauthorized)
 	c.Check(cmd.canAccess(pst, nil), check.Equals, accessUnauthorized)
 	c.Check(cmd.canAccess(del, nil), check.Equals, accessUnauthorized)
-}
 
-func (s *daemonSuite) TestUntrustedAccessUntrustedOKWithUser(c *check.C) {
-	d := s.newDaemon(c)
-
-	remoteAddr := "pid=100;uid=1000;socket=" + d.untrustedSocketPath + ";"
-	get := &http.Request{Method: "GET", RemoteAddr: remoteAddr}
-	put := &http.Request{Method: "PUT", RemoteAddr: remoteAddr}
-	pst := &http.Request{Method: "POST", RemoteAddr: remoteAddr}
-	del := &http.Request{Method: "DELETE", RemoteAddr: remoteAddr}
-
-	cmd := &Command{d: d, UntrustedOK: true}
-	c.Check(cmd.canAccess(get, nil), check.Equals, accessOK)
-	c.Check(cmd.canAccess(put, nil), check.Equals, accessOK)
-	c.Check(cmd.canAccess(pst, nil), check.Equals, accessOK)
-	c.Check(cmd.canAccess(del, nil), check.Equals, accessOK)
-}
-
-func (s *daemonSuite) TestUntrustedAccessUntrustedOKWithRoot(c *check.C) {
-	d := s.newDaemon(c)
-
-	remoteAddr := "pid=100;uid=0;socket=" + d.untrustedSocketPath + ";"
-	get := &http.Request{Method: "GET", RemoteAddr: remoteAddr}
-	put := &http.Request{Method: "PUT", RemoteAddr: remoteAddr}
-	pst := &http.Request{Method: "POST", RemoteAddr: remoteAddr}
-	del := &http.Request{Method: "DELETE", RemoteAddr: remoteAddr}
-
-	cmd := &Command{d: d, UntrustedOK: true}
+	cmd = &Command{d: d, UntrustedOK: true}
 	c.Check(cmd.canAccess(get, nil), check.Equals, accessOK)
 	c.Check(cmd.canAccess(put, nil), check.Equals, accessOK)
 	c.Check(cmd.canAccess(pst, nil), check.Equals, accessOK)
@@ -314,8 +327,9 @@ func (s *daemonSuite) TestUntrustedAccessUntrustedOKWithRoot(c *check.C) {
 func (s *daemonSuite) TestUserAccess(c *check.C) {
 	d := s.newDaemon(c)
 
-	get := &http.Request{Method: "GET", RemoteAddr: "pid=100;uid=42;socket=;"}
-	put := &http.Request{Method: "PUT", RemoteAddr: "pid=100;uid=42;socket=;"}
+	ctx := context.WithValue(s.ctx, contextUcrednet, ucrednet{pid: 100, uid: 42})
+	get := (&http.Request{Method: "GET"}).WithContext(ctx)
+	put := (&http.Request{Method: "PUT"}).WithContext(ctx)
 
 	cmd := &Command{d: d}
 	c.Check(cmd.canAccess(get, nil), check.Equals, accessUnauthorized)
@@ -335,8 +349,7 @@ func (s *daemonSuite) TestUserAccess(c *check.C) {
 	c.Check(cmd.canAccess(get, nil), check.Equals, accessOK)
 	c.Check(cmd.canAccess(put, nil), check.Equals, accessUnauthorized)
 
-	// Since this request has a RemoteAddr, it must be coming from the pebble server
-	// socket instead of the pebble one. In that case, UntrustedOK should have no
+	// Since this request is from a trusted socket, UntrustedOK should have no
 	// bearing on the default behavior, which is to deny access.
 	cmd = &Command{d: d, UntrustedOK: true}
 	c.Check(cmd.canAccess(get, nil), check.Equals, accessUnauthorized)
@@ -347,8 +360,9 @@ func (s *daemonSuite) TestLoggedInUserAccess(c *check.C) {
 	d := s.newDaemon(c)
 
 	user := &userState{}
-	get := &http.Request{Method: "GET", RemoteAddr: "pid=100;uid=42;socket=;"}
-	put := &http.Request{Method: "PUT", RemoteAddr: "pid=100;uid=42;socket=;"}
+	ctx := context.WithValue(s.ctx, contextUcrednet, ucrednet{pid: 100, uid: 42})
+	get := (&http.Request{Method: "GET"}).WithContext(ctx)
+	put := (&http.Request{Method: "PUT"}).WithContext(ctx)
 
 	cmd := &Command{d: d}
 	c.Check(cmd.canAccess(get, user), check.Equals, accessOK)
@@ -374,10 +388,10 @@ func (s *daemonSuite) TestLoggedInUserAccess(c *check.C) {
 func (s *daemonSuite) TestSuperAccess(c *check.C) {
 	d := s.newDaemon(c)
 
-	for _, uid := range []int{0} {
-		remoteAddr := fmt.Sprintf("pid=100;uid=%d;socket=;", uid)
-		get := &http.Request{Method: "GET", RemoteAddr: remoteAddr}
-		put := &http.Request{Method: "PUT", RemoteAddr: remoteAddr}
+	for _, uid := range []uint32{0} {
+		ctx := context.WithValue(s.ctx, contextUcrednet, ucrednet{pid: 100, uid: uid})
+		get := (&http.Request{Method: "GET"}).WithContext(ctx)
+		put := (&http.Request{Method: "PUT"}).WithContext(ctx)
 
 		cmd := &Command{d: d}
 		c.Check(cmd.canAccess(get, nil), check.Equals, accessOK)
@@ -399,6 +413,34 @@ func (s *daemonSuite) TestSuperAccess(c *check.C) {
 		c.Check(cmd.canAccess(get, nil), check.Equals, accessOK)
 		c.Check(cmd.canAccess(put, nil), check.Equals, accessOK)
 	}
+}
+
+func (s *daemonSuite) TestBadUidAccess(c *check.C) {
+	d := s.newDaemon(c)
+
+	ctx := context.WithValue(s.ctx, contextUcrednet, ucrednet{pid: 100, uid: ucrednetNobody})
+	get := (&http.Request{Method: "GET"}).WithContext(ctx)
+	put := (&http.Request{Method: "PUT"}).WithContext(ctx)
+
+	cmd := &Command{d: d}
+	c.Check(cmd.canAccess(get, nil), check.Equals, accessUnauthorized)
+	c.Check(cmd.canAccess(put, nil), check.Equals, accessUnauthorized)
+
+	cmd = &Command{d: d, AdminOnly: true}
+	c.Check(cmd.canAccess(get, nil), check.Equals, accessUnauthorized)
+	c.Check(cmd.canAccess(put, nil), check.Equals, accessUnauthorized)
+
+	cmd = &Command{d: d, UserOK: true}
+	c.Check(cmd.canAccess(get, nil), check.Equals, accessUnauthorized)
+	c.Check(cmd.canAccess(put, nil), check.Equals, accessUnauthorized)
+
+	cmd = &Command{d: d, GuestOK: true}
+	c.Check(cmd.canAccess(get, nil), check.Equals, accessOK)
+	c.Check(cmd.canAccess(put, nil), check.Equals, accessUnauthorized)
+
+	cmd = &Command{d: d, UntrustedOK: true}
+	c.Check(cmd.canAccess(get, nil), check.Equals, accessOK)
+	c.Check(cmd.canAccess(put, nil), check.Equals, accessOK)
 }
 
 func (s *daemonSuite) TestAddRoutes(c *check.C) {
@@ -458,12 +500,17 @@ func (s *daemonSuite) TestStartStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	l2, err := net.Listen("tcp", "127.0.0.1:0")
 	c.Assert(err, check.IsNil)
+	l3, err := net.Listen("tcp", "127.0.0.1:0")
+	c.Assert(err, check.IsNil)
 
 	generalAccept := make(chan struct{})
 	d.generalListener = &witnessAcceptListener{Listener: l1, accept: generalAccept}
 
 	untrustedAccept := make(chan struct{})
 	d.untrustedListener = &witnessAcceptListener{Listener: l2, accept: untrustedAccept}
+
+	vsockAccept := make(chan struct{})
+	d.vsockListener = &witnessAcceptListener{Listener: l3, accept: vsockAccept}
 
 	err = d.Start()
 	c.Assert(err, check.IsNil)
@@ -488,8 +535,19 @@ func (s *daemonSuite) TestStartStop(c *check.C) {
 		close(untrustedDone)
 	}()
 
+	vsockDone := make(chan struct{})
+	go func() {
+		select {
+		case <-vsockAccept:
+		case <-time.After(2 * time.Second):
+			c.Fatal("vsock listener accept was not called")
+		}
+		close(vsockDone)
+	}()
+
 	<-generalDone
 	<-untrustedDone
+	<-vsockDone
 
 	err = d.Stop(nil)
 	c.Check(err, check.IsNil)
@@ -1027,10 +1085,9 @@ func (s *daemonSuite) TestConnTrackerCanShutdown(c *check.C) {
 	c.Check(ct.CanStandby(), check.Equals, true)
 }
 
-func doTestReq(c *check.C, cmd *Command, mth string) *httptest.ResponseRecorder {
-	req, err := http.NewRequest(mth, "", nil)
+func (s *daemonSuite) doTestReq(c *check.C, cmd *Command, mth string) *httptest.ResponseRecorder {
+	req, err := http.NewRequestWithContext(s.ctx, mth, "", nil)
 	c.Assert(err, check.IsNil)
-	req.RemoteAddr = "pid=100;uid=0;socket=;"
 	rec := httptest.NewRecorder()
 	cmd.ServeHTTP(rec, req)
 	return rec
@@ -1050,10 +1107,10 @@ func (s *daemonSuite) TestDegradedModeReply(c *check.C) {
 	d.SetDegradedMode(fmt.Errorf("foo error"))
 
 	// GET is ok even in degraded mode
-	rec := doTestReq(c, cmd, "GET")
+	rec := s.doTestReq(c, cmd, "GET")
 	c.Check(rec.Code, check.Equals, 200)
 	// POST is not allowed
-	rec = doTestReq(c, cmd, "POST")
+	rec = s.doTestReq(c, cmd, "POST")
 	c.Check(rec.Code, check.Equals, 500)
 	// verify we get the error
 	var v struct{ Result errorResult }
@@ -1062,7 +1119,7 @@ func (s *daemonSuite) TestDegradedModeReply(c *check.C) {
 
 	// clean degraded mode
 	d.SetDegradedMode(nil)
-	rec = doTestReq(c, cmd, "POST")
+	rec = s.doTestReq(c, cmd, "POST")
 	c.Check(rec.Code, check.Equals, 200)
 }
 

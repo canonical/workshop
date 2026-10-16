@@ -237,6 +237,7 @@ url
 uv
 validator
 venv
+vsock
 wayland
 Wayland
 WAYLAND

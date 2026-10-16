@@ -104,13 +104,13 @@ func (s *healthSuite) TestBadArgs(c *check.C) {
 	}
 
 	for i, t := range table {
-		_, _, err := ctlcmd.Run(context.TODO(), nil, t.args, 0)
+		_, _, err := ctlcmd.Run(context.TODO(), nil, t.args)
 		c.Check(err, check.ErrorMatches, t.err, check.Commentf("%d", i))
 	}
 }
 
 func (s *healthSuite) TestRegularRun(c *check.C) {
-	_, _, err := ctlcmd.Run(context.TODO(), s.mockContext, []string{"set-health", "waiting", "message", "--code=some-code"}, 0)
+	_, _, err := ctlcmd.Run(context.TODO(), s.mockContext, []string{"set-health", "waiting", "message", "--code=some-code"})
 	c.Assert(err, check.IsNil)
 
 	s.mockContext.Lock()
@@ -124,7 +124,7 @@ func (s *healthSuite) TestRegularRun(c *check.C) {
 }
 
 func (s *healthSuite) TestMessageTruncation(c *check.C) {
-	_, _, err := ctlcmd.Run(context.TODO(), s.mockContext, []string{"set-health", "error", "Sometimes messages will get a little bit too verbose and this can lead to some rather nasty UX (as well as potential memory problems in extreme cases) so we kinda have to deal with that", "--code=some-code"}, 0)
+	_, _, err := ctlcmd.Run(context.TODO(), s.mockContext, []string{"set-health", "error", "Sometimes messages will get a little bit too verbose and this can lead to some rather nasty UX (as well as potential memory problems in extreme cases) so we kinda have to deal with that", "--code=some-code"})
 	c.Assert(err, check.IsNil)
 
 	s.mockContext.Lock()
@@ -143,7 +143,7 @@ func (s *healthSuite) TestRegularRunIncorrectHook(c *check.C) {
 	ctx, err := hookstate.NewContext(task, s.state, setup, s.mockHandler, "")
 	c.Assert(err, check.IsNil)
 
-	_, _, err = ctlcmd.Run(context.TODO(), ctx, []string{"set-health", "waiting", "message", "--code=some-code"}, 0)
+	_, _, err = ctlcmd.Run(context.TODO(), ctx, []string{"set-health", "waiting", "message", "--code=some-code"})
 	c.Assert(err, check.ErrorMatches, `"set-health" is only allowed from a "check-health" hook`)
 
 	s.mockContext.Lock()
