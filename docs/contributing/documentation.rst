@@ -130,6 +130,9 @@ Copy the resulting files from the repository's
 :file:`media/screenshots/` directory;
 don't capture or edit them by hand.
 
+If you draft with AI assistance,
+see :ref:`contributing_ai` first.
+
 
 Test
 ~~~~
@@ -149,6 +152,8 @@ which cover Markdown style, spelling, inclusive language, and links:
 For the workflows that run the same checks on your pull request,
 see :ref:`contributing_cicd`.
 
+
+.. _contributing_doc_commit:
 
 Commit
 ~~~~~~
