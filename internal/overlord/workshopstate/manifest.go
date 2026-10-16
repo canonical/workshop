@@ -269,6 +269,9 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 			}
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
+		if file.Runtime == workshop.RuntimeLXDVM && a.vmsUnavailable != nil {
+			return nil, nil, fmt.Errorf("cannot %s %q: virtual machines are unavailable: %w", action, name, a.vmsUnavailable)
+		}
 
 		image, err := a.backend.GetBase(ctx, file.Base, file.Runtime)
 		if err != nil {

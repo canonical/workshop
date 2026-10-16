@@ -370,20 +370,18 @@ func (d *Daemon) Init() error {
 	}
 
 	if listener, err := netutil.GetListener(d.untrustedSocketPath, listenerMap); err == nil {
-		// This listener may also be nil if that socket wasn't among
-		// the listeners, so check it before using it.
 		d.untrustedListener = listener
 	} else {
-		logger.Debugf("Cannot get listener for %q: %v", d.untrustedSocketPath, err)
+		return fmt.Errorf("when trying to listen on %s: %w", d.untrustedSocketPath, err)
 	}
 
-	if d.vsockPort != 0 {
-		listener, err := netutil.GetVsockGuestListener(d.vsockPort, d.vsockLimitToGuests, listenerMap)
-		if err == nil {
-			d.vsockListener = listener
-		} else {
-			logger.Debugf("Cannot get vsock listener on port %d: %v", d.vsockPort, err)
-		}
+	if d.vsockPort == 0 {
+		d.overlord.WorkshopManager().SetVMsUnavailable(errors.New("vsock port is not configured"))
+	} else if listener, err := netutil.GetVsockGuestListener(d.vsockPort, d.vsockLimitToGuests, listenerMap); err == nil {
+		d.vsockListener = listener
+	} else {
+		logger.Noticef("Cannot get vsock listener, virtual machines are unavailable: %v", err)
+		d.overlord.WorkshopManager().SetVMsUnavailable(err)
 	}
 
 	d.addRoutes()

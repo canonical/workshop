@@ -44,6 +44,8 @@ type WorkshopManager struct {
 	backend         workshop.Backend
 	state           *state.State
 	firewallChecker func(string) string
+
+	vmsUnavailable error
 }
 
 var (
@@ -81,6 +83,10 @@ func New(st *state.State, runner *state.TaskRunner) *WorkshopManager {
 	runner.AddCleanup("remove-workshop-stash", manager.doDeleteUnusedSnapshots)
 
 	return manager
+}
+
+func (w *WorkshopManager) SetVMsUnavailable(reason error) {
+	w.vmsUnavailable = reason
 }
 
 func (m *WorkshopManager) StartUp() error {
