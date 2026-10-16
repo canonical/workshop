@@ -787,9 +787,22 @@ func (s *snapshotSuite) extractUniqueFiles(c *check.C, name, path string) unique
 	}
 }
 
+// parallelDiff is like `diff --brief --no-dereference --recursive`, but runs
+// several instances in parallel to reduce the effect of I/O latency with a
+// (nested) VM block device. If files differ in / or an immediate child, the
+// remaining files are unchecked. It's optimised for small and local changes;
+// if several processes report errors in parallel the output might be garbled.
+const parallelDiff = `set -e
+cd "$1"
+find . -maxdepth 1 -type d -printf '%P\0' |
+	xargs -0 -P8 -I{} diff --brief --no-dereference "$1/{}" "$2/{}"
+find . -mindepth 2 -maxdepth 2 -type d -printf '%P\0' |
+	xargs -0 -P8 -I{} diff --brief --no-dereference --recursive "$1/{}" "$2/{}"
+`
+
 func (s *snapshotSuite) execDiff(c *check.C, name, a, b string) {
 	args := workshop.ExecArgs{
-		Command: []string{"diff", "--brief", "--no-dereference", "--recursive", a, b},
+		Command: []string{"sh", "-c", parallelDiff, "sh", a, b},
 		WorkDir: "/",
 		Timeout: time.Second,
 	}
