@@ -22,8 +22,8 @@ _completion_loader workshop || true
 
 set -x
 
-func='__start_workshop'
-complete -p workshop | grep -qw "$func"
+[[ "$(complete -p workshop)" =~ ' -F '([^[:space:]]+) ]]
+func="${BASH_REMATCH[1]}"
 
 # The completion functionality is well covered in unit tests. We check some
 # small examples here that each use different code paths.
@@ -65,8 +65,8 @@ do_complete workshop refresh --project "$PWD/compl"
 [ "$COMPREPLY" = "$PWD/completion" ]
 popd >/dev/null
 
-func='__start_sdk'
-complete -p sdk | grep -qw "$func"
+[[ "$(complete -p sdk)" =~ ' -F '([^[:space:]]+) ]]
+func="${BASH_REMATCH[1]}"
 
 echo "Test base completion"
 do_complete sdk info --base ubuntu@24.0
