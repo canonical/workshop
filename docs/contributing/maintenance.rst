@@ -201,6 +201,10 @@ Documentation workflows:
    * - :file:`automatic-doc-checks.yml` (SP)
      - Build the documentation and fail on Sphinx warnings.
 
+   * - :file:`check-removed-urls.yml` (SP)
+     - Fail a pull request that removes a documentation page
+       without adding a redirect for it to :file:`docs/redirects.txt`.
+
    * - :file:`check-sphinx-stack.yaml`
      - Check weekly that the documentation uses the latest Sphinx Stack minor release;
        if not, open or refresh an issue,
