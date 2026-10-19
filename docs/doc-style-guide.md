@@ -736,7 +736,7 @@ Example with options:
 Use three spaces to indent reStructuredText directives and separate directive content with a blank line:
 
 ```restructuredtext
-.. tab::
+.. tab-item:: Ubuntu
 
    .. code-block:: console
    

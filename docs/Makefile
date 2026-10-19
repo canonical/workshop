@@ -21,7 +21,7 @@ VALE_DIR         ?= $(DOCS_VENVDIR)/lib/python*/site-packages/vale
 VALE_CONFIG      ?= $(DEV_DIR)/vale.ini
 PA11Y_CMD        ?= $(DEV_DIR)/node_modules/pa11y/bin/pa11y.js --config $(DEV_DIR)/pa11y.json
 CONFIRM_SUDO     ?= N
-CHECK_PATH       ?= $(filter-out $(DOCS_VENVDIR) $(DOCS_BUILDDIR),$(wildcard *))
+CHECK_PATH       ?= $(filter-out $(DOCS_VENVDIR) $(DOCS_BUILDDIR) $(DEV_DIR),$(wildcard *))
 LYCHEE_CONFIG    ?= lychee.toml
 LYCHEE_VERSION   ?= $(shell cat lychee-version 2>/dev/null | tr -d '[:space:]')
 
@@ -69,7 +69,7 @@ $(DOCS_VENVDIR):
 	@touch $(DOCS_VENVDIR)
 
 pa11y-install:
-	@command -v $(PA11Y_CMD) >/dev/null || { \
+	@test -x $(firstword $(PA11Y_CMD)) >/dev/null || { \
 			echo "Installing \"pa11y\" from npm..."; echo; \
 			mkdir -p $(DEV_DIR)/node_modules/ ; \
 			npm install --prefix $(DEV_DIR) pa11y; \
@@ -178,20 +178,11 @@ pa11y: pa11y-install html
 # Without --return-code-scheme explicit, pymarkdownlnt returns 1 for multiple scenarios
 # By using the explicit scheme, it only returns 1 when no files are found,
 # which should not result in failure
-#
-# .workshop/dev.yaml runs this target with DOCS_VENVDIR set to an out-of-tree venv
-# ($HOME/.docs-venv), so the on-disk docs/.venv is excluded by its literal name too.
 lint-md: pymarkdownlnt-install
 	@. $(DOCS_VENV); pymarkdownlnt \
 		--config $(DEV_DIR)/.pymarkdown.json \
 		--return-code-scheme explicit \
-		scan \
-			--recurse \
-			--exclude=$(DEV_DIR)/** \
-			--exclude=$(DOCS_BUILDDIR)/** \
-			--exclude=$(DOCS_VENVDIR)/** \
-			--exclude=.venv/** \
-			$(DOCS_SOURCEDIR); \
+		scan --recurse $(CHECK_PATH); \
 	status=$$?; \
 	if [ $$status -eq 1 ]; then \
 		echo "No Markdown files selected for linting"; \
@@ -240,7 +231,6 @@ pdf-prep: install
 
 pdf-prep-force:
 	apt-get update
-	apt-get upgrade -y
 	apt-get install --no-install-recommends -y $(DOCS_PDFPACKAGES) \
 
 pdf: pdf-prep

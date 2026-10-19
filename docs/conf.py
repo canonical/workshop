@@ -147,6 +147,12 @@ llms_txt_description = textwrap.dedent(
     """
 )
 
+# Generate an 'llms-full.txt' file containing all of the documentation content
+llms_txt_full_build = True
+
+# Suppress warnings from upstream markdown builder
+llms_txt_suppress_unknown_node_warnings = True
+
 llms_txt_suffix_mode = "url-suffix"
 
 # The base URL for references built by sphinx-markdown-builder, which adds
@@ -184,7 +190,6 @@ extensions = [
     "ulwazi",
     "sphinx_modern_pdf_style",
     "myst_parser",
-    "notfound.extension",
     "sphinx_design",
     "sphinx_rerediraffe",
     "sphinxcontrib.jquery",
@@ -208,6 +213,7 @@ extensions = [
 exclude_patterns = [
     "doc-cheat-sheet*",
     ".venv*",
+    "_dev",
     "readme.rst",
     "reference/cli/sdk-*.rst",
     "reference/cli/workshop-*.rst",

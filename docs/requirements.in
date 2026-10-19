@@ -9,16 +9,6 @@
 # dependency graph and generates Dependabot and Trivy findings for packages
 # that Workshop neither ships nor controls.
 
-# Ulwazi theme; replaces canonical-sphinx, which update-sphinx-stack.yaml
-# drops from the Sphinx Stack requirements.
-ulwazi~=1.0
-
-# MyST linkify extension for bare URLs; formerly a canonical-sphinx dependency.
-linkify-it-py~=2.0
-
-# PDF styling for the Read the Docs PDF build; formerly part of canonical-sphinx.
-sphinx-modern-pdf-style~=0.1
-
 # Mermaid diagrams in Sphinx docs (not bundled in the Sphinx Stack).
 sphinxcontrib-mermaid~=2.0
 
