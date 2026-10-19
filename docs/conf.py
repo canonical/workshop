@@ -105,7 +105,6 @@ sitemap_filename = "doc-sitemap.xml"
 
 html_theme = "ulwazi"
 html_static_path = ["_static"]
-templates_path = ["_templates"]
 
 html_css_files = [
     "workshop.css",
@@ -153,13 +152,14 @@ llms_txt_full_build = True
 # Suppress warnings from upstream markdown builder
 llms_txt_suppress_unknown_node_warnings = True
 
+# Publish each page's Markdown twin at its URL plus '.md', as advertised in
+# reference/ai-agents.rst. sphinx-llm 1.1 deprecates the mode in favor of
+# "append", which publishes section indexes under a different path.
 llms_txt_suffix_mode = "url-suffix"
 
-# The base URL for references built by sphinx-markdown-builder, which adds
-# its own slash; the markdown_links extension maps section-index links to
-# the url-suffix layout above.
+# The base URL for references built by sphinx-markdown-builder.
 if os.environ.get("READTHEDOCS"):
-    markdown_http_base = html_baseurl.rstrip("/")
+    markdown_http_base = html_baseurl
 
 ###########################
 # Link checker exceptions #
@@ -204,7 +204,6 @@ extensions = [
     "sphinxcontrib.cairosvgconverter",
     "sphinx_sitemap",
     "flat_toctree",
-    "markdown_links",
     "sphinx_structured_toc",
     "structured_toc",
     # "category_nav",  # disabled on this branch; extension kept in _extensions/
@@ -286,20 +285,11 @@ smartquotes_action = "qe"
 set_modern_pdf_config = True
 
 
-# Expose the sphinx_llm "llms_txt_enabled" flag to the HTML templates so the
-# per-page Markdown <link rel="alternate"> in _templates/layout.html is emitted
-# only when the Markdown twins are actually generated. Reads app.config so the
-# Makefile autobuild override (-D=llms_txt_enabled=0) is respected.
 def setup(app):
-    def _expose_llms_flag(app, pagename, templatename, context, doctree):
-        context["llms_txt_enabled"] = getattr(app.config, "llms_txt_enabled", True)
-
-    app.connect("html-page-context", _expose_llms_flag)
-
     # Under dirhtml, Sphinx builds each page URL with a ".html" suffix that the
     # site doesn't serve. Furo used to rewrite it, and Ulwazi doesn't, which
-    # breaks the canonical link and the Markdown link in _templates/layout.html.
-    # Use the directory URL that dirhtml actually serves instead.
+    # breaks the canonical link. Use the directory URL that dirhtml actually
+    # serves instead.
     def _fix_dirhtml_pageurl(app, pagename, templatename, context, doctree):
         pageurl = context.get("pageurl")
         if app.builder.name == "dirhtml" and pageurl and pageurl.endswith(".html"):
