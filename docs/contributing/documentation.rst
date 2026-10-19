@@ -45,14 +45,13 @@ Dependencies come from two files:
 - :file:`docs/requirements.txt`
   is the assembled file that the build installs.
 
-The :file:`.github/workflows/update-sphinx-stack.yaml` workflow
+The :file:`.github/scripts/update-sphinx-stack.sh` script
 generates :file:`docs/requirements.txt`
 by appending :file:`docs/requirements.in`
-to the Sphinx Stack's own requirements,
-minus the Canonical Sphinx theme package
-that the Ulwazi theme replaces.
-Keep constraints loose, matching the Sphinx Stack convention.
-For more information about the workflow,
+to the requirements of a Sphinx Stack release.
+Keep constraints loose, matching the Sphinx Stack convention,
+and don't list packages that the Sphinx Stack already provides.
+For more information about the script,
 see :ref:`contributing_cicd`.
 
 

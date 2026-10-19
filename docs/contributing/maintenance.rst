@@ -201,6 +201,11 @@ Documentation workflows:
    * - :file:`automatic-doc-checks.yml` (SP)
      - Build the documentation and fail on Sphinx warnings.
 
+   * - :file:`check-sphinx-stack.yaml`
+     - Check weekly that the documentation uses the latest Sphinx Stack minor release;
+       if not, open or refresh an issue,
+       and close it once the documentation catches up.
+
    * - :file:`doc-cover.yaml`
      - Generate and update the documentation coverage map.
 
@@ -217,9 +222,23 @@ Documentation workflows:
    * - :file:`markdown-style-checks.yml` (SP)
      - Lint Markdown documentation files.
 
-   * - :file:`update-sphinx-stack.yaml`
-     - Update Sphinx Stack files and documentation dependencies weekly
-       and on demand.
+
+When :file:`check-sphinx-stack.yaml` reports a new Sphinx Stack release,
+update the files that come from the Sphinx Stack
+with the :file:`.github/scripts/update-sphinx-stack.sh` script:
+
+.. code-block:: console
+
+   $ .github/scripts/update-sphinx-stack.sh <TAG>
+
+Without a tag, the script uses the latest release.
+It copies :file:`docs/_dev/` from the release,
+records the tag in :file:`docs/_dev/version`,
+and regenerates :file:`docs/requirements.txt`.
+Because :file:`docs/Makefile` runs a |ws_markup|-specific link check with :command:`lychee`,
+the script only prints the upstream :file:`Makefile` changes;
+merge them by hand.
+Then address the breaking changes listed in the release notes.
 
 
 Code quality and testing workflows:

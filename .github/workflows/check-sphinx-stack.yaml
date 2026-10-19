@@ -1,0 +1,102 @@
+name: Check Sphinx Stack version
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Mondays
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/check-sphinx-stack.yaml'
+      - 'docs/_dev/version'
+
+permissions:
+  contents: read
+
+jobs:
+  check-sphinx-stack:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_TITLE: Update the docs to the latest Sphinx Stack release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Only the major and minor versions count; patch releases don't raise an issue.
+      - name: Compare with the latest release
+        id: compare
+        run: |
+          local_version=$(tr -d '[:space:]' < docs/_dev/version)
+          latest_version=$(gh release view -R canonical/sphinx-stack --json tagName --jq .tagName)
+          for version in "$local_version" "$latest_version"; do
+            if ! [[ "$version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+              echo "Unexpected Sphinx Stack version: '$version'"
+              exit 1
+            fi
+          done
+
+          local_minor=$(cut -d. -f1,2 <<< "$local_version")
+          latest_minor=$(cut -d. -f1,2 <<< "$latest_version")
+          oldest_minor=$(printf '%s\n' "$local_minor" "$latest_minor" | sort -V | head -n 1)
+          behind=false
+          if [ "$local_minor" != "$latest_minor" ] && [ "$oldest_minor" = "$local_minor" ]; then
+            behind=true
+          fi
+
+          echo "Workshop docs use Sphinx Stack $local_version; the latest release is $latest_version."
+          echo "Behind the latest minor release: $behind"
+          {
+            echo "local=$local_version"
+            echo "latest=$latest_version"
+            echo "behind=$behind"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Find the update issue
+        id: issue
+        if: github.event_name != 'pull_request'
+        run: |
+          number=$(gh issue list -R "$GITHUB_REPOSITORY" --state open \
+            --search "\"$ISSUE_TITLE\" in:title" --json number,title \
+            --jq 'map(select(.title == env.ISSUE_TITLE)) | .[0].number // empty')
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+      - name: Open or refresh the update issue
+        if: github.event_name != 'pull_request' && steps.compare.outputs.behind == 'true'
+        env:
+          LOCAL_VERSION: ${{ steps.compare.outputs.local }}
+          LATEST_VERSION: ${{ steps.compare.outputs.latest }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+        run: |
+          body=$(cat <<EOF
+          The Workshop documentation uses Sphinx Stack $LOCAL_VERSION, but Sphinx Stack $LATEST_VERSION is out.
+
+          Release notes: https://github.com/canonical/sphinx-stack/releases/tag/$LATEST_VERSION
+
+          To update, run \`.github/scripts/update-sphinx-stack.sh $LATEST_VERSION\`, merge the Makefile changes it prints into \`docs/Makefile\`, and address the breaking changes in the release notes.
+
+          The [Check Sphinx Stack version]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/check-sphinx-stack.yaml) workflow opened this issue and closes it once \`docs/_dev/version\` on the default branch reaches $LATEST_VERSION.
+          EOF
+          )
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue edit "$ISSUE_NUMBER" -R "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$ISSUE_TITLE" --body "$body"
+          fi
+
+      - name: Close the update issue
+        if: >-
+          github.event_name != 'pull_request'
+          && steps.compare.outputs.behind == 'false'
+          && steps.issue.outputs.number != ''
+        env:
+          LOCAL_VERSION: ${{ steps.compare.outputs.local }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+        run: |
+          gh issue close "$ISSUE_NUMBER" -R "$GITHUB_REPOSITORY" \
+            --comment "The Workshop documentation now uses Sphinx Stack $LOCAL_VERSION."
