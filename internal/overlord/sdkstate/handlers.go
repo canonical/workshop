@@ -222,6 +222,7 @@ func extractSdkYAML(ctx context.Context, task *state.Task, rec sdk.Setup) (strin
 
 	cmd := exec.CommandContext(ctx, "tar",
 		"--extract",
+		"--occurrence",
 		"--to-stdout",
 		"--force-local",
 		"--file="+path,
