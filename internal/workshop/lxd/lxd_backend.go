@@ -34,6 +34,7 @@ import (
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
+	"github.com/canonical/lxd/shared/units"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 
@@ -49,8 +50,12 @@ import (
 )
 
 const (
-	storagePool           = "workshop"
-	storagePoolMinimalGiB = 5
+	MiB = 1 << 20
+	GiB = 1 << 30
+
+	storagePool         = "workshop"
+	storagePoolMinSize  = 5 * GiB
+	storagePoolReserved = 256 * MiB
 
 	// instanceUUIDConfigKey identifies the LXD configuration value used to
 	// derive the workshop's machine ID.
@@ -190,12 +195,11 @@ func checkStorageDriver(drivers []api.ServerStorageDriverInfo) error {
 }
 
 // checkStorageSpace puts the daemon into degraded mode when the workshop
-// storage pool is 90% or more full, preventing further launches from failing
+// storage pool is nearly full, preventing further operations from failing
 // weirdly (e.g. on workshop remove causing troubles with backup yaml files
-// removal) due to lack of space.
+// removal) due to lack of space. A more strict check is performed before
+// launching or refreshing a workshop.
 func checkStorageSpace() error {
-	const fullThresholdPct = 90
-
 	conn, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
 		// LXD is not available; checkServerCapabilities handles this case.
@@ -212,21 +216,27 @@ func checkStorageSpace() error {
 		return err
 	}
 
-	if res.Space.Total == 0 {
+	return checkPoolSpace(res.Space.Total, res.Space.Used, 0)
+}
+
+// checkPoolSpace reports whether a pool with the given total and used space
+// can absorb an operation that needs the given space, on top of the reserve.
+func checkPoolSpace(total, used, needed uint64) error {
+	if total == 0 {
 		// Cannot determine usage (e.g. directory-backed pools report zero).
 		return nil
 	}
 
-	usedPct := float64(res.Space.Used) / float64(res.Space.Total) * 100
-	if usedPct >= fullThresholdPct {
-		availGiB := float64(res.Space.Total-res.Space.Used) / (1024 * 1024 * 1024)
-		return fmt.Errorf("storage pool %q is %.0f%% full (%.1f GiB available); "+
-			"free up space or expand the pool with `lxc storage set workshop size=<N>GiB`\n"+
-			"For details, see: https://ubuntu.com/workshop/docs/reference/workshops/#storage-pools-and-drivers",
-			storagePool, usedPct, availGiB)
+	avail := total - min(used, total)
+	if avail >= needed+storagePoolReserved {
+		return nil
 	}
 
-	return nil
+	usedPct := float64(used) / float64(total) * 100
+	return fmt.Errorf("storage pool %[1]q is %.0[2]f%% full (%[3]s available); "+
+		"free up space or expand the pool with \"lxc storage set %[1]s size=<N>GiB\"\n"+
+		"For details, see: https://ubuntu.com/workshop/docs/reference/workshops/#storage-pools-and-drivers",
+		storagePool, usedPct, units.GetByteSizeStringIEC(avail, 1))
 }
 
 func checkServerCapabilities() error {
@@ -351,23 +361,22 @@ func ensureBackendReady() error {
 			return err
 		}
 
-		gibTotal := uint64(res.Space.Total) / (1024 * 1024 * 1024)
-		if gibTotal < storagePoolMinimalGiB {
+		if res.Space.Total < storagePoolMinSize {
 			// Ensure the storage pool is no less than 5GiB, otherwise it makes
 			// it running out of space in tests and environments with less than
 			// ~14GiB of available space. LXD defaults to 20% in those cases
 			// which results in a ~2GiB pool size for workshop.
-			pool.Config["size"] = strconv.FormatUint(storagePoolMinimalGiB*1024*1024*1024, 10)
+			pool.Config["size"] = strconv.FormatUint(storagePoolMinSize, 10)
 			op, err = conn.UpdateStoragePool(storagePool, pool.Writable(), etag)
 			if err != nil {
 				return err
 			}
 			if err := op.Wait(); err != nil {
-				logger.Noticef("On ensureBackendReady: failed to set storage pool to the minimal size: %dGiB, %s", storagePoolMinimalGiB, err)
+				logger.Noticef("On ensureBackendReady: failed to set storage pool to the minimal size: %s, %s", units.GetByteSizeStringIEC(uint64(storagePoolMinSize), 1), err)
 				return err
 			}
 
-			logger.Noticef("On ensureBackendReady: set storage pool to the minimal size: %dGiB", storagePoolMinimalGiB)
+			logger.Noticef("On ensureBackendReady: set storage pool to the minimal size: %s", units.GetByteSizeStringIEC(uint64(storagePoolMinSize), 1))
 		}
 	} else if pools[idx].Driver != storagePoolDriver {
 		return fmt.Errorf("storage pool %q already exists with a different driver: %q (expected %q)", storagePool, pools[idx].Driver, storagePoolDriver)
@@ -437,6 +446,24 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 	if err != nil {
 		return err
 	}
+
+	mi, err := osutil.ReadMemInfo()
+	if err != nil {
+		return err
+	}
+	if err := checkAvailableMemory(mi, file.Runtime); err != nil {
+		return err
+	}
+
+	res, err := conn.GetStoragePoolResources(storagePool)
+	if err != nil {
+		return err
+	}
+	needed := estimateNeededSpace(conn, snapshot, file.Runtime)
+	if err := checkPoolSpace(res.Space.Total, res.Space.Used, needed); err != nil {
+		return err
+	}
+
 	req := api.InstancesPost{
 		InstancePut: api.InstancePut{
 			Config:  config,
@@ -459,6 +486,66 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 	}
 
 	return s.adjustInstanceTemplates(conn, req.Name, file.Runtime)
+}
+
+// estimateNeededSpace estimates the storage space consumed when launching a
+// workshop from the given snapshot.
+func estimateNeededSpace(conn lxd.InstanceServer, snapshot workshop.Snapshot, runtime workshop.Runtime) uint64 {
+	const (
+		// Space used by booting, even from a snapshot.
+		boot = 128 * MiB
+		// Estimated unpacked image sizes.
+		containerImage = 1 * GiB
+		vmImage        = 2 * GiB
+	)
+
+	needed := uint64(boot)
+	if !snapshot.IsBase() {
+		// Snapshot already exists.
+		return needed
+	}
+	if _, _, err := conn.UseProject("").GetStoragePoolVolume(storagePool, "image", snapshot.Image.Fingerprint); err == nil {
+		// Image already unpacked.
+		return needed
+	}
+
+	switch runtime {
+	case workshop.RuntimeLXDContainer:
+		needed += containerImage
+	case workshop.RuntimeLXDVM:
+		needed += vmImage
+	}
+
+	return needed
+}
+
+// checkAvailableMemory reports whether the host has enough memory available
+// to start a workshop with the given runtime.
+func checkAvailableMemory(mi *osutil.MemInfo, runtime workshop.Runtime) error {
+	const (
+		reserved = 512 * MiB
+		// Estimated container and VM memory consumption on launch.
+		container = 384 * MiB
+		vmGuest   = 1 * GiB
+		vmMonitor = 256 * MiB
+	)
+
+	needed := uint64(reserved)
+	switch runtime {
+	case workshop.RuntimeLXDContainer:
+		needed += container
+	case workshop.RuntimeLXDVM:
+		needed += vmMonitor + vmGuest
+	}
+
+	if mi.Available >= needed {
+		return nil
+	}
+
+	usedPct := float64(mi.TotalUsable-min(mi.Available, mi.TotalUsable)) / float64(mi.TotalUsable) * 100
+	return fmt.Errorf("host memory is %.0f%% used (%s available); "+
+		"stop another workshop with \"workshop stop\" to free up memory",
+		usedPct, units.GetByteSizeStringIEC(mi.Available, 1))
 }
 
 func instanceType(runtime workshop.Runtime) api.InstanceType {
