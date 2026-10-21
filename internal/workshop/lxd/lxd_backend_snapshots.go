@@ -649,6 +649,7 @@ func (s *Backend) launchOrRebuildFromSnapshot(conn, snapshotConn lxd.InstanceSer
 	}
 
 	inst, _, err := conn.GetInstance(req.Name)
+	var size string
 	if api.StatusErrorCheck(err, http.StatusNotFound) {
 		config, err := sshConfig(usr, req.Name+"."+networkDomain)
 		if err != nil {
@@ -658,6 +659,17 @@ func (s *Backend) launchOrRebuildFromSnapshot(conn, snapshotConn lxd.InstanceSer
 		inst = &api.Instance{Config: config}
 	} else if err != nil {
 		return err
+	} else {
+		// When copying, LXD first tries to update the target instance, which
+		// will fail if it attempts to shrink the disk. So we remove the size
+		// from the request for now. Since all snapshots have the same size,
+		// restoring the snapshot will reset the disk to the correct size; we
+		// later add the size back to the root device for consistency.
+		root, ok := req.Devices["root"]
+		if ok && root["size"] != inst.Devices["root"]["size"] {
+			size = root["size"]
+			delete(root, "size")
+		}
 	}
 
 	if req.Config == nil {
@@ -700,6 +712,21 @@ func (s *Backend) launchOrRebuildFromSnapshot(conn, snapshotConn lxd.InstanceSer
 	}
 	if err := rop.Wait(); err != nil {
 		return err
+	}
+
+	if size != "" {
+		inst, etag, err := conn.GetInstance(req.Name)
+		if err != nil {
+			return err
+		}
+		inst.Devices["root"]["size"] = size
+		op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
+		if err != nil {
+			return err
+		}
+		if err := op.Wait(); err != nil {
+			return err
+		}
 	}
 
 	return nil
