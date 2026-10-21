@@ -71,7 +71,8 @@ const (
 	// workshops, exported for use by other packages (e.g. firewall checks).
 	NetworkBridgeName = networkName
 
-	DiskSizeVM = "10GiB"
+	DefaultMemoryVM = "4GiB"
+	DiskSizeVM      = "10GiB"
 
 	startTimeoutContainer = 5 * time.Minute
 	startTimeoutVM        = 10 * time.Minute
@@ -1523,6 +1524,9 @@ func (s *Backend) workshopConfig(
 		minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
 		vCPUs := max(minCPUs, minCPUsForPCI)
 		cfg["limits.cpu"] = fmt.Sprint(vCPUs)
+
+		// LXD's default of 1 GiB is too small for most development environments.
+		cfg["limits.memory"] = DefaultMemoryVM
 
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
