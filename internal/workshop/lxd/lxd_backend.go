@@ -469,7 +469,7 @@ func instanceType(runtime workshop.Runtime) api.InstanceType {
 }
 
 func (s *Backend) launchOrRebuildFromImage(conn lxd.InstanceServer, usr *user.User, req api.InstancesPost) error {
-	inst, _, err := conn.GetInstance(req.Name)
+	inst, etag, err := conn.GetInstance(req.Name)
 	if api.StatusErrorCheck(err, http.StatusNotFound) {
 		// Create a new workshop.
 		config, err := sshConfig(usr, req.Name+"."+networkDomain)
@@ -486,6 +486,21 @@ func (s *Backend) launchOrRebuildFromImage(conn lxd.InstanceServer, usr *user.Us
 	}
 	if err != nil {
 		return err
+	}
+
+	// Rebuilding recreates the root volume with the configured size, and we
+	// can't shrink it afterwards. Removing the size is a no-op right now, but
+	// ensures the volume is recreated with the default size when we rebuild.
+	root, ok := inst.Devices["root"]
+	if ok && root["size"] != req.Devices["root"]["size"] {
+		delete(root, "size")
+		op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
+		if err != nil {
+			return err
+		}
+		if err = op.Wait(); err != nil {
+			return err
+		}
 	}
 
 	// Rebuild the existing workshop.
@@ -1366,6 +1381,15 @@ func defaultDevices(usr *user.User, pid, w string, runtime workshop.Runtime) map
 	devices := map[string]map[string]string{
 		"root":             {"type": "disk", "pool": storagePool, "path": "/"},
 		"workshop.network": {"type": "nic", "network": networkName, "name": "eth0"},
+	}
+
+	if runtime == workshop.RuntimeLXDVM {
+		// Make the LXD default explicit. VM workshops should have consistent
+		// disk sizes (at least at first) so their snapshots can be reused
+		// easily. Once a snapshot is taken, it's not easy to shrink the block
+		// device for other workshops. SDKs which require a lot of space can
+		// use mount plugs to avoid expanding the root disk too much.
+		devices["root"]["size"] = "10GiB"
 	}
 
 	mounts, proxies := workshop.DefaultDevices(pid, w)

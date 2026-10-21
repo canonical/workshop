@@ -43,6 +43,7 @@ launched:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     workshop.network:
       name: eth0
@@ -94,6 +95,7 @@ started:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     workshop.network:
       name: eth0
@@ -145,6 +147,7 @@ sdk-attached:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     sdk.store-sdk:
       path: /var/lib/workshop/sdk/store-sdk
@@ -208,6 +211,7 @@ sdk-mounted:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     sdk.store-sdk:
       path: /var/lib/workshop/sdk/store-sdk
@@ -251,6 +255,7 @@ snapshot:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     sdk.store-sdk:
       type: none

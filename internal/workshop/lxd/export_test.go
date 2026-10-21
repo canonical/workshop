@@ -18,6 +18,7 @@ type CNAME = cname
 
 var (
 	DefaultConfig      = (*Backend).workshopConfig
+	DefaultDevices     = defaultDevices
 	ReadProjects       = readProjects
 	SaveProjects       = saveProjects
 	HandleImageUpdate  = handleImageUpdate
