@@ -1525,6 +1525,9 @@ func (s *Backend) workshopConfig(
 		vCPUs := max(minCPUs, minCPUsForPCI)
 		cfg["limits.cpu"] = fmt.Sprint(vCPUs)
 
+		// LXD's default of 1 GiB is too small for most development environments.
+		cfg["limits.memory"] = "4GiB"
+
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
 

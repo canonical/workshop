@@ -12,6 +12,7 @@ launched:
     boot.mode: uefi-nosecureboot
     limits.cpu: '2'
     limits.max_bus_ports: '16'
+    limits.memory: 4GiB
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -64,6 +65,7 @@ started:
     boot.mode: uefi-nosecureboot
     limits.cpu: '2'
     limits.max_bus_ports: '16'
+    limits.memory: 4GiB
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -116,6 +118,7 @@ sdk-attached:
     boot.mode: uefi-nosecureboot
     limits.cpu: '2'
     limits.max_bus_ports: '16'
+    limits.memory: 4GiB
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -180,6 +183,7 @@ sdk-mounted:
     boot.mode: uefi-nosecureboot
     limits.cpu: '2'
     limits.max_bus_ports: '16'
+    limits.memory: 4GiB
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
