@@ -18,6 +18,7 @@ import (
 	"crypto/sha3"
 	"encoding/hex"
 	"fmt"
+	"os/user"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -261,4 +262,14 @@ func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
 
 	err = lxdbackend.CheckServerVersion("6.7.9")
 	c.Assert(err, check.ErrorMatches, `(?s).*LXD server version.*is not supported.*`)
+}
+
+func (f *LxdBeTests) TestDefaultVMDevices(c *check.C) {
+	usr := &user.User{Uid: "1000", Gid: "1000"}
+
+	ctr := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDContainer)
+	c.Check(ctr["root"]["size"], check.Equals, "")
+
+	vm := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDVM)
+	c.Check(vm["root"]["size"], check.Equals, "10GiB")
 }
