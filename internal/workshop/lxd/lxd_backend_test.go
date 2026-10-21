@@ -195,6 +195,7 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(cfg["limits.max_bus_ports"], check.Equals, "8")
 	c.Check(cfg["limits.cpu"], check.Equals, "2")
+	c.Check(cfg["limits.memory"], check.Equals, "4GiB")
 
 	// Check per-SDK limits.
 	for i := range 64 {
