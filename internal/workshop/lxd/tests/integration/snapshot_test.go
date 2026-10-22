@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/canonical/lxd/shared/api"
@@ -363,20 +364,12 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, runtime workshop.R
 	baseOnly := workshop.BaseOnly(s.bd.FormatRevision(), image.Name, runtime, image.Fingerprint)
 	remove := s.launchWorkshop(c, originFile, baseOnly)
 	defer remove()
-
-	// Start original workshop and take a snapshot.
-	err = s.bd.StartWorkshop(s.ctx, "origin")
-	c.Assert(err, check.IsNil)
 	originSnapshot := baseOnly
 	originSnapshot.Sdks = []sdk.ContentID{{
 		Name:     "system",
 		Sha3_384: "6b499970ebf370d4dbc4e9a005c042dee003c19a9420a78944bcbf32653d257f80f7c56bad55b4c967dca68a1ea92be7",
 		IsVolume: true,
 	}}
-	err1 := s.bd.TakeSnapshot(s.ctx, "origin", originSnapshot)
-	originRootFS, err2 := s.workshopRootFS("origin", runtime)
-	err3 := s.bd.StopWorkshop(s.ctx, "origin", false)
-	c.Assert(cmp.Or(err1, err2, err3), check.IsNil)
 
 	// Launch a completely independent workshop.
 	siblingFile := &workshop.File{
@@ -387,12 +380,59 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, runtime workshop.R
 	remove = s.launchWorkshop(c, siblingFile, baseOnly)
 	defer remove()
 
-	// Start independent workshop to run cloud-init.
-	err = s.bd.StartWorkshop(s.ctx, "sibling")
-	c.Assert(err, check.IsNil)
-	siblingRootFS, err1 := s.workshopRootFS("sibling", runtime)
-	err2 = s.bd.StopWorkshop(s.ctx, "sibling", false)
-	c.Assert(cmp.Or(err1, err2), check.IsNil)
+	// Launch test workshop to mount the root filesystems.
+	wf := &workshop.File{
+		Name:    "test",
+		Base:    base,
+		Runtime: runtime,
+	}
+	remove = s.launchWorkshop(c, wf, baseOnly)
+	defer remove()
+
+	rev := revert.New()
+	defer rev.Fail()
+
+	// Start the workshops concurrently to save time.
+	var originRootFS, siblingRootFS filesystem
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		// Start original workshop and take a snapshot.
+		err := s.bd.StartWorkshop(s.ctx, "origin")
+		if !c.Check(err, check.IsNil) {
+			return
+		}
+		err = s.bd.TakeSnapshot(s.ctx, "origin", originSnapshot)
+		c.Check(err, check.IsNil)
+		originRootFS, err = s.workshopRootFS("origin", runtime)
+		c.Check(err, check.IsNil)
+		err = s.bd.StopWorkshop(s.ctx, "origin", false)
+		c.Check(err, check.IsNil)
+	})
+	wg.Go(func() {
+		// Start independent workshop to run cloud-init.
+		err := s.bd.StartWorkshop(s.ctx, "sibling")
+		if !c.Check(err, check.IsNil) {
+			return
+		}
+		siblingRootFS, err = s.workshopRootFS("sibling", runtime)
+		c.Check(err, check.IsNil)
+		err = s.bd.StopWorkshop(s.ctx, "sibling", false)
+		c.Check(err, check.IsNil)
+	})
+	wg.Go(func() {
+		// Start test workshop.
+		err := s.bd.StartWorkshop(s.ctx, "test")
+		c.Check(err, check.IsNil)
+	})
+	wg.Wait()
+	if c.Failed() {
+		_ = s.bd.StopWorkshop(s.ctx, "test", true)
+		c.FailNow()
+	}
+	defer func() {
+		err1 := s.bd.StopWorkshop(s.ctx, "test", false)
+		c.Check(err1, check.IsNil)
+	}()
 
 	// Launch clone of the first workshop.
 	cloneFile := &workshop.File{
@@ -412,27 +452,14 @@ func (s *snapshotSuite) snapshotDiff(c *check.C, base string, runtime workshop.R
 		Sha3_384: "d024fbe91c6b99d0064306d52006c17a5d0406822ff253fbbe6a934ca9be50d3ff9a6ec3bac3be8396006029a1ff453a",
 		IsVolume: false,
 	})
-	err1 = s.bd.TakeSnapshot(s.ctx, "clone", cloneSnapshot)
+	err1 := s.bd.TakeSnapshot(s.ctx, "clone", cloneSnapshot)
 	cloneRootFS, err2 := s.workshopRootFS("clone", runtime)
-	err3 = s.bd.StopWorkshop(s.ctx, "clone", false)
-	c.Assert(cmp.Or(err1, err2, err3), check.IsNil)
+	err3 := s.bd.StopWorkshop(s.ctx, "clone", false)
+	c.Assert(err1, check.IsNil)
+	c.Assert(err2, check.IsNil)
+	c.Assert(err3, check.IsNil)
 
-	// Launch another independent workshop.
-	wf := &workshop.File{
-		Name:    "test",
-		Base:    base,
-		Runtime: runtime,
-	}
-	remove = s.launchWorkshop(c, wf, baseOnly)
-	defer remove()
-	err = s.bd.StartWorkshop(s.ctx, "test")
-	c.Assert(err, check.IsNil)
-	defer func() {
-		err1 := s.bd.StopWorkshop(s.ctx, "test", false)
-		c.Check(err1, check.IsNil)
-	}()
-
-	// Mount the other workshops inside the new one.
+	// Mount the other workshops inside "test".
 	unmountOrigin := s.mountRootFS(c, originRootFS, "test", "/mnt/origin")
 	defer unmountOrigin.Fail()
 	unmountSibling := s.mountRootFS(c, siblingRootFS, "test", "/mnt/sibling")
@@ -787,9 +814,22 @@ func (s *snapshotSuite) extractUniqueFiles(c *check.C, name, path string) unique
 	}
 }
 
+// parallelDiff is like `diff --brief --no-dereference --recursive`, but runs
+// several instances in parallel to reduce the effect of I/O latency with a
+// (nested) VM block device. If files differ in / or an immediate child, the
+// remaining files are unchecked. It's optimised for small and local changes;
+// if several processes report errors in parallel the output might be garbled.
+const parallelDiff = `set -e
+cd "$1"
+find . -maxdepth 1 -type d -printf '%P\0' |
+	xargs -0 -P8 -I{} diff --brief --no-dereference "$1/{}" "$2/{}"
+find . -mindepth 2 -maxdepth 2 -type d -printf '%P\0' |
+	xargs -0 -P8 -I{} diff --brief --no-dereference --recursive "$1/{}" "$2/{}"
+`
+
 func (s *snapshotSuite) execDiff(c *check.C, name, a, b string) {
 	args := workshop.ExecArgs{
-		Command: []string{"diff", "--brief", "--no-dereference", "--recursive", a, b},
+		Command: []string{"sh", "-c", parallelDiff, "sh", a, b},
 		WorkDir: "/",
 		Timeout: time.Second,
 	}
