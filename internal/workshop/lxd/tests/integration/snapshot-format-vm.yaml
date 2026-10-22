@@ -12,6 +12,7 @@ launched:
     boot.mode: uefi-nosecureboot
     limits.cpu: '2'
     limits.max_bus_ports: '16'
+    limits.memory: 4GiB
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -31,6 +32,7 @@ launched:
       [machine]
       hpet = "off"
       sata = "off"
+    security.devlxd.images: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -42,6 +44,7 @@ launched:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     workshop.network:
       name: eth0
@@ -62,6 +65,7 @@ started:
     boot.mode: uefi-nosecureboot
     limits.cpu: '2'
     limits.max_bus_ports: '16'
+    limits.memory: 4GiB
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -81,6 +85,7 @@ started:
       [machine]
       hpet = "off"
       sata = "off"
+    security.devlxd.images: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -92,6 +97,7 @@ started:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     workshop.network:
       name: eth0
@@ -112,6 +118,7 @@ sdk-attached:
     boot.mode: uefi-nosecureboot
     limits.cpu: '2'
     limits.max_bus_ports: '16'
+    limits.memory: 4GiB
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -131,6 +138,7 @@ sdk-attached:
       [machine]
       hpet = "off"
       sata = "off"
+    security.devlxd.images: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -142,6 +150,7 @@ sdk-attached:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     sdk.store-sdk:
       path: /var/lib/workshop/sdk/store-sdk
@@ -174,6 +183,7 @@ sdk-mounted:
     boot.mode: uefi-nosecureboot
     limits.cpu: '2'
     limits.max_bus_ports: '16'
+    limits.memory: 4GiB
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -193,6 +203,7 @@ sdk-mounted:
       [machine]
       hpet = "off"
       sata = "off"
+    security.devlxd.images: 'true'
     user.workshop.name: test
     user.workshop.project-id: '42424242'
   description: ''
@@ -204,6 +215,7 @@ sdk-mounted:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     sdk.store-sdk:
       path: /var/lib/workshop/sdk/store-sdk
@@ -247,6 +259,7 @@ snapshot:
     root:
       path: /
       pool: workshop
+      size: 10GiB
       type: disk
     sdk.store-sdk:
       type: none

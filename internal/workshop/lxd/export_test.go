@@ -17,12 +17,15 @@ package lxdbackend
 type CNAME = cname
 
 var (
-	DefaultConfig      = (*Backend).workshopConfig
-	ReadProjects       = readProjects
-	SaveProjects       = saveProjects
-	HandleImageUpdate  = handleImageUpdate
-	CheckServerVersion = checkVersion
-	GenerateCNAME      = generateCNAME
+	CheckPoolSpace       = checkPoolSpace
+	CheckAvailableMemory = checkAvailableMemory
+	DefaultConfig        = (*Backend).workshopConfig
+	DefaultDevices       = defaultDevices
+	ReadProjects         = readProjects
+	SaveProjects         = saveProjects
+	HandleImageUpdate    = handleImageUpdate
+	CheckServerVersion   = checkVersion
+	GenerateCNAME        = generateCNAME
 )
 
 func MockFirewallChecker(f func(string) string) func() {

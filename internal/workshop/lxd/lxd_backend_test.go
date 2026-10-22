@@ -18,10 +18,12 @@ import (
 	"crypto/sha3"
 	"encoding/hex"
 	"fmt"
+	"os/user"
 	"testing"
 
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
@@ -116,7 +118,7 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "eecdd7227020df46220bdcb82a41d4a4b456b28623888fc3b58b7a057dcf058e00ffe163af0d51df74686169156c9806")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "1967cb9cc4923e22695c921006c333aef19fa6f13246cb5969f756482e09d0819afd020e05612a2ad0dda1b6944ab1f6")
 }
 
 var vmFile = `name: test
@@ -155,7 +157,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "10aacf882e4e6afa912c255edde2a6d462fbcb273500c42ee88f5ef1e41d08270cdde27e23b44580e878875ae986dfc7")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "17ef3fd3363854da056a2330777f9d3bf92e7fd3984c4e4c2fd3ada47f34b467603d29cd14c29af157054373682b7f82")
 }
 
 // The cloud-init user-data must install and enable the systemd socket unit
@@ -194,6 +196,7 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(cfg["limits.max_bus_ports"], check.Equals, "8")
 	c.Check(cfg["limits.cpu"], check.Equals, "2")
+	c.Check(cfg["limits.memory"], check.Equals, "4GiB")
 
 	// Check per-SDK limits.
 	for i := range 64 {
@@ -261,4 +264,38 @@ func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
 
 	err = lxdbackend.CheckServerVersion("6.7.9")
 	c.Assert(err, check.ErrorMatches, `(?s).*LXD server version.*is not supported.*`)
+}
+
+func (f *LxdBeTests) TestDefaultVMDevices(c *check.C) {
+	usr := &user.User{Uid: "1000", Gid: "1000"}
+
+	ctr := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDContainer)
+	c.Check(ctr["root"]["size"], check.Equals, "")
+
+	vm := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDVM)
+	c.Check(vm["root"]["size"], check.Equals, "10GiB")
+}
+
+func (f *LxdBeTests) TestCheckPoolSpace(c *check.C) {
+	const MiB, GiB = lxdbackend.MiB, lxdbackend.GiB
+
+	// Don't block anything if we don't know the pool size.
+	c.Check(lxdbackend.CheckPoolSpace(0, 0, 1<<40), check.IsNil)
+
+	c.Check(lxdbackend.CheckPoolSpace(1*GiB, 512*MiB, 256*MiB), check.IsNil)
+	err := lxdbackend.CheckPoolSpace(1*GiB, 512*MiB, 256*MiB+1)
+	c.Check(err, check.ErrorMatches, `(?s)storage pool "workshop" is 50% full \(512.0MiB available\).*`)
+}
+
+func (f *LxdBeTests) TestCheckAvailableMemory(c *check.C) {
+	const GiB = lxdbackend.GiB
+
+	mi := &osutil.MemInfo{TotalUsable: 4 * GiB, Available: 2 * GiB}
+	c.Check(lxdbackend.CheckAvailableMemory(mi, workshop.RuntimeLXDContainer), check.IsNil)
+	c.Check(lxdbackend.CheckAvailableMemory(mi, workshop.RuntimeLXDVM), check.IsNil)
+
+	mi.Available = GiB
+	c.Check(lxdbackend.CheckAvailableMemory(mi, workshop.RuntimeLXDContainer), check.IsNil)
+	err := lxdbackend.CheckAvailableMemory(mi, workshop.RuntimeLXDVM)
+	c.Check(err, check.ErrorMatches, `(?s)host memory is 75% used \(1.0GiB available\).*`)
 }
