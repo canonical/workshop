@@ -2,7 +2,8 @@
 
 .. meta::
    :description: How-to guide on purging malfunctioning workshops, covering steps to
-                 remove containers, metadata, and files thoroughly.
+                 repair them or copy out files first, then remove containers,
+                 metadata, and files thoroughly.
 
 How to purge malfunctioning workshops
 =====================================
@@ -27,11 +28,73 @@ Before starting, ensure you have these requirements satisfied:
 - Tried :command:`workshop remove <WORKSHOP>`
   or confirmed that the standard removal flow cannot be used.
 
-- Backed up any workshop data you need to keep;
+- Copied out any files you need from inside the workshop,
+  as described in :ref:`how_purge_before_removing`;
   manual cleanup can permanently delete containers, metadata, and files.
 
 - Access to :command:`sudo` and :command:`lxc`
   for manual LXD cleanup.
+
+
+.. _how_purge_before_removing:
+
+Before removing a workshop
+--------------------------
+
+Removing a workshop deletes everything inside it;
+only directories mounted from the host survive,
+such as the project directory at :file:`/project`.
+Files elsewhere in the workshop,
+such as the :samp:`workshop` user's home directory,
+are lost.
+
+If a command inside the workshop broke it,
+for example by stopping a service or unmounting a directory,
+try these steps first,
+from the least destructive to the most:
+
+#. Restart the workshop:
+
+   .. code-block:: console
+
+      $ workshop stop <WORKSHOP>
+      $ workshop start <WORKSHOP>
+
+
+   A restart remounts the workshop's directories
+   and starts its enabled services again.
+
+#. Copy the files you need into the project directory:
+
+   .. code-block:: console
+
+      $ workshop exec <WORKSHOP> -- cp -a /home/workshop/<PATH> /project/
+
+
+   The copies belong to your host user.
+   To keep them out of the project directory,
+   stream an archive to the host instead:
+
+   .. code-block:: console
+
+      $ workshop exec <WORKSHOP> -- tar -C /home/workshop -cf - . > workshop-home.tar
+
+
+#. Restore the workshop to its state after the last launch or refresh:
+
+   .. code-block:: console
+
+      $ workshop restore <WORKSHOP>
+
+
+   This discards every change made inside the workshop since then,
+   except in the project directory,
+   and resets its connections to their defaults.
+
+
+If the :command:`workshop exec` recipe fails,
+nothing can be copied out of the workshop this way;
+remove the workshop and launch it again.
 
 
 Standard removal procedure
@@ -330,5 +393,9 @@ How-to guides:
 
 Reference:
 
+- :ref:`ref_workshop_exec`
 - :ref:`ref_workshop_list`
 - :ref:`ref_workshop_remove`
+- :ref:`ref_workshop_restore`
+- :ref:`ref_workshop_start`
+- :ref:`ref_workshop_stop`
