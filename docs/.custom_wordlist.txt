@@ -227,6 +227,8 @@ Unescapes
 unexported
 unicode
 unix
+unmount
+unmounting
 unmounts
 unparam
 unprivileged
