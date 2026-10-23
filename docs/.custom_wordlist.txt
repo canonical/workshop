@@ -4,10 +4,12 @@ agentic
 api
 artifacts
 AUTH
+autocompletes
 autosquash
 backend
 basename
 Bitwarden
+breakpoint
 Btrfs
 bugfix
 cacheable
@@ -74,7 +76,9 @@ gRPC
 Guillaumebeuzeboc
 GUIs
 hardcoded
+hardcoding
 hardlinking
+hardlinks
 hoc
 hostname
 hostnames
@@ -140,6 +144,7 @@ ns
 ollama
 Ollama
 onboarding
+onboards
 opencode
 OpenVINO
 passthrough
@@ -148,6 +153,7 @@ PCIe
 PlugRef
 PRs
 prebuilt
+preconfigured
 predefined
 preexisting
 prepackaged
@@ -173,6 +179,7 @@ rosdep
 runtime
 runtimes
 sandboxed
+scaffolded
 schemas
 sdk
 SDK
@@ -217,11 +224,13 @@ torchaudio
 torchvision
 transactional
 Transactionality
+triages
 triaging
 ubuntu
 UDP
 UFW
 uid
+Ulwazi
 uncomment
 Unescapes
 unexported
@@ -231,6 +240,7 @@ unmount
 unmounting
 unmounts
 unparam
+unprefixed
 unprivileged
 unreviewed
 unstashing
@@ -239,6 +249,7 @@ Untrusted
 url
 uv
 validator
+validators
 venv
 vsock
 wayland
