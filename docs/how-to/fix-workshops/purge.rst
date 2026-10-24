@@ -41,9 +41,14 @@ Before starting, ensure you have these requirements satisfied:
 Before removing a workshop
 --------------------------
 
-Removing a workshop deletes everything inside it;
-only directories mounted from the host survive,
-such as the project directory at :file:`/project`.
+Removing a workshop deletes everything inside it,
+along with the host directories
+that |ws_markup| allocated for its mount plugs under
+:file:`~/.local/share/workshop/id/<PROJECT-ID>/<WORKSHOP>/mount/`;
+copy any files you need from there to another place on the host first.
+Only host directories that you manage yourself survive,
+such as the project directory at :file:`/project`
+or a source set with :command:`workshop remount`.
 Files elsewhere in the workshop,
 such as the :samp:`workshop` user's home directory,
 are lost.
@@ -87,14 +92,19 @@ from the least destructive to the most:
       $ workshop restore <WORKSHOP>
 
 
-   This discards every change made inside the workshop since then,
-   except in the project directory,
+   This rolls the container filesystem back to that point,
+   discarding changes made inside the workshop since then,
    and resets its connections to their defaults.
+   It doesn't undo changes in host-mounted directories,
+   including the project directory,
+   or in state that SDKs carry across it
+   with their :samp:`save-state` and :samp:`restore-state` hooks.
 
 
-If the :command:`workshop exec` recipe fails,
-nothing can be copied out of the workshop this way;
-remove the workshop and launch it again.
+If a copy fails, read the error before you go further:
+fix the path or free up space on the destination, then copy again.
+Restore or remove the workshop only after the copies succeed,
+or once you accept losing the files.
 
 
 Standard removal procedure
@@ -383,10 +393,12 @@ See also
 Explanation:
 
 - :ref:`exp_projects`
+- :ref:`exp_sdk_hooks`
 
 
 How-to guides:
 
+- :ref:`how_add_mounts`
 - :ref:`how_debug_issues_workshops`
 - :ref:`how_troubleshoot`
 

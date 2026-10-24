@@ -113,9 +113,11 @@ autonomy:
 * **An agent can break the workshop itself.** With `sudo`, an agent can stop
   services or unmount directories that the workshop relies on. Restarting the
   workshop remounts its directories and starts its enabled services again;
-  `workshop restore` discards every change made inside the workshop since its
-  last launch or refresh, except in the project directory. Keep work you care
-  about in the project directory, and
+  `workshop restore` rolls the container filesystem back to its last launch or
+  refresh. A restore doesn't undo an agent's changes in host-mounted
+  directories, such as the project directory, or in state that SDKs carry
+  across it with their `save-state` and `restore-state` hooks. Keep work you
+  care about in the project directory, and
   [copy out other files](https://ubuntu.com/workshop/docs/how-to/fix-workshops/purge/)
   before you restore or remove the workshop.
 * **Outbound network access is open.** Workshop doesn't filter outgoing traffic,
