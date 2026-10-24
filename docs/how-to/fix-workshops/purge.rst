@@ -2,7 +2,8 @@
 
 .. meta::
    :description: How-to guide on purging malfunctioning workshops, covering steps to
-                 remove containers, metadata, and files thoroughly.
+                 repair them or copy out files first, then remove containers,
+                 metadata, and files thoroughly.
 
 How to purge malfunctioning workshops
 =====================================
@@ -27,11 +28,83 @@ Before starting, ensure you have these requirements satisfied:
 - Tried :command:`workshop remove <WORKSHOP>`
   or confirmed that the standard removal flow cannot be used.
 
-- Backed up any workshop data you need to keep;
+- Copied out any files you need from inside the workshop,
+  as described in :ref:`how_purge_before_removing`;
   manual cleanup can permanently delete containers, metadata, and files.
 
 - Access to :command:`sudo` and :command:`lxc`
   for manual LXD cleanup.
+
+
+.. _how_purge_before_removing:
+
+Before removing a workshop
+--------------------------
+
+Removing a workshop deletes everything inside it,
+along with the host directories
+that |ws_markup| allocated for its mount plugs under
+:file:`~/.local/share/workshop/id/<PROJECT-ID>/<WORKSHOP>/mount/`;
+copy any files you need from there to another place on the host first.
+Only host directories that you manage yourself survive,
+such as the project directory at :file:`/project`
+or a source set with :command:`workshop remount`.
+Files elsewhere in the workshop,
+such as the :samp:`workshop` user's home directory,
+are lost.
+
+If a command inside the workshop broke it,
+for example by stopping a service or unmounting a directory,
+try these steps first,
+from the least destructive to the most:
+
+#. Restart the workshop:
+
+   .. code-block:: console
+
+      $ workshop stop <WORKSHOP>
+      $ workshop start <WORKSHOP>
+
+
+   A restart remounts the workshop's directories
+   and starts its enabled services again.
+
+#. Copy the files you need into the project directory:
+
+   .. code-block:: console
+
+      $ workshop exec <WORKSHOP> -- cp -a /home/workshop/<PATH> /project/
+
+
+   The copies belong to your host user.
+   To keep them out of the project directory,
+   stream an archive to the host instead:
+
+   .. code-block:: console
+
+      $ workshop exec <WORKSHOP> -- tar -C /home/workshop -cf - . > workshop-home.tar
+
+
+#. Restore the workshop to its state after the last launch or refresh:
+
+   .. code-block:: console
+
+      $ workshop restore <WORKSHOP>
+
+
+   This rolls the container filesystem back to that point,
+   discarding changes made inside the workshop since then,
+   and resets its connections to their defaults.
+   It doesn't undo changes in host-mounted directories,
+   including the project directory,
+   or in state that SDKs carry across it
+   with their :samp:`save-state` and :samp:`restore-state` hooks.
+
+
+If a copy fails, read the error before you go further:
+fix the path or free up space on the destination, then copy again.
+Restore or remove the workshop only after the copies succeed,
+or once you accept losing the files.
 
 
 Standard removal procedure
@@ -320,15 +393,21 @@ See also
 Explanation:
 
 - :ref:`exp_projects`
+- :ref:`exp_sdk_hooks`
 
 
 How-to guides:
 
+- :ref:`how_add_mounts`
 - :ref:`how_debug_issues_workshops`
 - :ref:`how_troubleshoot`
 
 
 Reference:
 
+- :ref:`ref_workshop_exec`
 - :ref:`ref_workshop_list`
 - :ref:`ref_workshop_remove`
+- :ref:`ref_workshop_restore`
+- :ref:`ref_workshop_start`
+- :ref:`ref_workshop_stop`
