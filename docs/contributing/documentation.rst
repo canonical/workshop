@@ -29,8 +29,8 @@ To build it and serve a live preview:
 The preview listens on port 8000 of the workshop's own hostname,
 not on a host port,
 so workshops from several checkouts can serve previews at the same time.
-Open the URL that :samp:`docs-run` prints,
-such as :samp:`http://dev-<PROJECT-ID>.wp:8000`;
+Open the address that :samp:`docs-run` prints,
+such as :samp:`dev-<PROJECT-ID>.wp:8000`;
 see :ref:`exp_workshop_hostname`.
 
 The workshop is the same one code contributions use;
