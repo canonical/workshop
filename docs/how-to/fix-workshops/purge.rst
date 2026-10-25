@@ -25,9 +25,6 @@ Before starting, ensure you have these requirements satisfied:
 
 - Identified the workshop and project you intend to purge.
 
-- Tried :command:`workshop remove <WORKSHOP>`
-  or confirmed that the standard removal flow cannot be used.
-
 - Copied out any files you need from inside the workshop,
   as described in :ref:`how_purge_before_removing`;
   manual cleanup can permanently delete containers, metadata, and files.
@@ -77,16 +74,20 @@ from the least destructive to the most:
           && workshop exec <WORKSHOP> -- cp -a /home/workshop/<PATH> /project/workshop-recovery/
 
 
-   If the directory already exists, :command:`mkdir` fails and nothing is copied;
-   pick another name so that the copies don't overwrite project files.
    The copies belong to your host user.
    To keep them out of the project directory,
-   stream an archive to your home directory on the host instead:
+   stream an archive into a new directory under your host home directory instead:
 
    .. code-block:: console
 
-      $ workshop exec <WORKSHOP> -- tar -C /home/workshop -cf - . > ~/workshop-home.tar
+      $ mkdir ~/workshop-recovery \
+          && workshop exec <WORKSHOP> -- tar -C /home/workshop -cf - . > ~/workshop-recovery/home.tar
 
+
+   In both commands, if the directory already exists,
+   :command:`mkdir` fails and nothing is copied;
+   pick another name so that the copies don't overwrite
+   project files or earlier copies.
 
 #. Restore the workshop to its state after the last launch or refresh:
 
@@ -105,7 +106,8 @@ from the least destructive to the most:
 
 
 If a copy fails, read the error before you go further:
-fix the path or free up space on the destination, then copy again.
+fix the path or free up space on the destination,
+then copy again into a new directory.
 Restore or remove the workshop only after the copies succeed,
 or once you accept losing the files.
 
