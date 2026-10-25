@@ -19,12 +19,19 @@ Set up your work environment
 ----------------------------
 
 All documentation resides in the :file:`docs/` directory.
-To build and serve it at :samp:`127.0.0.1:8000`:
+To build it and serve a live preview:
 
 .. code-block:: console
 
    $ workshop launch dev
    $ workshop run dev docs-run
+
+The preview listens on port 8000 of the workshop's own hostname,
+not on a host port,
+so workshops from several checkouts can serve previews at the same time.
+Open the URL that :samp:`docs-run` prints,
+such as :samp:`http://dev-<PROJECT-ID>.wp:8000`;
+see :ref:`exp_workshop_hostname`.
 
 The workshop is the same one code contributions use;
 see :ref:`contributing_dev_workshop`.
@@ -135,7 +142,7 @@ Test
 ~~~~
 
 Build the documentation
-and open the local preview at :samp:`127.0.0.1:8000`.
+and open the preview at the URL that :samp:`docs-run` prints.
 Check that your changes render as expected,
 including tables, admonitions, and cross-references.
 

@@ -1,5 +1,1 @@
 name: tools
-slots:
-  sphinx-build:
-    interface: tunnel
-    endpoint: 8000
