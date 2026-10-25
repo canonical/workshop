@@ -78,11 +78,11 @@ from the least destructive to the most:
 
    The copies belong to your host user.
    To keep them out of the project directory,
-   stream an archive to the host instead:
+   stream an archive to your home directory on the host instead:
 
    .. code-block:: console
 
-      $ workshop exec <WORKSHOP> -- tar -C /home/workshop -cf - . > workshop-home.tar
+      $ workshop exec <WORKSHOP> -- tar -C /home/workshop -cf - . > ~/workshop-home.tar
 
 
 #. Restore the workshop to its state after the last launch or refresh:
