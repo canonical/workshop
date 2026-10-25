@@ -69,13 +69,16 @@ from the least destructive to the most:
    A restart remounts the workshop's directories
    and starts its enabled services again.
 
-#. Copy the files you need into the project directory:
+#. Copy the files you need into a new directory in the project:
 
    .. code-block:: console
 
-      $ workshop exec <WORKSHOP> -- cp -a /home/workshop/<PATH> /project/
+      $ workshop exec <WORKSHOP> -- mkdir /project/workshop-recovery
+      $ workshop exec <WORKSHOP> -- cp -a /home/workshop/<PATH> /project/workshop-recovery/
 
 
+   If the directory already exists, :command:`mkdir` fails;
+   pick another name so that the copies don't overwrite project files.
    The copies belong to your host user.
    To keep them out of the project directory,
    stream an archive to your home directory on the host instead:
