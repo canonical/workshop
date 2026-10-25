@@ -5,15 +5,11 @@ sdks:
     channel: 1.26/stable
   - name: project-tools
   - name: system
-    plugs:
-      sphinx-build:
-        interface: tunnel
-        endpoint: 8000
 actions:
   docs-html: |
     make -C docs/ DOCS_VENVDIR="$HOME/.docs-venv" html
   docs-run: |
-    make -C docs/ DOCS_VENVDIR="$HOME/.docs-venv" run
+    make -C docs/ DOCS_VENVDIR="$HOME/.docs-venv" SPHINX_HOST="$(hostname -f)" run
   docs-clean: |
     make -C docs/ clean-doc
   docs-check: |
