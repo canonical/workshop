@@ -73,11 +73,11 @@ from the least destructive to the most:
 
    .. code-block:: console
 
-      $ workshop exec <WORKSHOP> -- mkdir /project/workshop-recovery
-      $ workshop exec <WORKSHOP> -- cp -a /home/workshop/<PATH> /project/workshop-recovery/
+      $ workshop exec <WORKSHOP> -- mkdir /project/workshop-recovery \
+          && workshop exec <WORKSHOP> -- cp -a /home/workshop/<PATH> /project/workshop-recovery/
 
 
-   If the directory already exists, :command:`mkdir` fails;
+   If the directory already exists, :command:`mkdir` fails and nothing is copied;
    pick another name so that the copies don't overwrite project files.
    The copies belong to your host user.
    To keep them out of the project directory,
