@@ -170,6 +170,14 @@ func LxdToSdkProfile(profile string, devs map[string]map[string]string, config m
 			default:
 				logger.Noticef("On reading %q SDK profile: unknown device type %q", profile, devtype)
 			}
+		case "unix-char":
+			devtype := config[DeviceTypeConfigKey(devname)]
+			switch devtype {
+			case "virtualization":
+				// Ignore the real virtualization devices, config is under type=none.
+			default:
+				logger.Noticef("On reading %q SDK profile: unknown device type %q", profile, devtype)
+			}
 		case "none":
 			cfg, exist := config[DeviceConfigKey(devname)]
 			if !exist {
@@ -185,6 +193,12 @@ func LxdToSdkProfile(profile string, devs map[string]map[string]string, config m
 					return pr, err
 				}
 				pr.Camera = &camera
+			case "virtualization":
+				var virt workshop.Virtualization
+				if err := json.Unmarshal([]byte(cfg), &virt); err != nil {
+					return pr, err
+				}
+				pr.Virtualization = &virt
 			case "mount":
 				var mnt workshop.Mount
 				if err := json.Unmarshal([]byte(cfg), &mnt); err != nil {

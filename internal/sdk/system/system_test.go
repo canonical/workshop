@@ -74,7 +74,7 @@ func (s *systemSdk) TestRetrieveSystemSdkSuccess(c *check.C) {
 
 	digest := hex.EncodeToString(hash.Sum(nil))
 	c.Check(digest, check.Equals, system.SystemSdkDigest, check.Commentf("system SDK revision needs updating"))
-	c.Check(system.SystemSdkRevision, check.Equals, sdk.R(2))
+	c.Check(system.SystemSdkRevision, check.Equals, sdk.R(3))
 }
 
 func (s *systemSdk) TestRetrieveSystemSdkWrongRevision(c *check.C) {
