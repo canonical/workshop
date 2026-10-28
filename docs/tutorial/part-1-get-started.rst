@@ -258,8 +258,25 @@ list the workshops in the project directory:
 
 .. note::
 
-   |ws_markup| ships shell completion for Bash, Zsh, Fish, and PowerShell;
-   if you installed via snap, it is already enabled.
+   |ws_markup| can generate shell completion for Bash, Zsh, Fish, and PowerShell.
+   The snap enables Bash completion automatically.
+   For Zsh, initialize completion and source the packaged scripts:
+
+   .. code-block:: console
+
+      $ autoload -Uz compinit; compinit
+      $ source /snap/workshop/current/completions/workshop.zsh
+      $ source /snap/workshop/current/completions/sdk.zsh
+
+   For Fish, source the packaged scripts:
+
+   .. code-block:: console
+
+      $ source /snap/workshop/current/completions/workshop.fish
+      $ source /snap/workshop/current/completions/sdk.fish
+
+   Add these commands to your shell's startup configuration
+   to enable completion in future sessions.
    Press Tab as you type any :program:`workshop` command
    to autocomplete subcommands, flags, and arguments.
 
