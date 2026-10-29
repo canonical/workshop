@@ -324,15 +324,25 @@ func ensureBackendReady() error {
 	// pool operations can reuse it. A missing pool returns a 404; any other
 	// error (e.g. a ZFS pool whose module is gone) is left for checkStoragePool
 	// to report.
+	//
+	// storagePoolDriver is written at most once, on the first run of this
+	// check, before the daemon starts serving requests. Later runs only reuse
+	// or validate it, so concurrent readers never race with a write.
 	existingPool, _, err := conn.GetStoragePool(storagePool)
 	if api.StatusErrorCheck(err, http.StatusNotFound) {
-		info, _, err := conn.GetServer()
-		if err != nil {
-			return err
-		}
-		driver, err := preferredDriver(info.Environment.StorageSupportedDrivers)
-		if err != nil {
-			return err
+		// Recreate the pool on the driver already in use, if any: the pool can
+		// go missing while the daemon runs, and switching drivers underneath
+		// readers is not supported.
+		driver := storagePoolDriver
+		if driver == "" {
+			info, _, err := conn.GetServer()
+			if err != nil {
+				return err
+			}
+			driver, err = preferredDriver(info.Environment.StorageSupportedDrivers)
+			if err != nil {
+				return err
+			}
 		}
 		req := api.StoragePoolsPost{
 			Name:   storagePool,
@@ -345,7 +355,9 @@ func ensureBackendReady() error {
 		if err := op.Wait(); err != nil {
 			return err
 		}
-		storagePoolDriver = driver
+		if storagePoolDriver == "" {
+			storagePoolDriver = driver
+		}
 
 		// Ensure the new pool has enough total space available.
 		pool, etag, err := conn.GetStoragePool(storagePool)
@@ -379,8 +391,6 @@ func ensureBackendReady() error {
 	} else if err != nil {
 		return err
 	} else if storagePoolDriver == "" {
-		// Set once, during the initial check before the daemon serves
-		// requests, so reads of storagePoolDriver never race with a write.
 		storagePoolDriver = existingPool.Driver
 	} else if storagePoolDriver != existingPool.Driver {
 		// The pool was recreated on another driver while the daemon was
