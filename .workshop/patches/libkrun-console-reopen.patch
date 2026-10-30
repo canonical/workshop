@@ -1,0 +1,304 @@
+diff --git a/src/devices/src/virtio/console/device.rs b/src/devices/src/virtio/console/device.rs
+index cd55ee6f..27ba7b3a 100644
+--- a/src/devices/src/virtio/console/device.rs
++++ b/src/devices/src/virtio/console/device.rs
+@@ -172,7 +172,7 @@ impl Console {
+             .expect("control tx queue should exist");
+         let mut raise_irq = false;
+ 
+-        let mut ports_to_start = Vec::new();
++        let mut port_events = Vec::new();
+ 
+         while let Some(head) = control_tx.queue.pop(mem) {
+             raise_irq = true;
+@@ -244,39 +244,58 @@ impl Console {
+                         }
+                     };
+ 
+-                    if !opened {
+-                        log::debug!("Guest closed port {}", cmd.id);
+-                        continue;
+-                    }
+-
+-                    ports_to_start.push(cmd.id as usize);
++                    port_events.push((cmd.id as usize, opened));
+                 }
+                 _ => log::warn!("Unknown console control event {:x}", cmd.event),
+             }
+         }
+ 
+-        for port_id in ports_to_start {
+-            log::trace!("Starting port io for port {port_id}");
++        for (port_id, opened) in port_events {
+             let rx_idx = port_id_to_queue_idx(QueueDirection::Rx, port_id);
+             let tx_idx = port_id_to_queue_idx(QueueDirection::Tx, port_id);
+ 
+-            // Take ownership of port queues - they are moved to the port.
+-            let rx_queue = self.queues[rx_idx]
+-                .take()
+-                .expect("port rx queue should exist")
+-                .queue;
+-            let tx_queue = self.queues[tx_idx]
+-                .take()
+-                .expect("port tx queue should exist")
+-                .queue;
+-
+-            self.ports[port_id].start(
+-                mem.clone(),
+-                rx_queue,
+-                tx_queue,
+-                interrupt.clone(),
+-                self.control.clone(),
+-            );
++            if opened {
++                if self.queues[rx_idx].is_none() {
++                    log::debug!("Ignoring PORT_OPEN for already active port {port_id}");
++                    continue;
++                }
++
++                log::trace!("Starting port io for port {port_id}");
++
++                // Take ownership of port queues - they are moved to the port.
++                let rx_queue = self.queues[rx_idx]
++                    .take()
++                    .expect("port rx queue should exist")
++                    .queue;
++                let tx_queue = self.queues[tx_idx]
++                    .take()
++                    .expect("port tx queue should exist")
++                    .queue;
++
++                self.ports[port_id].start(
++                    mem.clone(),
++                    rx_queue,
++                    tx_queue,
++                    interrupt.clone(),
++                    self.control.clone(),
++                );
++            } else {
++                if self.queues[rx_idx].is_some() {
++                    log::debug!("Ignoring PORT_CLOSE for inactive port {port_id}");
++                    continue;
++                }
++
++                log::debug!("Guest closed port {port_id}");
++                let (rx_queue, tx_queue) = self.ports[port_id].shutdown();
++                if let Some(queue) = rx_queue {
++                    self.queues[rx_idx] =
++                        Some(DeviceQueue::new(queue, self.queue_events[rx_idx].clone()));
++                }
++                if let Some(queue) = tx_queue {
++                    self.queues[tx_idx] =
++                        Some(DeviceQueue::new(queue, self.queue_events[tx_idx].clone()));
++                }
++            }
+         }
+ 
+         raise_irq
+diff --git a/src/devices/src/virtio/console/port.rs b/src/devices/src/virtio/console/port.rs
+index caae5bc7..bcc4e498 100644
+--- a/src/devices/src/virtio/console/port.rs
++++ b/src/devices/src/virtio/console/port.rs
+@@ -64,8 +64,8 @@ enum PortState {
+     Active {
+         stopfd: utils::eventfd::EventFd,
+         stop: Arc<AtomicBool>,
+-        rx_thread: Option<JoinHandle<()>>,
+-        tx_thread: Option<JoinHandle<()>>,
++        rx_thread: Option<JoinHandle<Queue>>,
++        tx_thread: Option<JoinHandle<Queue>>,
+     },
+ }
+ 
+@@ -77,6 +77,8 @@ pub(crate) struct Port {
+     input: Option<Arc<Mutex<Box<dyn PortInput + Send>>>>,
+     output: Option<Arc<Mutex<Box<dyn PortOutput + Send>>>>,
+     terminal: Option<Box<dyn PortTerminalProperties>>,
++    idle_rx_queue: Option<Queue>,
++    idle_tx_queue: Option<Queue>,
+ }
+ 
+ impl Port {
+@@ -90,6 +92,8 @@ impl Port {
+                 .output
+                 .map(|output| Arc::new(Mutex::new(output))),
+             terminal: description.terminal,
++            idle_rx_queue: None,
++            idle_tx_queue: None,
+         }
+     }
+ 
+@@ -129,9 +133,7 @@ impl Port {
+         interrupt: InterruptTransport,
+         control: Arc<ConsoleControl>,
+     ) {
+-        if let PortState::Active { .. } = &mut self.state {
+-            self.shutdown();
+-        };
++        debug_assert!(matches!(self.state, PortState::Inactive));
+ 
+         let input = self.input.as_ref().cloned();
+         let output = self.output.as_ref().cloned();
+@@ -140,26 +142,36 @@ impl Port {
+             .expect("Failed to create EventFd for interrupt_evt");
+         let stop = Arc::new(AtomicBool::new(false));
+ 
+-        let rx_thread = input.map(|input| {
++        let rx_thread = if let Some(input) = input {
+             let mem = mem.clone();
+             let interrupt = interrupt.clone();
+             let port_id = self.port_id;
+             let stopfd = stopfd.try_clone().unwrap();
+             let stop = stop.clone();
+-            thread::Builder::new()
+-                .name("console port".into())
+-                .spawn(move || {
+-                    process_rx(
+-                        mem, rx_queue, interrupt, input, control, port_id, stopfd, stop,
+-                    )
+-                })
+-                .unwrap()
+-        });
+-
+-        let tx_thread = output.map(|output| {
++            Some(
++                thread::Builder::new()
++                    .name("console port".into())
++                    .spawn(move || {
++                        process_rx(
++                            mem, rx_queue, interrupt, input, control, port_id, stopfd, stop,
++                        )
++                    })
++                    .unwrap(),
++            )
++        } else {
++            self.idle_rx_queue = Some(rx_queue);
++            None
++        };
++
++        let tx_thread = if let Some(output) = output {
+             let stop = stop.clone();
+-            thread::spawn(move || process_tx(mem, tx_queue, interrupt, output, stop))
+-        });
++            Some(thread::spawn(move || {
++                process_tx(mem, tx_queue, interrupt, output, stop)
++            }))
++        } else {
++            self.idle_tx_queue = Some(tx_queue);
++            None
++        };
+ 
+         self.state = PortState::Active {
+             stopfd,
+@@ -169,7 +181,10 @@ impl Port {
+         }
+     }
+ 
+-    pub fn shutdown(&mut self) {
++    pub fn shutdown(&mut self) -> (Option<Queue>, Option<Queue>) {
++        let mut rx_queue = self.idle_rx_queue.take();
++        let mut tx_queue = self.idle_tx_queue.take();
++
+         if let PortState::Active {
+             stopfd,
+             stop,
+@@ -180,23 +195,28 @@ impl Port {
+             stop.store(true, Ordering::Release);
+             if let Some(tx_thread) = mem::take(tx_thread) {
+                 tx_thread.thread().unpark();
+-                if let Err(e) = tx_thread.join() {
+-                    log::error!(
++                match tx_thread.join() {
++                    Ok(queue) => tx_queue = Some(queue),
++                    Err(e) => log::error!(
+                         "Failed to flush tx for port {port_id}, thread panicked: {e:?}",
+                         port_id = self.port_id
+-                    )
++                    ),
+                 }
+             }
+             stopfd.write(1).unwrap();
+             if let Some(rx_thread) = mem::take(rx_thread) {
+                 rx_thread.thread().unpark();
+-                if let Err(e) = rx_thread.join() {
+-                    log::error!(
++                match rx_thread.join() {
++                    Ok(queue) => rx_queue = Some(queue),
++                    Err(e) => log::error!(
+                         "Failed to flush tx for port {port_id}, thread panicked: {e:?}",
+                         port_id = self.port_id
+-                    )
++                    ),
+                 }
+             }
++            self.state = PortState::Inactive;
+         };
++
++        (rx_queue, tx_queue)
+     }
+ }
+diff --git a/src/devices/src/virtio/console/process_rx.rs b/src/devices/src/virtio/console/process_rx.rs
+index cffcb06d..83f20fbb 100644
+--- a/src/devices/src/virtio/console/process_rx.rs
++++ b/src/devices/src/virtio/console/process_rx.rs
+@@ -18,14 +18,14 @@ pub(crate) fn process_rx(
+     port_id: u32,
+     stopfd: utils::eventfd::EventFd,
+     stop: Arc<AtomicBool>,
+-) {
++) -> Queue {
+     let mem = &mem;
+     let mut eof = false;
+ 
+     let mut input = input.lock().unwrap();
+     loop {
+         let Some(head) = pop_head_blocking(&mut queue, mem, &interrupt, &stop) else {
+-            return;
++            return queue;
+         };
+ 
+         let head_index = head.index;
+@@ -56,7 +56,7 @@ pub(crate) fn process_rx(
+             interrupt.signal_used_queue();
+             log::trace!("signaling EOF on port {port_id}");
+             control.port_open(port_id, false);
+-            return;
++            return queue;
+         } else if bytes_read == 0 {
+             queue.undo_pop();
+             interrupt.signal_used_queue();
+@@ -64,7 +64,7 @@ pub(crate) fn process_rx(
+         }
+ 
+         if stop.load(Ordering::Acquire) {
+-            return;
++            return queue;
+         }
+     }
+ }
+diff --git a/src/devices/src/virtio/console/process_tx.rs b/src/devices/src/virtio/console/process_tx.rs
+index e97a392b..364a3096 100644
+--- a/src/devices/src/virtio/console/process_tx.rs
++++ b/src/devices/src/virtio/console/process_tx.rs
+@@ -13,10 +13,10 @@ pub(crate) fn process_tx(
+     interrupt: InterruptTransport,
+     output: Arc<Mutex<Box<dyn PortOutput + Send>>>,
+     stop: Arc<AtomicBool>,
+-) {
++) -> Queue {
+     loop {
+         let Some(head) = pop_head_blocking(&mut queue, &mem, &interrupt, &stop) else {
+-            return;
++            return queue;
+         };
+ 
+         let head_index = head.index;
+@@ -39,7 +39,7 @@ pub(crate) fn process_tx(
+                         // Errors could conceivably be spurious. Broken
+                         // pipe is not and there is no point in attempting
+                         // to write more.
+-                        return;
++                        return queue;
+                     }
+                 }
+             }

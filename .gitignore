@@ -7,6 +7,13 @@ __debug_bin*
 # Local artefacts
 workshop
 workshopctl
+# MicroVM build workspace (cloned sources and outputs)
+/.microvm/
+/libkrun/
+/libkrunfw/
+/lxd/
+/lxc.debug
+/lxd.debug
 !workshop/
 !workshopctl/
 .spread-reuse.*

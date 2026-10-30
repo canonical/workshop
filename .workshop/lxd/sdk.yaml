@@ -1,0 +1,7 @@
+name: lxd
+version: "0.1"
+summary: Snapped LXD for testing LXD MicroVMs
+description: |
+  Installs and initializes the LXD 6.10.1 snap inside the test VM so that
+  the patched binaries and kernel can be sideloaded and exercised.
+base: ubuntu@26.04

@@ -1,0 +1,75 @@
+name: vm
+base: ubuntu@26.04
+runtime: lxd-vm
+sdks:
+  - name: system
+    slots:
+      github-token:
+        interface: secret
+        attributes:
+          service: workshop
+          name: github-token
+      openrouter-token:
+        interface: secret
+        attributes:
+          service: workshop
+          name: openrouter-token
+  - name: go
+  - name: copilot
+  - name: omp
+    plugs:
+      openrouter-token: secret
+  - name: project-lxd
+actions:
+  provision: |
+    sudo mkdir -p /var/snap/lxd/common/lxd/microvm /var/snap/lxd/common/lxd/libkrun
+    sudo install -m 0755 /project/.microvm/bin/lxd /var/snap/lxd/common/lxd.debug
+    sudo install -m 0755 /project/.microvm/bin/lxc /var/snap/lxd/common/lxc.debug
+    sudo install -m 0644 /project/libkrunfw/linux-*/vmlinux /var/snap/lxd/common/lxd/microvm/vmlinuz
+    sudo install -m 0755 /project/libkrun/target/release/libkrun.so.2.0.0 /var/snap/lxd/common/lxd/libkrun/libkrun.so
+
+    sudo mkdir -p /etc/systemd/system/snap.lxd.daemon.service.d
+    printf '[Service]\nEnvironment=LIBKRUN_PATH=/var/snap/lxd/common/lxd/libkrun/libkrun.so\n' \
+      | sudo tee /etc/systemd/system/snap.lxd.daemon.service.d/libkrun.conf >/dev/null
+
+    sudo systemctl daemon-reload
+    sudo snap set lxd features=microvm
+    sudo systemctl restart snap.lxd.daemon.service
+    sudo /snap/bin/lxd waitready --timeout=120
+
+    echo "LXD MicroVM host setup complete"
+  test: |
+    sudo /snap/bin/lxc delete -f vm1 >/dev/null 2>&1 || true
+    sudo /snap/bin/lxc launch ubuntu:24.04 vm1 --microvm
+
+    i=0
+    until sudo /snap/bin/lxc exec vm1 -- true >/dev/null 2>&1; do
+      i=$((i + 1))
+      if [ "$i" -ge 120 ]; then
+        echo "lxd-agent did not become ready" >&2
+        exit 1
+      fi
+      sleep 1
+    done
+
+    sudo /snap/bin/lxc exec vm1 -- uname -a
+    sudo /snap/bin/lxc stop vm1
+    sudo /snap/bin/lxc start vm1
+
+    i=0
+    until sudo /snap/bin/lxc exec vm1 -- true >/dev/null 2>&1; do
+      i=$((i + 1))
+      if [ "$i" -ge 120 ]; then
+        echo "lxd-agent did not become ready after start" >&2
+        exit 1
+      fi
+      sleep 1
+    done
+
+    sudo /snap/bin/lxc exec vm1 -- hostname
+    sudo /snap/bin/lxc restart vm1
+    sudo /snap/bin/lxc exec vm1 -- uname -r
+    sudo /snap/bin/lxc stop vm1 --force
+    sudo /snap/bin/lxc delete vm1
+
+    echo "MicroVM lifecycle test passed"

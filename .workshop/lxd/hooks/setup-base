@@ -1,0 +1,5 @@
+#!/bin/bash
+# Runs as root inside the test VM.
+snap install lxd --channel=6/stable
+/snap/bin/lxd init --minimal || true
+/snap/bin/lxd waitready --timeout=120

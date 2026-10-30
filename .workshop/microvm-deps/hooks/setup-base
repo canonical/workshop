@@ -1,0 +1,39 @@
+#!/bin/bash
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -y --no-install-recommends \
+	autoconf \
+	automake \
+	bc \
+	bison \
+	build-essential \
+	ca-certificates \
+	cpio \
+	curl \
+	flex \
+	git \
+	kmod \
+	libacl1-dev \
+	libapparmor-dev \
+	libcap-dev \
+	libclang-dev \
+	libelf-dev \
+	liblz4-dev \
+	libseccomp-dev \
+	libsqlite3-dev \
+	libssl-dev \
+	libtool \
+	libudev-dev \
+	libuv1-dev \
+	meson \
+	ninja-build \
+	patchelf \
+	pkg-config \
+	python3-pyelftools \
+	python3-venv \
+	xfslibs-dev \
+	zstd
+
+# Rust itself comes from the "rust" SDK in build.yaml.

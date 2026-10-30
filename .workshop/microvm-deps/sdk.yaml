@@ -1,0 +1,6 @@
+name: microvm-deps
+version: "0.1"
+summary: Build dependencies for LXD MicroVMs (libkrun/libkrunfw/LXD)
+description: |
+  Installs the host packages required to build libkrun, libkrunfw and LXD.
+base: ubuntu@24.04

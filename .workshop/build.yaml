@@ -1,0 +1,13 @@
+name: build
+base: ubuntu@24.04
+sdks:
+  - name: go
+    channel: "1.26/stable"
+  - name: rust
+  - name: project-microvm-deps
+actions:
+  clone: make clone
+  libkrun: make libkrun
+  libkrunfw: make libkrunfw
+  lxd: make lxd
+  all: make all
