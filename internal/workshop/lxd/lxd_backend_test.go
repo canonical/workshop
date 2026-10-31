@@ -274,6 +274,10 @@ func (f *LxdBeTests) TestDefaultVMDevices(c *check.C) {
 
 	vm := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDVM)
 	c.Check(vm["root"]["size"], check.Equals, "10GiB")
+
+	microvm := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDMicroVM)
+	c.Check(microvm["root"]["size"], check.Equals, "10GiB")
+	c.Check(microvm["workshop.bin"], check.IsNil)
 }
 
 func (f *LxdBeTests) TestCheckPoolSpace(c *check.C) {

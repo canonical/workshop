@@ -35,7 +35,7 @@ const MAX_WORKSHOP_NAME_LENGTH = 40
 
 var (
 	SupportedBases    = sdk.AllowedBases
-	SupportedRuntimes = []string{"lxd-container", "lxd-vm"}
+	SupportedRuntimes = []string{"lxd-container", "lxd-vm", "lxd-microvm"}
 
 	workshopName = regexp.MustCompile(`^[a-z](?:-?[a-z0-9])*$`)
 	actionName   = workshopName
@@ -240,6 +240,7 @@ type Runtime int
 const (
 	RuntimeLXDContainer Runtime = iota
 	RuntimeLXDVM
+	RuntimeLXDMicroVM
 )
 
 func (r Runtime) MarshalText() ([]byte, error) {
@@ -248,6 +249,8 @@ func (r Runtime) MarshalText() ([]byte, error) {
 		return []byte("lxd-container"), nil
 	case RuntimeLXDVM:
 		return []byte("lxd-vm"), nil
+	case RuntimeLXDMicroVM:
+		return []byte("lxd-microvm"), nil
 	default:
 		return nil, fmt.Errorf("invalid runtime: %v", int(r))
 	}
@@ -259,6 +262,8 @@ func (r *Runtime) UnmarshalText(text []byte) error {
 		*r = RuntimeLXDContainer
 	case "lxd-vm":
 		*r = RuntimeLXDVM
+	case "lxd-microvm":
+		*r = RuntimeLXDMicroVM
 	default:
 		return fmt.Errorf("invalid runtime %q; valid runtimes: %s", string(text), strings.Join(SupportedRuntimes, ", "))
 	}

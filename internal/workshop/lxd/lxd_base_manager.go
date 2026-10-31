@@ -218,7 +218,7 @@ func baseImageSource(base string, runtime workshop.Runtime) (*api.ImageSource, e
 	// variants, but it should be OK for x86_64, aarch64 and riscv64.
 	source := api.ImageSource{
 		Alias:     parts[1],
-		ImageType: string(instanceType(runtime)),
+		ImageType: string(imageType(runtime)),
 		Protocol:  protocol,
 		Server:    url,
 	}

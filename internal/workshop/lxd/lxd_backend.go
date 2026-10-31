@@ -510,7 +510,7 @@ func estimateNeededSpace(conn lxd.InstanceServer, snapshot workshop.Snapshot, ru
 	}
 
 	switch runtime {
-	case workshop.RuntimeLXDContainer:
+	case workshop.RuntimeLXDContainer, workshop.RuntimeLXDMicroVM:
 		needed += containerImage
 	case workshop.RuntimeLXDVM:
 		needed += vmImage
@@ -536,6 +536,8 @@ func checkAvailableMemory(mi *osutil.MemInfo, runtime workshop.Runtime) error {
 		needed += container
 	case workshop.RuntimeLXDVM:
 		needed += vmMonitor + vmGuest
+	case workshop.RuntimeLXDMicroVM:
+		needed += vmGuest
 	}
 
 	if mi.Available >= needed {
@@ -548,11 +550,26 @@ func checkAvailableMemory(mi *osutil.MemInfo, runtime workshop.Runtime) error {
 		usedPct, units.GetByteSizeStringIEC(mi.Available, 1))
 }
 
+const instanceTypeMicroVM api.InstanceType = "microvm"
+
 func instanceType(runtime workshop.Runtime) api.InstanceType {
-	if runtime == workshop.RuntimeLXDVM {
+	switch runtime {
+	case workshop.RuntimeLXDVM:
 		return api.InstanceTypeVM
+	case workshop.RuntimeLXDMicroVM:
+		return instanceTypeMicroVM
+	default:
+		return api.InstanceTypeContainer
 	}
-	return api.InstanceTypeContainer
+}
+
+// imageType returns the LXD image type used to boot the runtime. MicroVMs run
+// container images, unlike VMs.
+func imageType(runtime workshop.Runtime) api.InstanceType {
+	if runtime == workshop.RuntimeLXDMicroVM {
+		return api.InstanceTypeContainer
+	}
+	return instanceType(runtime)
 }
 
 func (s *Backend) launchOrRebuildFromImage(conn lxd.InstanceServer, usr *user.User, req api.InstancesPost) error {
@@ -653,6 +670,11 @@ var instanceTemplates embed.FS
 // when rebuilding a workshop from a snapshot, it results in both the hostname
 // and instance-id being taken from the snapshot.
 func (s *Backend) adjustInstanceTemplates(conn lxd.InstanceServer, name string, runtime workshop.Runtime) error {
+	// MicroVMs do not consume image templates or cloud-init yet.
+	if runtime == workshop.RuntimeLXDMicroVM {
+		return nil
+	}
+
 	fromImage := []string{"create"}
 	fromSnapshot := []string{"create", "copy"}
 
@@ -1025,6 +1047,11 @@ func (s *Backend) AddWorkshopMount(ctx context.Context, name string, mount works
 	inst, etag, err := conn.GetInstance(InstanceName(name, projectId))
 	if err != nil {
 		return err
+	}
+
+	// MicroVMs only support a root disk; skip project/SDK mounts.
+	if inst.Type == string(instanceTypeMicroVM) {
+		return nil
 	}
 
 	disk := mountToLxdDisk(mount)
@@ -1470,18 +1497,23 @@ func defaultDevices(usr *user.User, pid, w string, runtime workshop.Runtime) map
 		"workshop.network": {"type": "nic", "network": networkName, "name": "eth0"},
 	}
 
-	if runtime == workshop.RuntimeLXDVM {
-		// Make the LXD default explicit. VM workshops should have consistent
-		// disk sizes (at least at first) so their snapshots can be reused
-		// easily. Once a snapshot is taken, it's not easy to shrink the block
-		// device for other workshops. SDKs which require a lot of space can
-		// use mount plugs to avoid expanding the root disk too much.
+	if runtime == workshop.RuntimeLXDVM || runtime == workshop.RuntimeLXDMicroVM {
+		// Make the LXD default explicit. VM and MicroVM workshops should have
+		// consistent disk sizes (at least at first) so their snapshots can be
+		// reused easily. Once a snapshot is taken, it's not easy to shrink the
+		// block device for other workshops. SDKs which require a lot of space
+		// can use mount plugs to avoid expanding the root disk too much.
 		devices["root"]["size"] = "10GiB"
 	}
 
 	mounts, proxies := workshop.DefaultDevices(pid, w)
-	for _, mount := range mounts {
-		devices[mount.Name] = mountToLxdDisk(mount)
+
+	// MicroVMs currently only support a root disk; LXD rejects additional disk
+	// devices. Keep the runtime usable without project/SDK mounts.
+	if runtime != workshop.RuntimeLXDMicroVM {
+		for _, mount := range mounts {
+			devices[mount.Name] = mountToLxdDisk(mount)
+		}
 	}
 
 	// LXD VMs have only limited support for proxy devices.
@@ -1535,9 +1567,12 @@ func (s *Backend) workshopConfig(
 		return nil, err
 	}
 
-	idmapSet, err := workshopIdmap(file.Runtime, userid, groupid)
-	if err != nil {
-		return nil, err
+	var idmapSet *idmap.IdmapSet
+	if file.Runtime != workshop.RuntimeLXDMicroVM {
+		idmapSet, err = workshopIdmap(file.Runtime, userid, groupid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Include all options we might change, even those with default values,
@@ -1545,7 +1580,6 @@ func (s *Backend) workshopConfig(
 	cfg := map[string]string{
 		"boot.autostart":       "false",
 		"cloud-init.user-data": cloudConfig.String(),
-		"raw.idmap":            formatIdmap(idmapSet),
 		// Security: the workshop gains read-only access to cached, or public,
 		// LXD images that already exist on the host.
 		"security.devlxd.images":         "true",
@@ -1556,6 +1590,10 @@ func (s *Backend) workshopConfig(
 		"user.workshop.base-fingerprint": baseFingerprint,
 	}
 
+	if idmapSet != nil {
+		cfg["raw.idmap"] = formatIdmap(idmapSet)
+	}
+
 	if file.Runtime == workshop.RuntimeLXDContainer {
 		cfg["security.nesting"] = "true"
 		// LXC appears to have a race condition wherein a proxy device mounted in
@@ -1564,7 +1602,7 @@ func (s *Backend) workshopConfig(
 		// directory) to allow us to mount X11 sockets reliably.
 		// See: https://github.com/lxc/lxc/issues/434
 		cfg["raw.lxc"] = "lxc.mount.entry = tmpfs tmp tmpfs defaults"
-	} else {
+	} else if file.Runtime == workshop.RuntimeLXDVM {
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
 

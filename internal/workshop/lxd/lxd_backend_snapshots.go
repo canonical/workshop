@@ -140,6 +140,11 @@ func (s *Backend) Snapshot(ctx context.Context, snapshot workshop.Snapshot) (*wo
 		return nil, errors.New("internal error: snapshots require at least one SDK")
 	}
 
+	// MicroVMs do not support instance snapshots yet; always fall back to the base image.
+	if snapshot.Image.Runtime == workshop.RuntimeLXDMicroVM {
+		return nil, workshop.ErrSnapshotNotFound
+	}
+
 	conn, snapshotConn, err := s.snapshotClients(ctx)
 	if err != nil {
 		return nil, err
@@ -231,6 +236,8 @@ func identifySnapshot(inst *api.Instance) (*workshop.Snapshot, error) {
 	runtime := workshop.RuntimeLXDContainer
 	if inst.Type == string(api.InstanceTypeVM) {
 		runtime = workshop.RuntimeLXDVM
+	} else if inst.Type == string(instanceTypeMicroVM) {
+		runtime = workshop.RuntimeLXDMicroVM
 	}
 
 	sdks := make([]sdk.ContentID, len(inst.Devices))
@@ -312,6 +319,11 @@ func compareSnapshots(name string, actual, expected workshop.Snapshot) error {
 func (s *Backend) TakeSnapshot(ctx context.Context, name string, snapshot workshop.Snapshot) error {
 	if snapshot.IsBase() {
 		return errors.New("internal error: snapshots require at least one SDK")
+	}
+
+	// MicroVMs do not support instance snapshots yet.
+	if snapshot.Image.Runtime == workshop.RuntimeLXDMicroVM {
+		return nil
 	}
 
 	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
@@ -777,6 +789,11 @@ func mergeDevices(source map[string]map[string]string, sdks []sdk.ContentID, w s
 func (s *Backend) RemoveSnapshot(ctx context.Context, snapshot workshop.Snapshot) error {
 	if snapshot.IsBase() {
 		return errors.New("internal error: snapshots require at least one SDK")
+	}
+
+	// MicroVMs do not support instance snapshots yet.
+	if snapshot.Image.Runtime == workshop.RuntimeLXDMicroVM {
+		return nil
 	}
 
 	conn, snapshotConn, err := s.snapshotClients(ctx)

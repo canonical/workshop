@@ -27,9 +27,10 @@
       "description": "Type of sandboxing to use to run the workshop.",
       "enum": [
         "lxd-container",
-        "lxd-vm"
+        "lxd-vm",
+        "lxd-microvm"
       ],
-      "errorMessage": "The runtime must be one of the supported values: lxd-container, lxd-vm."
+      "errorMessage": "The runtime must be one of the supported values: lxd-container, lxd-vm, lxd-microvm."
     },
     "sdks": {
       "type": "array",
