@@ -90,7 +90,7 @@ so that :program:`uv` works correctly with the workshop's storage layout:
 .. @artefact UV_LINK_MODE
 
 - :envvar:`UV_LINK_MODE` is set to :samp:`copy` in the workshop user's environment
-  because the persistent cache mount does not support hardlinks.
+  because the persistent cache mount does not support hard links.
   You don't need to set this yourself.
 
 - The :program:`uv` package cache is persisted on the host
