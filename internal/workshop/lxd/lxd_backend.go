@@ -31,6 +31,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -72,10 +73,29 @@ const (
 )
 
 var (
-	storagePoolDriver string
+	// storagePoolDriver is the driver of the workshop storage pool, set once by
+	// the first successful ensureBackendReady. That may happen after the daemon
+	// starts serving (e.g. when LXD is unavailable at startup), so it is
+	// accessed atomically through poolDriver and setPoolDriver.
+	storagePoolDriver atomic.Pointer[string]
 
 	workshopFormatsChecked = false
 )
+
+// poolDriver returns the driver of the workshop storage pool, or "" if it
+// is not known yet.
+func poolDriver() string {
+	if driver := storagePoolDriver.Load(); driver != nil {
+		return *driver
+	}
+	return ""
+}
+
+// setPoolDriver records driver as the storage pool driver unless one is
+// already recorded, so the driver never changes once set.
+func setPoolDriver(driver string) {
+	storagePoolDriver.CompareAndSwap(nil, &driver)
+}
 
 func init() {
 	// Order matters: capabilities (version and storage) must be validated
@@ -324,16 +344,12 @@ func ensureBackendReady() error {
 	// pool operations can reuse it. A missing pool returns a 404; any other
 	// error (e.g. a ZFS pool whose module is gone) is left for checkStoragePool
 	// to report.
-	//
-	// storagePoolDriver is written at most once, on the first run of this
-	// check, before the daemon starts serving requests. Later runs only reuse
-	// or validate it, so concurrent readers never race with a write.
 	existingPool, _, err := conn.GetStoragePool(storagePool)
 	if api.StatusErrorCheck(err, http.StatusNotFound) {
 		// Recreate the pool on the driver already in use, if any: the pool can
 		// go missing while the daemon runs, and switching drivers underneath
 		// readers is not supported.
-		driver := storagePoolDriver
+		driver := poolDriver()
 		if driver == "" {
 			info, _, err := conn.GetServer()
 			if err != nil {
@@ -355,9 +371,7 @@ func ensureBackendReady() error {
 		if err := op.Wait(); err != nil {
 			return err
 		}
-		if storagePoolDriver == "" {
-			storagePoolDriver = driver
-		}
+		setPoolDriver(driver)
 
 		// Ensure the new pool has enough total space available.
 		pool, etag, err := conn.GetStoragePool(storagePool)
@@ -390,13 +404,13 @@ func ensureBackendReady() error {
 		}
 	} else if err != nil {
 		return err
-	} else if storagePoolDriver == "" {
-		storagePoolDriver = existingPool.Driver
-	} else if storagePoolDriver != existingPool.Driver {
+	} else if driver := poolDriver(); driver == "" {
+		setPoolDriver(existingPool.Driver)
+	} else if driver != existingPool.Driver {
 		// The pool was recreated on another driver while the daemon was
-		// running. Adopting the new driver would mean mutating
-		// storagePoolDriver after it has been read, so refuse instead.
-		return fmt.Errorf("storage pool %q changed driver: %q (expected %q)", storagePool, existingPool.Driver, storagePoolDriver)
+		// running. Adopting the new driver would change snapshot behavior
+		// underneath running operations, so refuse instead.
+		return fmt.Errorf("storage pool %q changed driver: %q (expected %q)", storagePool, existingPool.Driver, driver)
 	}
 
 	network, etag, err := conn.GetNetwork(networkName)

@@ -731,7 +731,7 @@ func mergeDevices(source map[string]map[string]string, sdks []sdk.ContentID, w s
 		return k != "root"
 	})
 
-	if storagePoolDriver == "zfs" {
+	if poolDriver() == "zfs" {
 		root := maps.Clone(source["root"])
 		if source == nil || root == nil {
 			return fmt.Errorf("internal error: %q workshop has no rootfs", w)
@@ -862,7 +862,7 @@ func (s *Backend) copyInstance(src, dst lxd.InstanceServer, srcName, dstName str
 
 	req := *srcInst
 
-	if storagePoolDriver == "zfs" {
+	if poolDriver() == "zfs" {
 		req.Devices = maps.Clone(req.Devices)
 		root := maps.Clone(req.Devices["root"])
 		if req.Devices == nil || root == nil {
