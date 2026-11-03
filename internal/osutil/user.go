@@ -204,6 +204,29 @@ func currentUserAndEnv() (*user.User, map[string]string, error) {
 	return usr, env, err
 }
 
+// minimalSystemdVersion is required by userEnvironment: systemctl supports
+// combining --machine=<uid>@.host with --user since systemd 248.
+const minimalSystemdVersion = 248
+
+// CheckSystemdVersion returns an error if the host systemd is too old to
+// support userEnvironment.
+func CheckSystemdVersion() error {
+	out, errOut, err := RunCmd(exec.Command("systemctl", "--version"))
+	if err != nil {
+		return fmt.Errorf("systemctl --version: %s", errOut)
+	}
+
+	var version int
+	if _, err := fmt.Sscanf(string(out), "systemd %d", &version); err != nil {
+		return fmt.Errorf("cannot parse systemd version: %w", err)
+	}
+
+	if version < minimalSystemdVersion {
+		return fmt.Errorf("systemd version %d is not supported; required >= %d\nUpgrade the host to a release that ships a newer systemd (e.g. Ubuntu 22.04 or later)", version, minimalSystemdVersion)
+	}
+	return nil
+}
+
 // Returns the environment for the user as set by systemd, or the system
 // environment if user is root. This is the equivalent of running
 // `systemctl [--user] show-environment`.
