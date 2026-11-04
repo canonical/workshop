@@ -1561,6 +1561,9 @@ func (s *Backend) workshopConfig(
 		// directory) to allow us to mount X11 sockets reliably.
 		// See: https://github.com/lxc/lxc/issues/434
 		cfg["raw.lxc"] = "lxc.mount.entry = tmpfs tmp tmpfs defaults"
+		if file.CPUs > 0 {
+			cfg["limits.cpu"] = fmt.Sprint(file.CPUs)
+		}
 	} else {
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
@@ -1592,7 +1595,7 @@ func (s *Backend) workshopConfig(
 			portsPerSdk = 4
 			maxPorts    = 192
 
-			minCPUs      = 2
+			defaultCPUs  = 2
 			irqsPerMount = 4
 			irqsPerCPU   = 128
 		)
@@ -1605,6 +1608,10 @@ func (s *Backend) workshopConfig(
 		maxBusPorts := min(minPorts+portsPerSdk*regularSdks, maxPorts)
 		cfg["limits.max_bus_ports"] = fmt.Sprint(maxBusPorts)
 
+		minCPUs := defaultCPUs
+		if file.CPUs > 0 {
+			minCPUs = file.CPUs
+		}
 		minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
 		vCPUs := max(minCPUs, minCPUsForPCI)
 		cfg["limits.cpu"] = fmt.Sprint(vCPUs)

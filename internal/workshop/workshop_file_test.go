@@ -290,6 +290,28 @@ runtime: classic
 	c.Check(err, check.ErrorMatches, `invalid runtime "classic"; valid runtimes: lxd-container, lxd-vm`)
 }
 
+func (f *workshopFile) TestCPUs(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+cpus: 12
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.CPUs, check.Equals, 12)
+}
+
+func (f *workshopFile) TestCPUsError(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+cpus: -1
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, "invalid CPU count -1: must be a positive integer")
+}
+
 func (f *workshopFile) TestWorkshopFileDuplicateSdks(c *check.C) {
 	yaml := `name: xbert-gpu
 base: ubuntu@24.04

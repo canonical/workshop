@@ -269,6 +269,7 @@ type File struct {
 	Name        string            `yaml:"name"`
 	Base        string            `yaml:"base"`
 	Runtime     Runtime           `yaml:"runtime,omitempty"`
+	CPUs        int               `yaml:"cpus,omitempty"`
 	Sdks        []SdkRecord       `yaml:"sdks,omitempty"`
 	Connections []Connection      `yaml:"connections,omitempty"`
 	Actions     map[string]Action `yaml:"actions,omitempty"`
@@ -337,6 +338,10 @@ func ValidateFile(file *File) error {
 		return fmt.Errorf("base %q not supported", file.Base)
 	}
 
+	if err := validateCPUs(file.CPUs); err != nil {
+		return err
+	}
+
 	if err := validateSdks(file.Sdks); err != nil {
 		return err
 	}
@@ -376,6 +381,13 @@ func readWorkshop(path string) (*File, error) {
 	}
 
 	return &file, nil
+}
+
+func validateCPUs(cpus int) error {
+	if cpus < 0 {
+		return fmt.Errorf("invalid CPU count %d: must be a positive integer", cpus)
+	}
+	return nil
 }
 
 func validateSdks(sdks []SdkRecord) error {
