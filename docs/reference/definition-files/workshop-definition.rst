@@ -65,6 +65,11 @@ Top-level fields
        SDKs that declare a :samp:`base` must use the same value;
        SDKs without a :samp:`base` are accepted on any workshop.
 
+   * - :samp:`runtime`
+     - string
+     - Type of sandboxing to use to run the workshop.
+       One of :samp:`lxd-container` or :samp:`lxd-vm`.
+
    * - :samp:`sdks`
      - array
      - Ordered list of SDK entries.
