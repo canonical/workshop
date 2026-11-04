@@ -27,9 +27,7 @@ import (
 )
 
 func (s *apiSuite) createProjectsRequest(method, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, url, body)
-	req.RemoteAddr = "pid=11;uid=1000;socket=(/var/lib/workshop/.socket);"
-	return req.WithContext(s.ctx), err
+	return http.NewRequestWithContext(s.ctx, method, url, body)
 }
 
 func (s *apiSuite) TestProjectsGetProjects(c *check.C) {

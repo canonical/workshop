@@ -375,6 +375,11 @@
   type: command
   specs: []
 
+"secret interface":
+  category: interface
+  type: concept
+  specs: []
+
 "SSH interface":
   category: interface
   type: concept
@@ -651,6 +656,11 @@
   type: tool
   specs:
     - SK023
+
+"workshopctl get-secret":
+  category: workshop (container)
+  type: command
+  specs: []
 
 "workshopd":
   category: "workshopd"

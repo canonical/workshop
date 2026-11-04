@@ -44,6 +44,10 @@ exclude = [
     # gnu.org blocks bot User-Agents with 403; valid references
     "^https://www\\.gnu\\.org/",
 
+    # GitHub throttles anonymous blob views with 503; commit-pinned
+    # permalinks are immutable, so they cannot rot
+    "^https://github\\.com/[^/]+/[^/]+/blob/[0-9a-f]{40}/",
+
     # Intermittent "Connection reset by peer" (os error 104) on these hosts —
     # transient CI-side network failures, not broken links
     "^https://documentation\\.ubuntu\\.com/",

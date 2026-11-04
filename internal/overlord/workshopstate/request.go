@@ -25,7 +25,6 @@ import (
 
 	"github.com/canonical/workshop/internal/overlord/cmdstate"
 	"github.com/canonical/workshop/internal/overlord/conflict"
-	"github.com/canonical/workshop/internal/overlord/handlersetup"
 	"github.com/canonical/workshop/internal/overlord/healthstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/ifacestate"
@@ -127,36 +126,34 @@ func reinstallSdks(st *state.State, sdks []sdk.Setup) *state.TaskSet {
 	return all
 }
 
-func launchWorkshop(st *state.State, file *workshop.File, intact []sdk.Setup) *state.TaskSet {
+func launchWorkshop(st *state.State, w string, intact []sdk.Setup) *state.TaskSet {
 	var lastIntact string
 	var summary string
 	if len(intact) == 0 {
-		summary = fmt.Sprintf("Create new %q workshop", file.Name)
+		summary = fmt.Sprintf("Create new %q workshop", w)
 	} else {
 		lastIntact = intact[len(intact)-1].Name
-		summary = fmt.Sprintf("Create new %q workshop from %q snapshot", file.Name, lastIntact)
+		summary = fmt.Sprintf("Create new %q workshop from %q snapshot", w, lastIntact)
 	}
 
 	create := st.NewTask("create-workshop", summary)
-	handlersetup.SetWorkshopFile(create, file)
 	if len(intact) > 0 {
 		create.Set("last-intact-sdk", lastIntact)
 	}
 	return state.NewTaskSet(create)
 }
 
-func rebuildWorkshop(st *state.State, file *workshop.File, intact []sdk.Setup) *state.TaskSet {
+func rebuildWorkshop(st *state.State, w string, intact []sdk.Setup) *state.TaskSet {
 	var lastIntact string
 	var summary string
 	if len(intact) == 0 {
-		summary = fmt.Sprintf("Rebuild %q workshop", file.Name)
+		summary = fmt.Sprintf("Rebuild %q workshop", w)
 	} else {
 		lastIntact = intact[len(intact)-1].Name
-		summary = fmt.Sprintf("Restore %q workshop from %q snapshot", file.Name, lastIntact)
+		summary = fmt.Sprintf("Restore %q workshop from %q snapshot", w, lastIntact)
 	}
 
 	create := st.NewTask("rebuild-workshop", summary)
-	handlersetup.SetWorkshopFile(create, file)
 	if len(intact) > 0 {
 		create.Set("last-intact-sdk", lastIntact)
 	}
@@ -202,7 +199,7 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 	createDirs := st.NewTask("create-workshop-storage", fmt.Sprintf("Create %q storage directories", manifest.File.Name))
 	addTaskSet(state.NewTaskSet(createDirs))
 
-	create := launchWorkshop(st, manifest.File, intactSdks)
+	create := launchWorkshop(st, manifest.File.Name, intactSdks)
 	addTaskSet(create)
 
 	// SDKs need to be mounted after restoring a snapshot.
@@ -221,18 +218,14 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 	mountProject := st.NewTask("mount-project", fmt.Sprintf("Mount project directory %q", project.Path))
 	addTaskSet(state.NewTaskSet(mountProject))
 
-	if manifest.File.Runtime == workshop.RuntimeLXDContainer {
-		connect := autoconnectSdks(st, manifest.File.Name, manifest.Sdks)
-		addTaskSet(connect)
-	}
+	connect := autoconnectSdks(st, manifest.File.Name, manifest.Sdks)
+	addTaskSet(connect)
 
 	setupProject := runHooks(st, manifest.Sdks, 0, hookstate.SetupProject)
 	addTaskSet(setupProject)
 
-	if manifest.File.Runtime == workshop.RuntimeLXDContainer {
-		checkHealth := runHooks(st, manifest.Sdks, checkHealthTimeout, hookstate.CheckHealth)
-		addTaskSet(checkHealth)
-	}
+	checkHealth := runHooks(st, manifest.Sdks, checkHealthTimeout, hookstate.CheckHealth)
+	addTaskSet(checkHealth)
 
 	for _, task := range all.Tasks() {
 		task.Set("workshop", manifest.File.Name)
@@ -420,7 +413,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	stash := st.NewTask("stash-workshop", fmt.Sprintf("Stash previous %q workshop", latest.File.Name))
 	addTaskSet(state.NewTaskSet(stash))
 
-	rebuild := rebuildWorkshop(st, latest.File, intactSdks)
+	rebuild := rebuildWorkshop(st, latest.File.Name, intactSdks)
 	addTaskSet(rebuild)
 
 	// Reinstall intact SDKs. The workshop definition can change plugs and
@@ -435,7 +428,7 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	install := installSdks(st, newSdks)
 	addTaskSet(install)
 
-	if option == conflict.RefreshUpdate && latest.File.Runtime == workshop.RuntimeLXDContainer {
+	if option == conflict.RefreshUpdate {
 		restoreConns := st.NewTask("restore-conns", fmt.Sprintf("Restore %q undesired connections", latest.File.Name))
 		restoreConns.Set("discard-conns-task", discard.ID())
 		addTaskSet(state.NewTaskSet(restoreConns))
@@ -447,10 +440,8 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	mountProject := st.NewTask("mount-project", fmt.Sprintf("Mount project directory %q", project.Path))
 	addTaskSet(state.NewTaskSet(mountProject))
 
-	if latest.File.Runtime == workshop.RuntimeLXDContainer {
-		connect := autoconnectSdks(st, latest.File.Name, latest.Sdks)
-		addTaskSet(connect)
-	}
+	connect := autoconnectSdks(st, latest.File.Name, latest.Sdks)
+	addTaskSet(connect)
 
 	setupProject := runHooks(st, latest.Sdks, 0, hookstate.SetupProject)
 	addTaskSet(setupProject)
@@ -458,10 +449,8 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	restoreState := runHooks(st, restoreSdks, 0, hookstate.RestoreState)
 	addTaskSet(restoreState)
 
-	if latest.File.Runtime == workshop.RuntimeLXDContainer {
-		checkHealth := runHooks(st, latest.Sdks, 0, hookstate.CheckHealth)
-		addTaskSet(checkHealth)
-	}
+	checkHealth := runHooks(st, latest.Sdks, 0, hookstate.CheckHealth)
+	addTaskSet(checkHealth)
 
 	length := len(refresh.Tasks())
 	last := refresh.Tasks()[length-1]

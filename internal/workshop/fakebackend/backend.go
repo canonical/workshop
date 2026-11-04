@@ -193,9 +193,21 @@ func (s *FakeWorkshopBackend) CreateOrLoadProject(ctx context.Context, path stri
 func (f *FakeWorkshopBackend) Projects(ctx context.Context) (map[string][]workshop.Project, error) {
 	userName, ok := ctx.Value(workshop.ContextUser).(string)
 	if ok {
-		return map[string][]workshop.Project{userName: f.projects[userName]}, nil
+		projects, err := f.UserProjects(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return map[string][]workshop.Project{userName: projects}, nil
 	}
 	return maps.Clone(f.projects), nil
+}
+
+func (f *FakeWorkshopBackend) UserProjects(ctx context.Context) ([]workshop.Project, error) {
+	userName, ok := ctx.Value(workshop.ContextUser).(string)
+	if !ok {
+		return nil, nil
+	}
+	return slices.Clone(f.projects[userName]), nil
 }
 
 func (f *FakeWorkshopBackend) project(user, id string) *workshop.Project {
@@ -290,6 +302,7 @@ func (f *FakeWorkshopBackend) resetWorkshop(ctx context.Context, file *workshop.
 		ws.Workshop = &workshop.Workshop{Backend: f,
 			Name:     file.Name,
 			Running:  false,
+			User:     user,
 			Project:  *prj,
 			Format:   f.FormatRevision(),
 			Image:    snapshot.Image,

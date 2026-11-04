@@ -15,8 +15,8 @@
 package client
 
 import (
-	"errors"
 	"fmt"
+	"math"
 )
 
 // ChangeConflictError describes an operation blocked by another change.
@@ -34,10 +34,18 @@ type ChangeConflictError struct {
 	Workshop string
 }
 
-// ErrorNoWaitingChange signals that an abort or continue request could not be
-// applied because no change is in progress to resume for the workshop. Match
-// it with [errors.Is].
-var ErrorNoWaitingChange = errors.New("no waiting change in progress")
+// ConstError is a string-based error type for declaring sentinel errors as
+// constants. Unlike sentinels created with [errors.New], a ConstError
+// cannot be reassigned and is matched by [errors.Is] through string
+// equality, so each ConstError message must be unique.
+type ConstError string
+
+const (
+	// ErrorNoWaitingChange signals that an abort or continue request could
+	// not be applied because no change is in progress to resume for the
+	// workshop. Match it with [errors.Is].
+	ErrorNoWaitingChange = ConstError("no waiting change in progress")
+)
 
 // As maps generic API errors into richer client-side error types.
 func (e *Error) As(target any) bool {
@@ -53,14 +61,9 @@ func (e *Error) As(target any) bool {
 	}
 }
 
-// Is reports whether the error matches a sentinel for the error's kind.
-func (e *Error) Is(target error) bool {
-	switch target {
-	case ErrorNoWaitingChange:
-		return e.Kind == ErrorKindNoWaitingChange
-	default:
-		return false
-	}
+// Error returns the error message, implementing the error interface.
+func (c ConstError) Error() string {
+	return string(c)
 }
 
 // Error returns a human-readable description of the blocking change.
@@ -73,6 +76,56 @@ func (e ChangeConflictError) Error() string {
 		)
 	}
 	return fmt.Sprintf("workshop %q has changes in progress", e.Workshop)
+}
+
+// ExitCode returns the exit code from the error's value and whether it is
+// valid. The field must be a JSON-decoded number representing an integer
+// between 0 and 255 inclusive. Missing fields, other types and invalid
+// values return zero and false.
+func (e *Error) ExitCode() (int, bool) {
+	value, ok := e.Value.(map[string]any)
+	if !ok {
+		return 0, false
+	}
+	code, ok := value["exit-code"].(float64)
+	if !ok || code < 0 || code > 255 || math.Trunc(code) != code {
+		return 0, false
+	}
+	return int(code), true
+}
+
+// Is reports whether the error matches a sentinel for the error's kind.
+func (e *Error) Is(target error) bool {
+	switch target {
+	case ErrorNoWaitingChange:
+		return e.Kind == ErrorKindNoWaitingChange
+	default:
+		return false
+	}
+}
+
+// Stderr returns the stderr string from the error's value and whether it
+// is present. An empty string is present; a missing or non-string field,
+// or a value that is not an object, returns an empty string and false.
+func (e *Error) Stderr() (string, bool) {
+	value, ok := e.Value.(map[string]any)
+	if !ok {
+		return "", false
+	}
+	output, ok := value["stderr"].(string)
+	return output, ok
+}
+
+// Stdout returns the stdout string from the error's value and whether it
+// is present. An empty string is present; a missing or non-string field,
+// or a value that is not an object, returns an empty string and false.
+func (e *Error) Stdout() (string, bool) {
+	value, ok := e.Value.(map[string]any)
+	if !ok {
+		return "", false
+	}
+	output, ok := value["stdout"].(string)
+	return output, ok
 }
 
 // toChangeConflictError extracts change-conflict details from a generic API

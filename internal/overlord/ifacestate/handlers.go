@@ -90,11 +90,6 @@ func (m *InterfaceManager) doAutoConnect(task *state.Task, tomb *tomb.Tomb) (err
 		return err
 	}
 
-	info, err := wp.SdkInfo(ctx, s)
-	if err != nil {
-		return err
-	}
-
 	st.Lock()
 	defer st.Unlock()
 
@@ -112,7 +107,8 @@ func (m *InterfaceManager) doAutoConnect(task *state.Task, tomb *tomb.Tomb) (err
 		return err
 	}
 
-	return m.connectAuto(task, wp, info, preserved)
+	sk := sdk.Ref{ProjectId: project.ProjectId, Workshop: w, Sdk: s}
+	return m.connectAuto(task, wp, sk, preserved)
 }
 
 func (m *InterfaceManager) preserveConns(st *state.State, chg *state.Change, projectId, w, s string) error {
@@ -150,7 +146,9 @@ func (m *InterfaceManager) preserveConns(st *state.State, chg *state.Change, pro
 		preserved[cref.ID()] = schema.PreservedConn{
 			Auto:             state.Auto,
 			Interface:        state.Interface,
+			StaticPlugAttrs:  state.StaticPlugAttrs,
 			DynamicPlugAttrs: state.DynamicPlugAttrs,
+			StaticSlotAttrs:  state.StaticSlotAttrs,
 			DynamicSlotAttrs: state.DynamicSlotAttrs,
 		}
 		changed = true
@@ -162,7 +160,7 @@ func (m *InterfaceManager) preserveConns(st *state.State, chg *state.Change, pro
 	return nil
 }
 
-func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sdk.Info, refs []*interfaces.ConnRef, attrs map[string]schema.PreservedConn) *state.TaskSet {
+func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, sk sdk.Ref, refs []*interfaces.ConnRef, attrs map[string]schema.PreservedConn) *state.TaskSet {
 	connectTs := state.NewTaskSet()
 	var affected = map[sdk.Ref]bool{}
 	for _, ref := range refs {
@@ -192,7 +190,7 @@ func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sd
 		affected[slotSdk] = true
 	}
 
-	setup := m.state.NewTask("setup-profiles", fmt.Sprintf("Setup %q SDK profile", info.Name))
+	setup := m.state.NewTask("setup-profiles", fmt.Sprintf("Setup %q SDK profile", sk.Sdk))
 	setup.Set("sdks", slices.Collect(maps.Keys(affected)))
 	setup.WaitAll(connectTs)
 
@@ -201,8 +199,8 @@ func (m *InterfaceManager) batchAutoConnectTasks(wp *workshop.Workshop, info *sd
 	}
 
 	for _, tsk := range connectTs.Tasks() {
-		tsk.Set("workshop", info.Workshop)
-		tsk.Set("sdk", info.Name)
+		tsk.Set("workshop", sk.Workshop)
+		tsk.Set("sdk", sk.Sdk)
 		tsk.Set("project", wp.Project)
 	}
 
@@ -220,7 +218,20 @@ func workshopConns(wp *workshop.Workshop) []interfaces.ConnRef {
 	return conns
 }
 
-func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, info *sdk.Info, preserved map[string]schema.PreservedConn) error {
+// connectionStillDeclared reports whether a preserved connection still refers
+// to a declared plug and slot that use the interface the connection was made
+// against. A plug or slot that was removed, or that changed interface, cannot
+// be reconnected.
+func connectionStillDeclared(
+	attrs schema.PreservedConn,
+	plug *sdk.PlugInfo,
+	slot *sdk.SlotInfo,
+) bool {
+	return plug != nil && slot != nil &&
+		plug.Interface == attrs.Interface && slot.Interface == attrs.Interface
+}
+
+func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, sk sdk.Ref, preserved map[string]schema.PreservedConn) error {
 	conns, err := getConns(m.state)
 	if err != nil {
 		return err
@@ -271,9 +282,9 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		connectAttrs[connRef.ID()] = attrs
 	}
 
-	for _, plug := range info.Plugs {
-		candidates := m.repo.AutoConnectCandidateSlots(info.ProjectId, info.Workshop,
-			info.Name, plug.Name, autoConnectChecker(wconns))
+	for _, plug := range m.repo.Plugs(sk.ProjectId, sk.Workshop, sk.Sdk) {
+		candidates := m.repo.AutoConnectCandidateSlots(sk.ProjectId, sk.Workshop,
+			sk.Sdk, plug.Name, autoConnectChecker(wconns))
 
 		ref := plug.Ref()
 		master, slaves := MaybeBound(wp, ref)
@@ -289,9 +300,9 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		}
 	}
 
-	for _, slot := range info.Slots {
-		candidates := m.repo.AutoConnectCandidatePlugs(info.ProjectId, info.Workshop,
-			info.Name, slot.Name, autoConnectChecker(wconns))
+	for _, slot := range m.repo.Slots(sk.ProjectId, sk.Workshop, sk.Sdk) {
+		candidates := m.repo.AutoConnectCandidatePlugs(sk.ProjectId, sk.Workshop,
+			sk.Sdk, slot.Name, autoConnectChecker(wconns))
 
 		for _, plug := range candidates {
 			ref := plug.Ref()
@@ -322,13 +333,13 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 			return err
 		}
 		plugRef, slotRef := connRef.PlugRef, connRef.SlotRef
-		if plugRef.Sdk != info.Name && slotRef.Sdk != info.Name {
+		if plugRef.Sdk != sk.Sdk && slotRef.Sdk != sk.Sdk {
 			continue
 		}
 
 		plug := m.repo.Plug(plugRef.ProjectId, plugRef.Workshop, plugRef.Sdk, plugRef.Name)
 		slot := m.repo.Slot(slotRef.ProjectId, slotRef.Workshop, slotRef.Sdk, slotRef.Name)
-		if plug == nil || slot == nil || plug.Interface != attrs.Interface || slot.Interface != attrs.Interface {
+		if !connectionStillDeclared(attrs, plug, slot) {
 			continue
 		}
 
@@ -342,6 +353,22 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 			continue
 		}
 
+		preservedInterface := m.repo.Interface(plug.Interface)
+		if preservedInterface == nil {
+			return fmt.Errorf("getting preserved connection %q interface not found", id)
+		}
+
+		if !preservedInterface.MaintainConnection(
+			plug, attrs.StaticPlugAttrs, slot, attrs.StaticSlotAttrs) {
+			// The interface rejected the changed definition, so leave the
+			// connection disconnected.
+			m.state.Warnf(
+				"disconnected %q from %q because its definition changed",
+				plugRef.ShortRef(), slotRef.ShortRef(),
+			)
+			continue
+		}
+
 		planConnect(attrs.Interface, connRef, slaves)
 	}
 
@@ -350,7 +377,7 @@ func (m *InterfaceManager) connectAuto(task *state.Task, wp *workshop.Workshop, 
 		return strings.Compare(a.ID(), b.ID())
 	})
 
-	ts := m.batchAutoConnectTasks(wp, info, connectRefs, connectAttrs)
+	ts := m.batchAutoConnectTasks(wp, sk, connectRefs, connectAttrs)
 	handlersetup.InjectTasks(task, ts)
 	m.state.EnsureBefore(0)
 	task.SetStatus(state.DoneStatus)
@@ -447,22 +474,7 @@ func getPlugAndSlotRefs(task *state.Task) (sdk.PlugRef, sdk.SlotRef, error) {
 }
 
 func MaybeBound(w *workshop.Workshop, ref sdk.PlugRef) (sdk.PlugRef, []sdk.PlugRef) {
-	var masters = make(map[sdk.PlugRef][]sdk.PlugRef)
-	var slaves = make(map[sdk.PlugRef]sdk.PlugRef)
-
-	for _, s := range w.File.Sdks {
-		for name, pl := range s.Plugs {
-			if pl.Bind == nil {
-				continue
-			}
-			sk, plug := pl.Bind.Sdk, pl.Bind.Name
-			mkey := sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: sk, Name: plug}
-			skey := sdk.PlugRef{ProjectId: w.Project.ProjectId, Workshop: w.Name, Sdk: s.Name, Name: name}
-			masters[mkey] = append(masters[mkey], skey)
-			slaves[skey] = mkey
-		}
-	}
-
+	masters, slaves := w.Bound()
 	srefs, mok := masters[ref]
 	mref, sok := slaves[ref]
 

@@ -1,0 +1,118 @@
+# Checks how a systemd LoadCredential consumer observes secret retrieval
+# failures. systemd does not act on the resolver's exit code: the consuming
+# unit starts with an empty credential whether the secret was retrieved, the
+# plug was not connected, or retrieval failed. The resolver instance is left
+# failed, and its ExecMainStatus records the get-secret exit code.
+summary: Check get-secret failure exit codes through the systemd socket
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  install_secret_service
+  start_secret_service
+  select_login_collection workshop-failure
+
+  TESTROOT=$(pwd)
+  rm -rf ~ubuntu/secret-consumer
+  cp -r "$TESTROOT/sdk" ~ubuntu/secret-consumer
+  chown -R ubuntu:ubuntu ~ubuntu/secret-consumer
+  (cd ~ubuntu/secret-consumer && run_sdkcraft try)
+
+  workshop_exec launch ws-system-secret-systemd-failure
+restore: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  workshop_exec remove ws-system-secret-systemd-failure || true
+  rm -rf ~ubuntu/secret-consumer
+  stop_secret_service
+execute: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  WORKSHOP=ws-system-secret-systemd-failure
+
+  # restart_unit restarts the consumer unit and echoes the systemctl exit
+  # code, which is 0 because an empty credential never fails the unit.
+  restart_unit() {
+      local exitcode=0
+      workshop_exec exec "$WORKSHOP" -- \
+          sudo systemctl restart secret-consumer.service \
+          > unit-restart.out 2>&1 || exitcode="$?"
+      echo "$exitcode"
+  }
+
+  # resolver_exit_code echoes the exit code of the failed resolver instance
+  # that served the most recent credential request.
+  resolver_exit_code() {
+      local unit
+      workshop_exec exec "$WORKSHOP" -- \
+          sudo systemctl list-units --state=failed 'workshop-secret@*' \
+              --all --plain --no-legend --no-pager > resolver-units.out
+      unit=$(awk 'NR==1 {print $1}' resolver-units.out)
+      workshop_exec exec "$WORKSHOP" -- \
+          sudo systemctl show "$unit" -p ExecMainStatus --value \
+          > resolver-status.out
+      tr -d '[:space:]' < resolver-status.out
+  }
+
+  # reset_resolver clears failed resolver instances so each check observes
+  # exactly the instance created by its own request.
+  reset_resolver() {
+      workshop_exec exec "$WORKSHOP" -- \
+          sudo systemctl reset-failed 'workshop-secret@*'
+  }
+
+  # clear_credential removes the consumer output so a missing file can only
+  # mean the unit failed to start.
+  clear_credential() {
+      workshop_exec exec "$WORKSHOP" -- \
+          sudo rm -f /run/secret-consumer.out
+  }
+
+  # assert_empty_credential checks the unit ran and wrote an empty credential.
+  assert_empty_credential() {
+      workshop_exec exec "$WORKSHOP" -- \
+          sudo test -f /run/secret-consumer.out
+      workshop_exec exec "$WORKSHOP" -- \
+          sudo test ! -s /run/secret-consumer.out
+  }
+
+  echo "Check an unconnected plug starts the unit with an empty credential"
+  reset_resolver
+  clear_credential
+  [ "$(restart_unit)" -eq 0 ]
+  assert_empty_credential
+  # An unconnected plug is not a failure: no resolver instance is left failed.
+  [ -z "$(workshop_exec exec "$WORKSHOP" -- \
+      sudo systemctl list-units --state=failed 'workshop-secret@*' \
+          --all --plain --no-legend --no-pager)" ]
+
+  echo "Check a missing secret fails the resolver with exit 1"
+  workshop_exec connect \
+      "$WORKSHOP"/secret-consumer:api-key \
+      "$WORKSHOP"/system:api-key
+  reset_resolver
+  clear_credential
+  [ "$(restart_unit)" -eq 0 ]
+  assert_empty_credential
+  [ "$(resolver_exit_code)" -eq 1 ]
+
+  echo "Check multiple matching secrets fail the resolver with exit 4"
+  store_duplicate_secret workshop-secret-value \
+      service workshop account demo
+  store_duplicate_secret workshop-secret-other \
+      service workshop account demo
+  reset_resolver
+  clear_credential
+  [ "$(restart_unit)" -eq 0 ]
+  assert_empty_credential
+  [ "$(resolver_exit_code)" -eq 4 ]
+
+  echo "Check a locked secret provider fails the resolver with exit 2"
+  lock_login_collection
+  reset_resolver
+  clear_credential
+  [ "$(restart_unit)" -eq 0 ]
+  assert_empty_credential
+  [ "$(resolver_exit_code)" -eq 2 ]

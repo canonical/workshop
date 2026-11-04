@@ -1,0 +1,43 @@
+# Checks that a secret slot which omits its collection resolves the Secret
+# Service default collection.
+#
+# The provider treats an omitted collection as the literal "default", which
+# it resolves through the Secret Service "default" alias (ReadAlias) rather
+# than by looking up a collection with that label. To make that distinction
+# observable, the keyring's default collection is relabelled to an arbitrary
+# name and the secret is stored there; resolving by label would fail, while
+# resolving through the alias succeeds. The collection is relabelled rather
+# than created because gnome-keyring requires an interactive prompt to
+# create one.
+summary: Check the system SDK uses the keyring default collection
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  install_secret_service
+  start_secret_service
+  select_default_collection workshop-default-test
+  workshop_exec launch ws-system-secret-default
+restore: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  workshop_exec remove ws-system-secret-default || true
+  stop_secret_service
+execute: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  echo "Check a secret in the default collection is served to the system SDK slot"
+  store_secret workshop-secret-value service workshop account demo
+  workshop_exec connect \
+      ws-system-secret-default/test-sdk-basic-2:api-key \
+      ws-system-secret-default/system:api-key
+
+  echo "Check the workshop consumes the secret and reports success"
+  exitcode=0
+  workshop_exec exec ws-system-secret-default -- \
+      workshopctl get-secret test-sdk-basic-2.api-key > secret.out \
+      || exitcode="$?"
+  [ "$exitcode" -eq 0 ]
+  MATCH '^workshop-secret-value$' < secret.out

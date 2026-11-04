@@ -143,6 +143,43 @@ func (iface *customDeviceInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.Sl
 	return true
 }
 
+// MaintainConnection implements [interfaces.Interface]. It keeps the
+// connection while the plug's device filter is unchanged. A custom-device
+// slot carries no attributes.
+func (iface *customDeviceInterface) MaintainConnection(
+	plug *sdk.PlugInfo, oldPlugAttrs map[string]any,
+	_ *sdk.SlotInfo, _ map[string]any,
+) bool {
+	return deviceFiltersEqual(oldPlugAttrs, plug.Attrs)
+}
+
+// deviceFiltersEqual reports whether the two attribute maps carry the same
+// device filter. The sanitizers normalise the values to strings.
+func deviceFiltersEqual(oldAttrs, newAttrs map[string]any) bool {
+	for _, key := range knownCustomDeviceAttributes {
+		oldValue, _ := oldAttrs[key].(string)
+		newValue, _ := newAttrs[key].(string)
+		if oldValue != newValue {
+			return false
+		}
+	}
+	return true
+}
+
+func (iface *customDeviceInterface) CheckCompatiblePlug(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("custom-device interface only available to containers")
+	}
+	return nil
+}
+
+func (iface *customDeviceInterface) CheckCompatibleSlot(slot *sdk.SlotInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("custom-device interface only available to containers")
+	}
+	return nil
+}
+
 func (iface *customDeviceInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
 	device := workshop.CustomDevice{Name: plug.Name()}
 

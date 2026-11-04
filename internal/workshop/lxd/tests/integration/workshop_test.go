@@ -70,7 +70,23 @@ func (f *wsOps) SetUpSuite(c *check.C) {
 	f.bd, err = lxdbackend.New()
 	c.Assert(err, check.IsNil)
 
-	f.usr = &user.User{Username: "testuser", Uid: "1000", Gid: "1000", HomeDir: c.MkDir()}
+	currentUser, err := user.Current()
+	c.Assert(err, check.IsNil)
+	uid := currentUser.Uid
+	gid := currentUser.Gid
+	// Spread runs integration tests as root, but mapping host root into an
+	// unprivileged instance prevents LXD from starting it. Retain the historical
+	// test IDs for root while allowing non-root developers to use their own IDs.
+	if os.Geteuid() == 0 {
+		uid = workshop.User.Uid
+		gid = workshop.User.Gid
+	}
+	f.usr = &user.User{
+		Username: "testuser",
+		Uid:      uid,
+		Gid:      gid,
+		HomeDir:  c.MkDir(),
+	}
 	f.project = workshop.Project{
 		ProjectId: "42424242",
 		Path:      filepath.Join(c.MkDir(), "testprj"),
@@ -232,6 +248,28 @@ func fullInstance(c *check.C, conn lxd.InstanceServer, name string) *api.Instanc
 	maps.DeleteFunc(inst.Config, func(k, v string) bool { return !includeWhenCopying(k) })
 
 	return inst
+}
+
+// TestLxdBackendWorkshopInstanceID checks that loading a workshop exposes the
+// LXD instance UUID in the same normalized form written to its machine ID file.
+func (f *wsOps) TestLxdBackendWorkshopInstanceID(c *check.C) {
+	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	loaded, err := f.bd.Workshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	inst, _, err := conn.GetInstance(
+		lxdbackend.InstanceName("test", f.project.ProjectId),
+	)
+	c.Assert(err, check.IsNil)
+	expected := strings.ReplaceAll(inst.Config["volatile.uuid"], "-", "")
+
+	c.Check(loaded.InstanceID, check.Equals, expected)
 }
 
 func includeWhenCopying(key string) bool {
@@ -832,6 +870,69 @@ func (f *wsOps) TestLxdBackendWorkshopStartStopIdempotent(c *check.C) {
 
 	err = f.bd.StartWorkshop(f.ctx, "test")
 	c.Check(err, check.IsNil)
+}
+
+func (f *wsOps) TestLxdBackendStartSurvivesRebootContainer(c *check.C) {
+	f.testStartSurvivesReboot(c, workshop.RuntimeLXDContainer)
+}
+
+func (f *wsOps) TestLxdBackendStartSurvivesRebootVM(c *check.C) {
+	f.testStartSurvivesReboot(c, workshop.RuntimeLXDVM)
+}
+
+func (f *wsOps) testStartSurvivesReboot(c *check.C, runtime workshop.Runtime) {
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", runtime)
+	c.Assert(err, check.IsNil)
+	err = f.bd.DownloadBase(f.ctx, image, nil)
+	c.Assert(err, check.IsNil)
+
+	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04", Runtime: runtime}
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, runtime, image.Fingerprint)
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	name := lxdbackend.InstanceName("test", f.project.ProjectId)
+	inst, etag, err := conn.GetInstance(name)
+	c.Assert(err, check.IsNil)
+
+	// Simulate an instance reboot; this is unlikely to be caused by
+	// cloud-init, since we control it, but OVMF and lxd-agent both trigger
+	// reboots in certain scenarios, e.g. when we request too many PCIe ports.
+	bootcmd := `
+bootcmd:
+- |
+  [ -e /var/lib/workshop-test-boots ] || first_boot=1
+  echo boot >> /var/lib/workshop-test-boots
+  [ -z "$first_boot" ] || systemctl reboot
+`
+	inst.Config["cloud-init.user-data"] = strings.Replace(inst.Config["cloud-init.user-data"], "\nbootcmd:\n", bootcmd, 1)
+	op, err := conn.UpdateInstance(name, inst.Writable(), etag)
+	c.Assert(err, check.IsNil)
+	c.Assert(op.Wait(), check.IsNil)
+
+	err = f.bd.StartWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	defer func() {
+		err1 := f.bd.StopWorkshop(f.ctx, "test", true)
+		c.Check(err1, check.IsNil)
+	}()
+
+	state, _, err := conn.GetInstanceState(name)
+	c.Assert(err, check.IsNil)
+	c.Check(state.StatusCode, check.Equals, api.Ready)
+
+	fs, err := f.bd.WorkshopFs(f.ctx, wf.Name)
+	c.Assert(err, check.IsNil)
+	defer fs.Close()
+
+	boots, err := fs.ReadFile("/var/lib/workshop-test-boots")
+	c.Assert(err, check.IsNil)
+	c.Check(string(boots), check.Equals, "boot\nboot\n")
 }
 
 func (f *wsOps) TestLxdBackendWorkshopMount(c *check.C) {
@@ -1470,4 +1571,24 @@ cname=test.42424242.wp,test-42424242.wp,0  # hostname-fallback
 	op, err = conn.UpdateNetwork(network.Name, network.Writable(), etag)
 	c.Assert(err, check.IsNil)
 	c.Assert(op.Wait(), check.IsNil)
+}
+
+// If this changes, consider updating the baseline we set for
+// limits.max_bus_ports when constructing a workshop with no SDKs.
+func (f *wsOps) TestLxdBackendDefaultMaxBusPorts(c *check.C) {
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	metadata, err := conn.GetMetadataConfiguration()
+	c.Assert(err, check.IsNil)
+
+	keys := metadata.Configs["instance"]["resource-limits"].Keys
+	idx := slices.IndexFunc(keys, func(keys map[string]api.MetadataConfigurationConfigKey) bool {
+		_, ok := keys["limits.max_bus_ports"]
+		return ok
+	})
+	c.Assert(idx, check.Not(check.Equals), -1, check.Commentf("limits.max_bus_ports metadata key not found"))
+
+	c.Check(keys[idx]["limits.max_bus_ports"].DefaultDescription, check.Equals, "`8`")
 }

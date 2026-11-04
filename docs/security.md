@@ -32,10 +32,13 @@ container](https://ubuntu.com/server/docs/how-to/containers/lxd-containers/)
 within a dedicated
 [project](https://canonical.com/lxd/docs/latest/explanation/projects/),
 which separates workshops that belong to different users and isolates them from
-each other and the host system.
+each other and the host system. The exceptions are the project directory, which
+every workshop in the project mounts read-write, and the host resources you
+connect through interfaces.
 
-By design, all SDKs in a workshop can access any data inside it, but have
-limited capabilities on the host, due to the confinement of the workshop.
+By design, all SDKs in a workshop can access any data inside it, because
+everything in the workshop runs as the same `workshop` user or as `root`; their
+capabilities on the host are limited by the confinement of the workshop.
 
 ## Interfaces
 
@@ -47,7 +50,7 @@ manager](https://snapcraft.io/docs/interface-management/):
 * Interfaces define and control what resources a workshop can use, ensuring that
   permissions are explicitly granted and limited in scope.
 * They are used to explicitly provide access to resources such as files, the
-  GPU, or the SSH agent.
+  GPU, the SSH agent, or credentials in the host keyring.
 * SDKs in a workshop, or the workshop itself, must declare the interfaces and
   the connections they need. This limits the resources a workshop can access.
 * Some interfaces, such as mounts, are connected automatically by default;
@@ -67,14 +70,78 @@ sensitive data within workshops. Instead, use mounts to provide access to data
 only to the SDKs that require it. Another example is avoiding the connection of
 sensitive interfaces, such as the SSH agent, unless absolutely necessary.
 
-You can use environment variables in Workshop commands for access tokens or the
-\:ref:`SSH interface <exp_ssh_interface>` for transparent key-based access to
-securely handle sensitive data in your SDKs.
+To handle sensitive data in your SDKs, use the
+[secret interface](https://ubuntu.com/workshop/docs/explanation/interfaces/secret-interface/)
+for access tokens kept in the host keyring, environment variables of a single
+Workshop command for one-off values, or the
+[SSH interface](https://ubuntu.com/workshop/docs/explanation/interfaces/ssh-interface/)
+for transparent key-based access.
 
 The SDKs available in a workshop are sourced from the SDK Store and are
 generally reliable at this stage of development. However, if you are cautious
 about potential risks, assume from the outset that no SDK is free from security
 concerns.
+
+(security_coding_agents)=
+
+## Coding agents
+
+A coding agent that runs in a workshop can do anything the workshop allows, and
+permission modes that turn off the agent's approval prompts remove its own
+safeguards. The workshop doesn't replace those safeguards; it only limits the
+agent to the boundaries below, so weigh them before giving an agent that much
+autonomy:
+
+* **The project directory is writable.** Workshop mounts the entire project
+  directory at `/project` read-write, including its `.git` directory, and files
+  created inside the workshop belong to your host user. Git runs hooks from
+  `.git/hooks`, and settings in `.git/config` can name commands for Git to run,
+  so anything an agent writes there runs on your host the next time you use Git
+  in the project. For an agent that works unattended, use a separate clone of
+  the repository rather than your working copy, and review its changes before
+  you bring them back.
+* **Subdirectories and worktrees don't narrow the mount.** The workshop sees the
+  whole project directory, whichever subdirectory the agent starts in. A Git
+  worktree is a separate project with a mount of its own, but its `.git` file
+  points to the main repository outside that mount, so Git commands fail inside
+  the workshop; run them on the host.
+* **Everything runs as one user.** Commands, actions, and agents run as the
+  `workshop` user, which can use `sudo` without a password, and SDK hooks run
+  as `root`.
+  An agent can read and change anything in the workshop, including other SDKs'
+  files and the credentials they store.
+* **Outbound network access is open.** Workshop doesn't filter outgoing traffic,
+  so an agent can reach any host that the workshop's network can reach and send
+  project data there.
+* **Connected interfaces extend the reach.** Avoid connecting these interfaces
+  to a workshop where an autonomous agent runs, or disconnect them before the
+  agent starts:
+  * The
+    [SSH interface](https://ubuntu.com/workshop/docs/explanation/interfaces/ssh-interface/)
+    lets any process in the workshop authenticate with the identities in your
+    host's SSH agent while it's connected.
+  * The
+    [secret interface](https://ubuntu.com/workshop/docs/explanation/interfaces/secret-interface/)
+    lets any process in the workshop request the credential from your host
+    keyring while it's connected.
+  * [Mounts](https://ubuntu.com/workshop/docs/explanation/interfaces/mount-interface/)
+    of host directories are writable unless the plug sets `read-only`; mounting
+    an agent's configuration directory from your home exposes its credentials
+    and settings to everything in the workshop.
+  * The
+    [desktop interface](https://ubuntu.com/workshop/docs/explanation/interfaces/desktop-interface/)
+    shares your graphical session with the workshop.
+  * [Tunnels](https://ubuntu.com/workshop/docs/explanation/interfaces/tunnel-interface/)
+    let the workshop reach network services on your host.
+  * The
+    [camera](https://ubuntu.com/workshop/docs/explanation/interfaces/camera-interface/)
+    and
+    [custom device](https://ubuntu.com/workshop/docs/explanation/interfaces/custom-device-interface/)
+    interfaces pass host devices into the workshop.
+* **A virtual machine changes the kernel, not the rest.** The experimental
+  virtual machine runtime gives a workshop its own kernel, but the project
+  directory is still mounted read-write, and outbound network access is still
+  open.
 
 ## Supported versions
 
@@ -106,23 +173,37 @@ concerns in [GitHub issues](https://github.com/canonical/workshop/issues).
 
 ## Cryptography
 
-Transport encryption
+### Transport encryption
+
 - CLI ↔ daemon: local Unix domain socket (no TLS required).
 - Outbound traffic: HTTPS/TLS for simplestreams [image downloads](https://cloud-images.ubuntu.com/releases/)
 and public LXD remotes via the Go TLS stack (through the LXD client).
 - Mutual TLS (public LXD remotes): enable by supplying X.509 materials 
 in `/var/lib/workshop/tls` (`server.crt`, `client.crt`, `client.key`, `client.ca`).
 
-Internal cryptography
+### Internal cryptography
+
 - TLS stack: Go's `crypto/tls` and `crypto/x509` (via the Canonical LXD Go client), 
 using TLS 1.2/1.3 with Go's secure default cipher suites (ECDHE with AES‑GCM/ChaCha20‑Poly1305) 
 and the system trust store by default.
 - Randomness: `crypto/rand` for non‑guessable identifiers (e.g., 4‑byte project IDs, 8‑byte layer suffixes);
 these values are not used for access control.
 
-User‑exposed crypto and providers
+### User‑exposed crypto and providers
+
 - SSH agent interface: forwards the host's `ssh-agent` into the workshop via an LXD proxy device, 
 allowing tools inside the container to authenticate without copying private keys.
+- Secret interface: reads a credential from the host keyring through the freedesktop.org Secret Service
+on the user's D-Bus session bus each time a process in the workshop requests it,
+and, for a direct request, writes the value to the requesting command's standard output.
+For a systemd request, the value is a credential file readable by the unit's
+user and root; ordinary workshop processes share the `workshop` user.
+While the plug is connected, any process in the workshop can make a new request.
+Workshop doesn't persist the value;
+it handles the value only transiently while fulfilling the request.
+Workshop opens its Secret Service session with the `plain` algorithm,
+so the value crosses the user's session bus without additional encryption;
+the boundary is the host user's session, where any process of that user can already reach the keyring.
 - SSH host trust: a per-user Ed25519 certificate authority signs a host certificate for every
 workshop and a user certificate for connecting to them, so SSH clients trust any CA-signed
 host key without a manual host-key prompt.
@@ -131,4 +212,5 @@ owned by the daemon and the user key by the target host user.
 - Algorithms: follow host OpenSSH (commonly Ed25519, ECDSA P‑256/P‑384/P‑521, RSA 2048/3072/4096).
 - Providers: Go standard library (`crypto/tls`, `crypto/x509`, `crypto/rand`), 
 Canonical LXD Go client (TLS handling), system CA store,
-and OpenSSH packages from Ubuntu.
+OpenSSH packages from Ubuntu,
+and the host's Secret Service implementation, such as GNOME Keyring.

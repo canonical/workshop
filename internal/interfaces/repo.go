@@ -332,7 +332,7 @@ func (r *Repository) AddPlug(plug *sdk.PlugInfo) error {
 
 	// Reject plugs with invalid names
 	if err := sdk.ValidatePlugName(plug.Name); err != nil {
-		return err
+		return fmt.Errorf("%w: %q", err, plug.Name)
 	}
 	i := r.ifaces[plug.Interface]
 	if i == nil {
@@ -429,7 +429,7 @@ func (r *Repository) AddSlot(slot *sdk.SlotInfo) error {
 
 	// Reject slots with invalid names
 	if err := sdk.ValidateSlotName(slot.Name); err != nil {
-		return err
+		return fmt.Errorf("%w: %q", err, slot.Name)
 	}
 	// TODO: ensure that apps are correct
 	i := r.ifaces[slot.Interface]
@@ -736,7 +736,7 @@ func (r *Repository) Connections(projectId, workshop, sdk string) ([]*ConnRef, e
 	for _, slotInfo := range r.slots[key] {
 		for plugInfo := range r.slotPlugs[slotInfo] {
 			// self-connection, ignore here as we got it already in the plugs loop above
-			if plugInfo.Sdk == slotInfo.Sdk {
+			if plugInfo.Sdk.Ref() == slotInfo.Sdk.Ref() {
 				continue
 			}
 			connRef := NewConnRef(plugInfo, slotInfo)
@@ -871,16 +871,7 @@ func (r *Repository) SdkSpecification(ctx context.Context, securitySystem Securi
 // ensuring that the sdk is not present in the repository in any way prior to
 // calling this function. If this constraint is violated then no changes are
 // made and an error is returned.
-//
-// Each added plug/slot is validated according to the corresponding interface.
-// Unknown interfaces and plugs/slots that don't validate are not added.
-// Information about those failures are returned to the caller.
 func (r *Repository) AddSdk(sdkInfo *sdk.Info) error {
-	err := sdk.Validate(sdkInfo)
-	if err != nil {
-		return err
-	}
-
 	r.m.Lock()
 	defer r.m.Unlock()
 
@@ -948,27 +939,27 @@ func (r *Repository) RemoveSdk(projectId, workshop, sdkName string) error {
 // DisconnectSdk disconnects all the connections to and from a given sdk.
 //
 // The return value is a list of names that were affected.
-func (r *Repository) DisconnectSdk(projectId, workshop, sdkName string) ([]*sdk.Info, error) {
+func (r *Repository) DisconnectSdk(projectId, workshop, sdkName string) ([]sdk.Ref, error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	key := plugOrSlotKey(projectId, workshop, sdkName)
 
-	seen := make(map[*sdk.Info]bool)
+	seen := make(map[sdk.Ref]bool)
 
 	for _, plug := range r.plugs[key] {
 		for slot := range r.plugSlots[plug] {
 			r.disconnect(plug, slot)
-			seen[plug.Sdk] = true
-			seen[slot.Sdk] = true
+			seen[plug.Sdk.Ref()] = true
+			seen[slot.Sdk.Ref()] = true
 		}
 	}
 
 	for _, slot := range r.slots[key] {
 		for plug := range r.slotPlugs[slot] {
 			r.disconnect(plug, slot)
-			seen[plug.Sdk] = true
-			seen[slot.Sdk] = true
+			seen[plug.Sdk.Ref()] = true
+			seen[slot.Sdk.Ref()] = true
 		}
 	}
 

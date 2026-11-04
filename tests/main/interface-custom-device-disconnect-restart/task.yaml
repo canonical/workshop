@@ -1,0 +1,58 @@
+# Checks that a connection dropped because its definition changed stays dropped
+# after a daemon restart. reloadConnections reconnects persisted connections
+# without consulting MaintainConnection, so this guards against a rejected
+# connection being left behind in the state.
+summary: Check a dropped custom-device connection stays dropped after a restart
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec launch ws-custom-device-disconnect-restart
+restore: |
+  . "$TESTSLIB"/utils.sh
+  systemctl stop workshop-test-input.service 2>/dev/null || true
+  workshop_exec remove ws-custom-device-disconnect-restart
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  attach_device() {
+    systemd-run --collect --property=KillSignal=SIGINT --same-dir --service-type=notify --unit=workshop-test-input python3 fakeinput.py
+  }
+  detect_device() {
+    device_name=$(grep -l '^workshop-test-input$' /sys/class/input/*/device/name)
+    device_basename=$(basename -- "$(dirname -- "$(dirname -- "$device_name")")")
+    device_node="/dev/input/$device_basename"
+  }
+
+  echo "Check the manual connection exposes the device"
+  attach_device
+  detect_device
+  workshop_exec connect \
+      ws-custom-device-disconnect-restart/test-sdk-basic-2:device :custom-device
+  workshop_exec connections ws-custom-device-disconnect-restart |
+      MATCH "^custom-device.+ws-custom-device-disconnect-restart/test-sdk-basic-2:device.+:custom-device.+manual$"
+  workshop_exec exec ws-custom-device-disconnect-restart test -e "$device_node"
+
+  echo "Change the device filter and refresh"
+  sed -i 's/subsystem: input/subsystem: tty/' .workshop.yaml
+  workshop_exec refresh ws-custom-device-disconnect-restart | MATCH 'refreshed$'
+
+  echo "Check the connection is dropped and the device is gone"
+  workshop_exec connections ws-custom-device-disconnect-restart |
+      NOMATCH "ws-custom-device-disconnect-restart/test-sdk-basic-2:device.+:custom-device.+manual"
+  workshop_exec exec ws-custom-device-disconnect-restart test ! -e "$device_node"
+
+  echo "Restart the daemon and check it stays dropped"
+  snap restart workshop
+  retry 3 workshop_exec list
+  workshop_exec connections ws-custom-device-disconnect-restart |
+      NOMATCH "ws-custom-device-disconnect-restart/test-sdk-basic-2:device.+:custom-device.+manual"
+  workshop_exec exec ws-custom-device-disconnect-restart test ! -e "$device_node"
+
+  echo "Check the drop is still reported as a warning"
+  workshop_exec warnings |
+      tr -d '\n' |
+      sed -e 's,\s\+, ,g' |
+      MATCH 'disconnected "ws-custom-device-disconnect-restart/test-sdk-basic-2:device" from "ws-custom-device-disconnect-restart/system:custom-device" because its definition changed'
+
+  # Warnings are global state that persists across tests sharing a machine, so
+  # acknowledge this one to keep later tests' warning counts deterministic.
+  workshop_exec okay

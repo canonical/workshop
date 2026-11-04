@@ -21,6 +21,7 @@ package builtin_test
 
 import (
 	"os/user"
+	"slices"
 
 	. "gopkg.in/check.v1"
 
@@ -28,9 +29,19 @@ import (
 	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 type AllSuite struct{}
+
+func checkCompatible(c *C, yaml, projectId, ws string, runtime workshop.Runtime) (*sdk.Info, error) {
+	var sanitizer builtin.Sanitizer
+	info, err := sdk.ReadSdkInfo([]byte(yaml), projectId, ws, nil, func(info *sdk.Info) error {
+		return sanitizer.Sanitize(info, runtime)
+	})
+	c.Assert(err, IsNil)
+	return info, sanitizer.Warning
+}
 
 var (
 	_        = Suite(&AllSuite{})
@@ -52,6 +63,13 @@ func (s *AllSuite) TestRegisterIface(c *C) {
 	c.Assert(func() { builtin.RegisterIface(iface) }, PanicMatches, `cannot register duplicate interface "foo"`)
 }
 
+// TestInterfacesSortedByName verifies that Interfaces returns the
+// built-in interfaces sorted by interface name, as documented.
+func (s *AllSuite) TestInterfacesSortedByName(c *C) {
+	sorted := slices.IsSortedFunc(builtin.Interfaces(), interfaces.CompareByName)
+	c.Check(sorted, Equals, true)
+}
+
 const testConsumerInvalidSlotNameYaml = `
 name: consumer
 slots:
@@ -66,6 +84,16 @@ plugs:
   interface: iface
 `
 
+const testConsumerInvalidInterfaceNameYaml = `
+name: consumer
+plugs:
+ name:
+  interface: IFACE
+slots:
+ name:
+  interface: IFACE
+`
+
 func (s *AllSuite) TestSanitizeErrorsOnInvalidSlotNames(c *C) {
 	restore := builtin.MockInterfaces(map[string]interfaces.Interface{
 		"iface": &ifacetest.TestInterface{InterfaceName: "iface"},
@@ -73,9 +101,7 @@ func (s *AllSuite) TestSanitizeErrorsOnInvalidSlotNames(c *C) {
 	defer restore()
 
 	sdkInfo := sdk.MockInvalidInfo(c, testConsumerInvalidSlotNameYaml)
-	sdk.SanitizePlugsSlots(sdkInfo)
-	c.Assert(sdkInfo.BadInterfaces, HasLen, 1)
-	c.Check(sdk.BadInterfacesSummary(sdkInfo), Matches, `"consumer" SDK has bad plugs or slots: ttyS5 \(invalid slot name: "ttyS5"\)`)
+	c.Check(builtin.Sanitize(sdkInfo, workshop.Runtime(0)), ErrorMatches, `"consumer" SDK has bad slots: ttyS5 \(invalid slot name\)`)
 }
 
 func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugNames(c *C) {
@@ -85,7 +111,15 @@ func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugNames(c *C) {
 	defer restore()
 
 	sdkInfo := sdk.MockInvalidInfo(c, testConsumerInvalidPlugNameYaml)
-	sdk.SanitizePlugsSlots(sdkInfo)
-	c.Assert(sdkInfo.BadInterfaces, HasLen, 1)
-	c.Check(sdk.BadInterfacesSummary(sdkInfo), Matches, `"consumer" SDK has bad plugs or slots: ttyS3 \(invalid plug name: "ttyS3"\)`)
+	c.Check(builtin.Sanitize(sdkInfo, workshop.Runtime(0)), ErrorMatches, `"consumer" SDK has bad plugs: ttyS3 \(invalid plug name\)`)
+}
+
+func (s *AllSuite) TestSanitizeErrorsOnInvalidPlugsAndSlots(c *C) {
+	restore := builtin.MockInterfaces(map[string]interfaces.Interface{
+		"iface": &ifacetest.TestInterface{InterfaceName: "iface"},
+	})
+	defer restore()
+
+	sdkInfo := sdk.MockInvalidInfo(c, testConsumerInvalidInterfaceNameYaml)
+	c.Check(builtin.Sanitize(sdkInfo, workshop.Runtime(0)), ErrorMatches, `"consumer" SDK has bad plugs: name \(unknown interface "IFACE"\); and slots: name \(unknown interface "IFACE"\)`)
 }

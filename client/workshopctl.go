@@ -28,19 +28,24 @@ import (
 type WorkshopCtlOptions struct {
 	// ContextID is a string used to determine the context of this call (e.g.
 	// which context and handler should be used, etc.)
-	ContextID string `json:"context-id"`
+	ContextID string
 
 	// Args contains a list of parameters to use for this invocation.
-	Args []string `json:"args"`
+	Args []string
+
+	// Stdin is forwarded to the daemon as the invocation's stdin. It may be
+	// nil for invocations without stdin.
+	Stdin io.Reader
 }
 
-// WorkshopCtlPostData is the data posted to the daemon /v2/workshopctl endpoint
+// WorkshopCtlPostData is the data posted to the daemon /v1/workshopctl
+// endpoint.
 // TODO: this can be removed again once we no longer need to pass stdin data
 // but instead use a real stdin stream
 type WorkshopCtlPostData struct {
-	WorkshopCtlOptions
-
-	Stdin []byte `json:"stdin,omitempty"`
+	ContextID string   `json:"context-id"`
+	Args      []string `json:"args"`
+	Stdin     []byte   `json:"stdin,omitempty"`
 }
 
 type workshopctlOutput struct {
@@ -48,16 +53,21 @@ type workshopctlOutput struct {
 	Stderr string `json:"stderr"`
 }
 
-// protect against too much data via stdin
-var stdinReadLimit = int64(4 * 1000 * 1000)
+// stdinReadLimit is the maximum number of bytes read from stdin when
+// forwarding it to the daemon. Larger input is rejected to bound the size
+// of the request body, as stdin is currently buffered in full rather than
+// streamed.
+const stdinReadLimit = 4_000_000
 
 // RunWorkshopctl requests a workshopctl run for the given options.
-func (client *Client) RunWorkshopctl(options *WorkshopCtlOptions, stdin io.Reader) (stdout, stderr []byte, err error) {
+func (client *Client) RunWorkshopctl(
+	options *WorkshopCtlOptions,
+) (stdout, stderr []byte, err error) {
 	// TODO: instead of reading all of stdin here we need to forward it to
 	//       the daemon eventually
 	var stdinData []byte
-	if stdin != nil {
-		limitedStdin := &io.LimitedReader{R: stdin, N: stdinReadLimit + 1}
+	if options.Stdin != nil {
+		limitedStdin := &io.LimitedReader{R: options.Stdin, N: stdinReadLimit + 1}
 		stdinData, err = io.ReadAll(limitedStdin)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot read stdin: %v", err)
@@ -68,8 +78,9 @@ func (client *Client) RunWorkshopctl(options *WorkshopCtlOptions, stdin io.Reade
 	}
 
 	b, err := json.Marshal(WorkshopCtlPostData{
-		WorkshopCtlOptions: *options,
-		Stdin:              stdinData,
+		ContextID: options.ContextID,
+		Args:      options.Args,
+		Stdin:     stdinData,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot marshal options: %s", err)

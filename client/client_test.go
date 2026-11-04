@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mdlayher/vsock"
 	. "gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/client"
@@ -52,8 +53,12 @@ type clientSuite struct {
 var _ = Suite(&clientSuite{})
 
 func (cs *clientSuite) SetUpTest(c *C) {
+	cs.tmpDir = c.MkDir()
+	cs.socketPath = filepath.Join(cs.tmpDir, "workshop.socket")
+
 	var err error
 	cs.cli, err = client.New(&client.Config{
+		Socket:        cs.socketPath,
 		RetryInterval: time.Millisecond,
 		Timeout:       10 * time.Millisecond,
 	})
@@ -68,9 +73,6 @@ func (cs *clientSuite) SetUpTest(c *C) {
 	cs.header = nil
 	cs.status = 200
 	cs.doCalls = 0
-
-	cs.tmpDir = c.MkDir()
-	cs.socketPath = filepath.Join(cs.tmpDir, "workshop.socket")
 }
 
 func (cs *clientSuite) Do(req *http.Request) (*http.Response, error) {
@@ -153,6 +155,37 @@ func (cs *clientSuite) TestClientIntegration(c *C) {
 	defer srv.Close()
 
 	cli, err := client.New(&client.Config{Socket: cs.socketPath})
+	c.Assert(err, IsNil)
+	si, err := cli.SysInfo()
+	c.Check(err, IsNil)
+	c.Check(si.Version, Equals, "1")
+}
+
+func (cs *clientSuite) TestClientVsock(c *C) {
+	// Binding the local CID requires the vsock_loopback kernel module.
+	l, err := vsock.ListenContextID(vsock.Local, 0, nil)
+	if err != nil {
+		c.Skip("vsock not available: " + err.Error())
+	}
+	port := l.Addr().(*vsock.Addr).Port
+
+	f := func(w http.ResponseWriter, r *http.Request) {
+		c.Check(r.URL.Path, Equals, "/v1/system-info")
+		c.Check(r.URL.RawQuery, Equals, "")
+
+		fmt.Fprintln(w, `{"type":"sync", "result":{"version":"1"}}`)
+	}
+
+	srv := &httptest.Server{
+		Listener: l,
+		Config:   &http.Server{Handler: http.HandlerFunc(f)},
+	}
+	srv.Start()
+	defer srv.Close()
+
+	cli, err := client.New(&client.Config{
+		Vsock: &vsock.Addr{ContextID: vsock.Local, Port: port},
+	})
 	c.Assert(err, IsNil)
 	si, err := cli.SysInfo()
 	c.Check(err, IsNil)
@@ -303,7 +336,7 @@ func (cs *clientSuite) TestParseError(c *C) {
 }
 
 func (cs *clientSuite) TestUserAgent(c *C) {
-	cli, err := client.New(&client.Config{UserAgent: "some-agent/9.87"})
+	cli, err := client.New(&client.Config{Socket: cs.socketPath, UserAgent: "some-agent/9.87"})
 	c.Assert(err, IsNil)
 	cli.SetDoer(cs)
 

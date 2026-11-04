@@ -3,8 +3,9 @@
 .. meta::
    :description: Reference for Workshop's AI-agent integration points,
                  listing the LLM-readable documentation URLs, the Context7
-                 integration, and the use-workshop, onboard-workshop,
-                 and design-sdk agentic skills.
+                 integration, the use-workshop, onboard-workshop,
+                 and design-sdk agentic skills, and how to find
+                 and assess agent SDKs.
 
 Workshop and AI agents
 ======================
@@ -15,8 +16,9 @@ Workshop and AI agents
 |ws_markup| integrates with AI coding agents,
 exposing documentation as Markdown that agents can fetch and parse directly,
 or retrieve through Context7,
-and agentic skills that wrap |ws_markup| and |sdk_markup| operations
-so agents don't have to rediscover the CLIs every session.
+agentic skills that wrap |ws_markup| and |sdk_markup| operations
+so agents don't have to rediscover the CLIs every session,
+and SDKs that install the agents themselves in a workshop.
 
 
 .. _ref_ai_discovery:
@@ -170,3 +172,124 @@ and publishes the SDK to the SDK Store.
 #. Approve the proposed design,
    then review the generated files
    and adjust where the skill's defaults don't match your case.
+
+
+.. _ref_ai_agent_sdks:
+
+Agent SDKs
+----------
+
+.. @artefact sdk find
+.. @artefact sdk info
+
+Coding agents are published as SDKs on the SDK Store.
+Search for them with :command:`sdk find`:
+
+.. code-block:: console
+
+   $ sdk find agent
+
+     NAME                  VERSION     PUBLISHER            SUMMARY
+     ...
+     claude-code           2.1.273     Canonical✓           Claude Code CLI
+     codex                 0.156.1     Canonical✓           OpenAI Codex CLI agent
+     ...
+     copilot               1.0.88      Canonical✓           GitHub Copilot CLI - AI-powered coding assistant for the terminal
+     ...
+
+
+The query matches an SDK's name, title, summary, description, or publisher,
+so the results also include tools for agents,
+such as memory servers and skill managers,
+and SDKs that only mention agents in their descriptions.
+
+The mark after a publisher's name
+shows the publisher's validation status in the SDK Store.
+When the output doesn't go to a terminal with a UTF-8 locale,
+for example when it's piped to another command,
+:command:`sdk` prints an ASCII fallback instead:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 2 2 6
+
+   * - Mark
+     - Fallback
+     - Publisher
+   * - :samp:`✓`
+     - :samp:`**`
+     - Verified, such as Canonical
+   * - :samp:`✪`
+     - :samp:`*`
+     - Starred
+   * - None
+     - None
+     - Not validated
+
+Before adding an agent SDK to a workshop,
+inspect it with :command:`sdk info`:
+
+.. code-block:: console
+
+   $ sdk info claude-code
+
+     name:       claude-code
+     publisher:  Canonical✓
+     license:    https://www.anthropic.com/legal/commercial-terms
+     website:    https://github.com/canonical/claude-code-sdk
+
+     ...
+
+     CHANNELS
+       CHANNEL           VERSION  BUILD       BASE  REV     SIZE
+       latest/stable     2.1.273  2026-09-24  all    37  88.10MB
+       latest/candidate  ↑
+       latest/beta       ↑
+       latest/edge       ↑
+
+
+Check these fields before you rely on an agent SDK:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 2 8
+
+   * - Field
+     - What to check
+   * - :samp:`publisher`
+     - Who publishes the SDK, with the same validation mark as in :command:`sdk find`.
+       The account name follows in parentheses
+       when it differs from the display name.
+   * - :samp:`license`
+     - The terms that cover the agent the SDK installs;
+       for a proprietary agent, this is often a link to the vendor's terms.
+   * - :samp:`website`
+     - Where the SDK's source lives,
+       so you can review its hooks, plugs, and README before you install it.
+   * - :samp:`CHANNELS`
+     - The tracks and risk levels that the SDK is published on,
+       with the version, base, and revision each channel offers.
+       A :samp:`↑` means that the risk level has no revision of its own
+       and follows the one above it.
+       Pass :option:`!--arch` :samp:`all` to list every architecture.
+
+An agent SDK installs the agent in the workshop,
+where it runs as the :samp:`workshop` user like every other command.
+Before you let an agent work without its approval prompts,
+review what the workshop does and doesn't protect
+in the :ref:`security policy <security_coding_agents>`.
+
+
+See also
+--------
+
+Explanation:
+
+- :ref:`exp_multi_workshop_patterns`
+- :ref:`security_coding_agents`
+
+
+Reference:
+
+- :ref:`ref_sdk_find`
+- :ref:`ref_sdk_info`

@@ -38,10 +38,19 @@ type TestInterface struct {
 	// AutoConnectCallback is the callback invoked inside AutoConnect
 	AutoConnectCallback func(*sdk.PlugInfo, *sdk.SlotInfo) bool
 
+	// MaintainConnectionCallback is the callback invoked inside
+	// MaintainConnection
+	MaintainConnectionCallback func(*sdk.PlugInfo, map[string]any, *sdk.SlotInfo, map[string]any) bool
+
 	// BeforePreparePlugCallback is the callback invoked inside BeforePreparePlug()
 	BeforePreparePlugCallback func(plug *sdk.PlugInfo) error
 	// BeforePrepareSlotCallback is the callback invoked inside BeforePrepareSlot()
 	BeforePrepareSlotCallback func(slot *sdk.SlotInfo) error
+
+	// CheckCompatiblePlugCallback is the callback invoked inside CheckCompatiblePlug()
+	CheckCompatiblePlugCallback func(plug *sdk.PlugInfo, runtime workshop.Runtime) error
+	// CheckCompatibleSlotCallback is the callback invoked inside CheckCompatibleSlot()
+	CheckCompatibleSlotCallback func(slot *sdk.SlotInfo, runtime workshop.Runtime) error
 
 	BeforeConnectPlugCallback func(plug *interfaces.ConnectedPlug) error
 	BeforeConnectSlotCallback func(slot *interfaces.ConnectedSlot) error
@@ -73,6 +82,19 @@ func (t *TestInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool
 	return true
 }
 
+// MaintainConnection implements [interfaces.Interface]. It calls
+// MaintainConnectionCallback when set, and otherwise keeps the
+// connection.
+func (t *TestInterface) MaintainConnection(
+	plug *sdk.PlugInfo, oldPlugAttrs map[string]any,
+	slot *sdk.SlotInfo, oldSlotAttrs map[string]any,
+) bool {
+	if t.MaintainConnectionCallback != nil {
+		return t.MaintainConnectionCallback(plug, oldPlugAttrs, slot, oldSlotAttrs)
+	}
+	return true
+}
+
 // BeforePreparePlug checks and possibly modifies a plug.
 func (t *TestInterface) BeforePreparePlug(plug *sdk.PlugInfo) error {
 	if t.BeforePreparePlugCallback != nil {
@@ -85,6 +107,22 @@ func (t *TestInterface) BeforePreparePlug(plug *sdk.PlugInfo) error {
 func (t *TestInterface) BeforePrepareSlot(slot *sdk.SlotInfo) error {
 	if t.BeforePrepareSlotCallback != nil {
 		return t.BeforePrepareSlotCallback(slot)
+	}
+	return nil
+}
+
+// CheckCompatiblePlug checks if a plug is compatible with a workshop runtime.
+func (t *TestInterface) CheckCompatiblePlug(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+	if t.CheckCompatiblePlugCallback != nil {
+		return t.CheckCompatiblePlugCallback(plug, runtime)
+	}
+	return nil
+}
+
+// CheckCompatibleSlot checks if a slot is compatible with a workshop runtime.
+func (t *TestInterface) CheckCompatibleSlot(slot *sdk.SlotInfo, runtime workshop.Runtime) error {
+	if t.CheckCompatibleSlotCallback != nil {
+		return t.CheckCompatibleSlotCallback(slot, runtime)
 	}
 	return nil
 }

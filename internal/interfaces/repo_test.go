@@ -79,7 +79,6 @@ plugs:
 
 func (s *RepositorySuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
 
 	consumer := sdk.MockInfo(c, consumerYaml, s.projectId, "ws")
 	s.plug = consumer.Plugs["plug"]
@@ -1230,7 +1229,6 @@ var _ = Suite(&AddRemoveSuite{})
 
 func (s *AddRemoveSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
 
 	s.repo = NewRepository()
 	err := s.repo.AddInterface(&ifacetest.TestInterface{InterfaceName: "iface"})
@@ -1281,7 +1279,6 @@ var _ = Suite(&DisconnectSdkSuite{})
 
 func (s *DisconnectSdkSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	s.AddCleanup(sdk.MockSanitizePlugsSlots(func(snapInfo *sdk.Info) {}))
 
 	s.repo = NewRepository()
 
@@ -1344,8 +1341,8 @@ func (s *DisconnectSdkSuite) TestOutgoingConnection(c *C) {
 	// Disconnect s1 with which has an outgoing connection to s2
 	affected, err := s.repo.DisconnectSdk("42424242", "ws", "s1")
 	c.Assert(err, IsNil)
-	c.Check(affected, testutil.Contains, s.s1)
-	c.Check(affected, testutil.Contains, s.s2)
+	c.Check(affected, testutil.Contains, s.s1.Ref())
+	c.Check(affected, testutil.Contains, s.s2.Ref())
 }
 
 func (s *DisconnectSdkSuite) TestIncomingConnection(c *C) {
@@ -1357,8 +1354,8 @@ func (s *DisconnectSdkSuite) TestIncomingConnection(c *C) {
 	// Disconnect s1 with which has an incoming connection from s2
 	affected, err := s.repo.DisconnectSdk("42424242", "ws", "s1")
 	c.Assert(err, IsNil)
-	c.Check(affected, testutil.DeepContains, s.s1)
-	c.Check(affected, testutil.DeepContains, s.s2)
+	c.Check(affected, testutil.DeepContains, s.s1.Ref())
+	c.Check(affected, testutil.DeepContains, s.s2.Ref())
 }
 
 func (s *DisconnectSdkSuite) TestCrossConnection(c *C) {
@@ -1376,8 +1373,8 @@ func (s *DisconnectSdkSuite) TestCrossConnection(c *C) {
 		c.Assert(err, IsNil)
 		affected, err := s.repo.DisconnectSdk("42424242", "ws", sdkName)
 		c.Assert(err, IsNil)
-		c.Check(affected, testutil.DeepContains, s.s1)
-		c.Check(affected, testutil.DeepContains, s.s2)
+		c.Check(affected, testutil.DeepContains, s.s1.Ref())
+		c.Check(affected, testutil.DeepContains, s.s2.Ref())
 	}
 }
 
@@ -1388,8 +1385,8 @@ func (s *DisconnectSdkSuite) TestParallelInstances(c *C) {
 	c.Assert(err, IsNil)
 	affected, err := s.repo.DisconnectSdk("42424242", "ws", "s1")
 	c.Assert(err, IsNil)
-	c.Check(affected, testutil.DeepContains, s.s1)
-	c.Check(affected, testutil.DeepContains, s.s2Instance)
+	c.Check(affected, testutil.DeepContains, s.s1.Ref())
+	c.Check(affected, testutil.DeepContains, s.s2Instance.Ref())
 
 	_, err = s.repo.Connect(&ConnRef{
 		PlugRef: sdk.PlugRef{ProjectId: "42424242", Workshop: "ws", Sdk: "s2-instance", Name: "iface-b"},
@@ -1397,8 +1394,8 @@ func (s *DisconnectSdkSuite) TestParallelInstances(c *C) {
 	c.Assert(err, IsNil)
 	affected, err = s.repo.DisconnectSdk("42424242", "ws", "s1")
 	c.Assert(err, IsNil)
-	c.Check(affected, testutil.DeepContains, s.s1)
-	c.Check(affected, testutil.DeepContains, s.s2Instance)
+	c.Check(affected, testutil.DeepContains, s.s1.Ref())
+	c.Check(affected, testutil.DeepContains, s.s2Instance.Ref())
 }
 
 func mountPolicyCheck(plug *ConnectedPlug, slot *ConnectedSlot) (bool, error) {

@@ -1,5 +1,3 @@
-:hide-toc:
-
 .. _exp_projects:
 
 .. meta::

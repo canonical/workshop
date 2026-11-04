@@ -16,16 +16,20 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26"
+          check-latest: true
 
       - name: Build
         run: go build -v ./...
+
+      - name: Enable binding on vsock loopback address
+        run: sudo modprobe vsock_loopback
 
       - name: Test
         run: mkdir -p ${{ github.workspace }}.cover/unit/cover && go test -cover -coverpkg=./... ./... -args -test.gocoverdir=${{ github.workspace }}.cover/unit/cover
 
       - name: Upload Coverage
         id: upload-coverage
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: code-coverage-unit
           path: ${{ github.workspace }}.cover/
@@ -40,6 +44,10 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26"
+          check-latest: true
+
+      - name: Enable binding on vsock loopback address
+        run: sudo modprobe vsock_loopback
 
       - name: Check for races
         run: go test -race ./...

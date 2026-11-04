@@ -10,6 +10,8 @@ launched:
     agent.nic_config: 'true'
     boot.autostart: 'false'
     boot.mode: uefi-nosecureboot
+    limits.cpu: '2'
+    limits.max_bus_ports: '16'
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -27,7 +29,6 @@ launched:
       [device "qemu_tablet"]
 
       [machine]
-      i8042 = "off"
       hpet = "off"
       sata = "off"
     user.workshop.name: test
@@ -59,6 +60,8 @@ started:
     agent.nic_config: 'true'
     boot.autostart: 'true'
     boot.mode: uefi-nosecureboot
+    limits.cpu: '2'
+    limits.max_bus_ports: '16'
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -76,7 +79,6 @@ started:
       [device "qemu_tablet"]
 
       [machine]
-      i8042 = "off"
       hpet = "off"
       sata = "off"
     user.workshop.name: test
@@ -108,6 +110,8 @@ sdk-attached:
     agent.nic_config: 'true'
     boot.autostart: 'true'
     boot.mode: uefi-nosecureboot
+    limits.cpu: '2'
+    limits.max_bus_ports: '16'
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -125,7 +129,6 @@ sdk-attached:
       [device "qemu_tablet"]
 
       [machine]
-      i8042 = "off"
       hpet = "off"
       sata = "off"
     user.workshop.name: test
@@ -169,6 +172,8 @@ sdk-mounted:
     agent.nic_config: 'true'
     boot.autostart: 'true'
     boot.mode: uefi-nosecureboot
+    limits.cpu: '2'
+    limits.max_bus_ports: '16'
     raw.idmap: |
       uid 1000000-1000999 0-999
       uid 1000 1000
@@ -186,7 +191,6 @@ sdk-mounted:
       [device "qemu_tablet"]
 
       [machine]
-      i8042 = "off"
       hpet = "off"
       sata = "off"
     user.workshop.name: test

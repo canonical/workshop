@@ -645,8 +645,6 @@ Links listed here must point to concepts used in the main document;
 vice versa, concepts appearing in the main text should be linked in "See also"
 if a well-established related page exists.
 
-Special case: If "See also" is the only subsection on the page, hide the sidebar ToC on the right using the `:hide-toc:` directive at the top of the file.
-
 **Tab headings**
 
 Pattern: Keep tab headings noun-based and consistent across related content. Avoid "sticky toggling" (where tab state persists inappropriately across different contexts).
@@ -654,13 +652,13 @@ Pattern: Keep tab headings noun-based and consistent across related content. Avo
 Example:
 
 ```restructuredtext
-.. tabs::
+.. tab-set::
 
-   .. tab:: Ubuntu
+   .. tab-item:: Ubuntu
 
       Installation instructions for Ubuntu...
 
-   .. tab:: macOS
+   .. tab-item:: macOS
 
       Installation instructions for macOS...
 ```

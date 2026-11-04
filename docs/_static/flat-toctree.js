@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Find the current page link in the sidebar
-    var currentPageLi = document.querySelector('.sidebar-tree li.current-page');
+    var currentPageLi = document.querySelector('#drawer li.current-page');
 
     // Also make the immediate parent of the current page non-clickable if it has children
     if (currentPageLi) {
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Only check sidebar links (more efficient than all links)
-    var sidebarLinks = document.querySelectorAll('.sidebar-tree a[href]');
+    var sidebarLinks = document.querySelectorAll('#drawer .p-side-navigation__list a[href]');
 
     sidebarLinks.forEach(function(link) {
         var href = link.getAttribute('href');

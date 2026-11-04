@@ -24,6 +24,8 @@ Releases
 .. toctree::
    :hidden:
 
+   Workshop 0.9.9 <v0.9.9>
+   Workshop 0.9.8 <v0.9.8>
    Workshop 0.9.7 <v0.9.7>
    Workshop 0.9.6 <v0.9.6>
    Workshop 0.9.5 <v0.9.5>
@@ -49,6 +51,10 @@ so its version can trail |ws_markup|:
 
    * - |ws_markup|
      - |sdk_markup|
+   * - 0.9.9
+     - 0.9.4
+   * - 0.9.8
+     - 0.9.4
    * - 0.9.7
      - 0.9.3
    * - 0.9.6
@@ -70,7 +76,7 @@ so its version can trail |ws_markup|:
 Latest version
 ~~~~~~~~~~~~~~
 
-- :doc:`Workshop 0.9.7 <v0.9.7>`
+- :doc:`Workshop 0.9.9 <v0.9.9>`
 
 
 Previous versions
@@ -80,6 +86,8 @@ Previous versions
 
    These versions are no longer supported.
 
+- :doc:`Workshop 0.9.8 <v0.9.8>`
+- :doc:`Workshop 0.9.7 <v0.9.7>`
 - :doc:`Workshop 0.9.6 <v0.9.6>`
 - :doc:`Workshop 0.9.5 <v0.9.5>`
 - :doc:`Workshop 0.9.4 <v0.9.4>`

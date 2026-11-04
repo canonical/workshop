@@ -1,0 +1,17 @@
+# Install a oneshot unit that fetches a secret through the workshop secret
+# socket. The credential name must be "<SDK>.<plug>" so the daemon can resolve
+# the connected secret; the socket path comes from the hook environment. The
+# unit is not started here, as the secret plug may not be connected yet.
+credential=$(basename "$SDK").api-key
+
+cat > /etc/systemd/system/secret-consumer.service <<EOF
+[Unit]
+Description=Consume a workshop secret through the secret socket
+
+[Service]
+Type=oneshot
+LoadCredential=${credential}:${SDK_SYSTEMD_SECRET_SOCKET}
+ExecStart=/bin/sh -c 'cat "\$CREDENTIALS_DIRECTORY/${credential}" > /run/secret-consumer.out'
+EOF
+
+systemctl daemon-reload

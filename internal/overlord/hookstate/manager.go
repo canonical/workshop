@@ -15,7 +15,7 @@
 package hookstate
 
 import (
-	"fmt"
+	"errors"
 	"regexp"
 	"sync"
 	"time"
@@ -101,34 +101,20 @@ func (w *HookManager) Ensure() error {
 	return nil
 }
 
-func (m *HookManager) ephemeralContext(cookieID string) (context *Context, err error) {
-	var contexts map[string]string
-	m.state.Lock()
-	defer m.state.Unlock()
-	err = m.state.Get("workshop-cookies", &contexts)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get workshop cookies: %v", err)
-	}
-	if _, ok := contexts[cookieID]; ok {
-		// create new ephemeral context
-		context, err = NewContext(nil, m.state, &HookSetup{}, nil, cookieID)
-		return context, err
-	}
-	return nil, fmt.Errorf("invalid workshop cookie requested")
+// NewEphemeralContext returns a context that is not associated with a hook
+// task. Its data is retained only for the lifetime of the context.
+func (m *HookManager) NewEphemeralContext() (*Context, error) {
+	return NewContext(nil, m.state, &HookSetup{}, nil, "")
 }
 
-// Context obtains the context for the given cookie ID.
+// Context obtains the active hook context for the given cookie ID.
 func (m *HookManager) Context(cookieID string) (*Context, error) {
 	m.contextsMutex.RLock()
 	defer m.contextsMutex.RUnlock()
 
-	var err error
 	context, ok := m.contexts[cookieID]
 	if !ok {
-		context, err = m.ephemeralContext(cookieID)
-		if err != nil {
-			return nil, err
-		}
+		return nil, errors.New("invalid workshop cookie requested")
 	}
 
 	return context, nil

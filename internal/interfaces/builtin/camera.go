@@ -20,6 +20,8 @@
 package builtin
 
 import (
+	"errors"
+
 	"github.com/canonical/workshop/internal/interfaces"
 	"github.com/canonical/workshop/internal/interfaces/lxd_device"
 	"github.com/canonical/workshop/internal/sdk"
@@ -68,6 +70,29 @@ func (iface *cameraInterface) StaticInfo() interfaces.StaticInfo {
 func (iface *cameraInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool {
 	// allow what declarations allowed
 	return true
+}
+
+// MaintainConnection implements [interfaces.Interface]. It keeps the
+// connection regardless of changes to the plug or slot definition.
+func (iface *cameraInterface) MaintainConnection(
+	_ *sdk.PlugInfo, _ map[string]any,
+	_ *sdk.SlotInfo, _ map[string]any,
+) bool {
+	return true
+}
+
+func (iface *cameraInterface) CheckCompatiblePlug(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("camera interface only available to containers")
+	}
+	return nil
+}
+
+func (iface *cameraInterface) CheckCompatibleSlot(slot *sdk.SlotInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("camera interface only available to containers")
+	}
+	return nil
 }
 
 func (iface *cameraInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {

@@ -132,7 +132,7 @@ alongside the :samp:`workshop-target`:
        uv:
          mounts:
            shared:
-             host-source:      /home/user/datasets
+             host-source:      ~/datasets
              workshop-target:  /home/workshop/shared
      ...
 

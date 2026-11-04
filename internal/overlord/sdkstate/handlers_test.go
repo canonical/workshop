@@ -32,6 +32,7 @@ import (
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/interfaces"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/ifacetest"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/overlord"
@@ -41,6 +42,7 @@ import (
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/sdk/system"
+	"github.com/canonical/workshop/internal/sdkstore"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 	"github.com/canonical/workshop/internal/workshop/fakebackend"
@@ -48,6 +50,7 @@ import (
 
 type sdkStateSuite struct {
 	backend     *fakebackend.FakeWorkshopBackend
+	store       *sdk.FakeStore
 	state       *state.State
 	runner      *state.TaskRunner
 	se          *overlord.StateEngine
@@ -87,7 +90,8 @@ func setWorkshopProject(w string, p workshop.Project, tasks ...*state.Task) {
 
 var ErrTrigger = errors.New("error out")
 
-var sdkYaml = `
+var (
+	sdkYaml = `
 name: test
 base: ubuntu@22.04
 plugs:
@@ -97,9 +101,9 @@ plugs:
   plug2:
     interface: test-interface
     attr2: value2
-`
+`[1:]
 
-var sdkYamlViolatesPolicy = `
+	sdkYamlViolatesPolicy = `
 name: test-broken
 base: ubuntu@22.04
 plugs:
@@ -112,7 +116,26 @@ plugs:
 slots:
   slot:
     interface: ssh-agent
-`
+`[1:]
+
+	sdkYamlIncompatibleInterfaces = `
+name: test
+plugs:
+  plug:
+    interface: vm-only
+slots:
+  slot:
+    interface: vm-only
+`[1:]
+
+	workshopYaml = `
+name: ws
+base: ubuntu@22.04
+sdks:
+  - name: test
+    channel: latest/stable
+`[1:]
+)
 
 func (s *sdkStateSuite) SetUpTest(c *check.C) {
 	var err error
@@ -148,7 +171,8 @@ func (s *sdkStateSuite) SetUpTest(c *check.C) {
 
 	workshop.ReplaceBackend(s.state, s.backend)
 
-	sdk.ReplaceStore(s.state, sdk.NewFakeStore())
+	s.store = sdk.NewFakeStore()
+	sdk.ReplaceStore(s.state, s.store)
 
 	/* empty task handler */
 	s.runner.AddHandler("fake-task", fakeHandler, nil)
@@ -237,7 +261,7 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	newSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -280,7 +304,7 @@ func (s *sdkStateSuite) TestDoInstallSdkSuccess(c *check.C) {
 	c.Check(props.Sdks["test"].Setup, check.DeepEquals, newSdk.Setup)
 	c.Check(props.Sdks["test"].InstalledAt, check.Equals, s.installedAt)
 
-	sdkInfo, err := props.SdkInfo(s.ctx, "test")
+	sdkInfo, err := props.SdkInfo(s.ctx, "test", builtin.Sanitize)
 	c.Assert(err, check.IsNil)
 	c.Assert(sdkInfo.Plugs, check.HasLen, 2)
 	c.Assert(sdkInfo.Slots, check.HasLen, 0)
@@ -294,7 +318,7 @@ func (s *sdkStateSuite) TestDoInstallSdkFailedPolicyCheck(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	testSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -376,18 +400,69 @@ func (s *sdkStateSuite) TestDoInstallSdkBadInterfacesFound(c *check.C) {
 	}
 	s.state.Lock()
 
-	c.Assert(chg.Err(), check.ErrorMatches, `(?s).*"test" SDK has bad plugs or slots: plug, plug2 \(unknown interface "test-interface"\).*`)
+	c.Assert(chg.Err(), check.ErrorMatches, `(?s).*"test" SDK has bad plugs: plug, plug2 \(unknown interface "test-interface"\).*`)
 
 	c.Assert(s.repo.Plugs(s.project.ProjectId, "ws", "test"), check.HasLen, 0)
 	c.Assert(s.repo.Plug(s.project.ProjectId, "ws", "test", "plug"), check.IsNil)
 	c.Assert(s.repo.Plug(s.project.ProjectId, "ws", "test", "plug2"), check.IsNil)
 }
 
+func (s *sdkStateSuite) TestDoInstallSdkIncompatibleInterfacesFound(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	defer builtin.MockInterface(&ifacetest.TestInterface{
+		InterfaceName: "vm-only",
+		CheckCompatiblePlugCallback: func(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+			return errors.New("requires a VM")
+		},
+		CheckCompatibleSlotCallback: func(slot *sdk.SlotInfo, runtime workshop.Runtime) error {
+			return errors.New("requires a VM")
+		},
+	})()
+
+	newSdk := sdk.Meta{
+		Setup: sdk.Setup{
+			Name:      "test",
+			PackageID: "a9J51jhjzpckN8VxhqoZ8dNKcZ7pOrBb",
+			Channel:   "latest/stable",
+			Revision:  sdk.R(1),
+			Sha3_384:  "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd",
+		},
+		SdkYAML: sdkYamlIncompatibleInterfaces,
+	}
+	s.mockSdk(c, newSdk)
+	t := s.state.NewTask("install-sdk", "test")
+	t.Set("sdk", newSdk.Name)
+
+	chg := s.state.NewChange("sample", "...")
+	setWorkshopProject("ws", s.project, t)
+
+	chg.Set("user", "testuser")
+	chg.Set("ws_new_sdks", []sdk.Setup{newSdk.Setup})
+	chg.AddTask(t)
+
+	s.state.Unlock()
+	c.Check(s.se.Ensure(), check.IsNil)
+	s.se.Wait()
+	s.state.Lock()
+
+	c.Check(chg.Err(), check.IsNil)
+	c.Check(chg.Status(), check.Equals, state.DoneStatus)
+
+	log := t.Log()
+	c.Assert(log, check.HasLen, 1)
+	c.Check(log[0], check.Matches, `.* "test" SDK has incompatible plugs: plug \(requires a VM\); and slots: slot \(requires a VM\)`)
+
+	c.Check(s.repo.Plugs(s.project.ProjectId, "ws", "test"), check.HasLen, 0)
+	c.Check(s.repo.Slots(s.project.ProjectId, "ws", "test"), check.HasLen, 0)
+}
+
 func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	newSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -455,8 +530,9 @@ func (s *sdkStateSuite) TestRetrieveSystemSdkSuccess(c *check.C) {
 	chg := s.state.NewChange("sample", "...")
 	setWorkshopProject("ws", s.project, t)
 	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", workshopYaml)
 	chg.Set("ws_new_format", sdk.R(1))
-	chg.Set("ws_new_base", workshop.BaseOnly(sdk.R(1), "ubuntu@22.04", workshop.RuntimeLXDContainer, "fakeimage123"))
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
 	chg.Set("ws_new_sdks", []sdk.Setup{newSdk})
 	chg.AddTask(t)
 
@@ -500,6 +576,131 @@ func (s *sdkStateSuite) TestRetrieveSystemSdkSuccess(c *check.C) {
 	expected, err := system.SystemSdkFs.ReadFile("meta/sdk.yaml")
 	c.Assert(err, check.IsNil)
 	c.Check(newSdk.Filepath()+".yaml", testutil.FileEquals, expected)
+}
+
+func (s *sdkStateSuite) TestRetrieveSdkExistingTarballValidatesSdk(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	newSdk := sdk.Setup{
+		Name:     "test",
+		Channel:  "latest/stable",
+		Revision: sdk.R(1),
+		Sha3_384: "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd",
+	}
+	err := os.WriteFile(newSdk.Filepath(), nil, 0644)
+	c.Assert(err, check.IsNil)
+	err = os.WriteFile(newSdk.Filepath()+".yaml", []byte("name: test\nbase: ubuntu@24.04\n"), 0644)
+	c.Assert(err, check.IsNil)
+
+	t := s.state.NewTask("retrieve-sdk", "retrieve")
+	t.Set("sdk", newSdk.Name)
+
+	chg := s.state.NewChange("sample", "...")
+	setWorkshopProject("ws", s.project, t)
+	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", workshopYaml)
+	chg.Set("ws_new_format", sdk.R(1))
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_sdks", []sdk.Setup{newSdk})
+	chg.AddTask(t)
+
+	s.state.Unlock()
+	c.Check(s.se.Ensure(), check.IsNil)
+	s.se.Wait()
+	s.state.Lock()
+
+	c.Check(chg.Err(), check.ErrorMatches, `(?s).*"test" SDK has "ubuntu@24.04" base; required: "ubuntu@22.04".*`)
+	c.Check(s.store.DownloadCalls, check.HasLen, 0)
+	c.Check(s.backend.Volumes, check.HasLen, 1)
+}
+
+func (s *sdkStateSuite) TestRetrieveSdkExistingVolumeValidatesSdk(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	newSdk := sdk.Meta{
+		Setup: sdk.Setup{
+			Name:     "test",
+			Channel:  "latest/stable",
+			Revision: sdk.R(1),
+			Sha3_384: "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd",
+		},
+		SdkYAML: "name: test\nbase: ubuntu@24.04\n",
+	}
+	s.mockSdk(c, newSdk)
+
+	t := s.state.NewTask("retrieve-sdk", "retrieve")
+	t.Set("sdk", newSdk.Name)
+
+	chg := s.state.NewChange("sample", "...")
+	setWorkshopProject("ws", s.project, t)
+	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", workshopYaml)
+	chg.Set("ws_new_format", sdk.R(1))
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_sdks", []sdk.Setup{newSdk.Setup})
+	chg.AddTask(t)
+
+	s.state.Unlock()
+	c.Check(s.se.Ensure(), check.IsNil)
+	s.se.Wait()
+	s.state.Lock()
+
+	c.Check(chg.Err(), check.ErrorMatches, `(?s).*"test" SDK has "ubuntu@24.04" base; required: "ubuntu@22.04".*`)
+	c.Check(s.store.DownloadCalls, check.HasLen, 0)
+	c.Check(newSdk.Filepath(), testutil.FileAbsent)
+}
+
+func (s *sdkStateSuite) TestRetrieveSdkConcurrentImportValidatesSdk(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	newSdk := sdk.Meta{
+		Setup: sdk.Setup{
+			Name:     "test",
+			Channel:  "latest/stable",
+			Revision: sdk.R(1),
+			Sha3_384: "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd",
+		},
+		SdkYAML: "name: test\nbase: ubuntu@24.04\n",
+	}
+	err := os.WriteFile(newSdk.Filepath()+".yaml", []byte(newSdk.SdkYAML), 0644)
+	c.Assert(err, check.IsNil)
+
+	vfs := c.MkDir()
+	// Simulate another change importing the same SDK while this one
+	// downloads it, so that ImportSdk fails with ErrVolumeAlreadyExists.
+	defer s.store.SetDownloadCallback(func(ctx context.Context, w io.Writer, _ sdkstore.SdkArchive, _ ...sdkstore.DownloadOption) error {
+		dir, err := os.Open(vfs)
+		if err != nil {
+			return err
+		}
+		defer dir.Close()
+		return s.backend.ImportSdk(ctx, newSdk, dir)
+	})()
+
+	t := s.state.NewTask("retrieve-sdk", "retrieve")
+	t.Set("sdk", newSdk.Name)
+
+	chg := s.state.NewChange("sample", "...")
+	setWorkshopProject("ws", s.project, t)
+	chg.Set("user", "testuser")
+	chg.Set("ws_new_file", workshopYaml)
+	chg.Set("ws_new_format", sdk.R(1))
+	chg.Set("ws_new_base", workshop.BaseImage{Name: "ubuntu@22.04", Runtime: workshop.RuntimeLXDContainer, Fingerprint: "fakeimage123"})
+	chg.Set("ws_new_sdks", []sdk.Setup{newSdk.Setup})
+	chg.AddTask(t)
+
+	s.state.Unlock()
+	c.Check(s.se.Ensure(), check.IsNil)
+	s.se.Wait()
+	s.state.Lock()
+
+	c.Check(chg.Err(), check.ErrorMatches, `(?s).*"test" SDK has "ubuntu@24.04" base; required: "ubuntu@22.04".*`)
+	c.Check(s.store.DownloadCalls, check.HasLen, 1)
+	c.Assert(s.backend.Volumes, check.HasLen, 1)
+	c.Check(s.backend.Volumes[sdk.VolumeName(newSdk.Name, newSdk.Revision)].What, check.Equals, vfs)
 }
 
 func (s *sdkStateSuite) TestSnapshotSdkTwice(c *check.C) {
@@ -679,7 +880,7 @@ func (s *sdkStateSuite) TestSDKVolumeRemovedAfterCooldownOK(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestSDKVolumeRemovedAfterFailedLaunch(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	newSdk := sdk.Meta{
@@ -723,7 +924,7 @@ func (s *sdkStateSuite) TestSDKVolumeRemovedAfterFailedLaunch(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestSDKVolumeExitCleanupAfterSuccessfulLaunch(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	newSdk := sdk.Meta{
@@ -805,7 +1006,7 @@ func (s *sdkStateSuite) TestSDKVolumeNotRemovedBeforeCooldown(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestTaskSDKVolumeExitCleanupIfUsedAgain(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	oldSdk := sdk.Meta{
@@ -856,8 +1057,6 @@ func (s *sdkStateSuite) TestTaskSDKVolumeExitCleanupIfUsedAgain(c *check.C) {
 }
 
 func (s *sdkStateSuite) TestTaskSDKVolumeRetriesCleanupIfBlockingChangesArePresent(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
-
 	s.state.Lock()
 	oldSdk := sdk.Meta{
 		Setup: sdk.Setup{
@@ -986,7 +1185,7 @@ func (s *sdkStateSuite) TestSDKVolumeCleanupPerformedByLatestUser(c *check.C) {
 // Check that uninstall-sdk blocks cleanup for the cooldown period, even if
 // the clenanup handler for another Task runs immediately afterwards.
 func (s *sdkStateSuite) TestSDKVolumeCleanupBlockedBeforeUninstall(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
 
 	s.state.Lock()
 	oldSdk := sdk.Meta{

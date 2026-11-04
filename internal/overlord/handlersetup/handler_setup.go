@@ -130,20 +130,24 @@ func MaybeLastIntactSdk(task *state.Task) (string, error) {
 	return s, nil
 }
 
-// SetWorkshopFile stores a workshop file in a Task as a YAML string, to avoid
-// converting ints -> JSON numbers -> floats. This can happen on unmarshalling
-// plug and slot attributes which are weakly typed.
-func SetWorkshopFile(task *state.Task, file *workshop.File) {
-	task.Set("workshop-file", (*fileText)(file))
+// SetWorkshopFile stores a workshop file in a Change as a YAML string, to
+// avoid converting ints -> JSON numbers -> floats. This can happen on
+// unmarshalling plug and slot attributes which are weakly typed.
+func SetWorkshopFile(change *state.Change, file *workshop.File, age Age) {
+	change.Set(workshopFileKey(file.Name, age), (*fileText)(file))
 }
 
 // WorkshopFile reads a workshop file set by SetWorkshopFile.
-func WorkshopFile(task *state.Task, w string) (*workshop.File, error) {
+func WorkshopFile(change *state.Change, w string, age Age) (*workshop.File, error) {
 	var file workshop.File
-	if err := task.Get("workshop-file", (*fileText)(&file)); err != nil {
-		return nil, fmt.Errorf("internal error: %q workshop definition not found (task ID: %s)", w, task.ID())
+	if err := change.Get(workshopFileKey(w, age), (*fileText)(&file)); err != nil {
+		return nil, fmt.Errorf("internal error: %q workshop definition not found (change ID: %s)", w, change.ID())
 	}
 	return &file, nil
+}
+
+func workshopFileKey(w string, age Age) string {
+	return strings.Join([]string{w, string(age), "file"}, "_")
 }
 
 // fileText is a shim which (un)marshals a workshop file as a YAML string. It

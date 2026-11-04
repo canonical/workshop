@@ -45,6 +45,9 @@ The query can match the SDK's name, title, summary, description, or publisher.
 Notes:
 
 - Only the latest release of the SDK is shown.
+- A mark after the publisher's name shows its validation in the Store:
+  "✓" for a verified publisher and "✪" for a starred one,
+  or "**" and "*" when the output isn't a terminal with a UTF-8 locale.
 - To view more details for one of the SDKs, use "sdk info".
 - To list SDKs on the local system, use "sdk list".
 `,

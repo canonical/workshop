@@ -35,8 +35,30 @@ type ConnState struct {
 
 // PreservedConn holds properties of a connection that are preserved by refreshes.
 type PreservedConn struct {
-	Auto             bool           `json:"auto,omitempty" yaml:"auto"`
-	Interface        string         `json:"interface,omitempty" yaml:"interface"`
+	Auto      bool   `json:"auto,omitempty" yaml:"auto"`
+	Interface string `json:"interface,omitempty" yaml:"interface"`
+
+	// StaticPlugAttrs holds the plug definition attributes the connection
+	// was created with. A refresh keeps them as a baseline so it can compare
+	// against the plug's new definition and drop the connection when it
+	// changed.
+	StaticPlugAttrs map[string]any `json:"plug-static,omitempty" yaml:"plug-static,omitempty"`
+
+	// DynamicPlugAttrs holds per-connection plug attributes that a refresh
+	// must carry over, because they cannot be derived from the plug
+	// definition. The only attribute set today is "bind", the connection ID
+	// of the master connection that a bound plug follows.
 	DynamicPlugAttrs map[string]any `json:"plug-dynamic,omitempty" yaml:"plug-dynamic,omitempty"`
+
+	// StaticSlotAttrs holds the slot definition attributes the connection
+	// was created with. A refresh keeps them as a baseline so it can compare
+	// against the slot's new definition and drop the connection when it
+	// changed.
+	StaticSlotAttrs map[string]any `json:"slot-static,omitempty" yaml:"slot-static,omitempty"`
+
+	// DynamicSlotAttrs holds per-connection slot attributes that a refresh
+	// must carry over, because they cannot be derived from the slot
+	// definition. The only attribute set today is "host-source", the host
+	// path a mount slot resolves to after "workshop remount".
 	DynamicSlotAttrs map[string]any `json:"slot-dynamic,omitempty" yaml:"slot-dynamic,omitempty"`
 }

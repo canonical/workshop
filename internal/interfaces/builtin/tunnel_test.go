@@ -81,6 +81,81 @@ func (s *tunnelSuite) TestInterfaces(c *check.C) {
 	c.Check(builtin.Interfaces(), testutil.DeepContains, s.iface)
 }
 
+// endpointAttrs returns a tunnel attribute map carrying the given endpoint.
+func endpointAttrs(endpoint string) map[string]any {
+	return map[string]any{"endpoint": endpoint}
+}
+
+// TestMaintainConnectionUnchanged checks that a connection is kept while both
+// the plug and slot endpoints are unchanged.
+func (s *tunnelSuite) TestMaintainConnectionUnchanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: endpointAttrs("127.0.0.1:8080/tcp")}
+	slot := &sdk.SlotInfo{Attrs: endpointAttrs("127.0.0.1:80/tcp")}
+
+	maintained := s.iface.MaintainConnection(
+		plug, endpointAttrs("127.0.0.1:8080/tcp"),
+		slot, endpointAttrs("127.0.0.1:80/tcp"),
+	)
+
+	c.Check(maintained, check.Equals, true)
+}
+
+// TestMaintainConnectionPlugChanged checks that a changed plug endpoint drops
+// the connection.
+func (s *tunnelSuite) TestMaintainConnectionPlugChanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: endpointAttrs("127.0.0.1:9090/tcp")}
+	slot := &sdk.SlotInfo{Attrs: endpointAttrs("127.0.0.1:80/tcp")}
+
+	maintained := s.iface.MaintainConnection(
+		plug, endpointAttrs("127.0.0.1:8080/tcp"),
+		slot, endpointAttrs("127.0.0.1:80/tcp"),
+	)
+
+	c.Check(maintained, check.Equals, false)
+}
+
+// TestMaintainConnectionSlotChanged checks that a changed slot endpoint drops
+// the connection.
+func (s *tunnelSuite) TestMaintainConnectionSlotChanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: endpointAttrs("127.0.0.1:8080/tcp")}
+	slot := &sdk.SlotInfo{Attrs: endpointAttrs("127.0.0.1:81/tcp")}
+
+	maintained := s.iface.MaintainConnection(
+		plug, endpointAttrs("127.0.0.1:8080/tcp"),
+		slot, endpointAttrs("127.0.0.1:80/tcp"),
+	)
+
+	c.Check(maintained, check.Equals, false)
+}
+
+// TestMaintainConnectionPlugEndpointUndefined checks that a plug without a
+// defined endpoint drops the connection.
+func (s *tunnelSuite) TestMaintainConnectionPlugEndpointUndefined(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{}}
+	slot := &sdk.SlotInfo{Attrs: endpointAttrs("127.0.0.1:80/tcp")}
+
+	maintained := s.iface.MaintainConnection(
+		plug, endpointAttrs("127.0.0.1:8080/tcp"),
+		slot, endpointAttrs("127.0.0.1:80/tcp"),
+	)
+
+	c.Check(maintained, check.Equals, false)
+}
+
+// TestMaintainConnectionSlotEndpointUndefined checks that a slot without a
+// defined endpoint drops the connection.
+func (s *tunnelSuite) TestMaintainConnectionSlotEndpointUndefined(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: endpointAttrs("127.0.0.1:8080/tcp")}
+	slot := &sdk.SlotInfo{Attrs: map[string]any{}}
+
+	maintained := s.iface.MaintainConnection(
+		plug, endpointAttrs("127.0.0.1:8080/tcp"),
+		slot, endpointAttrs("127.0.0.1:80/tcp"),
+	)
+
+	c.Check(maintained, check.Equals, false)
+}
+
 func (s *tunnelSuite) TestSanitizePlugTCP(c *check.C) {
 	plug := builtin.MockPlug(c, `name: tunnel-sdk
 base: ubuntu@22.04
@@ -1285,4 +1360,27 @@ plugs:
 	c.Check(iface.AutoConnect(info.Plugs["loopback6"], nil), check.Equals, true)
 	c.Check(iface.AutoConnect(info.Plugs["wildcard4"], nil), check.Equals, false)
 	c.Check(iface.AutoConnect(info.Plugs["wildcard6"], nil), check.Equals, false)
+}
+
+func (s *tunnelSuite) TestTunnelInterfaceRequiresContainer(c *check.C) {
+	yaml := `name: consumer
+base: ubuntu@22.04
+plugs:
+  tunnel-plug:
+    interface: tunnel
+    endpoint: 1.1.1.1:8080/tcp
+slots:
+  tunnel-slot:
+    interface: tunnel
+    endpoint: '[::]:4567'
+`
+	info, warning := checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDContainer)
+	c.Check(info.Plugs["tunnel-plug"], check.NotNil)
+	c.Check(info.Slots["tunnel-slot"], check.NotNil)
+	c.Check(warning, check.IsNil)
+
+	info, warning = checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDVM)
+	c.Check(info.Plugs["tunnel-plug"], check.IsNil)
+	c.Check(info.Slots["tunnel-slot"], check.IsNil)
+	c.Check(warning, check.ErrorMatches, `"consumer" SDK has incompatible plugs: tunnel-plug \(tunnel interface only available to containers\); and slots: tunnel-slot \(tunnel interface only available to containers\)`)
 }

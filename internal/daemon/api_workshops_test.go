@@ -38,6 +38,7 @@ import (
 
 	"github.com/canonical/workshop/internal/fsutil"
 	"github.com/canonical/workshop/internal/interfaces"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/overlord/conflict"
 	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/sdkstate"
@@ -1177,7 +1178,7 @@ line 1: cannot unmarshal !!seq into string`,
 
 	c.Assert(wp.Running, check.Equals, true)
 
-	sdkInfo, err := wp.SdkInfo(s.ctx, "system")
+	sdkInfo, err := wp.SdkInfo(s.ctx, "system", builtin.Sanitize)
 	c.Assert(err, check.IsNil)
 	c.Assert(sdkInfo.Workshop, check.Equals, "basic")
 	c.Assert(sdkInfo.Name, check.Equals, sdk.System.String())
@@ -2703,7 +2704,7 @@ func (s *apiSuite) TestRefreshSaveAndRestoreState(c *check.C) {
 
 	wp, err := s.b.Workshop(s.ctx, "manysdks")
 	c.Assert(err, check.IsNil)
-	_, err = wp.SdkInfo(s.ctx, "test-sdk-2")
+	_, err = wp.SdkInfo(s.ctx, "test-sdk-2", builtin.Sanitize)
 	c.Assert(err, check.IsNil)
 
 	s.checkHookCalls(c, "manysdks", []string{

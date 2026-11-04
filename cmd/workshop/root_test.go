@@ -66,8 +66,9 @@ func (s *BaseWorkshopSuite) TearDownTest(c *check.C) {
 func (s *BaseWorkshopSuite) RedirectClientToTestServer(handler func(http.ResponseWriter, *http.Request)) {
 	server := httptest.NewServer(http.HandlerFunc(handler))
 	s.AddCleanup(func() { server.Close() })
+	s.AddCleanup(testutil.Backup(&ClientConfig))
 	ClientConfig.BaseURL = server.URL
-	s.AddCleanup(func() { ClientConfig.BaseURL = "" })
+	ClientConfig.Socket = ""
 }
 
 func (s *BaseWorkshopSuite) ResetStdStreams() {

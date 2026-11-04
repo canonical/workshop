@@ -747,6 +747,7 @@ func (s *snapshotSuite) extractUniqueFiles(c *check.C, name, path string) unique
 		"var/cache/ldconfig/aux-cache",
 		"var/cache/motd-news",
 		"var/lib/systemd/random-seed",
+		"var/lib/workshop/run/workshop.socket.secret",
 		"var/lib/workshop/run/workshop.socket.untrusted",
 	}
 	for _, file := range files {

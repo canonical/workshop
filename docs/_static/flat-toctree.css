@@ -1,12 +1,12 @@
 /* Styles for flat-toctree entries that should appear as non-clickable containers */
 
-.sidebar-tree li.flat-toctree.has-children>a {
+#drawer li.flat-toctree.has-children>.nav-item>a {
     pointer-events: none;
     cursor: default;
 }
 
-/* Ensure the expand/collapse button remains clickable */
-.sidebar-tree li.flat-toctree.has-children>button {
+/* Ensure the expand/collapse toggle remains clickable */
+#drawer li.flat-toctree.has-children>.nav-item>label {
     pointer-events: auto;
     cursor: pointer;
 }

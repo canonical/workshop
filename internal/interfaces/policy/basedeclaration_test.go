@@ -34,8 +34,7 @@ import (
 )
 
 type baseDeclSuite struct {
-	baseDecl        *asserts.BaseDeclaration
-	restoreSanitize func()
+	baseDecl *asserts.BaseDeclaration
 }
 
 var _ = check.Suite(&baseDeclSuite{})
@@ -45,12 +44,7 @@ func Test(t *testing.T) {
 }
 
 func (s *baseDeclSuite) SetUpSuite(c *check.C) {
-	s.restoreSanitize = sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})
 	s.baseDecl = asserts.BuiltinBaseDeclaration()
-}
-
-func (s *baseDeclSuite) TearDownSuite(c *check.C) {
-	s.restoreSanitize()
 }
 
 func (s *baseDeclSuite) connectCand(c *check.C, iface, slotYaml, plugYaml string, slotprj, plugprj string, slotws, plugws string) *policy.ConnectCandidate {

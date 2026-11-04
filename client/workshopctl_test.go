@@ -27,12 +27,22 @@ import (
 	"github.com/canonical/workshop/client"
 )
 
+// TestClientRunWorkshopCtlCallsEndpoint verifies that
+// [client.Client.RunWorkshopctl] dispatches a POST request to the
+// /v1/workshopctl daemon endpoint.
 func (cs *clientSuite) TestClientRunWorkshopCtlCallsEndpoint(c *check.C) {
+	cs.rsp = `{
+		"type": "sync",
+		"status-code": 200,
+		"result": {}
+	}`
+
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
 	}
-	cs.cli.RunWorkshopctl(options, nil)
+	_, _, err := cs.cli.RunWorkshopctl(options)
+	c.Assert(err, check.IsNil)
 	c.Check(cs.req.Method, check.Equals, "POST")
 	c.Check(cs.req.URL.Path, check.Equals, "/v1/workshopctl")
 }
@@ -51,9 +61,10 @@ func (cs *clientSuite) TestClientRunWorkshoctl(c *check.C) {
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
+		Stdin:     mockStdin,
 	}
 
-	stdout, stderr, err := cs.cli.RunWorkshopctl(options, mockStdin)
+	stdout, stderr, err := cs.cli.RunWorkshopctl(options)
 	c.Assert(err, check.IsNil)
 	c.Check(string(stdout), check.Equals, "test stdout")
 	c.Check(string(stderr), check.Equals, "test stderr")
@@ -79,17 +90,15 @@ func (cs *clientSuite) TestClientRunWorkshoctlReadLimitOneTooMuch(c *check.C) {
 		}
 	}`
 
-	restore := client.MockStdinReadLimit(10)
-	defer restore()
-
-	mockStdin := bytes.NewBufferString("12345678901")
+	mockStdin := bytes.NewReader(make([]byte, 4_000_000+1))
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
+		Stdin:     mockStdin,
 	}
 
-	_, _, err := cs.cli.RunWorkshopctl(options, mockStdin)
-	c.Check(err, check.ErrorMatches, "cannot read more than 10 bytes of data from stdin")
+	_, _, err := cs.cli.RunWorkshopctl(options)
+	c.Check(err, check.ErrorMatches, "cannot read more than 4000000 bytes of data from stdin")
 }
 
 func (cs *clientSuite) TestClientRunWorkshoctlReadLimitExact(c *check.C) {
@@ -100,15 +109,13 @@ func (cs *clientSuite) TestClientRunWorkshoctlReadLimitExact(c *check.C) {
 		}
 	}`
 
-	restore := client.MockStdinReadLimit(10)
-	defer restore()
-
-	mockStdin := bytes.NewBufferString("1234567890")
+	mockStdin := bytes.NewReader(make([]byte, 4_000_000))
 	options := &client.WorkshopCtlOptions{
 		ContextID: "1234ABCD",
 		Args:      []string{"foo", "bar"},
+		Stdin:     mockStdin,
 	}
 
-	_, _, err := cs.cli.RunWorkshopctl(options, mockStdin)
+	_, _, err := cs.cli.RunWorkshopctl(options)
 	c.Check(err, check.IsNil)
 }

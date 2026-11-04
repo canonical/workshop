@@ -796,3 +796,26 @@ slots:
 	_, err := ic.CheckAutoConnect()
 	c.Check(err, check.IsNil)
 }
+
+func (s *mountSuite) TestMountInterfaceSupportsAllRuntimes(c *check.C) {
+	yaml := `name: consumer
+base: ubuntu@22.04
+plugs:
+ mount:
+  interface: mount
+  workshop-target: /mnt
+slots:
+ mount:
+  interface: mount
+  workshop-source: /opt
+`
+	info, warning := checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDContainer)
+	c.Check(info.Plugs["mount"], check.NotNil)
+	c.Check(info.Slots["mount"], check.NotNil)
+	c.Check(warning, check.IsNil)
+
+	info, warning = checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDVM)
+	c.Check(info.Plugs["mount"], check.NotNil)
+	c.Check(info.Slots["mount"], check.NotNil)
+	c.Check(warning, check.IsNil)
+}

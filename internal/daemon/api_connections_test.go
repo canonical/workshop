@@ -121,7 +121,7 @@ func (s *apiSuite) mockInstalledSDK(c *check.C, yaml string, w string) *workshop
 
 func (s *apiSuite) mockInstalledSDKBoundPlug(c *check.C, yaml string, w string, from, to string) *workshop.Workshop {
 	info := sdk.MockInfo(c, yaml, s.project.ProjectId, w)
-	info.PlugBinds[from] = sdk.PlugRef{
+	info.Plugs[from].Bind = &sdk.PlugRef{
 		ProjectId: s.project.ProjectId,
 		Workshop:  w,
 		Sdk:       info.Name,

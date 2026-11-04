@@ -82,6 +82,9 @@ And gets installed during the :samp:`setup-project` phase:
 This design ensures that the service starts automatically
 when the workshop is launched,
 and stops cleanly when the workshop is terminated.
+A systemd service that needs a credential
+can instead run from a systemd unit that :samp:`setup-base` installs
+and request the credential with :samp:`LoadCredential=`.
 
 
 .. _exp_best_parts_decomposition:
@@ -572,6 +575,7 @@ Explanation:
 How-to guides:
 
 - :ref:`how_share_content_between_sdks`
+- :ref:`how_use_secrets`
 
 
 Reference:

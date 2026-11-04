@@ -37,6 +37,7 @@ import (
 	"github.com/canonical/workshop/internal/overlord/patch"
 	"github.com/canonical/workshop/internal/overlord/restart"
 	"github.com/canonical/workshop/internal/overlord/sdkstate"
+	"github.com/canonical/workshop/internal/overlord/secretstate"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/overlord/workshopstate"
 	"github.com/canonical/workshop/internal/sdk"
@@ -86,6 +87,7 @@ type Overlord struct {
 	inited      bool
 	startedUp   bool
 	sdkmgr      *sdkstate.SdkManager
+	secretmgr   secretstate.SecretManager
 	workshopmgr *workshopstate.WorkshopManager
 	hookmgr     *hookstate.HookManager
 	commandmgr  *cmdstate.CommandManager
@@ -167,6 +169,22 @@ func New(dir string, restartHandler restart.Handler) (*Overlord, error) {
 
 	o.sdkmgr = sdkstate.New(s, o.runner, o.ifacemgr.Repository())
 	o.addManager(o.sdkmgr)
+
+	s.Lock()
+	workshopBackend := workshop.WorkshopBackend(s)
+	s.Unlock()
+
+	secretResolver, err := makeSecretResolver(o.ifacemgr.Repository())
+	if err != nil {
+		return nil, fmt.Errorf("creating secret resolver: %w", err)
+	}
+	o.secretmgr = secretstate.New(
+		o.runner,
+		workshopBackend,
+		o.ifacemgr.Repository(),
+		secretResolver,
+	)
+	o.addManager(o.secretmgr)
 
 	// the shared task runner should be added last!
 	o.stateEng.AddManager(o.runner)
@@ -535,6 +553,11 @@ func (o *Overlord) InterfaceManager() *ifacestate.InterfaceManager {
 
 func (o *Overlord) SdkManager() *sdkstate.SdkManager {
 	return o.sdkmgr
+}
+
+// SecretManager returns the manager responsible for secret operations.
+func (o *Overlord) SecretManager() secretstate.SecretManager {
+	return o.secretmgr
 }
 
 func MockWorkshopBackend(b workshop.Backend) func() {

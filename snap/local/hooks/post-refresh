@@ -3,6 +3,13 @@
 # shellcheck source=snap/local/lib/host-config
 . "$SNAP/snap/lib/host-config"
 
+# TODO: remove the one-off ssh/config -> ssh/ssh_config.d migration
+ssh_dir="${SNAP_COMMON}/workshop/ssh"
+if [ -f "${ssh_dir}/config" ]; then
+    install -d -m 0755 "${ssh_dir}/ssh_config.d"
+    mv -f "${ssh_dir}/config" "${ssh_dir}/ssh_config.d/workshop.conf"
+fi
+
 configure_host refresh
 
 # TODO: remove a one-off data -> common migration cleanup

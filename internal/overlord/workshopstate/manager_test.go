@@ -15,6 +15,8 @@
 package workshopstate_test
 
 import (
+	"context"
+
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/overlord/state"
@@ -26,7 +28,7 @@ import (
 
 type managerSuite struct {
 	state   *state.State
-	backend workshop.Backend
+	backend *fakebackend.FakeWorkshopBackend
 	runner  *state.TaskRunner
 	manager *workshopstate.WorkshopManager
 }
@@ -41,6 +43,34 @@ func (s *managerSuite) SetUpTest(c *check.C) {
 	workshop.ReplaceBackend(s.state, s.backend)
 	s.runner = state.NewTaskRunner(s.state)
 	s.manager = workshopstate.New(s.state, s.runner)
+}
+
+func (s *managerSuite) addWorkshop(
+	c *check.C,
+	ctx context.Context,
+	name string,
+	instanceID string,
+) workshop.Project {
+	project, _, err := s.backend.CreateOrLoadProject(ctx, c.MkDir())
+	c.Assert(err, check.IsNil)
+
+	username, ok := ctx.Value(workshop.ContextUser).(string)
+	c.Assert(ok, check.Equals, true)
+
+	if s.backend.Workshops[project.ProjectId] == nil {
+		s.backend.Workshops[project.ProjectId] = make(
+			map[string]*fakebackend.FakeWorkshop,
+		)
+	}
+	s.backend.Workshops[project.ProjectId][name] = &fakebackend.FakeWorkshop{
+		Workshop: &workshop.Workshop{
+			Name:       name,
+			User:       username,
+			Project:    *project,
+			InstanceID: instanceID,
+		},
+	}
+	return *project
 }
 
 func (s *managerSuite) TestAddHandlers(c *check.C) {
@@ -62,4 +92,145 @@ func (s *managerSuite) TestAddHandlers(c *check.C) {
 		"create-state-storage",
 		"remove-state-storage",
 	})
+}
+
+// TestResolveWorkshopInstanceIDReturnsIdentity checks that the manager
+// returns the owning project and workshop name for the user's instance ID.
+func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsIdentity(
+	c *check.C,
+) {
+	ctx := context.WithValue(
+		context.Background(),
+		workshop.ContextUser,
+		"test-user",
+	)
+	project := s.addWorkshop(c, ctx, "test-workshop", "instance-id")
+
+	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "instance-id")
+
+	c.Assert(err, check.IsNil)
+	c.Assert(identity, check.NotNil)
+	c.Check(identity.User, check.Equals, "test-user")
+	c.Check(identity.Project, check.DeepEquals, project)
+	c.Check(identity.Workshop, check.Equals, "test-workshop")
+}
+
+// TestResolveWorkshopInstanceIDReturnsNilForUnknownID checks that the manager
+// rejects an instance ID that does not identify one of the user's workshops.
+func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsNilForUnknownID(
+	c *check.C,
+) {
+	ctx := context.WithValue(
+		context.Background(),
+		workshop.ContextUser,
+		"test-user",
+	)
+	s.addWorkshop(c, ctx, "test-workshop", "instance-id")
+
+	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "unknown-id")
+
+	c.Assert(err, check.IsNil)
+	c.Check(identity, check.IsNil)
+}
+
+// TestResolveWorkshopInstanceIDReturnsNilForEmptyID checks that an empty
+// instance ID does not resolve to a workshop.
+func (s *managerSuite) TestResolveWorkshopInstanceIDReturnsNilForEmptyID(
+	c *check.C,
+) {
+	ctx := context.WithValue(
+		context.Background(),
+		workshop.ContextUser,
+		"test-user",
+	)
+
+	identity, err := s.manager.ResolveWorkshopInstanceID(ctx, "")
+
+	c.Assert(err, check.IsNil)
+	c.Check(identity, check.IsNil)
+}
+
+// TestResolveWorkshopInstanceIDRejectsAnotherUsersWorkshop checks that
+// workshop ownership is scoped to the user in context.
+func (s *managerSuite) TestResolveWorkshopInstanceIDRejectsAnotherUsersWorkshop(
+	c *check.C,
+) {
+	ownerCtx := context.WithValue(
+		context.Background(),
+		workshop.ContextUser,
+		"owner",
+	)
+	s.addWorkshop(c, ownerCtx, "test-workshop", "instance-id")
+	requestCtx := context.WithValue(
+		context.Background(),
+		workshop.ContextUser,
+		"another-user",
+	)
+
+	s.addWorkshop(c, requestCtx, "test-workshop", "another-instance-id")
+
+	identity, err := s.manager.ResolveWorkshopInstanceID(
+		requestCtx,
+		"instance-id",
+	)
+
+	c.Assert(err, check.IsNil)
+	c.Check(identity, check.IsNil)
+}
+
+// TestResolveWorkshopInstanceIDResolvesByCID checks that a request with a vsock
+// CID but no user resolves the matching workshop.
+func (s *managerSuite) TestResolveWorkshopInstanceIDResolvesByCID(c *check.C) {
+	userCtx := context.WithValue(context.Background(), workshop.ContextUser, "test-user")
+	project := s.addWorkshop(c, userCtx, "test-workshop", "instance-id")
+	s.backend.Workshops[project.ProjectId]["test-workshop"].VsockContextID = 42
+
+	otherCtx := context.WithValue(context.Background(), workshop.ContextUser, "other-user")
+	other := s.addWorkshop(c, otherCtx, "other-workshop", "other-instance-id")
+	s.backend.Workshops[other.ProjectId]["other-workshop"].VsockContextID = 99
+
+	requestCtx := context.WithValue(context.Background(), workshop.ContextVsockCID, uint32(42))
+	identity, err := s.manager.ResolveWorkshopInstanceID(requestCtx, "instance-id")
+
+	c.Assert(err, check.IsNil)
+	c.Assert(identity, check.NotNil)
+	c.Check(identity.User, check.Equals, "test-user")
+	c.Check(identity.Project, check.DeepEquals, project)
+	c.Check(identity.Workshop, check.Equals, "test-workshop")
+}
+
+// TestResolveWorkshopInstanceIDRejectsMismatchedCID checks that a workshop is
+// not resolved when its vsock CID does not match the requested CID.
+func (s *managerSuite) TestResolveWorkshopInstanceIDRejectsMismatchedCID(c *check.C) {
+	userCtx := context.WithValue(context.Background(), workshop.ContextUser, "test-user")
+	project := s.addWorkshop(c, userCtx, "test-workshop", "instance-id")
+	s.backend.Workshops[project.ProjectId]["test-workshop"].VsockContextID = 42
+
+	requestCtx := context.WithValue(context.Background(), workshop.ContextVsockCID, uint32(99))
+	identity, err := s.manager.ResolveWorkshopInstanceID(requestCtx, "instance-id")
+
+	c.Assert(err, check.IsNil)
+	c.Check(identity, check.IsNil)
+}
+
+// TestResolveWorkshopInstanceIDEnforcesUserAndCID checks that a vsock CID is
+// still enforced when the request also supplies an user.
+func (s *managerSuite) TestResolveWorkshopInstanceIDEnforcesUserAndCID(c *check.C) {
+	userCtx := context.WithValue(context.Background(), workshop.ContextUser, "test-user")
+	project := s.addWorkshop(c, userCtx, "test-workshop", "instance-id")
+	s.backend.Workshops[project.ProjectId]["test-workshop"].VsockContextID = 42
+
+	workshopUserCtx := context.WithValue(context.Background(), workshop.ContextWorkshopUser, "test-user")
+	matchCtx := context.WithValue(workshopUserCtx, workshop.ContextVsockCID, uint32(42))
+	identity, err := s.manager.ResolveWorkshopInstanceID(matchCtx, "instance-id")
+	c.Assert(err, check.IsNil)
+	c.Assert(identity, check.NotNil)
+	c.Check(identity.User, check.Equals, "test-user")
+	c.Check(identity.Project, check.DeepEquals, project)
+	c.Check(identity.Workshop, check.Equals, "test-workshop")
+
+	wrongCIDCtx := context.WithValue(workshopUserCtx, workshop.ContextVsockCID, uint32(99))
+	identity, err = s.manager.ResolveWorkshopInstanceID(wrongCIDCtx, "instance-id")
+	c.Assert(err, check.IsNil)
+	c.Check(identity, check.IsNil)
 }

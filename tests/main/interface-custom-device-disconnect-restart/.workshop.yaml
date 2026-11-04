@@ -1,0 +1,8 @@
+name: ws-custom-device-disconnect-restart
+base: ubuntu@22.04
+sdks:
+  - name: test-sdk-basic-2
+    plugs:
+      device:
+        interface: custom-device
+        subsystem: input

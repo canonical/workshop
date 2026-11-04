@@ -15,7 +15,6 @@
 package workshopstate
 
 import (
-	"bytes"
 	"cmp"
 	"context"
 	"errors"
@@ -29,6 +28,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/canonical/workshop/internal/arch"
+	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/overlord/conflict"
 	"github.com/canonical/workshop/internal/overlord/handlersetup"
@@ -268,6 +268,9 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 				err = fmt.Errorf("runtime %q is experimental\nTo opt in: %q", runtime, "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd")
 			}
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
+		}
+		if file.Runtime == workshop.RuntimeLXDVM && a.vmsUnavailable != nil {
+			return nil, nil, fmt.Errorf("cannot %s %q: virtual machines are unavailable: %w", action, name, a.vmsUnavailable)
 		}
 
 		image, err := a.backend.GetBase(ctx, file.Base, file.Runtime)
@@ -768,11 +771,6 @@ func (a *artifactFinder) commitRevision(w, sk string, source sdk.Source, path st
 	if err != nil {
 		return nil, fmt.Errorf("invalid %q SDK: %w", sk, err)
 	}
-	if source == sdk.ProjectSource {
-		if err := sdk.ValidateYaml(bytes.NewReader(sdkYaml)); err != nil {
-			return nil, fmt.Errorf("invalid %q SDK: %w", sk, err)
-		}
-	}
 
 	setup := sdk.Setup{
 		Name:     sk,
@@ -786,7 +784,7 @@ func (a *artifactFinder) commitRevision(w, sk string, source sdk.Source, path st
 func validateSdkMeta(projectId string, file *workshop.File, sdks []sdk.Meta) ([]sdk.Setup, error) {
 	setups := make([]sdk.Setup, 0, len(sdks))
 	for _, s := range sdks {
-		if err := workshop.ValidateSdkInfo(projectId, file.Name, file.Base, s.Name, s.SdkYAML); err != nil {
+		if err := workshop.ValidateSdkInfo(projectId, file, s.Name, []byte(s.SdkYAML), builtin.Sanitize); err != nil {
 			return nil, err
 		}
 		setups = append(setups, s.Setup)

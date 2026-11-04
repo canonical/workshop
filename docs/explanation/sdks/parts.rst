@@ -1,5 +1,3 @@
-:hide-toc:
-
 .. _exp_sdk_parts:
 
 .. meta::

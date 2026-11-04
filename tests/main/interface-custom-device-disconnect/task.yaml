@@ -1,0 +1,37 @@
+# Checks that a refresh drops a manually connected custom-device plug when its
+# device filter changes. The custom-device interface keeps a connection only
+# while the plug's subsystem, vendor ID and product ID are unchanged.
+summary: Check a custom-device connection is dropped when its filter changes
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec launch ws-custom-device-disconnect
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove ws-custom-device-disconnect
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  echo "Check the manual connection is established"
+  workshop_exec connect \
+      ws-custom-device-disconnect/test-sdk-basic-2:device :custom-device
+  workshop_exec connections ws-custom-device-disconnect |
+      MATCH "^custom-device.+ws-custom-device-disconnect/test-sdk-basic-2:device.+:custom-device.+manual$"
+
+  echo "Change the device filter and refresh"
+  sed -i 's/subsystem: input/subsystem: tty/' .workshop.yaml
+  workshop_exec refresh ws-custom-device-disconnect |
+      MATCH '^WARNING: There is 1 new warning. See "workshop warnings".$'
+
+  echo "Check the connection is dropped"
+  workshop_exec connections ws-custom-device-disconnect |
+      NOMATCH "ws-custom-device-disconnect/test-sdk-basic-2:device.+:custom-device.+manual"
+
+  echo "Check the drop is reported as a warning"
+  workshop_exec warnings |
+      tr -d '\n' |
+      sed -e 's,\s\+, ,g' |
+      MATCH 'disconnected "ws-custom-device-disconnect/test-sdk-basic-2:device" from "ws-custom-device-disconnect/system:custom-device" because its definition changed'
+
+  # Warnings are global state that persists across tests sharing a machine, so
+  # acknowledge this one to keep later tests' warning counts deterministic.
+  workshop_exec okay

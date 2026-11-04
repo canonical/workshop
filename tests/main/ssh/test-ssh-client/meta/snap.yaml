@@ -1,0 +1,13 @@
+name: test-ssh-client
+version: "1"
+summary: Strictly confined OpenSSH client for testing
+description: Runs the base snap's ssh client under strict confinement.
+base: core24
+confinement: strict
+grade: devel
+architectures: [all]
+
+apps:
+  ssh:
+    command: bin/ssh
+    plugs: [ssh-keys]

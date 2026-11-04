@@ -27,7 +27,7 @@ execute: |
   git init 2>/dev/null || true
 
   # Scaffold the definition with `workshop init`.
-  workshop_exec init dev --sdks ollama/cpu/stable --base ubuntu@22.04 | MATCH '"dev" workshop created at'
+  workshop_exec init dev --sdks ollama/cpu/stable --base ubuntu@22.04 | MATCH '"dev" workshop definition created at'
   MATCH '^name:[[:space:]]+dev$' < .workshop/dev.yaml
   MATCH '^base:[[:space:]]+ubuntu@22.04$' < .workshop/dev.yaml
   MATCH 'name:[[:space:]]+ollama$' < .workshop/dev.yaml

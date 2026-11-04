@@ -16,11 +16,15 @@ package daemon
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/jessevdk/go-flags"
 
+	"github.com/canonical/workshop/internal/logger"
+	"github.com/canonical/workshop/internal/overlord/hookstate"
 	"github.com/canonical/workshop/internal/overlord/hookstate/ctlcmd"
+	"github.com/canonical/workshop/internal/workshop"
 )
 
 // workshopCtlOptions holds the various options with which workshopctl is invoked.
@@ -55,28 +59,22 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 		return statusBadRequest("cannot decode data from request body: %w", err)
 	}
 
-	_, uid, _, err := ucrednetGet(r.RemoteAddr)
-	if err != nil {
-		return statusForbidden("cannot get remote user: %w", err)
+	hookContext, response := workshopctlHookContext(c, r, reqData.ContextID)
+	if response != nil {
+		return response
 	}
-
-	// Ignore missing context error to allow 'workshopctl -h' without a context;
-	// Actual context is validated later by get/set.
-	context, _ := c.d.overlord.HookManager().Context(reqData.ContextID)
 
 	if reqData.Stdin != nil {
-		context.Lock()
-		context.Set("stdin", reqData.Stdin)
-		context.Unlock()
+		hookContext.Lock()
+		hookContext.Set("stdin", reqData.Stdin)
+		hookContext.Unlock()
 	}
 
-	stdout, stderr, err := ctlcmd.Run(context, reqData.Args, uid)
-	if err != nil {
-		if e, ok := err.(*flags.Error); ok && e.Type == flags.ErrHelp {
-			stdout = []byte(e.Error())
-		} else {
-			return statusBadRequest("%w", err)
-		}
+	stdout, stderr, err := ctlcmd.Run(r.Context(), hookContext, reqData.Args)
+	if fe, is := errors.AsType[*flags.Error](err); is && fe.Type == flags.ErrHelp {
+		stdout = []byte(fe.Error())
+	} else if err != nil {
+		return workshopctlErrorResponse(err)
 	}
 
 	result := workshopctlOutput{
@@ -85,4 +83,91 @@ func v1PostWorkshopCtl(c *Command, r *http.Request, _ *userState) Response {
 	}
 
 	return SyncResponse(result, http.StatusOK)
+}
+
+// workshopctlErrorResponse includes a command's requested exit code and
+// newline-terminated stderr diagnostic when exit-code metadata is available.
+// Other errors retain the generic bad-request response.
+func workshopctlErrorResponse(err error) Response {
+	exitError, ok := errors.AsType[ctlcmd.CommandExitCodeError](err)
+	if !ok {
+		return statusBadRequest("%w", err)
+	}
+	return &resp{
+		Result: &errorResult{
+			Message: err.Error(),
+			Value: map[string]any{
+				"exit-code": exitError.ExitCode,
+				"stderr":    err.Error() + "\n",
+			},
+		},
+		Status: http.StatusBadRequest,
+		Type:   ResponseTypeError,
+	}
+}
+
+// workshopctlHookContext returns the hook context used to execute a
+// workshopctl command. A supplied cookie selects an existing context;
+// otherwise the workshop instance ID is validated before creating an
+// ephemeral context.
+func workshopctlHookContext(
+	c *Command,
+	r *http.Request,
+	contextID string,
+) (*hookstate.Context, Response) {
+	if contextID != "" {
+		return workshopctlHookContextFromContextID(c, contextID)
+	}
+	return workshopctlHookContextFromInstanceID(c, r)
+}
+
+// workshopctlHookContextFromContextID returns the active hook context
+// identified by the request's context ID, supplied to hooks as WORKSHOP_COOKIE.
+// An invalid context ID is rejected rather than falling back to instance ID
+// authentication.
+func workshopctlHookContextFromContextID(
+	c *Command,
+	contextID string,
+) (*hookstate.Context, Response) {
+	hookContext, err := c.d.overlord.HookManager().Context(contextID)
+	if err != nil {
+		return nil, statusBadRequest("invalid workshop cookie")
+	}
+	return hookContext, nil
+}
+
+// workshopctlHookContextFromInstanceID validates that the requesting user owns
+// the workshop instance identified by the request context, then creates a
+// taskless context for this individual workshopctl invocation.
+func workshopctlHookContextFromInstanceID(
+	c *Command,
+	r *http.Request,
+) (*hookstate.Context, Response) {
+	instanceID, _ := r.Context().
+		Value(workshop.ContextWorkshopInstanceID).(string)
+	if instanceID == "" {
+		return nil, statusBadRequest("workshop instance ID not supplied")
+	}
+
+	identity, err := c.d.overlord.WorkshopManager().
+		ResolveWorkshopInstanceID(r.Context(), instanceID)
+	if err != nil {
+		logger.Noticef("Cannot validate workshop instance ID: %v", err)
+		return nil, statusInternalError("internal error occurred validating workshop instance id")
+	}
+	if identity == nil {
+		return nil, statusForbidden("invalid workshop instance ID")
+	}
+
+	hookContext, err := c.d.overlord.HookManager().NewEphemeralContext()
+	if err != nil {
+		logger.Noticef("Cannot create workshop context: %v", err)
+		return nil, statusInternalError("internal error occurred")
+	}
+	hookContext.SetWorkshopIdentity(hookstate.WorkshopIdentity{
+		User:     identity.User,
+		Project:  identity.Project,
+		Workshop: identity.Workshop,
+	})
+	return hookContext, nil
 }

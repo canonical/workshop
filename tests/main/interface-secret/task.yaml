@@ -1,0 +1,28 @@
+summary: Check secret interface plug and slot scenarios
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec launch ws-secret
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove ws-secret
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  echo "Check the secret interface plug and slot are not auto-connected"
+  workshop_exec connections ws-secret > output.log
+  MATCH "^secret\s+ws-secret/test-sdk-basic-2:api-key\s+-\s+-$" < output.log
+  MATCH "^secret\s+-\s+ws-secret/system:api-key\s+-$" < output.log
+
+  echo "Check the secret interface plug can be connected manually"
+  workshop_exec connect ws-secret/test-sdk-basic-2:api-key
+  workshop_exec connections ws-secret | MATCH "^secret\s+ws-secret/test-sdk-basic-2:api-key\s+ws-secret/system:api-key\s+manual$"
+
+  echo "Check the connection persists across refresh"
+  workshop_exec refresh
+  workshop_exec connections ws-secret | MATCH "^secret\s+ws-secret/test-sdk-basic-2:api-key\s+ws-secret/system:api-key\s+manual$"
+
+  echo "Check the secret interface plug can be disconnected"
+  workshop_exec disconnect ws-secret/test-sdk-basic-2:api-key
+  workshop_exec connections ws-secret > output.log
+  MATCH "^secret\s+ws-secret/test-sdk-basic-2:api-key\s+-\s+-$" < output.log
+  NOMATCH "manual" < output.log

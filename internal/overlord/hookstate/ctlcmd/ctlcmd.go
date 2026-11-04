@@ -20,10 +20,10 @@ package ctlcmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 
-	"github.com/canonical/x-go/strutil"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/canonical/workshop/internal/logger"
@@ -53,22 +53,24 @@ func (c *baseCommand) setStdout(w io.Writer) {
 	c.stdout = w
 }
 
-func (c *baseCommand) printf(format string, a ...any) (int, error) {
-	if c.stdout != nil {
-		return fmt.Fprintf(c.stdout, format, a...)
+func (c *baseCommand) printf(format string, a ...any) error {
+	if c.stdout == nil {
+		return nil
 	}
-	return 0, nil
+	_, err := fmt.Fprintf(c.stdout, format, a...)
+	return err
 }
 
 func (c *baseCommand) setStderr(w io.Writer) {
 	c.stderr = w
 }
 
-func (c *baseCommand) errorf(format string, a ...any) (int, error) {
-	if c.stderr != nil {
-		return fmt.Fprintf(c.stderr, format, a...)
+func (c *baseCommand) errorf(format string, a ...any) error {
+	if c.stderr == nil {
+		return nil
 	}
-	return 0, nil
+	_, err := fmt.Fprintf(c.stderr, format, a...)
+	return err
 }
 
 func (c *baseCommand) setContext(context *hookstate.Context) {
@@ -95,7 +97,7 @@ type command interface {
 	setContext(context *hookstate.Context)
 	context() *hookstate.Context
 
-	Execute(args []string) error
+	Execute(ctx context.Context, args []string) error
 }
 
 type commandInfo struct {
@@ -117,36 +119,14 @@ func addCommand(name, shortHelp, longHelp string, generator func() command) *com
 	return cmd
 }
 
-// UnsuccessfulError carries a specific exit code to be returned to the client.
-type UnsuccessfulError struct {
-	ExitCode int
-}
-
-func (e UnsuccessfulError) Error() string {
-	return fmt.Sprintf("unsuccessful with exit code: %d", e.ExitCode)
-}
-
-// ForbiddenCommandError conveys that a command cannot be invoked in some context
-type ForbiddenCommandError struct {
-	Message string
-}
-
-func (f ForbiddenCommandError) Error() string {
-	return f.Message
-}
-
-// nonRootAllowed lists the commands that can be performed even when workshopctl
-// is invoked not by root.
-var nonRootAllowed = []string{"set-health"}
-
 // Run runs the requested command.
-func Run(context *hookstate.Context, args []string, uid uint32) (stdout, stderr []byte, err error) {
+func Run(
+	ctx context.Context,
+	hookContext *hookstate.Context,
+	args []string,
+) (stdout, stderr []byte, err error) {
 	if len(args) == 0 {
 		return nil, nil, fmt.Errorf("workshopctl cannot run without args")
-	}
-
-	if !isAllowedToRun(uid, args) {
-		return nil, nil, &ForbiddenCommandError{Message: fmt.Sprintf("cannot use %q with uid %d, try with sudo", args[0], uid)}
 	}
 
 	parser := flags.NewNamedParser("workshopctl", flags.PassDoubleDash|flags.HelpFlag)
@@ -154,12 +134,14 @@ func Run(context *hookstate.Context, args []string, uid uint32) (stdout, stderr 
 	// Create stdout/stderr buffers, and make sure commands use them.
 	var stdoutBuffer bytes.Buffer
 	var stderrBuffer bytes.Buffer
+	activeCommands := make(map[string]command, len(commands))
 	for name, cmdInfo := range commands {
 		cmd := cmdInfo.generator()
 		cmd.setName(name)
 		cmd.setStdout(&stdoutBuffer)
 		cmd.setStderr(&stderrBuffer)
-		cmd.setContext(context)
+		cmd.setContext(hookContext)
+		activeCommands[name] = cmd
 
 		theCmd, err := parser.AddCommand(name, cmdInfo.shortHelp, cmdInfo.longHelp, cmd)
 		theCmd.Hidden = cmdInfo.hidden
@@ -168,18 +150,14 @@ func Run(context *hookstate.Context, args []string, uid uint32) (stdout, stderr 
 		}
 	}
 
+	parser.CommandHandler = func(_ flags.Commander, args []string) error {
+		cmd, ok := activeCommands[parser.Active.Name]
+		if !ok {
+			return fmt.Errorf("internal error: active command %q not found", parser.Active.Name)
+		}
+		return cmd.Execute(ctx, args)
+	}
+
 	_, err = parser.ParseArgs(args)
 	return stdoutBuffer.Bytes(), stderrBuffer.Bytes(), err
-}
-
-func isAllowedToRun(uid uint32, args []string) bool {
-	// A command can run if any of the following are true:
-	//	* It runs as root
-	//	* It's contained in nonRootAllowed
-	//	* It's used with the -h or --help flags
-	// note: commands still need valid context and workshops can only access own config.
-	return uid == 0 ||
-		strutil.ListContains(nonRootAllowed, args[0]) ||
-		strutil.ListContains(args, "-h") ||
-		strutil.ListContains(args, "--help")
 }

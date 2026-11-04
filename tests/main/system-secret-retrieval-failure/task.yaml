@@ -1,0 +1,58 @@
+# Checks the exit codes an SDK observes from "workshopctl get-secret" for the
+# documented retrieval failures. The secret slot selects the login keyring by
+# name so that the collection can be locked for the provider-locked case; the
+# session keyring created by the daemon cannot be locked.
+summary: Check get-secret reports the documented failure exit codes
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  install_secret_service
+  start_secret_service
+  select_login_collection workshop-failure
+  workshop_exec launch ws-system-secret-failure
+restore: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  workshop_exec remove ws-system-secret-failure || true
+  stop_secret_service
+execute: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  echo "Check a request from an unconnected plug exits 3"
+  exitcode=0
+  workshop_exec exec ws-system-secret-failure -- \
+      workshopctl get-secret test-sdk-basic-2.api-key > secret.out \
+      || exitcode="$?"
+  [ "$exitcode" -eq 3 ]
+
+  echo "Check a connected plug with no matching secret exits 1"
+  workshop_exec connect \
+      ws-system-secret-failure/test-sdk-basic-2:api-key \
+      ws-system-secret-failure/system:api-key
+  exitcode=0
+  workshop_exec exec ws-system-secret-failure -- \
+      workshopctl get-secret test-sdk-basic-2.api-key > secret.out \
+      || exitcode="$?"
+  [ "$exitcode" -eq 1 ]
+
+  echo "Check multiple matching secrets exit 4"
+  store_duplicate_secret workshop-secret-value \
+      service workshop account demo
+  store_duplicate_secret workshop-secret-other \
+      service workshop account demo
+  exitcode=0
+  workshop_exec exec ws-system-secret-failure -- \
+      workshopctl get-secret test-sdk-basic-2.api-key > secret.out \
+      || exitcode="$?"
+  [ "$exitcode" -eq 4 ]
+
+  echo "Check a locked secret provider exits 2"
+  lock_login_collection
+  exitcode=0
+  workshop_exec exec ws-system-secret-failure -- \
+      workshopctl get-secret test-sdk-basic-2.api-key > secret.out \
+      || exitcode="$?"
+  [ "$exitcode" -eq 2 ]

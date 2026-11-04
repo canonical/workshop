@@ -9,9 +9,15 @@ prepare: |
   envsubst '${RUNTIME}' < workshop.yaml.in > workshop.yaml
   chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch ws-ssh
+
+  snap pack test-ssh-client --filename=test-ssh-client.snap
+  snap install --dangerous test-ssh-client.snap
+  snap connect test-ssh-client:ssh-keys
 restore: |
   . "$TESTSLIB"/utils.sh
   workshop_exec remove ws-ssh
+  snap remove --purge test-ssh-client || true
+  rm -f test-ssh-client.snap
 execute: |
   . "$TESTSLIB"/utils.sh
 
@@ -36,3 +42,15 @@ execute: |
   echo "Check certificates are scoped to single principal"
   ! ssh_exec -o HostKeyAlias=example.invalid "$friendly" -- true || false
   ! ssh_exec "ubuntu@$hostname" -- true || false
+
+  confined_ssh() {
+    sudo -u ubuntu -H -- test-ssh-client.ssh "$@"
+  }
+
+  echo "Check confined snaps cannot read the workshop SSH config"
+  literal=/var/snap/test-ssh-client/common/literal.conf
+  echo "Include /var/snap/workshop/common/workshop/ssh/ssh_config.d/workshop.conf" > "$literal"
+  confined_ssh -F "$literal" -G example.invalid 2>&1 | MATCH 'Permission denied'
+
+  echo "Check confined snaps can still parse the system SSH config"
+  confined_ssh -G example.invalid | MATCH '^user ubuntu$'

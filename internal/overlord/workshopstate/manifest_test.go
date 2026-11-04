@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -41,6 +42,7 @@ import (
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 	"github.com/canonical/workshop/internal/workshop/fakebackend"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 type manifestSuite struct {
@@ -640,6 +642,9 @@ func (s *manifestSuite) TestLaunchFindTrySdkFile(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
+	arches := append(slices.Clone(arch.AllowedArchitectures), "mock64")
+	defer testutil.FakeFunc(arches, &arch.AllowedArchitectures)()
+
 	architecture := arch.ArchitectureType(arch.DpkgArchitecture())
 	arch.SetArchitecture("mock64")
 	defer arch.SetArchitecture(architecture)
@@ -959,19 +964,22 @@ func (s *manifestSuite) TestLaunchValidatesProjectSdks(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
+	arches := append(slices.Clone(arch.AllowedArchitectures), "mock32")
+	defer testutil.FakeFunc(arches, &arch.AllowedArchitectures)()
+
 	architecture := arch.ArchitectureType(arch.DpkgArchitecture())
-	arch.SetArchitecture("amd64")
+	arch.SetArchitecture("mock64")
 	defer arch.SetArchitecture(architecture)
 
 	s.mockProjectSdk(c, "test", `name: test
-architecture: arm64
+architecture: mock32
 `)
 
 	sdks := []workshop.SdkRecord{{Name: "test", Source: sdk.ProjectSource}}
 	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
-	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "test" SDK has "arm64" architecture; required: "amd64" or "all"`)
+	c.Assert(err, check.ErrorMatches, `cannot launch "test-1": "test" SDK has "mock32" architecture; required: "mock64" or "all"`)
 }
 
 func (s *manifestSuite) TestLaunchRejectsProjectSdkUnknownField(c *check.C) {
@@ -987,15 +995,13 @@ ssh-agent:
 	s.createWFile(c, "test-1", "ubuntu@24.04", sdks)
 
 	_, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"test-1"})
-	var unknown *sdk.UnknownYamlFieldsError
-	ok := errors.As(err, &unknown)
+	unknown, ok := errors.AsType[*yamlutil.UnknownFieldsError](err)
 	c.Assert(ok, check.Equals, true)
-	c.Check(unknown.Fields, check.DeepEquals, map[string]sdk.UnknownYamlField{
-		"ssh-agent": {
-			Line:   3,
-			Column: 3,
-		},
-	})
+	c.Check(unknown.Fields, check.DeepEquals, []yamlutil.UnknownField{{
+		Name:   "ssh-agent",
+		Line:   3,
+		Column: 3,
+	}})
 }
 
 func (s *manifestSuite) TestRefreshDetectsSketchSdk(c *check.C) {
@@ -1116,6 +1122,28 @@ func (s *manifestSuite) TestRefreshSortsSdks(c *check.C) {
 		"sketch: sketch",
 	}
 	c.Check(sorted, check.DeepEquals, expected)
+}
+
+func (s *manifestSuite) TestLaunchRejectsUnavailableVMs(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	s.createWFile(c, "vm", "ubuntu@24.04", nil)
+	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "vm"), os.O_APPEND|os.O_WRONLY, 0644)
+	c.Assert(err, check.IsNil)
+	_, err = f.WriteString("runtime: lxd-vm\n")
+	c.Assert(f.Close(), check.IsNil)
+	c.Assert(err, check.IsNil)
+
+	os.Setenv("WORKSHOP_EXPERIMENTAL_VMS", "1")
+	defer os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS")
+
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
+	c.Check(err, check.IsNil)
+
+	s.manager.SetVMsUnavailable(errors.New("no vsock"))
+	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
+	c.Check(err, check.ErrorMatches, `cannot launch "vm": virtual machines are unavailable: no vsock`)
 }
 
 func (s *manifestSuite) TestLaunchRejectsVMsWithSDKs(c *check.C) {

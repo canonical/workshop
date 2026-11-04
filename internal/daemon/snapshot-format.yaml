@@ -51,7 +51,7 @@ test-sdk-2:
     snapshot-sdk: 2
   fs-calls: 12
   exec-calls:
-    - ["sudo", "--user=#0", "--group=#0", "--preserve-env=SDK", "--preserve-env=WORKSHOP_COOKIE", "--", "bash", "-l", "-c", 'exec -- "$0" "$@"', "bash", "-o", "errexit", "-o", "pipefail", "/var/lib/workshop/sdk/test-sdk-2/sdk/hooks/setup-base"]
+    - ["sudo", "--user=#0", "--group=#0", "--preserve-env=SDK", "--preserve-env=SDK_SYSTEMD_SECRET_SOCKET", "--preserve-env=WORKSHOP_COOKIE", "--", "bash", "-l", "-c", 'exec -- "$0" "$@"', "bash", "-o", "errexit", "-o", "pipefail", "/var/lib/workshop/sdk/test-sdk-2/sdk/hooks/setup-base"]
 test-sdk:
   files:
     - drwxr-xr-x var
@@ -70,8 +70,8 @@ test-sdk:
     snapshot-sdk: 3
   fs-calls: 16
   exec-calls:
-    - ["sudo", "--user=#0", "--group=#0", "--preserve-env=SDK", "--preserve-env=WORKSHOP_COOKIE", "--", "bash", "-l", "-c", 'exec -- "$0" "$@"', "bash", "-o", "errexit", "-o", "pipefail", "/var/lib/workshop/sdk/test-sdk-2/sdk/hooks/setup-base"]
-    - ["sudo", "--user=#0", "--group=#0", "--preserve-env=SDK", "--preserve-env=WORKSHOP_COOKIE", "--", "bash", "-l", "-c", 'exec -- "$0" "$@"', "bash", "-o", "errexit", "-o", "pipefail", "/var/lib/workshop/sdk/test-sdk/sdk/hooks/setup-base"]
+    - ["sudo", "--user=#0", "--group=#0", "--preserve-env=SDK", "--preserve-env=SDK_SYSTEMD_SECRET_SOCKET", "--preserve-env=WORKSHOP_COOKIE", "--", "bash", "-l", "-c", 'exec -- "$0" "$@"', "bash", "-o", "errexit", "-o", "pipefail", "/var/lib/workshop/sdk/test-sdk-2/sdk/hooks/setup-base"]
+    - ["sudo", "--user=#0", "--group=#0", "--preserve-env=SDK", "--preserve-env=SDK_SYSTEMD_SECRET_SOCKET", "--preserve-env=WORKSHOP_COOKIE", "--", "bash", "-l", "-c", 'exec -- "$0" "$@"', "bash", "-o", "errexit", "-o", "pipefail", "/var/lib/workshop/sdk/test-sdk/sdk/hooks/setup-base"]
 sketch:
   files:
     - drwxr-xr-x var

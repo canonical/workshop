@@ -1,0 +1,31 @@
+summary: Check the system SDK serves a secret from the host keyring
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  install_secret_service
+  start_secret_service
+  workshop_exec launch ws-system-secret
+restore: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  workshop_exec remove ws-system-secret || true
+  stop_secret_service
+execute: |
+  . "$TESTSLIB"/utils.sh
+  . "$TESTSLIB"/secret-service.sh
+
+  echo "Check a secret in the host keyring is served to the system SDK slot"
+  store_secret workshop-secret-value service workshop account demo
+  workshop_exec connect \
+      ws-system-secret/test-sdk-basic-2:api-key \
+      ws-system-secret/system:api-key
+
+  echo "Check the workshop consumes the secret and reports success"
+  exitcode=0
+  workshop_exec exec ws-system-secret -- \
+      workshopctl get-secret test-sdk-basic-2.api-key > secret.out \
+      || exitcode="$?"
+  [ "$exitcode" -eq 0 ]
+  MATCH '^workshop-secret-value$' < secret.out

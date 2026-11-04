@@ -48,7 +48,9 @@ Dependencies come from two files:
 The :file:`.github/workflows/update-sphinx-stack.yaml` workflow
 generates :file:`docs/requirements.txt`
 by appending :file:`docs/requirements.in`
-to the Sphinx Stack's own requirements.
+to the Sphinx Stack's own requirements,
+minus the Canonical Sphinx theme package
+that the Ulwazi theme replaces.
 Keep constraints loose, matching the Sphinx Stack convention.
 For more information about the workflow,
 see :ref:`contributing_cicd`.

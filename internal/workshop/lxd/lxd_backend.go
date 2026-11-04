@@ -27,7 +27,6 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -37,7 +36,6 @@ import (
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
-	"github.com/canonical/x-go/strutil/shlex"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 
@@ -56,6 +54,13 @@ const (
 	storagePool           = "workshop"
 	storagePoolMinimalGiB = 5
 
+	// instanceUUIDConfigKey identifies the LXD configuration value used to
+	// derive the workshop's machine ID.
+	instanceUUIDConfigKey = "volatile.uuid"
+
+	// vsockIDConfigKey is a LXD config option holding the vsock CID.
+	vsockIDConfigKey = "volatile.vsock_id"
+
 	networkName = "workshopbr0"
 	networkType = "bridge"
 
@@ -70,6 +75,12 @@ const (
 
 	startTimeoutContainer = 5 * time.Minute
 	startTimeoutVM        = 10 * time.Minute
+	// Sometimes a workshop reboots during the initial boot process. If that
+	// happens, rather than failing immediately we wait a few seconds for a
+	// (re)started event, and continue waiting if we receive one. LXD only
+	// reports the shutdown event after waiting for the QEMU process to stop,
+	// so the restart should be at least as quick as `lxc start`.
+	restartGracePeriod = 10 * time.Second
 )
 
 var (
@@ -814,20 +825,54 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 	defer func() { _ = listener.RemoveHandler(target) }()
 
-	ready, err := s.isInstanceReady(conn, instance)
+	var restartDeadline <-chan time.Time
+
+	state, _, err := conn.GetInstanceState(instance)
+	if err != nil {
+		return err
+	}
+	switch state.StatusCode {
+	case api.Ready:
+		return nil
+	case api.Starting, api.Started, api.Running:
+	default:
+		restartDeadline = time.After(restartGracePeriod)
+	}
+
 	for {
-		if err != nil {
-			return err
-		}
-		if ready {
-			return nil
-		}
 		select {
 		case event := <-events:
-			ready, err = s.isReadyEvent(event, instance)
+			action, err := s.maybeAction(event, instance)
+			if err != nil {
+				return err
+			}
+
+			switch action {
+			case api.EventLifecycleInstanceReady:
+				return nil
+			case api.EventLifecycleInstanceShutdown, api.EventLifecycleInstanceStopped:
+				restartDeadline = time.After(restartGracePeriod)
+			case api.EventLifecycleInstanceStarted, api.EventLifecycleInstanceRestarted:
+				restartDeadline = nil
+			case api.EventLifecycleInstanceDeleted:
+				return errors.New("workshop removed")
+			}
+		case <-restartDeadline:
+			state, _, err := conn.GetInstanceState(instance)
+			if err != nil {
+				return err
+			}
+			switch state.StatusCode {
+			case api.Ready:
+				return nil
+			case api.Starting, api.Started, api.Running:
+				restartDeadline = nil
+			default:
+				return fmt.Errorf("workshop stopped without restarting within %v", restartGracePeriod)
+			}
 		case <-ctx.Done():
-			ready, err := s.isInstanceReady(conn, instance)
-			if err == nil && ready {
+			state, _, err := conn.GetInstanceState(instance)
+			if err == nil && state.StatusCode == api.Ready {
 				return nil
 			}
 			return ctx.Err()
@@ -835,32 +880,15 @@ func (s *Backend) awaitReadyEvent(conn lxd.InstanceServer, ctx context.Context, 
 	}
 }
 
-func (s *Backend) isInstanceReady(conn lxd.InstanceServer, instance string) (bool, error) {
-	state, _, err := conn.GetInstanceState(instance)
-	if err != nil {
-		return false, err
-	}
-	return state.StatusCode == api.Ready, nil
-}
-
-func (s *Backend) isReadyEvent(event api.Event, instance string) (bool, error) {
+func (s *Backend) maybeAction(event api.Event, instance string) (string, error) {
 	var lifecycle api.EventLifecycle
 	if err := json.Unmarshal(event.Metadata, &lifecycle); err != nil {
-		return false, err
+		return "", err
 	}
-
 	if lifecycle.Name != instance {
-		return false, nil
+		return "", nil
 	}
-
-	switch lifecycle.Action {
-	case api.EventLifecycleInstanceReady:
-		return true, nil
-	case api.EventLifecycleInstanceShutdown, api.EventLifecycleInstanceStopped:
-		return false, fmt.Errorf("received %q event", lifecycle.Action)
-	default:
-		return false, nil
-	}
+	return lifecycle.Action, nil
 }
 
 func (s *Backend) StopWorkshop(ctx context.Context, name string, force bool) error {
@@ -1145,7 +1173,7 @@ func (s *Backend) Workshop(ctx context.Context, name string) (*workshop.Workshop
 		cnames = []cname{}
 	}
 
-	workshop, err := s.loadWorkshop(conn, inst, p, cnames)
+	workshop, err := s.loadWorkshop(conn, inst, user, p, cnames)
 	if err != nil {
 		return nil, err
 	}
@@ -1163,10 +1191,19 @@ func workshopFile(lxdConfig map[string]string) (*workshop.File, error) {
 	return &f, nil
 }
 
-func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, p workshop.Project, cnames []cname) (*workshop.Workshop, error) {
+func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user string, p workshop.Project, cnames []cname) (*workshop.Workshop, error) {
 	f, err := workshopFile(inst.Config)
 	if err != nil {
 		return nil, fmt.Errorf("cannot load workshop: %v", err)
+	}
+
+	var vsockContextID uint32
+	if cid := inst.Config[vsockIDConfigKey]; cid != "" {
+		value, err := strconv.ParseUint(cid, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid vsock CID: %w", err)
+		}
+		vsockContextID = uint32(value)
 	}
 
 	format, err := sdk.ParseRevision(inst.Config[workshop.ConfigWorkshopSnapshotFormat])
@@ -1208,17 +1245,26 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, p wo
 	hostname := b.hostname(f.Name, p, running, cnames)
 
 	return &workshop.Workshop{
-		Backend:  b,
-		Project:  p,
-		Name:     f.Name,
-		Format:   format,
-		Image:    image,
-		Running:  running,
-		Sdks:     sdks,
-		Profiles: profs,
-		File:     f,
-		Hostname: hostname,
+		Backend:        b,
+		User:           user,
+		Project:        p,
+		InstanceID:     instanceIDFromLXDUUID(inst.Config[instanceUUIDConfigKey]),
+		VsockContextID: vsockContextID,
+		Name:           f.Name,
+		Format:         format,
+		Image:          image,
+		Running:        running,
+		Sdks:           sdks,
+		Profiles:       profs,
+		File:           f,
+		Hostname:       hostname,
 	}, nil
+}
+
+// instanceIDFromLXDUUID converts an LXD instance UUID to the identifier
+// written to the workshop's machine ID file.
+func instanceIDFromLXDUUID(uuid string) string {
+	return strings.ReplaceAll(uuid, "-", "")
 }
 
 func (s *Backend) hostname(name string, p workshop.Project, running bool, cnames []cname) workshop.Hostname {
@@ -1283,7 +1329,7 @@ func (s *Backend) ProjectWorkshops(ctx context.Context) ([]*workshop.Workshop, e
 
 	var workshops []*workshop.Workshop
 	for _, i := range instances {
-		ws, err := s.loadWorkshop(conn, &i, p, nil)
+		ws, err := s.loadWorkshop(conn, &i, user, p, nil)
 		if err != nil {
 			logger.Debugf("Workshop Backend on ProjectsWorkshops: %v", err)
 			continue
@@ -1406,172 +1452,21 @@ func proxyToLxdDevice(usr *user.User, proxy workshop.ProxyEntry) map[string]stri
 	return device
 }
 
-func (s *Backend) workshopConfig(projectId string, userid, groupid string, file *workshop.File, format sdk.Revision, baseFingerprint string) (map[string]string, error) {
-	cloudConfigTemplate := `
-#cloud-config
-users:
-  - default
-  - name: workshop
-    primary_group: workshop
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    create_groups: false
-    groups:
-    - 'adm'
-    - 'cdrom'
-    - 'sudo'
-    - 'dip'
-    - 'plugdev'
-    - 'audio'
-    - 'netdev'
-    - 'lxd'
-    - 'video'
-    - 'render'
-    # Compatibility GIDs for various host systems:
-    - '108' # netdev on 26.04
-    - '111' # netdev on 24.04
-    - '118' # netdev on 20.04
-    - '119' # netdev on 22.04
-    - '109' # render on 20.04
-    - '110' # render on 22.04
-    - '990' # render on 26.04
-    - '992' # render on 24.04
-bootcmd:
-- |
-  set -e
-  maybe_groupadd() {
-      # Ignore GID not unique (exit code 4) or group name not unique (exit code 9)
-      groupadd -g "$1" -r "$2" || case $? in 4|9) ;; *) return $? ;; esac
-  }
-  maybe_groupadd 1000 workshop
-  maybe_groupadd 108 netdev-compat-108
-  maybe_groupadd 111 netdev-compat-111
-  maybe_groupadd 118 netdev-compat-118
-  maybe_groupadd 119 netdev-compat-119
-  maybe_groupadd 109 render-compat-109
-  maybe_groupadd 110 render-compat-110
-  maybe_groupadd 990 render-compat-990
-  maybe_groupadd 992 render-compat-992
-- chmod 0600 /etc/ssh/ssh_host_ed25519_key
-# LXD containers use /dev/urandom from the host and VMs use virtio-rng.
-- install -D --mode=0644 /dev/null /var/cache/pollinate/seeded
-apt:
-  conf: |
-    # Installed by workshop
-
-    # Don't automatically install recommended packages
-    APT::Install-Recommends "0";
-
-    # Don't automatically install suggested packages
-    APT::Install-Suggests "0";
-
-    # Bypass confirmation prompts
-    APT::Get::Assume-Yes "1";
-grub_dpkg:
-  enabled: false
-ssh_deletekeys: false
-ssh_genkeytypes: [ed25519]
-write_files:
-  - path: /etc/cloud/cloud-init.disabled
-    defer: true
-  # Workaround https://bugs.launchpad.net/snapd/+bug/2165972. Without network
-  # access snapd retries certain HTTP requests a few times before timing out.
-  - path: /etc/systemd/system/snapd.service.d/70-snapd-after-network.conf
-    content: |
-      [Unit]
-      After=network.target
-  - path: /etc/ssh/sshd_config.d/90-workshop.conf
-    content: |
-      HostCertificate /etc/ssh/ssh_host_ed25519_key-cert.pub
-      TrustedUserCAKeys /etc/ssh/ssh_ca_ed25519_key.pub
-  # Workaround https://github.com/canonical/lxd/issues/19055. We handle the
-  # initial permissions in bootcmd, but subsequent boots from a VM snapshot
-  # can reset the permissions back to 0644.
-  - path: /etc/systemd/system/ssh.service.d/70-workshop.conf
-    content: |
-      [Service]
-      ExecStartPre=
-      ExecStartPre=/usr/bin/chmod 0600 /etc/ssh/ssh_host_ed25519_key
-      ExecStartPre=/usr/sbin/sshd -t
-  - path: /etc/systemd/system/workshop-waitready.service
-    content: |
-      [Unit]
-      Description=Signal workshop readiness to LXD
-      After=dbus.socket
-      Requires=dbus.socket
-
-      [Service]
-      Type=notify
-      ExecStart=/usr/local/lib/workshop/waitready
-      Environment=WORKSHOP_WAITREADY_TIMEOUT_NS={{.StartTimeout}}
-      Restart=on-failure
-      RestartSec=2s
-
-      [Install]
-      WantedBy=multi-user.target
-{{- if .HasGRUB}}
-  - path: /boot/grub/custom.cfg
-    content: |
-      # Extract SMBIOS UUID and store it in a GRUB variable. We use it to set
-      # the systemd.machine_id kernel parameter to the LXD UUID, which forces
-      # systemd to use it. By default it prefers reading the machine ID from
-      # /etc/machine-id, which may be stale when restoring from a snapshot.
-      insmod smbios
-      smbios --type 1 --get-uuid 8 --set workshop_machine_id
-      export workshop_machine_id
-  - path: /etc/default/grub.d/70-workshop.cfg
-    content: |
-      GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:+$GRUB_CMDLINE_LINUX }"'systemd.machine_id=${workshop_machine_id}'
-      GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT:+$GRUB_CMDLINE_LINUX_DEFAULT }quiet"
-{{- end}}
-runcmd:
-  # Project directory is required for 'workshop exec'.
-  - install --directory --mode=755 /project /usr/local/bin /usr/local/lib/workshop {{shquote .WorkshopStateDir}}
-  # Create XDG base directories so SDKs don't need an extra mode=700 step.
-  - install --directory --mode=700 --owner=workshop --group=workshop /home/workshop/.cache /home/workshop/.config /home/workshop/.local
-  # Create ~/.local/bin so SDKs don't need to source ~/.profile to add it to the PATH.
-  - install --directory --mode=755 --owner=workshop --group=workshop /home/workshop/.local/bin
-  # Put workshopctl on the PATH.
-  - ln -sf {{shquote .WorkshopCtlPath}} /usr/local/bin/workshopctl
-  - ln -sf ../../bin/workshopctl /usr/local/lib/workshop/waitready
-{{- if ne .FsFreezePath ""}}
-  - ln -sf ../../bin/workshopctl {{shquote .FsFreezePath}}
-{{- end}}
-  - systemctl enable --now workshop-waitready.service
-  # Linger starts the user manager for the specified user on boot, which then creates /run/user/$UID,
-  # sets $XDG_RUNTIME_DIR and more. Interfaces such as desktop rely on both of these to be present.
-  # This does not introduce any additional modification beyond what a login session would normally create.
-  - loginctl enable-linger workshop
-{{- if .HasGRUB}}
-  - update-grub
-{{- end}}
-`[1:]
+func (s *Backend) workshopConfig(
+	projectId string,
+	userid, groupid string,
+	file *workshop.File,
+	format sdk.Revision,
+	baseFingerprint string,
+) (map[string]string, error) {
+	t, err := cloudConfigTemplate()
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse cloud-config template: %w", err)
+	}
 
 	var cloudConfig strings.Builder
-	funcs := map[string]any{
-		"shquote": shlex.Quote,
-	}
-	var fsFreezePath string
-	startTimeout := startTimeoutContainer
-	if file.Runtime != workshop.RuntimeLXDContainer {
-		fsFreezePath = dirs.FsFreezePath
-		startTimeout = startTimeoutVM
-	}
-	dot := struct {
-		FsFreezePath     string
-		HasGRUB          bool
-		StartTimeout     int64
-		WorkshopCtlPath  string
-		WorkshopStateDir string
-	}{
-		FsFreezePath:     fsFreezePath,
-		HasGRUB:          file.Runtime == workshop.RuntimeLXDVM,
-		StartTimeout:     startTimeout.Nanoseconds(),
-		WorkshopCtlPath:  filepath.Join(dirs.WorkshopGuestBinDir, filepath.Base(dirs.WorkshopCtlPath)),
-		WorkshopStateDir: dirs.WorkshopStateDir,
-	}
-	t := template.Must(template.New("cloud-config").Funcs(funcs).Parse(cloudConfigTemplate))
-	if err := t.Execute(&cloudConfig, dot); err != nil {
+	err = t.Execute(&cloudConfig, makeCloudConfigVars(file))
+	if err != nil {
 		return nil, err
 	}
 
@@ -1610,8 +1505,49 @@ runcmd:
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
 
-		// Speeds up boot, and allows SDKs to install unsigned kernel modules.
+		// Allows SDKs to install unsigned kernels and kernel modules.
 		cfg["boot.mode"] = "uefi-nosecureboot"
+
+		// Each virtiofs mount consumes a PCIe port and 3 interrupt vectors.
+		// The port consumes another interrupt vector on top of that. KVM
+		// allocates up to 32 slots, with 8 functions each, but some are
+		// reserved. So we set a conservative upper bound of 192 ports.
+		// Interrupt vectors are also capped at around 256 per vCPU. A single
+		// CPU only has headroom for about 160 interrupt vectors, so we make
+		// another conservative estimate of 128 interrupt vectors per CPU.
+		// Extra CPUs have more headroom than the first, but we don't lose
+		// much by adding more CPUs by default. We want to hit the port limit
+		// well before the IRQ limit because LXD doesn't handle the latter
+		// well: see https://github.com/canonical/lxd/issues/19164.
+		// Typical SDKs have one mount for the SDK itself and another for
+		// config or cache, but some (e.g. node) have several different cache
+		// mounts. Each port we allocate costs about 100ms on first boot, and
+		// 75ms after that. So allowing 4 per SDK seems like a good balance of
+		// allowing some headroom without slowing down the boot too much. The
+		// system SDK reserves 8 ports to match LXD defaults and allow some
+		// headroom if the only other SDK is something like node (or there's a
+		// sketch SDK, which we can't observe from the File alone).
+		const (
+			minPorts    = 8
+			portsPerSdk = 4
+			maxPorts    = 192
+
+			minCPUs      = 2
+			irqsPerMount = 4
+			irqsPerCPU   = 128
+		)
+		regularSdks := len(file.Sdks)
+		for _, s := range file.Sdks {
+			if s.Source == sdk.SystemSource || s.Source == sdk.SketchSource {
+				regularSdks--
+			}
+		}
+		maxBusPorts := min(minPorts+portsPerSdk*regularSdks, maxPorts)
+		cfg["limits.max_bus_ports"] = fmt.Sprint(maxBusPorts)
+
+		minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
+		vCPUs := max(minCPUs, minCPUsForPCI)
+		cfg["limits.cpu"] = fmt.Sprint(vCPUs)
 
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
@@ -1626,7 +1562,6 @@ runcmd:
 [device "qemu_tablet"]
 
 [machine]
-i8042 = "off"
 hpet = "off"
 sata = "off"
 `[1:]

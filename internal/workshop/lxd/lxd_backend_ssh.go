@@ -69,7 +69,7 @@ func sshConfig(usr *user.User, hostname string) (map[string]string, error) {
 }
 
 func ensureConfigFile() error {
-	path := filepath.Join(dirs.WorkshopSSHDir, "config")
+	path := filepath.Join(dirs.WorkshopSSHConfigDir, "workshop.conf")
 	if osutil.FileExists(path) {
 		return nil
 	}
@@ -126,6 +126,9 @@ Host "*.{{sshescape .Domain}}"
 		return err
 	}
 
+	if err := os.MkdirAll(dirs.WorkshopSSHConfigDir, 0755); err != nil {
+		return err
+	}
 	if err := osutil.AtomicWrite(filepath.Join(dirs.WorkshopSSHDir, "known-hosts"), &knownHostsCommand, 0755, 0); err != nil {
 		return err
 	}

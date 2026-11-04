@@ -213,7 +213,7 @@ func WorkshopHealth(st *state.State, ws *workshop.Workshop) HealthState {
 	}
 
 	err := conflict.CheckChangeConflict(
-		st, ws.Project.ProjectId, ws.Name, []string{"exec"})
+		st, ws.Project.ProjectId, ws.Name, []string{"exec", "get-secret"})
 	var changeConflictError *conflict.ChangeConflictError
 	switch {
 	case errors.As(err, &changeConflictError):

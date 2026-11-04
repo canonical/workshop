@@ -22,4 +22,5 @@ and publishing the result to the SDK Store.
    Declare plugs and slots <declare-plugs-slots>
    Publish an SDK <publish-an-sdk>
    Share content between SDKs <share-content-between-sdks>
+   Use secrets in an SDK <use-secrets>
    Write runtime hooks <write-runtime-hooks>

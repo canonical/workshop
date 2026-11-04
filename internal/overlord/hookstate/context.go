@@ -44,8 +44,9 @@ type Context struct {
 	id      string
 	handler Handler
 
-	cache  map[any]any
-	onDone []func() error
+	cache            map[any]any
+	onDone           []func() error
+	workshopIdentity *WorkshopIdentity
 
 	mutex        sync.Mutex
 	mutexChecker int32

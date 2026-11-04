@@ -1,0 +1,12 @@
+name: ws-tunnel-disconnect
+base: ubuntu@22.04
+sdks:
+  - name: system
+    slots:
+      keep:
+        interface: tunnel
+        endpoint: 54321
+      drop:
+        interface: tunnel
+        endpoint: 54322
+  - name: test-sdk-tunnel

@@ -297,8 +297,8 @@ The :file:`.github/copilot-instructions.md` file
 provides general project context to GitHub Copilot.
 
 Also, there are documentation- and code-specific instructions
-in :file:`.github/docs.instructions.md`
-and :file:`.github/go.instructions.md`,
+in :file:`.github/instructions/docs.instructions.md`
+and :file:`.github/instructions/go.instructions.md`,
 tailored to guide Copilot when assisting with documentation and Go code tasks,
 respectively.
 

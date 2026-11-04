@@ -15,13 +15,18 @@
 package workshop_test
 
 import (
+	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/arch"
 	"github.com/canonical/workshop/internal/sdk"
+	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -84,7 +89,6 @@ func (f *workshopSuite) TestExecArgsEffectiveCommandNoPrefix(c *check.C) {
 }
 
 func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -93,12 +97,11 @@ func (f *workshopSuite) TestValidateSdkSyntax(c *check.C) {
 
 	sdkYaml := `incorrect yaml: -
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", sdkYaml)
-	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK definition: yaml: block sequence entries are not allowed in this context`)
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
+	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: yaml: block sequence entries are not allowed in this context`)
 }
 
 func (f *workshopSuite) TestValidateSdkName(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -107,12 +110,11 @@ func (f *workshopSuite) TestValidateSdkName(c *check.C) {
 
 	sdkYaml := `name: sdk-1
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", sdkYaml)
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
 	c.Check(err, check.ErrorMatches, `SDK must be named "test-sdk-1" \(now: "sdk-1"\)`)
 }
 
 func (f *workshopSuite) TestValidateSdkBase(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
 
 	wpath := filepath.Join(f.project.Path, "workshop.yaml")
 	writeFile(c, wpath, string(workshopyaml))
@@ -122,12 +124,15 @@ func (f *workshopSuite) TestValidateSdkBase(c *check.C) {
 	sdkYaml := `name: test-sdk-1
 base: ubuntu@24.04
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", sdkYaml)
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
 	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has "ubuntu@24.04" base; required: "ubuntu@22.04"`)
 }
 
 func (f *workshopSuite) TestValidateSdkArchitecture(c *check.C) {
-	defer sdk.MockSanitizePlugsSlots(func(sdkInfo *sdk.Info) {})()
+
+	arches := append(slices.Clone(arch.AllowedArchitectures), "mock64")
+	defer testutil.FakeFunc(arches, &arch.AllowedArchitectures)()
+
 	architecture := arch.ArchitectureType(arch.DpkgArchitecture())
 	arch.SetArchitecture("mock32")
 	defer arch.SetArchitecture(architecture)
@@ -140,8 +145,44 @@ func (f *workshopSuite) TestValidateSdkArchitecture(c *check.C) {
 	sdkYaml := `name: test-sdk-1
 architecture: mock64
 `
-	err = workshop.ValidateSdkInfo(f.project.ProjectId, file.Name, file.Base, "test-sdk-1", sdkYaml)
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
 	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has "mock64" architecture; required: "mock32" or "all"`)
+}
+
+func (f *workshopSuite) TestValidateSdkPlugsAndSlots(c *check.C) {
+	sanitize := func(sdkInfo *sdk.Info, runtime workshop.Runtime) error {
+		var invalid []string
+		for _, plugName := range slices.Sorted(maps.Keys(sdkInfo.Plugs)) {
+			if err := sdk.ValidatePlugName(plugName); err != nil {
+				invalid = append(invalid, plugName)
+			}
+		}
+		if len(invalid) > 0 {
+			return fmt.Errorf("invalid plug names: %s", strings.Join(invalid, ", "))
+		}
+		return nil
+	}
+
+	wsYaml := `name: test-workshop
+base: ubuntu@22.04
+sdks:
+  - name: test-sdk-1
+    plugs:
+      D-Bus:
+        interface: tunnel
+`
+	wpath := filepath.Join(f.project.Path, "workshop.yaml")
+	writeFile(c, wpath, wsYaml)
+	file, err := workshop.ReadWorkshop(wpath)
+	c.Assert(err, check.IsNil)
+
+	sdkYaml := `name: test-sdk-1
+plugs:
+  GPU:
+    interface: gpu
+`
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sanitize)
+	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: invalid plug names: D-Bus, GPU`)
 }
 
 func (f *workshopSuite) TestSdkSetupsByInstallOrder(c *check.C) {
@@ -194,4 +235,8 @@ func (f *workshopSuite) TestSdkSetupsByInstallOrder(c *check.C) {
 
 	sdks := w.SdksByInstallOrder()
 	c.Assert(sdks, check.DeepEquals, []workshop.SdkInstallation{w.Sdks["system"], w.Sdks["test-sdk-1"], w.Sdks["test-sdk-2"], w.Sdks["sketch"]})
+}
+
+func sdkValidate(i *sdk.Info, r workshop.Runtime) error {
+	return sdk.Validate(i)
 }

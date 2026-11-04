@@ -1,4 +1,3 @@
-:hide-toc:
 .. _how_resolve_plug_conflicts:
 
 .. meta::
@@ -95,7 +94,7 @@ where the SDKs store their models.
         ...
         mounts:
           hub:
-            host-source:      /home/user/digits/.cache/hub
+            host-source:      ~/digits/.cache/hub
             workshop-target:  /home/workshop/.cache/torch/hub
 
 

@@ -241,6 +241,40 @@ func (iface *tunnelInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo
 	return false
 }
 
+// MaintainConnection implements [interfaces.Interface]. It keeps the
+// connection while the tunnel's plug and slot endpoints are unchanged; a
+// change to either reworks the tunnel.
+func (iface *tunnelInterface) MaintainConnection(
+	plug *sdk.PlugInfo, oldPlugAttrs map[string]any,
+	slot *sdk.SlotInfo, oldSlotAttrs map[string]any,
+) bool {
+	return endpointsEqual(oldPlugAttrs, plug.Attrs) &&
+		endpointsEqual(oldSlotAttrs, slot.Attrs)
+}
+
+// endpointsEqual reports whether the two attribute maps carry the same
+// "endpoint". Tunnel endpoints are always strings: the sanitizers normalise
+// them, and the snapshot is recorded from the sanitised definition.
+func endpointsEqual(oldAttrs, newAttrs map[string]any) bool {
+	oldEndpoint, _ := oldAttrs["endpoint"].(string)
+	newEndpoint, _ := newAttrs["endpoint"].(string)
+	return oldEndpoint == newEndpoint
+}
+
+func (iface *tunnelInterface) CheckCompatiblePlug(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("tunnel interface only available to containers")
+	}
+	return nil
+}
+
+func (iface *tunnelInterface) CheckCompatibleSlot(slot *sdk.SlotInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("tunnel interface only available to containers")
+	}
+	return nil
+}
+
 func (iface *tunnelInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
 	entry := workshop.ProxyEntry{Name: plug.Name()}
 

@@ -1,0 +1,46 @@
+# Checks that a refresh drops a manually connected tunnel plug when the slot's
+# endpoint changes. The tunnel interface keeps a connection only while both
+# endpoints are unchanged, so a connection to a slot whose endpoint moved is
+# not reconnected and the drop is reported as a warning.
+summary: Check a tunnel connection is dropped when its endpoint changes
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec launch ws-tunnel-disconnect
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove ws-tunnel-disconnect
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  echo "Check the manual connections are established"
+  workshop_exec connect \
+      ws-tunnel-disconnect/test-sdk-tunnel:postgres \
+      ws-tunnel-disconnect/system:keep
+  workshop_exec connect \
+      ws-tunnel-disconnect/test-sdk-tunnel:alias \
+      ws-tunnel-disconnect/system:drop
+  workshop_exec connections ws-tunnel-disconnect |
+      MATCH "^tunnel.+ws-tunnel-disconnect/test-sdk-tunnel:postgres.+ws-tunnel-disconnect/system:keep.+manual$"
+  workshop_exec connections ws-tunnel-disconnect |
+      MATCH "^tunnel.+ws-tunnel-disconnect/test-sdk-tunnel:alias.+ws-tunnel-disconnect/system:drop.+manual$"
+
+  echo "Move the drop slot endpoint and refresh"
+  sed -i 's/endpoint: 54322/endpoint: 54323/' .workshop.yaml
+  workshop_exec refresh ws-tunnel-disconnect |
+      MATCH '^WARNING: There is 1 new warning. See "workshop warnings".$'
+
+  echo "Check the changed connection is dropped and the unchanged one survives"
+  workshop_exec connections ws-tunnel-disconnect |
+      MATCH "^tunnel.+ws-tunnel-disconnect/test-sdk-tunnel:postgres.+ws-tunnel-disconnect/system:keep.+manual$"
+  workshop_exec connections ws-tunnel-disconnect |
+      NOMATCH "ws-tunnel-disconnect/test-sdk-tunnel:alias.+ws-tunnel-disconnect/system:drop"
+
+  echo "Check the drop is reported as a warning"
+  workshop_exec warnings |
+      tr -d '\n' |
+      sed -e 's,\s\+, ,g' |
+      MATCH 'disconnected "ws-tunnel-disconnect/test-sdk-tunnel:alias" from "ws-tunnel-disconnect/system:drop" because its definition changed'
+
+  # Warnings are global state that persists across tests sharing a machine, so
+  # acknowledge this one to keep later tests' warning counts deterministic.
+  workshop_exec okay

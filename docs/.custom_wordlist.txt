@@ -7,6 +7,7 @@ AUTH
 autosquash
 backend
 basename
+Bitwarden
 Btrfs
 bugfix
 cacheable
@@ -36,6 +37,7 @@ dependabot
 deterministically
 dev
 devenv
+direnv
 distributions
 dmitry
 Dockerfile
@@ -46,7 +48,6 @@ elif
 enum
 env
 envvar
-Evals
 errcheck
 esac
 fi
@@ -74,6 +75,7 @@ Guillaumebeuzeboc
 GUIs
 hardcoded
 hardlinking
+hoc
 hostname
 hostnames
 hotfix
@@ -113,13 +115,11 @@ moby
 modularization
 modularize
 monorepo
-multiagent
 multibase
 Multibase
 multiline
 Multipass
 multistage
-multistep
 multiworkshop
 nftables
 nonblocking
@@ -129,7 +129,6 @@ nondefault
 nonexistent
 nonexisting
 nonfunctional
-noninteractive
 nonoperational
 nonprivileged
 nonroot
@@ -145,7 +144,9 @@ opencode
 OpenVINO
 passthrough
 pathname
+PCIe
 PlugRef
+PRs
 prebuilt
 predefined
 preexisting
@@ -195,7 +196,6 @@ stateDiagram
 stderr
 stdin
 stdout
-subagents
 subcommand
 subcommands
 subdirectory
@@ -238,6 +238,7 @@ url
 uv
 validator
 venv
+vsock
 wayland
 Wayland
 WAYLAND

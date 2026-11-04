@@ -20,25 +20,32 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/mdlayher/vsock"
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/client"
+	"github.com/canonical/workshop/internal/testutil"
 )
 
 func TestT(t *testing.T) { check.TestingT(t) }
 
 type workshopctlSuite struct {
 	server            *httptest.Server
-	oldArgs           []string
 	expectedContextID string
 	expectedArgs      []string
 	expectedStdin     []byte
+
+	restoreClient func()
 }
 
 var _ = check.Suite(&workshopctlSuite{})
@@ -67,52 +74,199 @@ func (s *workshopctlSuite) SetUpTest(c *check.C) {
 
 		n++
 	}))
+	s.restoreClient = testutil.Backup(&clientConfig)
 	clientConfig.BaseURL = s.server.URL
-	s.oldArgs = os.Args
-	os.Args = []string{"workshopctl"}
+	clientConfig.Socket = ""
+	clientConfig.Vsock = nil
 	s.expectedContextID = "workshop-context-test"
 	s.expectedArgs = []string{}
 }
 
 func (s *workshopctlSuite) TearDownTest(c *check.C) {
 	c.Assert(os.Unsetenv("WORKSHOP_COOKIE"), check.IsNil)
-	clientConfig.BaseURL = ""
+	s.restoreClient()
 	s.server.Close()
-	os.Args = s.oldArgs
 }
 
 func (s *workshopctlSuite) TestWorkshopctl(c *check.C) {
-	stdout, stderr, err := run(nil)
-	c.Check(err, check.IsNil)
-	c.Check(string(stdout), check.Equals, "test stdout")
-	c.Check(string(stderr), check.Equals, "test stderr")
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{}, nil, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals, "test stderr")
 }
 
 func (s *workshopctlSuite) TestWorkshopctlWithArgs(c *check.C) {
-	os.Args = []string{"workshopctl", "foo", "--bar"}
-
 	s.expectedArgs = []string{"foo", "--bar"}
-	stdout, stderr, err := run(nil)
-	c.Check(err, check.IsNil)
-	c.Check(string(stdout), check.Equals, "test stdout")
-	c.Check(string(stderr), check.Equals, "test stderr")
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{"foo", "--bar"}, nil, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals, "test stderr")
 }
 
 func (s *workshopctlSuite) TestWorkshopctlHelp(c *check.C) {
 	os.Unsetenv("WORKSHOP_COOKIE")
 	s.expectedContextID = ""
-
-	os.Args = []string{"workshopctl", "-h"}
 	s.expectedArgs = []string{"-h"}
 
-	_, _, err := run(nil)
-	c.Check(err, check.IsNil)
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{"-h"}, nil, &stdout, &stderr), check.Equals, 0)
 }
 
-func (s *workshopctlSuite) TestWorkshopctlWithStdin(c *check.C) {
-	s.expectedStdin = []byte("hello")
-	mockStdin := bytes.NewBuffer(s.expectedStdin)
+// TestWorkshopctlStdinNotForwarded checks that stdin is not forwarded to
+// the daemon by default; interceptors must opt in to forwarding it.
+func (s *workshopctlSuite) TestWorkshopctlStdinNotForwarded(c *check.C) {
+	s.expectedStdin = nil
+	mockStdin := &fakeFdReader{Reader: bytes.NewReader([]byte("hello"))}
 
-	_, _, err := run(mockStdin)
-	c.Check(err, check.IsNil)
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{}, mockStdin, &stdout, &stderr), check.Equals, 0)
+}
+
+// fakeFdReader is an fdReader backed by an in-memory reader, for tests that
+// do not exercise the file descriptor.
+type fakeFdReader struct {
+	io.Reader
+}
+
+func (f *fakeFdReader) Fd() uintptr {
+	return 0
+}
+
+// TestInterceptArgsDefaultFallback checks that other commands retain the
+// ordinary failure exit code rather than the secret fallback.
+func (s *workshopctlSuite) TestInterceptArgsDefaultFallback(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	req, err := interceptArgs([]string{"foo"}, nil, &stdout, &stderr)
+	c.Assert(err, check.IsNil)
+
+	code := req.responseHandler(nil, nil, errors.New("daemon unavailable"))
+
+	c.Check(code, check.Equals, 1)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Equals, "error: daemon unavailable\n")
+}
+
+// TestWorkshopctlGetSecretDecodeFailure checks that run uses the installed
+// secret handler when local systemd decoding fails.
+func (s *workshopctlSuite) TestWorkshopctlGetSecretDecodeFailure(c *check.C) {
+	stdin, err := os.CreateTemp(c.MkDir(), "stdin")
+	c.Assert(err, check.IsNil)
+	defer stdin.Close()
+	var stdout, stderr bytes.Buffer
+
+	code := run([]string{"get-secret", "--systemd"}, stdin, &stdout, &stderr)
+
+	c.Check(code, check.Equals, 255)
+	c.Check(stdout.String(), check.Equals, "")
+	c.Check(stderr.String(), check.Matches,
+		"error: cannot decode secret request: .*\n")
+}
+
+// TestWorkshopctlGetSecretSystemd checks that get-secret --systemd decodes
+// the stdin connection, forwards the flag but no stdin, and preserves the
+// daemon's stdout and stderr.
+func (s *workshopctlSuite) TestWorkshopctlGetSecretSystemd(c *check.C) {
+	addr := "\x00" + fmt.Sprintf("%d-main", os.Getpid()) + "/unit/ollama.service/ollama.ollama-api-key"
+	name := filepath.Join(c.MkDir(), "conn")
+
+	server, err := net.ListenUnix("unix", &net.UnixAddr{Name: name})
+	c.Assert(err, check.IsNil)
+	defer server.Close()
+
+	type acceptResult struct {
+		conn *net.UnixConn
+		err  error
+	}
+	accepted := make(chan acceptResult, 1)
+	go func() {
+		conn, err := server.AcceptUnix()
+		accepted <- acceptResult{conn: conn, err: err}
+	}()
+
+	clientConn, err := net.DialUnix("unix",
+		&net.UnixAddr{Name: addr},
+		&net.UnixAddr{Name: name},
+	)
+	c.Assert(err, check.IsNil)
+	defer clientConn.Close()
+
+	result := <-accepted
+	c.Assert(result.err, check.IsNil)
+	defer result.conn.Close()
+
+	f, err := result.conn.File()
+	c.Assert(err, check.IsNil)
+	defer f.Close()
+
+	s.expectedArgs = []string{
+		"get-secret", "--systemd", "ollama.ollama-api-key",
+	}
+	s.expectedStdin = nil
+
+	var stdout, stderr bytes.Buffer
+	args := []string{"get-secret", "--systemd"}
+	c.Check(run(args, f, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals,
+		"processed systemd load credential request for unit "+
+			"\"ollama.service\", \"ollama\" SDK and secret "+
+			"\"ollama-api-key\"\ntest stderr")
+}
+
+func (s *workshopctlSuite) TestWorkshopctlUnixSocket(c *check.C) {
+	clientConfig.BaseURL = ""
+	clientConfig.Socket = filepath.Join(c.MkDir(), "workshop.socket.untrusted")
+	clientConfig.Vsock = &vsock.Addr{ContextID: vsock.Local, Port: 8080}
+
+	l, err := net.Listen("unix", clientConfig.Socket)
+	c.Assert(err, check.IsNil)
+
+	n := 0
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		n++
+		s.server.Config.Handler.ServeHTTP(w, r)
+	}
+	srv := &httptest.Server{
+		Listener: l,
+		Config:   &http.Server{Handler: http.HandlerFunc(handler)},
+	}
+	srv.Start()
+	defer srv.Close()
+
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{}, nil, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals, "test stderr")
+	c.Check(n, check.Equals, 1)
+}
+
+func (s *workshopctlSuite) TestWorkshopctlVsock(c *check.C) {
+	// Binding the local CID requires the vsock_loopback kernel module.
+	l, err := vsock.ListenContextID(vsock.Local, 0, nil)
+	if err != nil {
+		c.Skip("vsock not available: " + err.Error())
+	}
+	port := l.Addr().(*vsock.Addr).Port
+
+	clientConfig.BaseURL = ""
+	clientConfig.Socket = filepath.Join(c.MkDir(), "workshop.socket.untrusted")
+	clientConfig.Vsock = &vsock.Addr{ContextID: vsock.Local, Port: port}
+
+	n := 0
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		n++
+		s.server.Config.Handler.ServeHTTP(w, r)
+	}
+	srv := &httptest.Server{
+		Listener: l,
+		Config:   &http.Server{Handler: http.HandlerFunc(handler)},
+	}
+	srv.Start()
+	defer srv.Close()
+
+	var stdout, stderr bytes.Buffer
+	c.Check(run([]string{}, nil, &stdout, &stderr), check.Equals, 0)
+	c.Check(stdout.String(), check.Equals, "test stdout")
+	c.Check(stderr.String(), check.Equals, "test stderr")
+	c.Check(n, check.Equals, 1)
 }

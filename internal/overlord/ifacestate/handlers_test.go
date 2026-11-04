@@ -287,12 +287,24 @@ type simpleIface struct {
 func (si simpleIface) Name() string                                            { return si.name }
 func (si simpleIface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool { return true }
 
+// MaintainConnection implements [interfaces.Interface]. It keeps the
+// connection.
+func (si simpleIface) MaintainConnection(_ *sdk.PlugInfo, _ map[string]any, _ *sdk.SlotInfo, _ map[string]any) bool {
+	return true
+}
+
 type denyAutoIface struct {
 	name string
 }
 
 func (di denyAutoIface) Name() string                                            { return di.name }
 func (di denyAutoIface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool { return false }
+
+// MaintainConnection implements [interfaces.Interface]. It keeps the
+// connection.
+func (di denyAutoIface) MaintainConnection(_ *sdk.PlugInfo, _ map[string]any, _ *sdk.SlotInfo, _ map[string]any) bool {
+	return true
+}
 
 func (s *interfaceHandlersSuite) newAutoconnectChange(sk string) *state.Change {
 	chg := s.state.NewChange("sample", "...")
@@ -489,6 +501,42 @@ func (s *interfaceHandlersSuite) TestAutoconnectBindMasterPlugNotFound(c *check.
 	s.state.Lock()
 	defer s.state.Unlock()
 	c.Check(chg.Err(), check.ErrorMatches, `(?s).*"ws/consumer" SDK has no plug named "no-such-plug2".*`)
+
+	// Validate
+	pconns, err := repo.Connections(s.prj.ProjectId, "ws", "consumer")
+	c.Check(pconns, check.HasLen, 0)
+	c.Check(err, check.IsNil)
+
+	ref, err := repo.Connected(s.prj.ProjectId, "ws-producer", "producer", "slot")
+	c.Check(ref, check.HasLen, 0)
+	c.Check(err, check.IsNil)
+}
+
+func (s *interfaceHandlersSuite) TestAutoconnectBoundPlugSkipped(c *check.C) {
+	// Setup
+	// Create an already installed workshop with a candidate SDK/slot
+	repo := s.mgr.Repository()
+	s.launchWorkshop(c, "ws-producer", []sdk.Meta{producer})
+	c.Assert(repo.AddSdk(sdk.MockInfo(c, producer.SdkYAML, s.prj.ProjectId, "ws-producer")), check.IsNil)
+
+	wp := s.launchWorkshop(c, "ws", []sdk.Meta{consumerManyPlugs})
+	wp.File.Sdks[0].Plugs = make(map[string]workshop.PlugOrBind)
+	wp.File.Sdks[0].Plugs["bound"] = workshop.PlugOrBind{Bind: &workshop.PlugRef{Sdk: "consumer", Name: "plug"}}
+	// Simulate SanitizePlugsSlots, keeping "plug" but skipping "bound".
+	info := sdk.MockInfo(c, consumerManyPlugs.SdkYAML, s.prj.ProjectId, "ws")
+	delete(info.Plugs, "bound")
+	c.Assert(repo.AddSdk(info), check.IsNil)
+
+	// Execute
+	s.state.Lock()
+	chg := s.newAutoconnectChange("consumer")
+	s.state.Unlock()
+
+	s.settle(c)
+
+	s.state.Lock()
+	defer s.state.Unlock()
+	c.Check(chg.Err(), check.ErrorMatches, `(?s).*invalid plug binding: plug "ws/consumer:bound" was skipped while bound to plug "ws/consumer:plug".*`)
 
 	// Validate
 	pconns, err := repo.Connections(s.prj.ProjectId, "ws", "consumer")
@@ -1654,6 +1702,7 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectPreservesRemounts(c *check.C)
 		"42424242/ws/consumer:plug 42424242/ws/system:mount": map[string]any{
 			"auto":         true,
 			"interface":    "mount",
+			"plug-static":  map[string]any{"workshop-target": "/opt"},
 			"slot-dynamic": map[string]any{"host-source": source},
 		},
 	})
@@ -1762,21 +1811,25 @@ func (s *interfaceHandlersSuite) TestAutoDisconnectPreservesBinding(c *check.C) 
 	c.Assert(chg.Get("ws_conns", &preserved), check.IsNil)
 	c.Assert(preserved, check.DeepEquals, map[string]any{
 		"42424242/ws/consumer:plug 42424242/ws/producer:slot": map[string]any{
-			"interface": "mock-network",
-			"auto":      true,
+			"interface":   "mock-network",
+			"auto":        true,
+			"plug-static": map[string]any{"attribute": "one"},
 		},
 		"42424242/ws/consumer:plug2 42424242/ws/producer:slot": map[string]any{
-			"interface": "mock-network",
-			"auto":      true,
+			"interface":   "mock-network",
+			"auto":        true,
+			"plug-static": map[string]any{"attribute": "two"},
 		},
 		"42424242/ws/consumer:plug3 42424242/ws/producer:slot": map[string]any{
-			"interface": "mock-network",
-			"auto":      true,
+			"interface":   "mock-network",
+			"auto":        true,
+			"plug-static": map[string]any{"attribute": "three"},
 		},
 		"42424242/ws/consumer:bound 42424242/ws/producer:slot": map[string]any{
 			"interface":    "mock-network",
 			"auto":         true,
 			"plug-dynamic": map[string]any{"bind": "42424242/ws/consumer:plug 42424242/ws/producer:slot"},
+			"plug-static":  map[string]any{"attribute": "one"},
 		},
 	})
 	c.Assert(s.secBackend.SetupCalls, check.HasLen, 10)

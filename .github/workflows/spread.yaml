@@ -21,6 +21,30 @@ jobs:
     uses: $/.github/workflows/build-deps.yaml
     secrets:
       SDKCRAFT_STORE_CREDENTIALS: ${{ secrets.SDKCRAFT_STORE_CREDENTIALS }}
+  build-workshop-arm64:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+    runs-on:
+      - self-hosted
+      - Linux
+      - noble
+      - ARM64
+      - medium
+    outputs:
+      snap_workshop_arm64: ${{ steps.snapcraft_workshop_arm64.outputs.snap }}
+    steps:
+      - name: Checkout Workshop
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build Workshop (arm64)
+        uses: canonical/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1.3.0
+        id: snapcraft_workshop_arm64
+      - name: Upload Workshop (arm64)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snap_workshop_arm64
+          path: ${{ steps.snapcraft_workshop_arm64.outputs.snap }}
   snap-tests:
     name: snap tests / ${{ matrix.suite.label }}
     needs: [build-deps]
@@ -36,11 +60,15 @@ jobs:
               tests/main/autostart
               tests/main/compatible-backend
               tests/main/firewall-docker
-              tests/main/launch
               tests/main/launch-abort
               tests/main/launch-continue
               tests/main/launch-multiple
               tests/main/launch-sdk
+            paths-slow: >-
+              tests/main/launch
+            paths-fast: >-
+              tests/main/launch:ctr26
+              tests/main/launch:vm26
           - name: main-lifecycle
             label: main / lifecycle
             paths: >-
@@ -66,15 +94,30 @@ jobs:
               tests/main/exec
               tests/main/interface-camera
               tests/main/interface-custom-device
+              tests/main/interface-custom-device-disconnect
+              tests/main/interface-custom-device-disconnect-restart
               tests/main/interface-desktop
               tests/main/interface-gpu
               tests/main/interface-mount
               tests/main/interface-plug-binding
               tests/main/interface-ssh-agent
               tests/main/interface-tunnel
+              tests/main/interface-tunnel-disconnect
               tests/main/shell
               tests/main/ssh
               tests/main/workshop-connections
+          - name: main-secrets
+            label: main / secrets
+            paths: >-
+              tests/main/interface-secret
+              tests/main/interface-secret-disconnect
+              tests/main/secret-service-helper
+              tests/main/system-secret-retrieval
+              tests/main/system-secret-retrieval-systemd
+              tests/main/system-secret-retrieval-failure
+              tests/main/system-secret-retrieval-systemd-failure
+              tests/main/system-secret-default-collection
+              tests/main/system-secret-named-collection-systemd
           - name: main-status-sdk
             label: main / status and SDKs
             paths: >-
@@ -110,7 +153,24 @@ jobs:
           # Lower-level LXD integration scenarios.
           - name: integration
             label: integration
-            paths: tests/integration/
+            paths: >-
+              tests/integration/dns
+              tests/integration/interface-backend
+              tests/integration/osutil
+              tests/integration/project-tracking
+              tests/integration/sdk-store
+              tests/integration/ssh
+              tests/integration/workshop-exec
+              tests/integration/workshop-network
+              tests/integration/workshop-ops
+          - name: integration-snapshots
+            label: integration / snapshots
+            paths-slow: >-
+              tests/integration/workshop-snapshots
+            paths-fast: >-
+              tests/integration/workshop-snapshots:ctrformat
+              tests/integration/workshop-snapshots:ctr24
+              tests/integration/workshop-snapshots:vm24
     runs-on: [self-hosted, linux, jammy, x64, xlarge]
     steps:
       - name: Install LXD
@@ -130,14 +190,15 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26"
+          check-latest: true
           cache: false
       - name: Download Workshop Snap
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: snap_workshop
           path: ${{ github.workspace }}/tests/
       - name: Download spread binary
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: spread_binary
           path: /usr/local/bin
@@ -153,7 +214,7 @@ jobs:
           sudo apt-get install -y zip
       - name: Run spread
         env:
-          SUITE_PATHS: ${{ matrix.suite.paths }}
+          SUITE_PATHS: ${{ matrix.suite.paths }} ${{ case(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch', matrix.suite.paths-slow, matrix.suite.paths-fast) }}
           LXD_CHANNEL: ${{ inputs.lxd_channel || '6/stable' }}
           ARTIFACTS: ${{ github.workspace }}.cover
           ARTIFACT: ${{ github.workspace }}/code-coverage-${{ matrix.suite.name }}.zip
@@ -162,26 +223,28 @@ jobs:
           read -r -a suite_paths <<< "$SUITE_PATHS"
           spread -artifacts="$ARTIFACTS" "${suite_paths[@]}"
 
-          # Workaround https://github.com/actions/upload-artifact/issues/546
-          cd "$ARTIFACTS/lxd:ubuntu-24.04:tests" || exit 0
+          # Workaround https://github.com/actions/upload-artifact/issues/546.
+          # The directory only exists if the test produced some coverage artifacts,
+          # i.e., it's an integration test.
+          cd "$ARTIFACTS/lxd:ubuntu-24.04:tests" 2>/dev/null || exit 0
           shopt -s dotglob nullglob
           entries=(*)
           [ "${#entries[@]}" -gt 0 ] || exit 0
           rm -f "$ARTIFACT"
           zip -r "$ARTIFACT" "${entries[@]}"
       - name: Upload Coverage
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           path: code-coverage-${{ matrix.suite.name }}.zip
           archive: false
           if-no-files-found: ignore
   publish:
-    needs: [build-deps, snap-tests]
+    needs: [build-deps, build-workshop-arm64, snap-tests]
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork)
     runs-on: ubuntu-latest
     steps:
       - name: Download snap artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: snap_workshop
       - uses: canonical/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1.2.0
@@ -199,7 +262,7 @@ jobs:
           snap: ${{ needs.build-deps.outputs.snap_workshop }}
           release: edge/${{ github.event.pull_request.number }}
       - name: Download arm64 snap artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: snap_workshop_arm64
       - uses: canonical/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1.2.0
@@ -207,12 +270,12 @@ jobs:
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_CREDENTIALS }} # zizmor: ignore[secrets-outside-env]
         with:
-          snap: ${{ needs.build-deps.outputs.snap_workshop_arm64 }}
+          snap: ${{ needs.build-workshop-arm64.outputs.snap_workshop_arm64 }}
           release: edge
       - uses: canonical/action-publish@214b86e5ca036ead1668c79afb81e550e6c54d40 # v1.2.0
         if: github.event_name == 'pull_request'
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_CREDENTIALS }} # zizmor: ignore[secrets-outside-env]
         with:
-          snap: ${{ needs.build-deps.outputs.snap_workshop_arm64 }}
+          snap: ${{ needs.build-workshop-arm64.outputs.snap_workshop_arm64 }}
           release: edge/${{ github.event.pull_request.number }}

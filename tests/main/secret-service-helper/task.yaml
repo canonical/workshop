@@ -1,0 +1,14 @@
+summary: Check the snap includes a runnable Secret Service helper
+restore: |
+  rm -f stdout.log stderr.log
+execute: |
+  helper=/snap/workshop/current/bin/workshop-ss-tool
+  test -x "$helper"
+
+  # Empty input exercises startup without contacting a session bus or keyring.
+  echo "Check the helper runs as an unprivileged user with an empty environment"
+  status=0
+  sudo -u ubuntu env -i "$helper" </dev/null >stdout.log 2>stderr.log || status=$?
+  test "$status" -eq 2
+  test ! -s stdout.log
+  MATCH '^decoding secret request: EOF$' <stderr.log

@@ -12,9 +12,9 @@ sys.path.insert(0, os.path.abspath('_extensions'))
 # A complete list of built-in Sphinx configuration values:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 #
-# The Sphinx Stack uses the Canonical Sphinx theme to keep all documentation consistent
-# and on brand:
-# https://github.com/canonical/canonical-sphinx
+# The documentation uses the Ulwazi theme to stay consistent and on brand
+# with other Canonical documentation:
+# https://github.com/canonical/ulwazi
 
 #######################
 # Project information #
@@ -39,22 +39,46 @@ ogp_image = "https://assets.ubuntu.com/v1/253da317-image-document-ubuntudocs.svg
 # Product favicon; shown in bookmarks, browser tabs, etc.
 html_favicon = "_static/favicon.png"
 
+# Repository with the documentation sources; used for the source and feedback links.
+github_repo = "https://github.com/canonical/workshop"
+
+# Suffix for the fallback view and edit source links.
+default_source_extension = ".rst"
+
+# Product website URL, without the 'https://' prefix.
+product_page = "documentation.ubuntu.com"
+
 # Dictionary of values to pass into the Sphinx context for all pages:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-html_context
 html_context = {
-    "product_page": "documentation.ubuntu.com",
-    "product_tag": "_static/tag.png",
-    "discourse": "https://discourse.ubuntu.com/",
-    "matrix": "https://matrix.to/#/#documentation:ubuntu.com",
-    "github_url": "https://github.com/canonical/workshop",
-    "repo_default_branch": "main",
-    "repo_folder": "/docs/",
-    "display_contributors": False,
-    "github_issues": "enabled",
+    "product_page": product_page,
+    "project": project,
     "author": author,
     "license": {
         "name": "CC-BY-SA 4.0",
         "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    },
+    "discourse": "https://discourse.ubuntu.com/",
+    "matrix": "https://matrix.to/#/#documentation:ubuntu.com",
+    "github_url": github_repo,
+    "repo_folder": "/docs/",
+    # Enables the feedback and source buttons, and the dark mode toggle.
+    "feedback": True,
+    "default_source_extension": default_source_extension,
+    "default_edit_url": github_repo + "/edit/main/docs/index" + default_source_extension,
+    "default_view_url": github_repo + "/blob/main/docs/index" + default_source_extension,
+    "logo_link_URL": "https://documentation.ubuntu.com",
+    "logo_img_URL": "https://assets.ubuntu.com/v1/82818827-CoF_white.svg",
+    "logo_title": "Canonical",
+    # Workshop's Google Tag Manager container; Ulwazi defaults to a different one.
+    "tag_id": "GTM-KNX3CJC",
+    "footer": {
+        "product": True,
+        "license": True,
+        # The cookie banner script (_static/js/bundle.js) binds to this link.
+        "entries": [
+            '<a class="js-revoke-cookie-manager" href="#tracker-settings">Manage your tracker settings</a>',
+        ],
     },
 }
 
@@ -79,14 +103,15 @@ sitemap_filename = "doc-sitemap.xml"
 # Template and asset locations #
 ################################
 
+html_theme = "ulwazi"
 html_static_path = ["_static"]
 templates_path = ["_templates"]
 
 html_css_files = [
     "workshop.css",
     "flat-toctree.css",
-    # "category-nav.css",  # category_nav extension disabled on this branch
     "cookie-banner.css",
+    # "category-nav.css",  # category_nav extension disabled on this branch
 ]
 
 html_js_files = [
@@ -124,9 +149,11 @@ llms_txt_description = textwrap.dedent(
 
 llms_txt_suffix_mode = "url-suffix"
 
-# The base URL for references built by sphinx-markdown-builder.
+# The base URL for references built by sphinx-markdown-builder, which adds
+# its own slash; the markdown_links extension maps section-index links to
+# the url-suffix layout above.
 if os.environ.get("READTHEDOCS"):
-    markdown_http_base = html_baseurl
+    markdown_http_base = html_baseurl.rstrip("/")
 
 ###########################
 # Link checker exceptions #
@@ -151,8 +178,12 @@ linkcheck_retries = 3
 
 # Custom Sphinx extensions; see
 # https://www.sphinx-doc.org/en/master/usage/extensions/index.html
+# NOTE: "ulwazi" must precede "sphinx_modern_pdf_style"; the theme injects the
+#       PDF branding defaults that the PDF style reads.
 extensions = [
-    "canonical_sphinx",
+    "ulwazi",
+    "sphinx_modern_pdf_style",
+    "myst_parser",
     "notfound.extension",
     "sphinx_design",
     "sphinx_rerediraffe",
@@ -168,6 +199,7 @@ extensions = [
     "sphinxcontrib.cairosvgconverter",
     "sphinx_sitemap",
     "flat_toctree",
+    "markdown_links",
     "sphinx_structured_toc",
     "structured_toc",
     # "category_nav",  # disabled on this branch; extension kept in _extensions/
@@ -180,6 +212,7 @@ exclude_patterns = [
     "reference/cli/sdk-*.rst",
     "reference/cli/workshop-*.rst",
     "reference/cli/sdkcraft-*.rst",
+    "reference/definition-files/_interfaces/*",
     "coverage.md",
     "examples/*",
 ]
@@ -211,9 +244,13 @@ rst_prolog = """
     :class: vale-ignore
 """
 
-# Workaround for https://github.com/canonical/canonical-sphinx/issues/34
-if "discourse_prefix" not in html_context and "discourse" in html_context:
-    html_context["discourse_prefix"] = html_context["discourse"] + "/t/"
+# MyST syntax extensions for the Markdown pages; the release notes rely on
+# linkify for bare URLs.
+myst_enable_extensions = ["substitution", "deflist", "linkify"]
+
+# Don't publish reST sources alongside the HTML pages.
+html_copy_source = False
+html_show_sourcelink = False
 
 copybutton_prompt_text = "$ "
 copybutton_here_doc_delimiter = "EOF"
@@ -239,9 +276,12 @@ mermaid_init_config = {
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-smartquotes_action
 smartquotes_action = "qe"
 
+# Apply the Canonical PDF style to the Read the Docs PDF build.
+set_modern_pdf_config = True
+
 
 # Expose the sphinx_llm "llms_txt_enabled" flag to the HTML templates so the
-# per-page Markdown <link rel="alternate"> in _templates/base.html is emitted
+# per-page Markdown <link rel="alternate"> in _templates/layout.html is emitted
 # only when the Markdown twins are actually generated. Reads app.config so the
 # Makefile autobuild override (-D=llms_txt_enabled=0) is respected.
 def setup(app):
@@ -249,3 +289,22 @@ def setup(app):
         context["llms_txt_enabled"] = getattr(app.config, "llms_txt_enabled", True)
 
     app.connect("html-page-context", _expose_llms_flag)
+
+    # Under dirhtml, Sphinx builds each page URL with a ".html" suffix that the
+    # site doesn't serve. Furo used to rewrite it, and Ulwazi doesn't, which
+    # breaks the canonical link and the Markdown link in _templates/layout.html.
+    # Use the directory URL that dirhtml actually serves instead.
+    def _fix_dirhtml_pageurl(app, pagename, templatename, context, doctree):
+        pageurl = context.get("pageurl")
+        if app.builder.name == "dirhtml" and pageurl and pageurl.endswith(".html"):
+            context["pageurl"] = app.config.html_baseurl + app.builder.get_target_uri(pagename)
+
+    app.connect("html-page-context", _fix_dirhtml_pageurl)
+
+    # With html_title = "", Ulwazi sets the "sidebar_hide_name" theme option,
+    # which it doesn't support, and the strict build fails on the resulting
+    # warning. Drop the option after Ulwazi's own config-inited handler runs.
+    def _drop_sidebar_hide_name(app, config):
+        config.html_theme_options.pop("sidebar_hide_name", None)
+
+    app.connect("config-inited", _drop_sidebar_hide_name, priority=600)

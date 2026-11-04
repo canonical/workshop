@@ -25,6 +25,7 @@ import (
 	"github.com/canonical/workshop/internal/interfaces/builtin"
 	"github.com/canonical/workshop/internal/interfaces/lxd_device"
 	"github.com/canonical/workshop/internal/osutil"
+	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 )
@@ -66,6 +67,74 @@ func (s *customDeviceSuite) TestName(c *check.C) {
 
 func (s *customDeviceSuite) TestInterfaces(c *check.C) {
 	c.Check(builtin.Interfaces(), testutil.DeepContains, s.iface)
+}
+
+// TestMaintainConnectionUnchanged checks that a connection is kept while the
+// plug's device filter is unchanged.
+func (s *customDeviceSuite) TestMaintainConnectionUnchanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{
+		"subsystem": "tty",
+		"vendorid":  "0403",
+		"productid": "6001",
+	}}
+	old := map[string]any{
+		"subsystem": "tty",
+		"vendorid":  "0403",
+		"productid": "6001",
+	}
+
+	c.Check(s.iface.MaintainConnection(plug, old, &sdk.SlotInfo{}, nil),
+		check.Equals, true)
+}
+
+// TestMaintainConnectionSubsystemChanged checks that a changed subsystem drops
+// the connection.
+func (s *customDeviceSuite) TestMaintainConnectionSubsystemChanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{"subsystem": "accel"}}
+	old := map[string]any{"subsystem": "tty"}
+
+	c.Check(s.iface.MaintainConnection(plug, old, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionVendorChanged checks that a changed vendor ID drops the
+// connection.
+func (s *customDeviceSuite) TestMaintainConnectionVendorChanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{"vendorid": "1d6b"}}
+	old := map[string]any{"vendorid": "0403"}
+
+	c.Check(s.iface.MaintainConnection(plug, old, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionProductChanged checks that a changed product ID drops
+// the connection.
+func (s *customDeviceSuite) TestMaintainConnectionProductChanged(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{"productid": "6002"}}
+	old := map[string]any{"productid": "6001"}
+
+	c.Check(s.iface.MaintainConnection(plug, old, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionFilterRemoved checks that removing the device filter
+// drops the connection.
+func (s *customDeviceSuite) TestMaintainConnectionFilterRemoved(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{}}
+	old := map[string]any{"subsystem": "tty"}
+
+	c.Check(s.iface.MaintainConnection(plug, old, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
+}
+
+// TestMaintainConnectionFilterAdded checks that adding a device filter drops
+// the connection.
+func (s *customDeviceSuite) TestMaintainConnectionFilterAdded(c *check.C) {
+	plug := &sdk.PlugInfo{Attrs: map[string]any{"subsystem": "tty"}}
+	old := map[string]any{}
+
+	c.Check(s.iface.MaintainConnection(plug, old, &sdk.SlotInfo{}, nil),
+		check.Equals, false)
 }
 
 func (s *customDeviceSuite) TestCustomDeviceInterface(c *check.C) {
@@ -300,4 +369,26 @@ plugs:
 	c.Assert(interfaces.BeforePreparePlug(s.iface, plug), check.IsNil)
 	c.Check(plug.Attrs["vendorid"], check.Equals, "ef01")
 	c.Check(plug.Attrs["productid"], check.Equals, "abcd")
+}
+
+func (s *customDeviceSuite) TestCustomDeviceInterfaceRequiresContainer(c *check.C) {
+	yaml := `name: consumer
+base: ubuntu@22.04
+plugs:
+  mydevice:
+    interface: custom-device
+    subsystem: accel
+slots:
+  mydevice:
+    interface: custom-device
+`
+	info, warning := checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDContainer)
+	c.Check(info.Plugs["mydevice"], check.NotNil)
+	c.Check(info.Slots["mydevice"], check.NotNil)
+	c.Check(warning, check.IsNil)
+
+	info, warning = checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDVM)
+	c.Check(info.Plugs["mydevice"], check.IsNil)
+	c.Check(info.Slots["mydevice"], check.IsNil)
+	c.Check(warning, check.ErrorMatches, `"consumer" SDK has incompatible plugs: mydevice \(custom-device interface only available to containers\); and slots: mydevice \(custom-device interface only available to containers\)`)
 }

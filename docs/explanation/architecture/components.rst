@@ -113,11 +113,11 @@ The :program:`workshopctl` tool serves as a secure bridge
 between workshop containers and the host system,
 sending control and status messages from inside the workshop back to the host.
 
-The tool is typically invoked by SDK hooks;
-it operates with the workshop user's permissions (UID 1000)
-and communicates with :program:`workshopd`'s :ref:`REST API <exp_arch_api>`
+The tool is typically invoked by SDK hooks.
+In containers it communicates with :program:`workshopd`'s :ref:`REST API <exp_arch_api>`
 through a dedicated Unix domain socket inside the workshop
 at :file:`/var/lib/workshop/run/workshop.socket.untrusted`.
+In virtual machines, it uses vsock port 870 instead.
 
 The tool's capabilities are intentionally limited
 to minimize security risks.
@@ -171,7 +171,8 @@ REST API
 .. @artefact API
 
 The :program:`workshopd` daemon exposes a versioned REST API (v1)
-over Unix domain sockets for secure local communication with the CLI.
+over Unix domain sockets for secure local communication with the CLI,
+and over vsock for virtual machine workshops.
 The API provides endpoints for all workshop operations.
 
 Trusted endpoints (require Unix socket credentials):

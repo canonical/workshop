@@ -15,10 +15,8 @@
 package sdk
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -28,6 +26,7 @@ import (
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/metautil"
 	"github.com/canonical/workshop/internal/timeutil"
+	"github.com/canonical/workshop/internal/yamlutil"
 )
 
 type Meta struct {
@@ -125,30 +124,112 @@ func SetupContentID(setup Setup) ContentID {
 	return ContentID{Name: setup.Name, Sha3_384: setup.Sha3_384, IsVolume: setup.IsVolume()}
 }
 
-type sdkYaml struct {
-	Name        string            `yaml:"name"`
-	Base        string            `yaml:"base"`
-	Arch        string            `yaml:"architecture"`
-	Version     string            `yaml:"version,omitempty"`
-	Title       string            `yaml:"title"`
-	Summary     string            `yaml:"summary"`
-	Description string            `yaml:"description"`
-	License     string            `yaml:"license"`
-	Type        string            `yaml:"type"`
-	BuiltAt     *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
-	Plugs       map[string]any    `yaml:"plugs,omitempty"`
-	Slots       map[string]any    `yaml:"slots,omitempty"`
+type File struct {
+	Name        string
+	Title       string
+	Version     string
+	Summary     string
+	Description string
+
+	Base string
+	Arch string
+
+	License string
+
+	Plugs map[string]any
+	Slots map[string]any
+
+	BuiltAt *time.Time
+
+	Type Type
 }
 
-// SketchSDKYaml describes the editable YAML shape of a sketch SDK.
-type SketchSDKYaml struct {
-	Description string            `yaml:"description"`
-	Hooks       map[string]string `yaml:"hooks,omitempty"`
-	Name        string            `yaml:"name"`
-	Plugs       map[string]any    `yaml:"plugs,omitempty"`
-	Slots       map[string]any    `yaml:"slots,omitempty"`
-	Summary     string            `yaml:"summary"`
-	Title       string            `yaml:"title"`
+func ReadSdkFile(yamlData []byte) (*File, error) {
+	var sdkYaml sdkYaml
+	if err := yaml.Unmarshal(yamlData, &sdkYaml); err != nil {
+		return nil, err
+	}
+
+	if sdkYaml.Name != Sketch && sdkYaml.Hooks.Node != nil {
+		return nil, fmt.Errorf("SDK definition YAML: only the %q SDK supports inline hooks", Sketch)
+	}
+
+	if err := ValidateName(sdkYaml.Name); err != nil {
+		return nil, err
+	}
+	if err := ValidateBase(sdkYaml.Base); err != nil {
+		return nil, err
+	}
+	if err := ValidateArch(sdkYaml.Arch); err != nil {
+		return nil, err
+	}
+
+	switch sdkYaml.Type {
+	case "":
+		sdkYaml.Type = Regular
+	case Regular:
+	case System:
+		if !IsSystem(sdkYaml.Name) {
+			return nil, fmt.Errorf("type %q is reserved for the system SDK", sdkYaml.Type)
+		}
+	default:
+		return nil, fmt.Errorf("invalid SDK type %q", sdkYaml.Type)
+	}
+
+	return &File{
+		Name:        sdkYaml.Name,
+		Title:       sdkYaml.Title,
+		Version:     sdkYaml.Version,
+		Summary:     sdkYaml.Summary,
+		Description: sdkYaml.Description,
+		Base:        sdkYaml.Base,
+		Arch:        sdkYaml.Arch,
+		License:     sdkYaml.License,
+		Plugs:       sdkYaml.Plugs,
+		Slots:       sdkYaml.Slots,
+		BuiltAt:     (*time.Time)(sdkYaml.BuiltAt),
+		Type:        sdkYaml.Type,
+	}, nil
+}
+
+// Keep this in sync with sdkcraft.models.Metadata (+ Type & Hooks).
+type sdkYaml struct {
+	Name        string `yaml:"name"`
+	Title       string `yaml:"title,omitempty"`
+	Version     string `yaml:"version,omitempty"`
+	Summary     string `yaml:"summary,omitempty"`
+	Description string `yaml:"description,omitempty"`
+
+	Base string `yaml:"base,omitempty"`
+	Arch string `yaml:"architecture,omitempty"`
+
+	Contact    stringOrSlice `yaml:"contact,omitempty"`
+	Issues     stringOrSlice `yaml:"issues,omitempty"`
+	SourceCode string        `yaml:"source-code,omitempty"`
+	Website    string        `yaml:"website,omitempty"`
+	License    string        `yaml:"license,omitempty"`
+
+	Plugs map[string]any `yaml:"plugs,omitempty"`
+	Slots map[string]any `yaml:"slots,omitempty"`
+
+	BuiltAt *timeutil.TimeUTC `yaml:"sdkcraft-started-at,omitempty"`
+
+	Type Type `yaml:"type,omitempty"`
+	// Avoid UnknownFieldsError for "hooks". It's a known field, just not
+	// used for anything except the sketch SDK.
+	Hooks yamlutil.NodeRef `yaml:"hooks"`
+}
+
+func (s *sdkYaml) UnmarshalYAML(value *yaml.Node) error {
+	// Use distinct type to avoid infinite recursion.
+	type sdk sdkYaml
+	err := yamlutil.UnmarshalStrict((*sdk)(s), value)
+
+	context := "SDK definition YAML"
+	if s.Name == Sketch {
+		context = "sketch SDK YAML"
+	}
+	return yamlutil.AttachContext(context, err)
 }
 
 type Type string
@@ -172,6 +253,13 @@ func IsSketch(name string) bool {
 	return name == Sketch
 }
 
+type stringOrSlice []string
+
+func (s *stringOrSlice) UnmarshalText(text []byte) error {
+	*s = []string{string(text)}
+	return nil
+}
+
 type Info struct {
 	ProjectId   string
 	Workshop    string
@@ -190,11 +278,8 @@ type Info struct {
 	Description string
 	License     string
 
-	Plugs     map[string]*PlugInfo
-	PlugBinds map[string]PlugRef
-	Slots     map[string]*SlotInfo
-	// Plugs or slots with issues (they are not included in Plugs or Slots)
-	BadInterfaces map[string]string
+	Plugs map[string]*PlugInfo
+	Slots map[string]*SlotInfo
 }
 
 func (i *Info) Ref() Ref {
@@ -205,22 +290,30 @@ func (i *Info) Ref() Ref {
 	}
 }
 
-func (i *Info) SetupPlugBinds(binds map[string]PlugRef) error {
-	for name, plug := range binds {
-		if _, ok := i.Plugs[name]; ok {
+// Additions lists extra plugs, slots, and plug bindings, e.g. those added in
+// the workshop definition file.
+type Additions struct {
+	Plugs map[string]any
+	Slots map[string]any
+	Binds map[string]PlugRef
+}
+
+func bindPlugs(binds map[string]PlugRef, i *Info) error {
+	for name, bind := range binds {
+		plug, ok := i.Plugs[name]
+		if !ok {
 			// Check plugs that are bound. The existence of plugs that are
 			// "bound to" it will be checked at the connecting stage, i.e. when
 			// all plugs from all SDKs are in the repository already.
-			i.PlugBinds[name] = plug
-		} else {
 			return fmt.Errorf("plug binding failed: SDK %q has no plug named %q", i.Ref().ShortRef(), name)
 		}
+		plug.Bind = &bind
 	}
 	return nil
 }
 
 // Adds slots defined for this SDK in a workshop file.
-func (i *Info) SetupWorkshopSlots(slots map[string]any) error {
+func extendSlots(slots map[string]any, i *Info) error {
 	for name, data := range slots {
 		if _, exist := i.Slots[name]; exist {
 			return fmt.Errorf("cannot add slot %q to %q SDK: already exists", name, i.Name)
@@ -238,12 +331,11 @@ func (i *Info) SetupWorkshopSlots(slots map[string]any) error {
 		}
 	}
 
-	SanitizePlugsSlots(i)
 	return nil
 }
 
-// Adds slots defined for this SDK in a workshop file.
-func (i *Info) SetupWorkshopPlugs(plugs map[string]any) error {
+// Adds plugs defined for this SDK in a workshop file.
+func extendPlugs(plugs map[string]any, i *Info) error {
 	for name, data := range plugs {
 		if _, exist := i.Plugs[name]; exist {
 			return fmt.Errorf("cannot add plug %q to %q SDK: already exists", name, i.Name)
@@ -261,7 +353,6 @@ func (i *Info) SetupWorkshopPlugs(plugs map[string]any) error {
 		}
 	}
 
-	SanitizePlugsSlots(i)
 	return nil
 }
 
@@ -279,57 +370,63 @@ func (r Ref) ShortRef() string {
 	return fmt.Sprintf("%s/%s", r.Workshop, r.Sdk)
 }
 
-var SanitizePlugsSlots = func(snapInfo *Info) {
-	panic("SanitizePlugsSlots function not set")
-}
+type Sanitizer = func(info *Info) error
 
-func ReadSdkInfo(yamlData []byte, projectId, workshop string) (*Info, error) {
-	var sdkYaml sdkYaml
-	err := yaml.Unmarshal(yamlData, &sdkYaml)
+func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additions, sanitize Sanitizer) (*Info, error) {
+	file, err := ReadSdkFile(yamlData)
 	if err != nil {
 		return nil, err
 	}
 
-	if sdkYaml.Type == "" {
-		sdkYaml.Type = Regular.String()
-	}
-	if sdkYaml.Type == System.String() && !IsSystem(sdkYaml.Name) {
-		return nil, fmt.Errorf("type %q is reserved for the system SDK", sdkYaml.Type)
-	}
-
 	sdkInfo := &Info{
-		ProjectId:     projectId,
-		Workshop:      workshop,
-		Name:          sdkYaml.Name,
-		Base:          sdkYaml.Base,
-		Arch:          sdkYaml.Arch,
-		Version:       sdkYaml.Version,
-		Type:          Type(sdkYaml.Type),
-		BuiltAt:       (*time.Time)(sdkYaml.BuiltAt),
-		Title:         sdkYaml.Title,
-		Summary:       sdkYaml.Summary,
-		Description:   sdkYaml.Description,
-		License:       sdkYaml.License,
-		Plugs:         make(map[string]*PlugInfo),
-		PlugBinds:     make(map[string]PlugRef),
-		Slots:         make(map[string]*SlotInfo),
-		BadInterfaces: make(map[string]string),
+		ProjectId:   projectId,
+		Workshop:    workshop,
+		Name:        file.Name,
+		Base:        file.Base,
+		Arch:        file.Arch,
+		Version:     file.Version,
+		Type:        file.Type,
+		BuiltAt:     file.BuiltAt,
+		Title:       file.Title,
+		Summary:     file.Summary,
+		Description: file.Description,
+		License:     file.License,
+		Plugs:       make(map[string]*PlugInfo),
+		Slots:       make(map[string]*SlotInfo),
 	}
 
-	if err := setPlugsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
+	if err := setPlugsFromSdkFile(file, sdkInfo); err != nil {
+		return nil, err
+	}
+	for _, a := range additions {
+		if err := extendPlugs(a.Plugs, sdkInfo); err != nil {
+			return nil, err
+		}
+	}
+	for _, a := range additions {
+		if err := bindPlugs(a.Binds, sdkInfo); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := setSlotsFromSdkFile(file, sdkInfo); err != nil {
+		return nil, err
+	}
+	for _, a := range additions {
+		if err := extendSlots(a.Slots, sdkInfo); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := sanitize(sdkInfo); err != nil {
 		return nil, err
 	}
 
-	if err := setSlotsFromSdkYaml(&sdkYaml, sdkInfo); err != nil {
-		return nil, err
-	}
-
-	SanitizePlugsSlots(sdkInfo)
 	return sdkInfo, nil
 }
 
-func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
-	for name, data := range y.Plugs {
+func setPlugsFromSdkFile(f *File, sdk *Info) error {
+	for name, data := range f.Plugs {
 		iface, label, attrs, err := convertToSlotOrPlugData("plug", name, data)
 		if err != nil {
 			return err
@@ -346,8 +443,8 @@ func setPlugsFromSdkYaml(y *sdkYaml, sdk *Info) error {
 	return nil
 }
 
-func setSlotsFromSdkYaml(y *sdkYaml, sdk *Info) error {
-	for name, data := range y.Slots {
+func setSlotsFromSdkFile(f *File, sdk *Info) error {
+	for name, data := range f.Slots {
 		iface, label, attrs, err := convertToSlotOrPlugData("slot", name, data)
 		if err != nil {
 			return err
@@ -500,6 +597,7 @@ type PlugInfo struct {
 	Interface string
 	Attrs     map[string]any
 	Label     string
+	Bind      *PlugRef
 }
 
 func (plug *PlugInfo) Attr(key string, val any) error {
@@ -572,58 +670,18 @@ func SdkHookPath(sdkName, hookName string) string {
 	return filepath.Join(SdkHooksDir(sdkName), hookName)
 }
 
-func MockSanitizePlugsSlots(f func(sdkInfo *Info)) (restore func()) {
-	old := SanitizePlugsSlots
-	SanitizePlugsSlots = f
-	return func() { SanitizePlugsSlots = old }
-}
-
 func MockInfo(c *check.C, yamlText string, projectId, workshop string) *Info {
-	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
-	defer restoreSanitize()
-	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop)
-	c.Assert(err, check.IsNil)
-
-	err = Validate(info)
+	info, err := ReadSdkInfo([]byte(yamlText), projectId, workshop, nil, Validate)
 	c.Assert(err, check.IsNil)
 	return info
 }
 
 func MockInvalidInfo(c *check.C, yamlText string) *Info {
-	restoreSanitize := MockSanitizePlugsSlots(func(sdkInfo *Info) {})
-	defer restoreSanitize()
-
-	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws")
+	antiValidate := func(i *Info) error {
+		c.Check(Validate(i), check.NotNil)
+		return nil
+	}
+	sdkInfo, err := ReadSdkInfo([]byte(yamlText), "invalid", "ws", nil, antiValidate)
 	c.Assert(err, check.IsNil)
-	err = Validate(sdkInfo)
-	c.Assert(err, check.NotNil)
 	return sdkInfo
-}
-
-// BadInterfacesSummary returns a summary of the problems of bad plugs
-// and slots in the sdk.
-func BadInterfacesSummary(sdkInfo *Info) string {
-	inverted := make(map[string][]string)
-	for name, reason := range sdkInfo.BadInterfaces {
-		inverted[reason] = append(inverted[reason], name)
-	}
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%q SDK has bad plugs or slots: ", sdkInfo.Name)
-	reasons := make([]string, 0, len(inverted))
-	for reason := range inverted {
-		reasons = append(reasons, reason)
-	}
-	sort.Strings(reasons)
-	for _, reason := range reasons {
-		names := inverted[reason]
-		sort.Strings(names)
-		for i, name := range names {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(name)
-		}
-		fmt.Fprintf(&buf, " (%s); ", reason)
-	}
-	return strings.TrimSuffix(buf.String(), "; ")
 }

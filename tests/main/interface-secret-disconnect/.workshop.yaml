@@ -1,0 +1,15 @@
+name: ws-secret-disconnect
+base: ubuntu@22.04
+sdks:
+  - name: system
+    slots:
+      api-key:
+        interface: secret
+        attributes:
+          service: workshop
+          account: demo
+  - name: test-sdk-basic-2
+    channel: stable
+    plugs:
+      api-key:
+        interface: secret

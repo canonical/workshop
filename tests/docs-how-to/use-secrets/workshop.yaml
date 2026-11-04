@@ -1,0 +1,11 @@
+name: dev
+base: ubuntu@24.04
+sdks:
+  - name: system
+    slots:
+      demo-key:
+        interface: secret
+        attributes:
+          service: secret-demo
+          account: test
+  - name: try-secret-demo

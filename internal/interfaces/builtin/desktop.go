@@ -20,6 +20,7 @@
 package builtin
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -74,6 +75,29 @@ func (iface *desktopInterface) StaticInfo() interfaces.StaticInfo {
 
 func (iface *desktopInterface) AutoConnect(plug *sdk.PlugInfo, slot *sdk.SlotInfo) bool {
 	return true
+}
+
+// MaintainConnection implements [interfaces.Interface]. It keeps the
+// connection regardless of changes to the plug or slot definition.
+func (iface *desktopInterface) MaintainConnection(
+	_ *sdk.PlugInfo, _ map[string]any,
+	_ *sdk.SlotInfo, _ map[string]any,
+) bool {
+	return true
+}
+
+func (iface *desktopInterface) CheckCompatiblePlug(plug *sdk.PlugInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("desktop interface only available to containers")
+	}
+	return nil
+}
+
+func (iface *desktopInterface) CheckCompatibleSlot(slot *sdk.SlotInfo, runtime workshop.Runtime) error {
+	if runtime != workshop.RuntimeLXDContainer {
+		return errors.New("desktop interface only available to containers")
+	}
+	return nil
 }
 
 func (iface *desktopInterface) MountConnectedPlug(spec *lxd_device.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {

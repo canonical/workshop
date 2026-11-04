@@ -94,3 +94,24 @@ slots:
 	expectedDevice := &workshop.Gpu{Name: plug.Name}
 	c.Assert(deviceSpec.Profile.Gpu, check.DeepEquals, expectedDevice)
 }
+
+func (s *gpuSuite) TestGpuInterfaceRequiresContainer(c *check.C) {
+	yaml := `name: consumer
+base: ubuntu@22.04
+plugs:
+ gpu:
+  interface: gpu
+slots:
+ gpu:
+  interface: gpu
+`
+	info, warning := checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDContainer)
+	c.Check(info.Plugs["gpu"], check.NotNil)
+	c.Check(info.Slots["gpu"], check.NotNil)
+	c.Check(warning, check.IsNil)
+
+	info, warning = checkCompatible(c, yaml, s.projectId, "ws", workshop.RuntimeLXDVM)
+	c.Check(info.Plugs["gpu"], check.IsNil)
+	c.Check(info.Slots["gpu"], check.IsNil)
+	c.Check(warning, check.ErrorMatches, `"consumer" SDK has incompatible plugs: gpu \(gpu interface only available to containers\); and slots: gpu \(gpu interface only available to containers\)`)
+}

@@ -118,6 +118,19 @@ with :ref:`workshop refresh <ref_workshop_refresh>`.
 Run the daemon on the host
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+In order to run :program:`workshopd` as an unprivileged user,
+add the user to the :samp:`lxd` group.
+See the
+`LXD documentation <https://canonical.com/lxd/docs/latest/explanation/security/#access-to-the-lxd-daemon>`_
+for the security implications of this.
+
+When running locally,
+the daemon listens on :samp:`vsock` port 1870 rather than 870.
+It will also listen on the wildcard :samp:`vsock` address
+unless the :samp:`vhost_vsock` kernel module is loaded.
+The daemon can load it automatically
+if the user belongs to the :samp:`kvm` group.
+
 The recommended way to run the current sources
 is the :command:`go tool try` development tool
 wired into :file:`go.mod`:

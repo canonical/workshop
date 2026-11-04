@@ -1,0 +1,46 @@
+# Checks that a refresh keeps a manually connected secret plug while the slot's
+# host keyring lookup is unchanged, and drops it when the lookup changes. The
+# secret interface only allows manual connections, so the connection is always
+# maintained by the interface decision.
+summary: Check a secret connection is dropped when its keyring lookup changes
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec launch ws-secret-disconnect
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove ws-secret-disconnect
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  echo "Check the manual connection is established"
+  workshop_exec connect ws-secret-disconnect/test-sdk-basic-2:api-key
+  workshop_exec connections ws-secret-disconnect |
+      MATCH "^secret\s+ws-secret-disconnect/test-sdk-basic-2:api-key\s+ws-secret-disconnect/system:api-key\s+manual$"
+
+  echo "Refresh without changing the keyring lookup"
+  # A no-op refresh reports "no updates available" and skips the reconnect
+  # logic, so change the SDK channel to force a real refresh. The secret slot
+  # is unchanged.
+  sed -i 's/channel: stable/channel: edge/' .workshop.yaml
+  workshop_exec refresh ws-secret-disconnect | MATCH 'refreshed$'
+  workshop_exec connections ws-secret-disconnect |
+      MATCH "^secret\s+ws-secret-disconnect/test-sdk-basic-2:api-key\s+ws-secret-disconnect/system:api-key\s+manual$"
+
+  echo "Change the keyring lookup and refresh"
+  sed -i 's/account: demo/account: other/' .workshop.yaml
+  workshop_exec refresh ws-secret-disconnect |
+      MATCH '^WARNING: There is 1 new warning. See "workshop warnings".$'
+
+  echo "Check the connection is dropped"
+  workshop_exec connections ws-secret-disconnect |
+      NOMATCH "ws-secret-disconnect/test-sdk-basic-2:api-key.+ws-secret-disconnect/system:api-key.+manual"
+
+  echo "Check the drop is reported as a warning"
+  workshop_exec warnings |
+      tr -d '\n' |
+      sed -e 's,\s\+, ,g' |
+      MATCH 'disconnected "ws-secret-disconnect/test-sdk-basic-2:api-key" from "ws-secret-disconnect/system:api-key" because its definition changed'
+
+  # Warnings are global state that persists across tests sharing a machine, so
+  # acknowledge this one to keep later tests' warning counts deterministic.
+  workshop_exec okay

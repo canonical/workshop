@@ -21,7 +21,7 @@ Add actions
 To add actions,
 edit your :file:`workshop.yaml` file,
 adding named action definitions in :program:`bash` format under :samp:`actions`
-and making use of the features provided by the SDKs in your workshop
+and making use of the features provided by the SDKs in your workshop.
 
 Here's an example of a workshop definition with two actions
 that use the capabilities provided by the sketch SDK

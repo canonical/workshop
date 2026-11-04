@@ -1,0 +1,10 @@
+name: secret-consumer
+version: "1.0"
+summary: Consume a workshop secret through systemd
+description: |
+  Test SDK used by the secrets spread tests. Its setup-base hook installs
+  a oneshot systemd unit that reads a secret through the workshop secret
+  socket using LoadCredential.
+base: ubuntu@22.04
+platforms:
+  amd64:

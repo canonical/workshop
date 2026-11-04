@@ -1,4 +1,4 @@
-name: Build Dependencies
+name: Build and cache end-to-end tests dependencies
 on:
   workflow_call:
     secrets:
@@ -8,9 +8,6 @@ on:
       snap_workshop:
         description: "Workshop snap filename"
         value: ${{ jobs.build-workshop.outputs.snap_workshop }}
-      snap_workshop_arm64:
-        description: "Workshop arm64 snap filename"
-        value: ${{ jobs.build-workshop-arm64.outputs.snap_workshop_arm64 }}
 
 permissions:
   contents: read
@@ -43,34 +40,10 @@ jobs:
           snap_file=$(ls workshop_*.snap)
           echo "snap=$snap_file" >> $GITHUB_OUTPUT
       - name: Upload Workshop
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: snap_workshop
           path: ${{ steps.cache-workshop.outputs.cache-hit == 'true' && steps.snapcraft_workshop_cached.outputs.snap || steps.snapcraft_workshop.outputs.snap }}
-
-  build-workshop-arm64:
-    runs-on:
-      - self-hosted
-      - Linux
-      - noble
-      - ARM64
-      - medium
-    outputs:
-      snap_workshop_arm64: ${{ steps.snapcraft_workshop_arm64.outputs.snap }}
-    steps:
-      - name: Checkout Workshop
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Build Workshop (arm64)
-        uses: canonical/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1.3.0
-        id: snapcraft_workshop_arm64
-      - name: Upload Workshop (arm64)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: snap_workshop_arm64
-          path: ${{ steps.snapcraft_workshop_arm64.outputs.snap }}
 
   build-spread:
     runs-on: ubuntu-latest
@@ -96,6 +69,7 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.26"
+          check-latest: true
           cache: false
       - name: Build spread
         if: steps.cache-spread.outputs.cache-hit != 'true'
@@ -107,7 +81,7 @@ jobs:
           retry 5 go build -o spread ./cmd/spread
           popd
       - name: Upload spread binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: spread_binary
           path: spread/spread

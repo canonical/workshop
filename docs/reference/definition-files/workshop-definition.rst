@@ -266,7 +266,7 @@ Each entry in :samp:`actions` maps an action name to a shell script body:
      - string
      - A :program:`bash` script.
        |ws_markup| sets :samp:`errexit` and :samp:`pipefail` before running it.
-       Arguments passed after :command:`workshop run <WORKSHOP>` are available
+       Arguments passed after :command:`workshop run <WORKSHOP>` are available
        as the standard positional parameters :samp:`"$@"`, :samp:`"$1"`,
        and so on.
 
@@ -296,6 +296,8 @@ a workshop may graft additional plugs and slots that follow them.
 .. include:: _interfaces/gpu.rst
 
 .. include:: _interfaces/mount.rst
+
+.. include:: _interfaces/secret.rst
 
 .. include:: _interfaces/ssh-agent.rst
 

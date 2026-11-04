@@ -36,7 +36,7 @@ Develop with workshops
 ----------------------
 
 |ws_markup| integrates with developer tooling;
-AI agents, IDEs, version control, and CI/CD workflows all work inside a workshop:
+IDEs, version control, and CI/CD workflows all work inside a workshop:
 
 .. toctree::
    :titlesonly:

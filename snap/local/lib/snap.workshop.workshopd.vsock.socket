@@ -1,0 +1,22 @@
+[Unit]
+Description=Socket vsock for snap application workshop.workshopd
+
+BindsTo=snap.workshop.workshopd.unix.socket
+After=snap.workshop.workshopd.unix.socket
+
+# This unit loads the vhost_vsock kernel module to bind to VMADDR_CID_HOST.
+# If the module isn't installed, we skip this unit and disable VM support.
+ConditionPathExists=/dev/vhost-vsock
+
+[Socket]
+ExecStartPre=-/sbin/modprobe vhost_vsock
+
+Service=snap.workshop.workshopd.service
+FileDescriptorName=vsock
+
+# The default port is 1870, but the snap build changes it to a privileged port
+# to ensure LXD doesn't claim it first.
+ListenStream=vsock:2:870
+
+[Install]
+WantedBy=snap.workshop.workshopd.unix.socket

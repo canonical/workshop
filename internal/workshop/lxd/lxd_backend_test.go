@@ -17,11 +17,13 @@ package lxdbackend_test
 import (
 	"crypto/sha3"
 	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/canonical/lxd/shared/api"
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
 	lxdbackend "github.com/canonical/workshop/internal/workshop/lxd"
@@ -115,7 +117,7 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "8188b65112b1a98617508a8f74c0c717af660d9c67354a4d59fe955991fe46a8f8219d969b392c57e74e551f283b2ba7")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "eecdd7227020df46220bdcb82a41d4a4b456b28623888fc3b58b7a057dcf058e00ffe163af0d51df74686169156c9806")
 }
 
 var vmFile = `name: test
@@ -154,7 +156,83 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "123cc47c293fd355150d4438ff92a41a2e38a085d2b6418c313b2a5a33c740664402c21b422bddb8d8d1d668b14318a6")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "10aacf882e4e6afa912c255edde2a6d462fbcb273500c42ee88f5ef1e41d08270cdde27e23b44580e878875ae986dfc7")
+}
+
+// The cloud-init user-data must install and enable the systemd socket unit
+// that SDK units connect to for LoadCredential secret resolution, along with
+// its associated service unit.
+func (f *LxdBeTests) TestWorkshopConfigSecretSocketUnits(c *check.C) {
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name: "test",
+		Base: "ubuntu@22.04",
+	}
+
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1001", "1001", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+
+	userData := cfg["cloud-init.user-data"]
+	c.Check(userData, check.Matches, `(?s).*path: /etc/systemd/system/workshop-secret\.socket.*`)
+	c.Check(userData, check.Matches, `(?s).*ListenStream=/var/lib/workshop/run/workshop\.socket\.secret.*`)
+	c.Check(userData, check.Matches, `(?s).*Accept=yes.*`)
+	c.Check(userData, check.Matches, `(?s).*path: /etc/systemd/system/workshop-secret@\.service.*`)
+	c.Check(userData, check.Matches, `(?s).*ExecStart=/var/lib/workshop/bin/workshopctl get-secret --systemd.*`)
+	c.Check(userData, check.Matches, `(?s).*StandardInput=socket.*`)
+	c.Check(userData, check.Matches, `(?s).*StandardOutput=socket.*`)
+	c.Check(userData, check.Matches, `(?s).*systemctl enable --now workshop-secret\.socket.*`)
+}
+
+func (f *LxdBeTests) TestVMLimits(c *check.C) {
+	// Check baseline limits.
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name:    "test",
+		Base:    "ubuntu@22.04",
+		Runtime: workshop.RuntimeLXDVM,
+	}
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.max_bus_ports"], check.Equals, "8")
+	c.Check(cfg["limits.cpu"], check.Equals, "2")
+
+	// Check per-SDK limits.
+	for i := range 64 {
+		regularSdks := i + 1
+		file.Sdks = append(file.Sdks, workshop.SdkRecord{Name: fmt.Sprintf("sdk%v", regularSdks)})
+
+		cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+		c.Assert(err, check.IsNil)
+
+		maxBusPorts := min(8+4*regularSdks, 192)
+		c.Check(cfg["limits.max_bus_ports"], check.Equals, fmt.Sprint(maxBusPorts), check.Commentf("regularSDKs = %v", regularSdks))
+
+		vCPUs := 6
+		switch {
+		case maxBusPorts <= 64:
+			vCPUs = 2
+		case maxBusPorts <= 96:
+			vCPUs = 3
+		case maxBusPorts <= 128:
+			vCPUs = 4
+		case maxBusPorts <= 160:
+			vCPUs = 5
+		}
+		c.Check(cfg["limits.cpu"], check.Equals, fmt.Sprint(vCPUs), check.Commentf("regularSDKs = %v", regularSdks))
+	}
+
+	// Check the system SDK is accounted for already.
+	file.Sdks = file.Sdks[:14]
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.max_bus_ports"], check.Equals, "64")
+	c.Check(cfg["limits.cpu"], check.Equals, "2")
+
+	file.Sdks = append(file.Sdks, workshop.SdkRecord{Name: "system", Source: sdk.SystemSource})
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.max_bus_ports"], check.Equals, "64")
+	c.Check(cfg["limits.cpu"], check.Equals, "2")
 }
 
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
