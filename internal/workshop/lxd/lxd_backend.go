@@ -31,7 +31,6 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"text/template"
 	"time"
 
 	lxd "github.com/canonical/lxd/client"
@@ -119,8 +118,7 @@ func init() {
 	syscheck.RegisterCheck(checkStorageSpace)
 }
 
-type Backend struct {
-}
+type Backend struct{}
 
 var _ workshop.Backend = (*Backend)(nil)
 
@@ -1065,7 +1063,7 @@ func (s *Backend) execCommand(conn lxd.InstanceServer, ctx context.Context, name
 	}
 
 	opmeta := op.Get()
-	var env = map[string]string{}
+	env := map[string]string{}
 	for k, v := range opmeta.Metadata["environment"].(map[string]any) {
 		if value, ok := v.(string); ok {
 			env[k] = value
@@ -1089,7 +1087,7 @@ func (s *Backend) execCommand(conn lxd.InstanceServer, ctx context.Context, name
 			// unconditionally right after the operation has exited, so it will not be
 			// blocked if we are here
 			<-done
-			var status = int(op.Get().Metadata["return"].(float64))
+			status := int(op.Get().Metadata["return"].(float64))
 			if status != 0 {
 				return &workshop.ErrExec{Status: status}
 			}
