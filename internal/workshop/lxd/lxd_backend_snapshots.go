@@ -694,15 +694,7 @@ func (s *Backend) launchOrRebuildFromSnapshot(conn, snapshotConn lxd.InstanceSer
 		InstanceOnly: true,
 		Refresh:      true,
 	}
-	rop, err := conn.CopyInstance(snapshotConn, *source, &args)
-	if err != nil {
-		return err
-	}
-	if err := rop.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+	return copyInstanceWithDiskSize(snapshotConn, conn, *source, &args, inst.Devices["root"])
 }
 
 // Hash is truncated to 16 hex digits to remain within the 63 characters
@@ -877,15 +869,48 @@ func (s *Backend) copyInstance(src, dst lxd.InstanceServer, srcName, dstName str
 		InstanceOnly: true,
 		Refresh:      refresh,
 	}
-	rop, err := dst.CopyInstance(src, req, &args)
+	return copyInstanceWithDiskSize(src, dst, req, &args, dstInst.Devices["root"])
+}
+
+// Workaround https://github.com/canonical/lxd/issues/19420.
+func copyInstanceWithDiskSize(src, dst lxd.InstanceServer, srcInst api.Instance, args *lxd.InstanceCopyArgs, dstRoot map[string]string) error {
+	size := srcInst.Devices["root"]["size"]
+	resize := args.Refresh && dstRoot != nil && dstRoot["size"] != size
+	if resize {
+		srcInst.Devices = maps.Clone(srcInst.Devices)
+		srcRoot := maps.Clone(srcInst.Devices["root"])
+		if srcRoot == nil {
+			return fmt.Errorf("internal error: %q has no rootfs", srcInst.Name)
+		}
+		delete(srcRoot, "size")
+		srcInst.Devices["root"] = srcRoot
+	}
+
+	rop, err := dst.CopyInstance(src, srcInst, args)
 	if err != nil {
 		return err
 	}
-	if err = rop.Wait(); err != nil {
+	if err := rop.Wait(); err != nil {
 		return err
 	}
+	if !resize || size == "" {
+		return nil
+	}
 
-	return nil
+	inst, etag, err := dst.GetInstance(args.Name)
+	if err != nil {
+		return err
+	}
+	root := inst.Devices["root"]
+	if root == nil {
+		return fmt.Errorf("internal error: %q has no rootfs", args.Name)
+	}
+	root["size"] = size
+	op, err := dst.UpdateInstance(args.Name, inst.Writable(), etag)
+	if err != nil {
+		return err
+	}
+	return op.Wait()
 }
 
 func (s *Backend) RemoveWorkshopStash(ctx context.Context, name string) error {
