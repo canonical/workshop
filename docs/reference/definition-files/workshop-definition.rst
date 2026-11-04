@@ -70,6 +70,15 @@ Top-level fields
      - Type of sandboxing to use to run the workshop.
        One of :samp:`lxd-container` or :samp:`lxd-vm`.
 
+   * - :samp:`cpus`
+     - integer
+     - Number of CPUs available to the workshop.
+       Virtual machine workshops are given 2 by default;
+       containers have no restrictions.
+
+       |ws_markup| may increase this number
+       if it determines that more are needed.
+
    * - :samp:`sdks`
      - array
      - Ordered list of SDK entries.
