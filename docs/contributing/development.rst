@@ -91,11 +91,11 @@ Its :ref:`hooks <exp_sdk_hooks>` install :program:`make`,
 and report the workshop unhealthy
 when :program:`golangci-lint` is missing
 (see :ref:`exp_workshopctl_health`).
-The SDK also slots a :ref:`tunnel <exp_tunnel_interface>`
-that the :ref:`system SDK <exp_system_sdk>` plugs
-to publish the documentation preview
-on the host at :samp:`127.0.0.1:8000`
-(see :ref:`how_forward_ports`).
+
+The :samp:`docs-run` action serves the documentation preview
+on the workshop's own hostname instead of tunneling it to a host port,
+so dev workshops from several checkouts don't compete for the same port
+(see :ref:`exp_workshop_hostname`).
 
 List the available actions and run one:
 
