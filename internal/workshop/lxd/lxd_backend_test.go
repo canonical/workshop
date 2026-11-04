@@ -222,6 +222,18 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 		c.Check(cfg["limits.cpu"], check.Equals, fmt.Sprint(vCPUs), check.Commentf("regularSDKs = %v", regularSdks))
 	}
 
+	// Check that more CPUs can be requested.
+	file.CPUs = 5
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "6")
+
+	file.CPUs = 7
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "7")
+	file.CPUs = 0
+
 	// Check the system SDK is accounted for already.
 	file.Sdks = file.Sdks[:14]
 	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
@@ -234,6 +246,39 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(cfg["limits.max_bus_ports"], check.Equals, "64")
 	c.Check(cfg["limits.cpu"], check.Equals, "2")
+}
+
+func (f *LxdBeTests) TestCPUs(c *check.C) {
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name:    "test",
+		Base:    "ubuntu@22.04",
+		Runtime: workshop.RuntimeLXDContainer,
+	}
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "")
+
+	file.CPUs = 3
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "3")
+
+	file.Runtime = workshop.RuntimeLXDVM
+	file.CPUs = 0
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "2")
+
+	file.CPUs = 1
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "1")
+
+	file.CPUs = 3
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "3")
 }
 
 func (f *LxdBeTests) TestDiskSize(c *check.C) {

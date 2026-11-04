@@ -31,6 +31,12 @@
       ],
       "errorMessage": "The runtime must be one of the supported values: lxd-container, lxd-vm."
     },
+    "cpus": {
+      "type": "integer",
+      "description": "Number of CPUs available to the workshop. Defaults to unlimited for containers and 2 for VMs.",
+      "minimum": 1,
+      "errorMessage": "The number of CPUs must be a positive integer."
+    },
     "sdks": {
       "type": "array",
       "description": "Ordered list of SDKs to install on top of the base. Each entry references an existing SDK; names must be unique within the list. The system SDK is installed first implicitly and need not be listed.",

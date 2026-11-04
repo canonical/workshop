@@ -1484,50 +1484,6 @@ func (s *Backend) workshopConfig(
 		// Allows SDKs to install unsigned kernels and kernel modules.
 		cfg["boot.mode"] = "uefi-nosecureboot"
 
-		// Each virtiofs mount consumes a PCIe port and 3 interrupt vectors.
-		// The port consumes another interrupt vector on top of that. KVM
-		// allocates up to 32 slots, with 8 functions each, but some are
-		// reserved. So we set a conservative upper bound of 192 ports.
-		// Interrupt vectors are also capped at around 256 per vCPU. A single
-		// CPU only has headroom for about 160 interrupt vectors, so we make
-		// another conservative estimate of 128 interrupt vectors per CPU.
-		// Extra CPUs have more headroom than the first, but we don't lose
-		// much by adding more CPUs by default. We want to hit the port limit
-		// well before the IRQ limit because LXD doesn't handle the latter
-		// well: see https://github.com/canonical/lxd/issues/19164.
-		// Typical SDKs have one mount for the SDK itself and another for
-		// config or cache, but some (e.g. node) have several different cache
-		// mounts. Each port we allocate costs about 100ms on first boot, and
-		// 75ms after that. So allowing 4 per SDK seems like a good balance of
-		// allowing some headroom without slowing down the boot too much. The
-		// system SDK reserves 8 ports to match LXD defaults and allow some
-		// headroom if the only other SDK is something like node (or there's a
-		// sketch SDK, which we can't observe from the File alone).
-		const (
-			minPorts    = 8
-			portsPerSdk = 4
-			maxPorts    = 192
-
-			minCPUs      = 2
-			irqsPerMount = 4
-			irqsPerCPU   = 128
-		)
-		regularSdks := len(file.Sdks)
-		for _, s := range file.Sdks {
-			if s.Source == sdk.SystemSource || s.Source == sdk.SketchSource {
-				regularSdks--
-			}
-		}
-		maxBusPorts := min(minPorts+portsPerSdk*regularSdks, maxPorts)
-		cfg["limits.max_bus_ports"] = fmt.Sprint(maxBusPorts)
-
-		minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
-		vCPUs := max(minCPUs, minCPUsForPCI)
-		cfg["limits.cpu"] = fmt.Sprint(vCPUs)
-
-		// LXD's default of 1 GiB is too small for most development environments.
-		cfg["limits.memory"] = DefaultMemoryVM
-
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
 
@@ -1545,6 +1501,8 @@ hpet = "off"
 sata = "off"
 `[1:]
 	}
+
+	maps.Copy(cfg, workshopResources(file))
 
 	return cfg, nil
 }
@@ -1626,4 +1584,67 @@ func formatIdmap(idmapSet *idmap.IdmapSet) string {
 		entries.WriteByte('\n')
 	}
 	return entries.String()
+}
+
+func workshopResources(file *workshop.File) map[string]string {
+	if file.Runtime == workshop.RuntimeLXDContainer {
+		cfg := map[string]string{}
+		if file.CPUs > 0 {
+			cfg["limits.cpu"] = fmt.Sprint(file.CPUs)
+		}
+		return cfg
+	}
+
+	// Each virtiofs mount consumes a PCIe port and 3 interrupt vectors.
+	// The port consumes another interrupt vector on top of that. KVM
+	// allocates up to 32 slots, with 8 functions each, but some are
+	// reserved. So we set a conservative upper bound of 192 ports.
+	// Interrupt vectors are also capped at around 256 per vCPU. A single
+	// CPU only has headroom for about 160 interrupt vectors, so we make
+	// another conservative estimate of 128 interrupt vectors per CPU.
+	// Extra CPUs have more headroom than the first, but we don't lose
+	// much by adding more CPUs by default. We want to hit the port limit
+	// well before the IRQ limit because LXD doesn't handle the latter
+	// well: see https://github.com/canonical/lxd/issues/19164.
+	// Typical SDKs have one mount for the SDK itself and another for
+	// config or cache, but some (e.g. node) have several different cache
+	// mounts. Each port we allocate costs about 100ms on first boot, and
+	// 75ms after that. So allowing 4 per SDK seems like a good balance of
+	// allowing some headroom without slowing down the boot too much. The
+	// system SDK reserves 8 ports to match LXD defaults and allow some
+	// headroom if the only other SDK is something like node (or there's a
+	// sketch SDK, which we can't observe from the File alone).
+	const (
+		minPorts    = 8
+		portsPerSdk = 4
+		maxPorts    = 192
+
+		defaultCPUs  = 2
+		irqsPerMount = 4
+		irqsPerCPU   = 128
+	)
+	regularSdks := len(file.Sdks)
+	for _, s := range file.Sdks {
+		if s.Source == sdk.SystemSource || s.Source == sdk.SketchSource {
+			regularSdks--
+		}
+	}
+	maxBusPorts := min(minPorts+portsPerSdk*regularSdks, maxPorts)
+
+	minCPUs := defaultCPUs
+	if file.CPUs > 0 {
+		minCPUs = file.CPUs
+	}
+	minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
+	vCPUs := max(minCPUs, minCPUsForPCI)
+	if file.CPUs > 0 && vCPUs != file.CPUs {
+		logger.Noticef("Allocating %v CPUs for %q workshop to accommodate extra PCI devices", vCPUs, file.Name)
+	}
+
+	return map[string]string{
+		"limits.cpu":           fmt.Sprint(vCPUs),
+		"limits.max_bus_ports": fmt.Sprint(maxBusPorts),
+		// LXD's default of 1 GiB is too small for most development environments.
+		"limits.memory": DefaultMemoryVM,
+	}
 }
