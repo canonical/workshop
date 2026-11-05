@@ -54,9 +54,11 @@ const (
 	MiB = 1 << 20
 	GiB = 1 << 30
 
-	storagePool         = "workshop"
-	storagePoolMinSize  = 5 * GiB
-	storagePoolReserved = 256 * MiB
+	storagePool        = "workshop"
+	storagePoolMinSize = 5 * GiB
+
+	// configRootSize holds a container's root size while copied as a stash.
+	configRootSize = "user.workshop.root-size"
 
 	// instanceUUIDConfigKey identifies the LXD configuration value used to
 	// derive the workshop's machine ID.
@@ -108,7 +110,6 @@ func init() {
 	syscheck.RegisterCheck(checkServerCapabilities)
 	syscheck.RegisterCheck(ensureBackendReady)
 	syscheck.RegisterCheck(checkWorkshopFormats)
-	syscheck.RegisterCheck(checkStorageSpace)
 }
 
 type Backend struct {
@@ -198,33 +199,8 @@ func checkStorageDriver(drivers []api.ServerStorageDriverInfo) error {
 	return fmt.Errorf(`suitable storage backend not found: error loading %q module`, storagePoolDriver)
 }
 
-// checkStorageSpace puts the daemon into degraded mode when the workshop
-// storage pool is nearly full, preventing further operations from failing
-// weirdly (e.g. on workshop remove causing troubles with backup yaml files
-// removal) due to lack of space. A more strict check is performed before
-// launching or refreshing a workshop.
-func checkStorageSpace() error {
-	conn, err := lxd.ConnectLXDUnix("", nil)
-	if err != nil {
-		// LXD is not available; checkServerCapabilities handles this case.
-		return nil
-	}
-	defer conn.Disconnect()
-
-	res, err := conn.GetStoragePoolResources(storagePool)
-	if api.StatusErrorCheck(err, http.StatusNotFound) {
-		// Pool not yet created; ensureBackendReady handles this case.
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	return checkPoolSpace(res.Space.Total, res.Space.Used, 0)
-}
-
 // checkPoolSpace reports whether a pool with the given total and used space
-// can absorb an operation that needs the given space, on top of the reserve.
+// can absorb an operation that needs the given space.
 func checkPoolSpace(total, used, needed uint64) error {
 	if total == 0 {
 		// Cannot determine usage (e.g. directory-backed pools report zero).
@@ -232,7 +208,7 @@ func checkPoolSpace(total, used, needed uint64) error {
 	}
 
 	avail := total - min(used, total)
-	if avail >= needed+storagePoolReserved {
+	if avail >= needed {
 		return nil
 	}
 
@@ -474,12 +450,8 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 		return err
 	}
 
-	res, err := conn.GetStoragePoolResources(storagePool)
-	if err != nil {
-		return err
-	}
 	needed := estimateNeededSpace(conn, snapshot, file.Runtime)
-	if err := checkPoolSpace(res.Space.Total, res.Space.Used, needed); err != nil {
+	if err := ensurePoolSpace(conn, needed); err != nil {
 		return err
 	}
 
@@ -968,7 +940,9 @@ func (s *Backend) StopWorkshop(ctx context.Context, name string, force bool) err
 	}
 	defer conn.Disconnect()
 
-	return s.stopWorkshop(conn, ctx, name, force)
+	return withReserve(conn, func() error {
+		return s.stopWorkshop(conn, ctx, name, force)
+	})
 }
 
 func (s *Backend) stopWorkshop(conn lxd.InstanceServer, ctx context.Context, name string, force bool) error {
@@ -1537,13 +1511,15 @@ func (s *Backend) RemoveWorkshop(ctx context.Context, name string) (err error) {
 	}
 	defer conn.Disconnect()
 
-	op, err := conn.DeleteInstance(InstanceName(name, projectId), false)
-	if err != nil {
-		return err
-	}
+	return withReserve(conn, func() error {
+		op, err := conn.DeleteInstance(InstanceName(name, projectId), false)
+		if err != nil {
+			return err
+		}
 
-	// DeleteInstance cannot be cancelled in LXD.
-	return op.Wait()
+		// DeleteInstance cannot be cancelled in LXD.
+		return op.Wait()
+	})
 }
 
 func (s *Backend) WorkshopFs(ctx context.Context, name string) (fsutil.Fs, error) {

@@ -26,6 +26,7 @@ var (
 	HandleImageUpdate    = handleImageUpdate
 	CheckServerVersion   = checkVersion
 	GenerateCNAME        = generateCNAME
+	WithReserve          = withReserve
 )
 
 func MockFirewallChecker(f func(string) string) func() {

@@ -765,7 +765,9 @@ func (s *Backend) RemoveSnapshot(ctx context.Context, snapshot workshop.Snapshot
 	// For completeness we should probably check for collisions here. But if
 	// the given snapshot is being removed, it was recently part of a workshop
 	// and we already checked for collisions on launch.
-	return s.deleteSnapshot(snapshotConn, sdkSnapshotName(snapshot, digest))
+	return withReserve(conn, func() error {
+		return s.deleteSnapshot(snapshotConn, sdkSnapshotName(snapshot, digest))
+	})
 }
 
 func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
@@ -860,15 +862,30 @@ func (s *Backend) copyInstance(src, dst lxd.InstanceServer, srcName, dstName str
 	}
 
 	req := *srcInst
+	req.Devices = maps.Clone(req.Devices)
+	root := maps.Clone(req.Devices["root"])
+	if req.Devices == nil || root == nil {
+		return fmt.Errorf("internal error: %q has no rootfs", srcName)
+	}
+	req.Devices["root"] = root
 
 	if storagePoolDriver == "zfs" {
-		req.Devices = maps.Clone(req.Devices)
-		root := maps.Clone(req.Devices["root"])
-		if req.Devices == nil || root == nil {
-			return fmt.Errorf("internal error: %q has no rootfs", srcName)
-		}
-		req.Devices["root"] = root
 		root["initial.zfs.promote"] = "true"
+	}
+
+	// A container's size is a quota. A promoted copy can exceed it, e.g. when
+	// the source is full, so the copy fails. Instead, the size moves to a
+	// config option in the copy, and back to the root disk after copying it
+	// again.
+	var restoreSize string
+	if req.Type == string(api.InstanceTypeContainer) {
+		if size := root["size"]; size != "" {
+			delete(root, "size")
+			req.Config[configRootSize] = size
+		} else {
+			restoreSize = req.Config[configRootSize]
+			delete(req.Config, configRootSize)
+		}
 	}
 
 	args := lxd.InstanceCopyArgs{
@@ -876,7 +893,18 @@ func (s *Backend) copyInstance(src, dst lxd.InstanceServer, srcName, dstName str
 		InstanceOnly: true,
 		Refresh:      refresh,
 	}
-	return copyInstanceWithDiskSize(src, dst, req, &args, dstInst.Devices["root"])
+	if err := copyInstanceWithDiskSize(src, dst, req, &args, dstInst.Devices["root"]); err != nil {
+		return err
+	}
+	if restoreSize == "" {
+		return nil
+	}
+	// The restored workshop might not fit within its previous size, e.g. when
+	// it's full, in which case it remains unlimited until the next refresh.
+	if err := setRootSize(dst, dstName, restoreSize); err != nil {
+		logger.Noticef("Cannot restore %q root size to %s: %v", dstName, restoreSize, err)
+	}
+	return nil
 }
 
 // Workaround https://github.com/canonical/lxd/issues/19420.
@@ -932,8 +960,9 @@ func (s *Backend) RemoveWorkshopStash(ctx context.Context, name string) error {
 	}
 	defer conn.Disconnect()
 
-	err1 := s.deleteSnapshot(conn, instanceStashName(name, projectId))
-	return cmp.Or(err, err1)
+	return withReserve(conn, func() error {
+		return s.deleteSnapshot(conn, instanceStashName(name, projectId))
+	})
 }
 
 func (s *Backend) deleteSnapshot(snapshotConn lxd.InstanceServer, snapshot string) error {

@@ -142,12 +142,8 @@ func (s *Backend) ImportSdk(ctx context.Context, meta sdk.Meta, tarball *os.File
 	if err != nil {
 		return err
 	}
-	res, err := conn.GetStoragePoolResources(storagePool)
-	if err != nil {
-		return err
-	}
 	unpackedSizeEstimate := 5 * uint64(info.Size())
-	if err := checkPoolSpace(res.Space.Total, res.Space.Used, unpackedSizeEstimate); err != nil {
+	if err := ensurePoolSpace(conn, unpackedSizeEstimate); err != nil {
 		return err
 	}
 
@@ -296,7 +292,9 @@ func (s *Backend) DeleteSdk(ctx context.Context, setup sdk.Setup) error {
 	}
 	defer conn.Disconnect()
 
-	return s.deleteVolume(conn, sdk.VolumeName(setup.Name, setup.Revision))
+	return withReserve(conn, func() error {
+		return s.deleteVolume(conn, sdk.VolumeName(setup.Name, setup.Revision))
+	})
 }
 
 func (s *Backend) deleteVolume(conn lxd.InstanceServer, name string) error {

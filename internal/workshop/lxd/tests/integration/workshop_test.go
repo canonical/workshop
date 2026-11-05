@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"maps"
 	"math/rand/v2"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
@@ -1174,6 +1175,84 @@ func (f *wsOps) TestLxdBackendWorkshopCopyVMRootSize(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(vol.Usage, check.NotNil)
 	c.Check(vol.Usage.Total, check.Equals, int64(10<<30))
+}
+
+func (f *wsOps) TestLxdBackendStashFullContainer(c *check.C) {
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", workshop.RuntimeLXDContainer)
+	c.Assert(err, check.IsNil)
+	err = f.bd.DownloadBase(f.ctx, image, nil)
+	c.Assert(err, check.IsNil)
+
+	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04", Storage: "1GiB"}
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	// Fill the workshop completely, so it slightly exceeds its quota.
+	err = f.bd.StartWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	args := workshop.ExecArgs{
+		Command: []string{"sh", "-c", "dd if=/dev/urandom of=/fill bs=1M; sync; true"},
+		WorkDir: "/",
+		Timeout: 2 * time.Minute,
+	}
+	_, err = helper.ExecOutput(f.ctx, f.bd, "test", args)
+	c.Assert(err, check.IsNil)
+
+	// StopWorkshop cannot update the config of a full workshop, so stop it
+	// directly.
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+	name := lxdbackend.InstanceName("test", f.project.ProjectId)
+	op, err := conn.UpdateInstanceState(name, api.InstanceStatePut{Action: "stop", Force: true, Timeout: -1}, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(op.Wait(), check.IsNil)
+
+	// The stash keeps the size aside, since it couldn't hold the copy.
+	err = f.bd.StashWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	defer func() { c.Check(f.bd.RemoveWorkshopStash(f.ctx, "test"), check.IsNil) }()
+	stash := f.stashMetadata(c, "test")
+	c.Check(stash.devices["root"]["size"], check.Equals, "")
+	c.Check(stash.config["user.workshop.root-size"], check.Equals, "1GiB")
+
+	wf.Storage = "2GiB"
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+
+	// The workshop exceeds its previous size, which can't be restored.
+	err = f.bd.UnstashWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	unstashed := f.workshopMetadata(c, "test")
+	c.Check(unstashed.devices["root"]["size"], check.Equals, "")
+	c.Check(unstashed.config["user.workshop.root-size"], check.Equals, "")
+}
+
+func (f *wsOps) TestLxdBackendLaunchArmsReserve(c *check.C) {
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+	conn = conn.UseProject(api.ProjectDefaultName)
+
+	op, err := conn.DeleteStoragePoolVolume("workshop", "custom", "workshop-reserve")
+	if err == nil {
+		c.Assert(op.Wait(), check.IsNil)
+	} else if !api.StatusErrorCheck(err, http.StatusNotFound) {
+		c.Fatal(err)
+	}
+
+	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	vol, _, err := conn.GetStoragePoolVolume("workshop", "custom", "workshop-reserve")
+	c.Assert(err, check.IsNil)
+	if vol.ContentType == "filesystem" {
+		c.Check(vol.Config["zfs.reserve_space"], check.Equals, "true")
+	} else {
+		c.Check(vol.ContentType, check.Equals, "iso")
+	}
 }
 
 func modifiedByRebuild(key string) bool {
