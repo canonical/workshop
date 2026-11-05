@@ -46,6 +46,7 @@ type ExecFunc func(ctx context.Context, name string, args *workshop.Execution) (
 type FakeWorkshop struct {
 	*workshop.Workshop
 	Devices            map[string]map[string]string
+	Disk               string
 	WorkshopFilesystem fsutil.Fs
 	CurrentSnapshot    workshop.Snapshot
 }
@@ -340,6 +341,7 @@ func (f *FakeWorkshopBackend) resetWorkshop(ctx context.Context, file *workshop.
 	ws.Format = f.FormatRevision()
 	ws.Image = snapshot.Image
 	ws.CurrentSnapshot = snapshot
+	ws.Disk = ""
 	return nil
 }
 
@@ -377,6 +379,22 @@ func (s *FakeWorkshopBackend) StopWorkshop(ctx context.Context, name string, for
 		return err
 	}
 	w.Running = false
+	return nil
+}
+
+func (f *FakeWorkshopBackend) ExpandWorkshopDisk(ctx context.Context, name, size string) error {
+	_, projectId, err := f.userProject(ctx)
+	if err != nil {
+		return err
+	}
+
+	f.workshopLock.Lock()
+	defer f.workshopLock.Unlock()
+	ws, ok := f.Workshops[projectId][name]
+	if !ok {
+		return workshop.ErrWorkshopNotLaunched
+	}
+	ws.Disk = size
 	return nil
 }
 

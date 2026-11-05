@@ -43,6 +43,12 @@
       "pattern": "^[1-9][0-9]*(?:|k|M|G|T|P|E|Ki|Mi|Gi|Ti|Pi|Ei)B$",
       "errorMessage": "The amount of memory must be a positive integer followed by a unit, e.g. 8GiB."
     },
+    "disk": {
+      "type": "string",
+      "description": "Size of the workshop's root disk. Defaults to unlimited for containers and 10GiB for VMs. The minimum is 2GiB for containers and 10GiB for VMs.",
+      "pattern": "^[1-9][0-9]*(?:|k|M|G|T|P|E|Ki|Mi|Gi|Ti|Pi|Ei)B$",
+      "errorMessage": "The disk size must be a positive integer followed by a unit, e.g. 20GiB."
+    },
     "sdks": {
       "type": "array",
       "description": "Ordered list of SDKs to install on top of the base. Each entry references an existing SDK; names must be unique within the list. The system SDK is installed first implicitly and need not be listed.",
