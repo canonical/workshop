@@ -30,6 +30,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -84,6 +85,10 @@ const (
 
 var (
 	storagePoolDriver atomic.Pointer[string]
+
+	// backendReadyMu serializes ensureBackendReady, so concurrent callers
+	// don't race to create the storage pool or network.
+	backendReadyMu sync.Mutex
 
 	workshopFormatsChecked = false
 )
@@ -341,6 +346,9 @@ func New() (*Backend, error) {
 // ensureBackendReady creates the LXD storage pool and network the backend
 // relies on, it is idempotent.
 func ensureBackendReady() error {
+	backendReadyMu.Lock()
+	defer backendReadyMu.Unlock()
+
 	// TODO: consider separating the storage pool or network for different users.
 	conn, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
