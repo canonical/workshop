@@ -199,11 +199,28 @@ as suggested in this `LXD documentation section
 <https://canonical.com/lxd/docs/latest/howto/storage_pools/>`_.
 However, day-to-day usage requires little manual intervention.
 
-When less than 256 MiB of the storage pool is free,
-the |ws_markup| daemon enters degraded mode:
-it rejects commands that change state, such as launching a workshop,
-and reports the pool usage instead.
-It returns to normal operation as soon as space is available.
+|ws_markup| keeps a reserve of 256 MiB in the storage pool,
+as a custom volume named :samp:`workshop-reserve`.
+Operations that consume a lot of space check the pool before they start,
+and fail with a report of the pool usage
+if the space they need would cut into the reserve:
+
+- Launching or refreshing a workshop
+  needs space to boot it,
+  plus space to unpack its base image
+  if the pool doesn't already hold an unpacked copy.
+
+- Installing an SDK needs space to unpack it,
+  which is estimated as several times the size of the downloaded SDK.
+
+If the pool still fills up,
+for example because of files written inside workshops,
+operations such as stopping or removing a workshop
+release the reserve when they run out of space, and try again.
+|ws_markup| creates the reserve again
+before the next launch or SDK installation,
+once the pool has enough space.
+
 To recover, remove unused workshops or SDKs,
 or expand the pool by setting a larger size at the pool level:
 
