@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: spread/spread
-          key: spread-binary-${{ steps.spread-sha.outputs.sha }}
+          key: temp-spread-binary-${{ steps.spread-sha.outputs.sha }}
       - name: Setup Go
         if: steps.cache-spread.outputs.cache-hit != 'true'
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -78,6 +78,7 @@ jobs:
           git clone https://github.com/dmitry-lyfar/spread
           pushd spread
           . "$GITHUB_WORKSPACE/tests/lib/retry.sh"
+          sed -e 's/8GB/32GiB/' -i spread/lxd.go
           retry 5 go build -o spread ./cmd/spread
           popd
       - name: Upload spread binary
