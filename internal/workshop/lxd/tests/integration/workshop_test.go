@@ -881,12 +881,12 @@ func (f *wsOps) TestLxdBackendStartSurvivesRebootVM(c *check.C) {
 }
 
 func (f *wsOps) testStartSurvivesReboot(c *check.C, runtime workshop.Runtime) {
-	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", runtime)
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@26.04", runtime)
 	c.Assert(err, check.IsNil)
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Assert(err, check.IsNil)
 
-	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04", Runtime: runtime}
+	wf := &workshop.File{Name: "test", Base: "ubuntu@26.04", Runtime: runtime}
 	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, runtime, image.Fingerprint)
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
