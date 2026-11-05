@@ -83,10 +83,6 @@ const (
 )
 
 var (
-	// storagePoolDriver is the driver of the workshop storage pool, set once by
-	// the first successful ensureBackendReady. That may happen after the daemon
-	// starts serving (e.g. when LXD is unavailable at startup), so it is
-	// accessed atomically through poolDriver and setPoolDriver.
 	storagePoolDriver atomic.Pointer[string]
 
 	workshopFormatsChecked = false
@@ -190,7 +186,7 @@ func checkVersion(version string) error {
 }
 
 // preferredDriver returns the first supported storage driver in order of
-// preference (ZFS, then Btrfs), or an error if none is supported.
+// preference (ZFS, then btrfs), or an error if none is supported.
 func preferredDriver(supported []api.ServerStorageDriverInfo) (string, error) {
 	preferred := []string{"zfs", "btrfs"}
 	for _, driver := range preferred {
@@ -350,9 +346,7 @@ func ensureBackendReady() error {
 	defer conn.Disconnect()
 
 	// Create the LXD storage pool if it doesn't exist, and record its driver so
-	// pool operations can reuse it. A missing pool returns a 404; any other
-	// error (e.g. a ZFS pool whose module is gone) is left for checkStoragePool
-	// to report.
+	// pool operations can reuse it.
 	existingPool, _, err := conn.GetStoragePool(storagePool)
 	if api.StatusErrorCheck(err, http.StatusNotFound) {
 		// Recreate the pool on the driver already in use, if any: the pool can

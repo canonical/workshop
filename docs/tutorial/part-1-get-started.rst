@@ -49,7 +49,7 @@ Prerequisites
 and other :program:`snap`-enabled Linux distributions;
 it is also compatible with Windows Subsystem for Linux (WSL2).
 For storage, it uses ZFS where |ws_markup| detects that ZFS is available,
-and otherwise falls back to Btrfs.
+and otherwise falls back to btrfs.
 
 |ws_markup| relies on
 `LXD 6.8+ <https://canonical.com/lxd>`_
