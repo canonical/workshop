@@ -200,16 +200,19 @@ func preferredDriver(supported []api.ServerStorageDriverInfo) (string, error) {
 }
 
 // checkStoragePool returns an error when the workshop storage pool exists but
-// its storage driver can't be loaded. A missing pool is not an error:
-// ensureBackendReady creates it.
-func checkStoragePool(conn lxd.InstanceServer) error {
+// its storage driver can't be loaded, or when the pool is missing and none of
+// the supported drivers can be used to create it.
+func checkStoragePool(conn lxd.InstanceServer, supported []api.ServerStorageDriverInfo) error {
 	if _, _, err := conn.GetStoragePool(storagePool); err == nil {
 		return nil
 	} else if !api.StatusErrorCheck(err, http.StatusNotFound) {
 		return fmt.Errorf("%q storage pool unavailable: %w", storagePool, err)
 	}
 
-	return nil
+	// The pool is missing; ensureBackendReady creates it with the preferred
+	// driver, so make sure there is one.
+	_, err := preferredDriver(supported)
+	return err
 }
 
 // checkStorageSpace puts the daemon into degraded mode when the workshop
@@ -273,7 +276,7 @@ func checkServerCapabilities() error {
 
 	workshop.WorkshopVMsSupportSDKs.Store(checkVMsSupportSDKs(conn))
 
-	return checkStoragePool(conn)
+	return checkStoragePool(conn, info.Environment.StorageSupportedDrivers)
 }
 
 // vmDiskShiftSupported checks whether LXD supports mounting shifted SDK

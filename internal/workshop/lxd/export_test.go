@@ -24,6 +24,7 @@ var (
 	CheckServerVersion = checkVersion
 	GenerateCNAME      = generateCNAME
 	PreferredDriver    = preferredDriver
+	CheckStoragePool   = checkStoragePool
 )
 
 func MockFirewallChecker(f func(string) string) func() {

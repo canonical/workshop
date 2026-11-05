@@ -18,8 +18,10 @@ import (
 	"crypto/sha3"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"testing"
 
+	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
 	"gopkg.in/check.v1"
 
@@ -296,4 +298,35 @@ func (f *LxdBeTests) TestPreferredDriver(c *check.C) {
 	driver, err = lxdbackend.PreferredDriver(nil)
 	c.Check(err, check.ErrorMatches, "suitable storage backend not found.*")
 	c.Check(driver, check.Equals, "")
+}
+
+// poolServer is an lxd.InstanceServer whose GetStoragePool returns err.
+type poolServer struct {
+	lxd.InstanceServer
+	err error
+}
+
+func (s poolServer) GetStoragePool(string) (*api.StoragePool, string, error) {
+	if s.err != nil {
+		return nil, "", s.err
+	}
+	return &api.StoragePool{}, "", nil
+}
+
+func (f *LxdBeTests) TestCheckStoragePool(c *check.C) {
+	notFound := api.StatusErrorf(http.StatusNotFound, "not found")
+
+	// An existing pool doesn't need a supported driver to be listed.
+	c.Check(lxdbackend.CheckStoragePool(poolServer{}, nil), check.IsNil)
+
+	// A missing pool is fine as long as it can be created.
+	c.Check(lxdbackend.CheckStoragePool(poolServer{err: notFound}, driverInfo("btrfs")), check.IsNil)
+
+	// A missing pool with no usable driver can't be created.
+	err := lxdbackend.CheckStoragePool(poolServer{err: notFound}, driverInfo("dir"))
+	c.Check(err, check.ErrorMatches, "suitable storage backend not found.*")
+
+	// Any other error means the existing pool is unusable.
+	err = lxdbackend.CheckStoragePool(poolServer{err: fmt.Errorf("zfs module not loaded")}, driverInfo("zfs"))
+	c.Check(err, check.ErrorMatches, `"workshop" storage pool unavailable: zfs module not loaded`)
 }
