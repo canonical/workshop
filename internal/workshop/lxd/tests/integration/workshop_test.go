@@ -1078,6 +1078,83 @@ func (f *wsOps) TestLxdBackendWorkshopRebuild(c *check.C) {
 	c.Check(rebuilt.addresses, testutil.DeepUnsortedMatches, original.addresses)
 }
 
+// The rebuild API doesn't allow resizing the root disk. If a user resizes it
+// post-launch, the subsequent rebuild has to reset it to the LXD default.
+// Currently that's the same as the Workshop default, but if it increases in
+// future this test will catch it.
+func (f *wsOps) TestLxdBackendWorkshopRebuildVMRootSize(c *check.C) {
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", workshop.RuntimeLXDVM)
+	c.Assert(err, check.IsNil)
+	err = f.bd.DownloadBase(f.ctx, image, nil)
+	c.Assert(err, check.IsNil)
+
+	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04", Runtime: workshop.RuntimeLXDVM}
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDVM, image.Fingerprint)
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	name := lxdbackend.InstanceName("test", f.project.ProjectId)
+	inst, etag, err := conn.GetInstance(name)
+	c.Assert(err, check.IsNil)
+	size := inst.Devices["root"]["size"]
+	inst.Devices["root"]["size"] = "20GiB"
+	op, err := conn.UpdateInstance(name, inst.Writable(), etag)
+	c.Assert(err, check.IsNil)
+	c.Assert(op.Wait(), check.IsNil)
+
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+
+	inst, _, err = conn.GetInstance(name)
+	c.Assert(err, check.IsNil)
+	c.Check(inst.Devices["root"]["size"], check.Equals, size)
+}
+
+// The copy API does allow changing the root disk size, but it's still worth
+// checking that it's possible to refresh to a smaller disk size.
+func (f *wsOps) TestLxdBackendWorkshopCopyVMRootSize(c *check.C) {
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", workshop.RuntimeLXDVM)
+	c.Assert(err, check.IsNil)
+	err = f.bd.DownloadBase(f.ctx, image, nil)
+	c.Assert(err, check.IsNil)
+
+	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04", Runtime: workshop.RuntimeLXDVM}
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDVM, image.Fingerprint)
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	snapshot.Sdks = append(snapshot.Sdks, sdk.ContentID{Name: "test-sdk", Sha3_384: "d024fbe91c6b99d0064306d52006c17a5d0406822ff253fbbe6a934ca9be50d3ff9a6ec3bac3be8396006029a1ff453a"})
+	err = f.bd.TakeSnapshot(f.ctx, "test", snapshot)
+	c.Assert(err, check.IsNil)
+	defer func() { c.Check(f.bd.RemoveSnapshot(f.ctx, snapshot), check.IsNil) }()
+
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	name := lxdbackend.InstanceName("test", f.project.ProjectId)
+	inst, etag, err := conn.GetInstance(name)
+	c.Assert(err, check.IsNil)
+	size := inst.Devices["root"]["size"]
+	inst.Devices["root"]["size"] = "20GiB"
+	op, err := conn.UpdateInstance(name, inst.Writable(), etag)
+	c.Assert(err, check.IsNil)
+	c.Assert(op.Wait(), check.IsNil)
+
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+
+	inst, _, err = conn.GetInstance(name)
+	c.Assert(err, check.IsNil)
+	c.Check(inst.Devices["root"]["size"], check.Equals, size)
+}
+
 func modifiedByRebuild(key string) bool {
 	switch key {
 	case "user.workshop.file", "user.workshop.base-fingerprint":

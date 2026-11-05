@@ -138,6 +138,19 @@ func (s *Backend) ImportSdk(ctx context.Context, meta sdk.Meta, tarball *os.File
 		}
 	}
 
+	info, err := tarball.Stat()
+	if err != nil {
+		return err
+	}
+	res, err := conn.GetStoragePoolResources(storagePool)
+	if err != nil {
+		return err
+	}
+	unpackedSizeEstimate := 5 * uint64(info.Size())
+	if err := checkPoolSpace(res.Space.Total, res.Space.Used, unpackedSizeEstimate); err != nil {
+		return err
+	}
+
 	vol := lxd.StoragePoolVolumeBackupArgs{
 		BackupFile: io.NopCloser(tarball),
 		Name:       name,

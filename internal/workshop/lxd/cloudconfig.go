@@ -128,6 +128,11 @@ bootcmd:
 - chmod 0600 /etc/ssh/ssh_host_ed25519_key
 # LXD containers use /dev/urandom from the host and VMs use virtio-rng.
 - install -D --mode=0644 /dev/null /var/cache/pollinate/seeded
+# Hold apt and firmware updates until refresh.
+- systemctl mask apt-daily.timer apt-daily-upgrade.timer unattended-upgrades.service fwupd.service fwupd-refresh.timer
+# Prevent degraded boot in ubuntu@26.04 containers. Getty isn't useful without
+# a password anyway. See https://github.com/canonical/lxd/issues/16860.
+- systemctl mask console-getty.service
 apt:
   conf: |
     # Installed by workshop
