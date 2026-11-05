@@ -281,6 +281,42 @@ func (f *LxdBeTests) TestCPUs(c *check.C) {
 	c.Check(cfg["limits.cpu"], check.Equals, "3")
 }
 
+func (f *LxdBeTests) TestMemory(c *check.C) {
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name:    "test",
+		Base:    "ubuntu@22.04",
+		Runtime: workshop.RuntimeLXDContainer,
+	}
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.memory"], check.Equals, "")
+
+	file.Memory = "2GB"
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.memory"], check.Equals, "2GB")
+
+	file.Memory = "1B"
+	_, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Check(err, check.ErrorMatches, `invalid memory size "1B": must be at least 256MiB for containers`)
+
+	file.Runtime = workshop.RuntimeLXDVM
+	file.Memory = ""
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.memory"], check.Equals, "4GiB")
+
+	file.Memory = "2GB"
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.memory"], check.Equals, "2GB")
+
+	file.Memory = "1kB"
+	_, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Check(err, check.ErrorMatches, `invalid memory size "1kB": must be at least 512MiB for virtual machines`)
+}
+
 func (f *LxdBeTests) TestDiskSize(c *check.C) {
 	usr := &user.User{Uid: "1000", Gid: "1000"}
 
