@@ -1184,6 +1184,16 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 	}
 
+	cpus := 0
+	if limitsCpu := inst.Config["limits.cpu"]; limitsCpu != "" {
+		n, err := strconv.Atoi(limitsCpu)
+		if err != nil {
+			logger.Debugf("Ignoring unexpected CPU limit: %v", err)
+		} else {
+			cpus = n
+		}
+	}
+
 	sdks := map[string]workshop.SdkInstallation{}
 	for key, device := range inst.Devices {
 		s, err := maybeSdkInstallation(key, device)
@@ -1221,6 +1231,7 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		Format:         format,
 		Image:          image,
 		Running:        running,
+		CPUs:           cpus,
 		Sdks:           sdks,
 		Profiles:       profs,
 		File:           f,
