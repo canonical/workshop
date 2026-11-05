@@ -1571,6 +1571,9 @@ func (s *Backend) workshopConfig(
 		if file.CPUs > 0 {
 			cfg["limits.cpu"] = fmt.Sprint(file.CPUs)
 		}
+		if file.Memory != "" {
+			cfg["limits.memory"] = file.Memory
+		}
 	} else {
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
@@ -1625,6 +1628,9 @@ func (s *Backend) workshopConfig(
 
 		// LXD's default of 1 GiB is too small for most development environments.
 		cfg["limits.memory"] = "4GiB"
+		if file.Memory != "" {
+			cfg["limits.memory"] = file.Memory
+		}
 
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"

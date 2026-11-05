@@ -8,6 +8,7 @@ File:
   Name: string
   Base: string
   CPUs: int
+  Memory: string
   Runtime: workshop.Runtime
   Sdks: '[]workshop.SdkRecord'
   Actions:

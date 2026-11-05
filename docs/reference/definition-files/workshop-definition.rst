@@ -79,6 +79,12 @@ Top-level fields
        |ws_markup| may increase this number
        if it determines that more are needed.
 
+   * - :samp:`memory`
+     - string
+     - Amount of memory available to the workshop.
+       Virtual machine workshops are given :samp:`4GiB` by default;
+       containers have no restrictions.
+
    * - :samp:`sdks`
      - array
      - Ordered list of SDK entries.
