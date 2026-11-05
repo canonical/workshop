@@ -330,3 +330,20 @@ func (f *LxdBeTests) TestCheckStoragePool(c *check.C) {
 	err = lxdbackend.CheckStoragePool(poolServer{err: fmt.Errorf("zfs module not loaded")}, driverInfo("zfs"))
 	c.Check(err, check.ErrorMatches, `"workshop" storage pool unavailable: zfs module not loaded`)
 }
+
+func (f *LxdBeTests) TestAdoptPoolDriver(c *check.C) {
+	defer lxdbackend.MockPoolDriver()()
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "")
+
+	c.Assert(lxdbackend.AdoptPoolDriver("zfs"), check.IsNil)
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "zfs")
+
+	// A pool recreated on another supported driver is adopted.
+	c.Assert(lxdbackend.AdoptPoolDriver("btrfs"), check.IsNil)
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "btrfs")
+
+	// An unsupported driver is rejected and the recorded one is kept.
+	err := lxdbackend.AdoptPoolDriver("dir")
+	c.Check(err, check.ErrorMatches, `cannot use storage pool "workshop": unsupported driver "dir" \(expected one of zfs, btrfs\)`)
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "btrfs")
+}

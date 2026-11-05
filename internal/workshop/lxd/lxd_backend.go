@@ -84,17 +84,18 @@ const (
 )
 
 var (
+	// storageDrivers lists the supported pool drivers, most preferred first.
+	storageDrivers = []string{"zfs", "btrfs"}
+
 	storagePoolDriver atomic.Pointer[string]
 
-	// backendReadyMu serializes ensureBackendReady, so concurrent callers
-	// don't race to create the storage pool or network.
+	// backendReadyMu serializes ensureBackendReady.
 	backendReadyMu sync.Mutex
 
 	workshopFormatsChecked = false
 )
 
-// poolDriver returns the driver of the workshop storage pool, or "" if it
-// is not known yet.
+// poolDriver returns the storage pool driver, or "" if unknown.
 func poolDriver() string {
 	if driver := storagePoolDriver.Load(); driver != nil {
 		return *driver
@@ -102,10 +103,16 @@ func poolDriver() string {
 	return ""
 }
 
-// setPoolDriver records driver as the storage pool driver unless one is
-// already recorded, so the driver never changes once set.
-func setPoolDriver(driver string) {
-	storagePoolDriver.CompareAndSwap(nil, &driver)
+// adoptPoolDriver records driver as the storage pool driver if supported.
+func adoptPoolDriver(driver string) error {
+	if !slices.Contains(storageDrivers, driver) {
+		return fmt.Errorf("cannot use storage pool %q: unsupported driver %q (expected one of %s)", storagePool, driver, strings.Join(storageDrivers, ", "))
+	}
+	if old := poolDriver(); old != "" && old != driver {
+		logger.Noticef("Storage pool %q changed driver from %q to %q", storagePool, old, driver)
+	}
+	storagePoolDriver.Store(&driver)
+	return nil
 }
 
 func init() {
@@ -193,20 +200,17 @@ func checkVersion(version string) error {
 // preferredDriver returns the first supported storage driver in order of
 // preference (ZFS, then btrfs), or an error if none is supported.
 func preferredDriver(supported []api.ServerStorageDriverInfo) (string, error) {
-	preferred := []string{"zfs", "btrfs"}
-	for _, driver := range preferred {
+	for _, driver := range storageDrivers {
 		if slices.ContainsFunc(supported, func(d api.ServerStorageDriverInfo) bool {
 			return d.Name == driver
 		}) {
 			return driver, nil
 		}
 	}
-	return "", fmt.Errorf("suitable storage backend not found: none of %s is available", strings.Join(preferred, ", "))
+	return "", fmt.Errorf("suitable storage backend not found: none of %s is available", strings.Join(storageDrivers, ", "))
 }
 
-// checkStoragePool returns an error when the workshop storage pool exists but
-// its storage driver can't be loaded, or when the pool is missing and none of
-// the supported drivers can be used to create it.
+// checkStoragePool checks that the storage pool is usable or can be created.
 func checkStoragePool(conn lxd.InstanceServer, supported []api.ServerStorageDriverInfo) error {
 	if _, _, err := conn.GetStoragePool(storagePool); err == nil {
 		return nil
@@ -214,8 +218,7 @@ func checkStoragePool(conn lxd.InstanceServer, supported []api.ServerStorageDriv
 		return fmt.Errorf("%q storage pool unavailable: %w", storagePool, err)
 	}
 
-	// The pool is missing; ensureBackendReady creates it with the preferred
-	// driver, so make sure there is one.
+	// The pool is missing; make sure it can be created.
 	_, err := preferredDriver(supported)
 	return err
 }
@@ -360,9 +363,7 @@ func ensureBackendReady() error {
 	// pool operations can reuse it.
 	existingPool, _, err := conn.GetStoragePool(storagePool)
 	if api.StatusErrorCheck(err, http.StatusNotFound) {
-		// Recreate the pool on the driver already in use, if any: the pool can
-		// go missing while the daemon runs, and switching drivers underneath
-		// readers is not supported.
+		// Reuse the driver already in use, if any.
 		driver := poolDriver()
 		if driver == "" {
 			info, _, err := conn.GetServer()
@@ -385,7 +386,9 @@ func ensureBackendReady() error {
 		if err := op.Wait(); err != nil {
 			return err
 		}
-		setPoolDriver(driver)
+		if err := adoptPoolDriver(driver); err != nil {
+			return err
+		}
 
 		// Ensure the new pool has enough total space available.
 		pool, etag, err := conn.GetStoragePool(storagePool)
@@ -418,13 +421,8 @@ func ensureBackendReady() error {
 		}
 	} else if err != nil {
 		return err
-	} else if driver := poolDriver(); driver == "" {
-		setPoolDriver(existingPool.Driver)
-	} else if driver != existingPool.Driver {
-		// The pool was recreated on another driver while the daemon was
-		// running. Adopting the new driver would change snapshot behavior
-		// underneath running operations, so refuse instead.
-		return fmt.Errorf("storage pool %q changed driver: %q (expected %q)", storagePool, existingPool.Driver, driver)
+	} else if err := adoptPoolDriver(existingPool.Driver); err != nil {
+		return err
 	}
 
 	network, etag, err := conn.GetNetwork(networkName)
