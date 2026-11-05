@@ -87,6 +87,20 @@ Top-level fields
        The minimum is :samp:`256MiB` for containers
        and :samp:`512MiB` for virtual machines.
 
+   * - :samp:`disk`
+     - string
+     - Size of the workshop's root disk.
+       Virtual machine workshops are given :samp:`10GiB` by default;
+       containers are limited only by the storage pool.
+       The minimum is :samp:`2GiB` for containers
+       and :samp:`10GiB` for virtual machines.
+
+       For virtual machine workshops,
+       the disk is fixed at :samp:`10GiB` during :samp:`setup-base` hooks,
+       and expanded once they complete.
+       This allows |ws_markup| to snapshot the results of :samp:`setup-base`
+       and reuse them when launching a workshop with a smaller disk.
+
    * - :samp:`sdks`
      - array
      - Ordered list of SDK entries.

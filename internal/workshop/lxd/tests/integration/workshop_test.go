@@ -18,6 +18,7 @@ package lxdbackend_integration_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -1129,32 +1130,47 @@ func (f *wsOps) TestLxdBackendWorkshopCopyVMRootSize(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
 
+	err = f.bd.StartWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+
 	snapshot.Sdks = append(snapshot.Sdks, sdk.ContentID{Name: "test-sdk", Sha3_384: "d024fbe91c6b99d0064306d52006c17a5d0406822ff253fbbe6a934ca9be50d3ff9a6ec3bac3be8396006029a1ff453a"})
 	err = f.bd.TakeSnapshot(f.ctx, "test", snapshot)
 	c.Assert(err, check.IsNil)
 	defer func() { c.Check(f.bd.RemoveSnapshot(f.ctx, snapshot), check.IsNil) }()
+
+	err = f.bd.ExpandWorkshopDisk(f.ctx, "test", "20GiB")
+	c.Assert(err, check.IsNil)
+
+	args := workshop.ExecArgs{
+		Command: []string{"findmnt", "--bytes", "--json", "--mountpoint=/", "--output=size"},
+		WorkDir: "/",
+		Timeout: time.Second,
+	}
+	output, err := helper.ExecOutput(f.ctx, f.bd, "test", args)
+	c.Assert(err, check.IsNil)
+	var filesystems struct {
+		Filesystems []struct {
+			Size int64 `json:"size"`
+		} `json:"filesystems"`
+	}
+	err = json.Unmarshal([]byte(output), &filesystems)
+	c.Assert(err, check.IsNil)
+	c.Assert(filesystems.Filesystems, check.HasLen, 1)
+	size := filesystems.Filesystems[0].Size
+	c.Check(size > 15<<30, check.Equals, true, check.Commentf("root filesystem size: %vB", size))
+
+	err = f.bd.StopWorkshop(f.ctx, "test", false)
+	c.Assert(err, check.IsNil)
+
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
 
 	conn, err := f.bd.LxdClient(f.ctx)
 	c.Assert(err, check.IsNil)
 	defer conn.Disconnect()
 
 	name := lxdbackend.InstanceName("test", f.project.ProjectId)
-	inst, etag, err := conn.GetInstance(name)
-	c.Assert(err, check.IsNil)
-	inst.Devices["root"]["size"] = "20GiB"
-	op, err := conn.UpdateInstance(name, inst.Writable(), etag)
-	c.Assert(err, check.IsNil)
-	c.Assert(op.Wait(), check.IsNil)
-
 	vol, err := conn.GetStoragePoolVolumeState("workshop", "virtual-machine", name)
-	c.Assert(err, check.IsNil)
-	c.Assert(vol.Usage, check.NotNil)
-	c.Check(vol.Usage.Total, check.Equals, int64(20<<30))
-
-	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
-	c.Assert(err, check.IsNil)
-
-	vol, err = conn.GetStoragePoolVolumeState("workshop", "virtual-machine", name)
 	c.Assert(err, check.IsNil)
 	c.Assert(vol.Usage, check.NotNil)
 	c.Check(vol.Usage.Total, check.Equals, int64(10<<30))
@@ -1168,7 +1184,7 @@ func modifiedByRebuild(key string) bool {
 	return strings.HasPrefix(key, "image.") || strings.HasPrefix(key, "volatile.")
 }
 
-func (f *wsOps) TestLxdBackendWorkshopRestoreResetsSdkConfiguration(c *check.C) {
+func (f *wsOps) TestLxdBackendWorkshopRestoreResetsConfiguration(c *check.C) {
 	meta := sdk.Meta{
 		Setup: sdk.Setup{
 			Name:     "test-sdk",
@@ -1193,12 +1209,30 @@ func (f *wsOps) TestLxdBackendWorkshopRestoreResetsSdkConfiguration(c *check.C) 
 	helper.MockSdkVolume(c, f.ctx, f.bd, meta2)
 	defer func() { c.Check(f.bd.DeleteSdk(f.ctx, meta2.Setup), check.IsNil) }()
 
-	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	createWFile(c, f.project.Path, "test", "name: test\nbase: ubuntu@24.04\ndisk: 20GiB\n")
+	_, _, err := f.bd.CreateOrLoadProject(f.ctx, f.project.Path)
+	c.Assert(err, check.IsNil)
+
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", workshop.RuntimeLXDContainer)
+	c.Assert(err, check.IsNil)
+	err = f.bd.DownloadBase(f.ctx, image, nil)
+	c.Assert(err, check.IsNil)
+
+	wf := &workshop.File{
+		Name: "test",
+		Base: "ubuntu@24.04",
+		Disk: "20GiB",
+	}
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
 	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+
+	err = f.bd.StartWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
 
 	w, err := f.bd.Workshop(f.ctx, "test")
 	c.Assert(err, check.IsNil)
-	image := w.Image
 
 	err = f.bd.InstallSdk(f.ctx, "test", meta.Setup)
 	c.Assert(err, check.IsNil)
@@ -1218,7 +1252,7 @@ func (f *wsOps) TestLxdBackendWorkshopRestoreResetsSdkConfiguration(c *check.C) 
 	c.Check(info.Meta, check.Equals, saved)
 	c.Check(info.Workshops, check.DeepEquals, map[string][]string{f.project.ProjectId: {"test"}})
 
-	snapshot := workshop.SdkSnapshot(w.Format, w.Image, []sdk.Setup{meta.Setup})
+	snapshot.Sdks = append(snapshot.Sdks, sdk.SetupContentID(meta.Setup))
 	err = f.bd.TakeSnapshot(f.ctx, "test", snapshot)
 	c.Assert(err, check.IsNil)
 
@@ -1227,11 +1261,14 @@ func (f *wsOps) TestLxdBackendWorkshopRestoreResetsSdkConfiguration(c *check.C) 
 	c.Assert(err, check.IsNil)
 	defer func() { _ = f.bd.UninstallSdk(f.ctx, "test", meta2.Name) }()
 
+	err = f.bd.ExpandWorkshopDisk(f.ctx, "test", wf.Disk)
+	c.Assert(err, check.IsNil)
+
 	// Restore the workshop from the snapshot.
 	err = f.bd.StopWorkshop(f.ctx, "test", true)
 	c.Assert(err, check.IsNil)
 
-	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04"}
+	wf.Disk = ""
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 

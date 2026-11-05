@@ -340,6 +340,28 @@ memory: 8
 	c.Check(err, check.ErrorMatches, `invalid memory size "0GiB": must be a positive integer followed by a unit, e.g. 8GiB`)
 }
 
+func (f *workshopFile) TestDisk(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+disk: 64GiB
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.Disk, check.Equals, "64GiB")
+}
+
+func (f *workshopFile) TestDiskError(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+disk: 20G
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, `invalid disk size "20G": must be a positive integer followed by a unit, e.g. 20GiB`)
+}
+
 func (f *workshopFile) TestWorkshopFileDuplicateSdks(c *check.C) {
 	yaml := `name: xbert-gpu
 base: ubuntu@24.04
