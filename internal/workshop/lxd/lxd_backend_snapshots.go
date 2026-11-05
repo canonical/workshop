@@ -370,7 +370,7 @@ func (s *Backend) TakeSnapshot(ctx context.Context, name string, snapshot worksh
 	if inst.Devices == nil {
 		inst.Devices = map[string]map[string]string{}
 	}
-	if err := mergeDevices(inst.Devices, snapshot.Sdks, name); err != nil {
+	if err := mergeDevices(inst.Devices, snapshot.Image.Runtime, snapshot.Sdks, name); err != nil {
 		return err
 	}
 
@@ -718,18 +718,25 @@ func mergeConfig(source, target, config map[string]string) {
 	maps.Copy(source, config)
 }
 
-func mergeDevices(source map[string]map[string]string, sdks []sdk.ContentID, w string) error {
+func mergeDevices(source map[string]map[string]string, runtime workshop.Runtime, sdks []sdk.ContentID, w string) error {
 	maps.DeleteFunc(source, func(k string, v map[string]string) bool {
 		return k != "root"
 	})
 
+	root := maps.Clone(source["root"])
+	if root == nil {
+		return fmt.Errorf("internal error: %q workshop has no rootfs", w)
+	}
+	source["root"] = root
+
 	if storagePoolDriver == "zfs" {
-		root := maps.Clone(source["root"])
-		if source == nil || root == nil {
-			return fmt.Errorf("internal error: %q workshop has no rootfs", w)
-		}
-		source["root"] = root
 		root["initial.zfs.promote"] = "true"
+	}
+
+	if runtime != workshop.RuntimeLXDVM {
+		// VM snapshots all have the same size, so it's safe to keep. For
+		// containers, the quota can vary so we forget it for snapshots.
+		delete(root, "size")
 	}
 
 	for i, sk := range sdks {

@@ -310,6 +310,9 @@ type Backend interface {
 	// its running services termination) unless force is used.
 	StopWorkshop(ctx context.Context, name string, force bool) error
 
+	// Expands the workshop's root disk to the given size.
+	ExpandWorkshopDisk(ctx context.Context, name, size string) error
+
 	// Adds a workshop mount described by the properties.
 	AddWorkshopMount(ctx context.Context, name string, mount Mount) error
 

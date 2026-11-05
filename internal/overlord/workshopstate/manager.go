@@ -68,6 +68,7 @@ func New(st *state.State, runner *state.TaskRunner) *WorkshopManager {
 	runner.AddHandler("start-workshop", OnDo(manager.doStart), OnUndo(manager.doStop))
 	runner.AddHandler("stop-workshop", OnDo(manager.doStop), OnUndo(manager.doStart))
 	runner.AddHandler("remove-workshop", OnDo(manager.doRemoveWorkshop), nil)
+	runner.AddHandler("expand-workshop-disk", OnDo(manager.doExpandWorkshopDisk), nil)
 	runner.AddHandler("configure-timezone", OnDo(manager.doConfigureTimezone), nil)
 	runner.AddHandler("mount-project", OnDo(manager.doMountProject), OnUndo(manager.undoMountProject))
 	runner.AddHandler("create-workshop-storage", OnDo(manager.doCreateWorkshopStorage), OnUndo(manager.doRemoveWorkshopStorage))

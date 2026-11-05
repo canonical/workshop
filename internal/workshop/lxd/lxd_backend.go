@@ -15,6 +15,7 @@
 package lxdbackend
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"embed"
@@ -452,10 +453,14 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 	if err != nil {
 		return err
 	}
+	devices, err := defaultDevices(usr, projectId, file)
+	if err != nil {
+		return err
+	}
 	req := api.InstancesPost{
 		InstancePut: api.InstancePut{
 			Config:  config,
-			Devices: defaultDevices(usr, projectId, file.Name, file.Runtime),
+			Devices: devices,
 		},
 		Name: InstanceName(file.Name, projectId),
 		Type: instanceType(file.Runtime),
@@ -938,6 +943,104 @@ func (s *Backend) setAutoStart(conn lxd.InstanceServer, ctx context.Context, nam
 	return op.WaitContext(ctx)
 }
 
+func (s *Backend) ExpandWorkshopDisk(ctx context.Context, name, size string) error {
+	conn, err := s.LxdClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Disconnect()
+
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return fmt.Errorf("context key project-id not found")
+	}
+
+	inst, etag, err := conn.GetInstance(InstanceName(name, projectId))
+	if err != nil {
+		return err
+	}
+
+	root := inst.Devices["root"]
+	if root == nil {
+		return fmt.Errorf("internal error: %q workshop has no rootfs", name)
+	}
+
+	rev := revert.New()
+	defer rev.Fail()
+
+	running := inst.StatusCode == api.Running || inst.StatusCode == api.Ready
+	needStop := inst.Type != string(api.InstanceTypeContainer)
+	if root["size"] != size {
+		// LXD doesn't notify QEMU when the root disk grows, so a running VM
+		// only sees the new size after restarting. TODO: remove when
+		// https://github.com/canonical/lxd/issues/13311 is fixed.
+		if running && needStop {
+			if err := s.stopWorkshop(conn, ctx, name, false); err != nil {
+				return err
+			}
+			rev.Add(func() {
+				if reverr := s.startWorkshop(conn, ctx, name); reverr != nil {
+					logger.Noticef("On ExpandWorkshopDisk: %v", reverr)
+				}
+			})
+			running = false
+
+			inst, etag, err = conn.GetInstance(inst.Name)
+			if err != nil {
+				return err
+			}
+			root = inst.Devices["root"]
+		}
+
+		root["size"] = size
+		op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
+		if err != nil {
+			return err
+		}
+		if err := op.Wait(); err != nil {
+			return err
+		}
+	}
+
+	rev.Success()
+	if !needStop {
+		return nil
+	}
+
+	// We grow the filesystem (starting the workshop if needed) even if we
+	// didn't update the root disk. This handles the unlikely case where the
+	// expansion was interrupted partway. Once VMs support live resizing we can
+	// drop it.
+	if !running {
+		if err := s.startWorkshop(conn, ctx, name); err != nil {
+			return err
+		}
+	}
+	return s.growRootFilesystem(conn, ctx, name)
+}
+
+func (s *Backend) growRootFilesystem(conn lxd.InstanceServer, ctx context.Context, name string) error {
+	for _, module := range []string{"growpart", "resizefs"} {
+		var errbuf bytes.Buffer
+		args := workshop.Execution{
+			Command: []string{"cloud-init", "single", "--name", module, "--frequency", "always"},
+			WorkDir: "/",
+			Stderr:  &errbuf,
+		}
+		exectx, err := s.execCommand(conn, ctx, name, &args)
+		if err == nil {
+			err = exectx.WaitExecution(ctx)
+		}
+		if _, ok := errors.AsType[*workshop.ErrExec](err); ok {
+			err = fmt.Errorf("%w, cloud-init output: %s", err, bytes.TrimSpace(errbuf.Bytes()))
+		}
+		if err != nil {
+			return fmt.Errorf("cannot grow %q workshop filesystem: %s: %w", name, module, err)
+		}
+	}
+	return nil
+}
+
 func (s *Backend) AddWorkshopMount(ctx context.Context, name string, mount workshop.Mount) error {
 	conn, err := s.LxdClient(ctx)
 	if err != nil {
@@ -1405,34 +1508,52 @@ func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {
 	return ConnectLxd(ctx)
 }
 
-func defaultDevices(usr *user.User, pid, w string, runtime workshop.Runtime) map[string]map[string]string {
+func defaultDevices(usr *user.User, pid string, file *workshop.File) (map[string]map[string]string, error) {
+	const GiB int64 = 1024 * 1024 * 1024
+
 	devices := map[string]map[string]string{
 		"root":             {"type": "disk", "pool": storagePool, "path": "/"},
 		"workshop.network": {"type": "nic", "network": networkName, "name": "eth0"},
 	}
 
-	if runtime == workshop.RuntimeLXDVM {
+	if file.Disk != "" {
+		disk, err := units.ParseByteSizeString(file.Disk)
+		if err != nil {
+			return nil, fmt.Errorf("invalid disk size %q: must be a positive integer followed by a unit, e.g. 20GiB", file.Disk)
+		}
+		minDisk, message := 2*GiB, "2GiB for containers"
+		if file.Runtime == workshop.RuntimeLXDVM {
+			minDisk, message = 10*GiB, "10GiB for virtual machines"
+		}
+		if disk < minDisk {
+			return nil, fmt.Errorf("invalid disk size %q: must be at least %s", file.Disk, message)
+		}
+	}
+
+	if file.Runtime == workshop.RuntimeLXDVM {
 		// Make the LXD default explicit. VM workshops should have consistent
 		// disk sizes (at least at first) so their snapshots can be reused
 		// easily. Once a snapshot is taken, it's not easy to shrink the block
 		// device for other workshops. SDKs which require a lot of space can
 		// use mount plugs to avoid expanding the root disk too much.
 		devices["root"]["size"] = DiskSizeVM
+	} else if file.Disk != "" {
+		devices["root"]["size"] = file.Disk
 	}
 
-	mounts, proxies := workshop.DefaultDevices(pid, w)
+	mounts, proxies := workshop.DefaultDevices(pid, file.Name)
 	for _, mount := range mounts {
 		devices[mount.Name] = mountToLxdDisk(mount)
 	}
 
 	// LXD VMs have only limited support for proxy devices.
-	if runtime == workshop.RuntimeLXDContainer {
+	if file.Runtime == workshop.RuntimeLXDContainer {
 		for _, proxy := range proxies {
 			devices[proxy.Name] = proxyToLxdDevice(usr, proxy)
 		}
 	}
 
-	return devices
+	return devices, nil
 }
 
 func proxyToLxdDevice(usr *user.User, proxy workshop.ProxyEntry) map[string]string {

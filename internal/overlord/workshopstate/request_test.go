@@ -261,6 +261,13 @@ connections:
 	c.Check(ts, check.Not(check.HasLen), 0)
 	newf.Memory = ""
 
+	// Updated disk size.
+	newf.Disk = "20GiB"
+	ts, err = s.mgr.RefreshMany(s.ctx, s.project, current, latest, conflict.RefreshUpdate)
+	c.Assert(err, check.IsNil)
+	c.Check(ts, check.Not(check.HasLen), 0)
+	newf.Disk = ""
+
 	// Updated SDK.
 	latest[0].Sdks[1].Revision = sdk.R(43)
 	latest[0].Sdks[1].Sha3_384 = "463f6529595798396cef8c91560f6726e02c00ea2f56e57f14dbff4a3d546a92a87618cd5bd6c148ad6308e7c612e78e"

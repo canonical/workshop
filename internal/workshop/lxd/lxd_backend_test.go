@@ -320,10 +320,20 @@ func (f *LxdBeTests) TestMemory(c *check.C) {
 func (f *LxdBeTests) TestDiskSize(c *check.C) {
 	usr := &user.User{Uid: "1000", Gid: "1000"}
 
-	devices := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDContainer)
+	file := &workshop.File{Name: "w", Base: "ubuntu@26.04", Runtime: workshop.RuntimeLXDContainer}
+	devices, err := lxdbackend.DefaultDevices(usr, "pid", file)
+	c.Assert(err, check.IsNil)
 	c.Check(devices["root"]["size"], check.Equals, "")
 
-	devices = lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDVM)
+	file.Disk = "20GiB"
+	devices, err = lxdbackend.DefaultDevices(usr, "pid", file)
+	c.Assert(err, check.IsNil)
+	c.Check(devices["root"]["size"], check.Equals, "20GiB")
+
+	// VMs start with the default size, and are expanded after snapshots.
+	file.Runtime = workshop.RuntimeLXDVM
+	devices, err = lxdbackend.DefaultDevices(usr, "pid", file)
+	c.Assert(err, check.IsNil)
 	c.Check(devices["root"]["size"], check.Equals, lxdbackend.DiskSizeVM)
 }
 

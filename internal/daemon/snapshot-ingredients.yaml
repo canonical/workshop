@@ -9,6 +9,7 @@ File:
   Base: string
   CPUs: int
   Memory: string
+  Disk: string
   Runtime: workshop.Runtime
   Sdks: '[]workshop.SdkRecord'
   Actions:
@@ -76,3 +77,4 @@ FakeWorkshop:
   Devices: map[string]map[string]string
   WorkshopFilesystem:
   CurrentSnapshot: workshop.Snapshot
+  Disk:
