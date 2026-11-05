@@ -39,6 +39,7 @@ var (
 
 	workshopName = regexp.MustCompile(`^[a-z](?:-?[a-z0-9])*$`)
 	actionName   = workshopName
+	byteSize     = regexp.MustCompile(`^[1-9][0-9]*(?:|k|M|G|T|P|E|Ki|Mi|Gi|Ti|Pi|Ei)B$`)
 
 	Directory = ".workshop"
 	Filenames = []string{"workshop.yaml", ".workshop.yaml"}
@@ -270,6 +271,7 @@ type File struct {
 	Base        string            `yaml:"base"`
 	Runtime     Runtime           `yaml:"runtime,omitempty"`
 	CPUs        int               `yaml:"cpus,omitempty"`
+	Memory      string            `yaml:"memory,omitempty"`
 	Sdks        []SdkRecord       `yaml:"sdks,omitempty"`
 	Connections []Connection      `yaml:"connections,omitempty"`
 	Actions     map[string]Action `yaml:"actions,omitempty"`
@@ -341,6 +343,9 @@ func ValidateFile(file *File) error {
 	if err := validateCPUs(file.CPUs); err != nil {
 		return err
 	}
+	if err := validateMemory(file.Memory); err != nil {
+		return err
+	}
 
 	if err := validateSdks(file.Sdks); err != nil {
 		return err
@@ -386,6 +391,16 @@ func readWorkshop(path string) (*File, error) {
 func validateCPUs(cpus int) error {
 	if cpus < 0 {
 		return fmt.Errorf("invalid CPU count %d: must be a positive integer", cpus)
+	}
+	return nil
+}
+
+func validateMemory(memory string) error {
+	if memory == "" {
+		return nil
+	}
+	if !byteSize.MatchString(memory) {
+		return fmt.Errorf("invalid memory size %q: must be a positive integer followed by a unit, e.g. 8GiB", memory)
 	}
 	return nil
 }

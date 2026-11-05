@@ -34,6 +34,7 @@ import (
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
+	"github.com/canonical/lxd/shared/units"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 
@@ -1467,6 +1468,11 @@ func (s *Backend) workshopConfig(
 		return nil, err
 	}
 
+	resources, err := workshopResources(file)
+	if err != nil {
+		return nil, err
+	}
+
 	// Include all options we might change, even those with default values,
 	// so that workshops can be rebuilt.
 	cfg := map[string]string{
@@ -1513,7 +1519,7 @@ sata = "off"
 `[1:]
 	}
 
-	maps.Copy(cfg, workshopResources(file))
+	maps.Copy(cfg, resources)
 
 	return cfg, nil
 }
@@ -1597,13 +1603,32 @@ func formatIdmap(idmapSet *idmap.IdmapSet) string {
 	return entries.String()
 }
 
-func workshopResources(file *workshop.File) map[string]string {
+func workshopResources(file *workshop.File) (map[string]string, error) {
+	const MiB int64 = 1024 * 1024
+
+	if file.Memory != "" {
+		memory, err := units.ParseByteSizeString(file.Memory)
+		if err != nil {
+			return nil, fmt.Errorf("invalid memory size %q: must be a positive integer followed by a unit, e.g. 8GiB", file.Memory)
+		}
+		minMemory, message := 256*MiB, "256MiB for containers"
+		if file.Runtime == workshop.RuntimeLXDVM {
+			minMemory, message = 512*MiB, "512MiB for virtual machines"
+		}
+		if memory < minMemory {
+			return nil, fmt.Errorf("invalid memory size %q: must be at least %s", file.Memory, message)
+		}
+	}
+
 	if file.Runtime == workshop.RuntimeLXDContainer {
 		cfg := map[string]string{}
 		if file.CPUs > 0 {
 			cfg["limits.cpu"] = fmt.Sprint(file.CPUs)
 		}
-		return cfg
+		if file.Memory != "" {
+			cfg["limits.memory"] = file.Memory
+		}
+		return cfg, nil
 	}
 
 	// Each virtiofs mount consumes a PCIe port and 3 interrupt vectors.
@@ -1652,10 +1677,15 @@ func workshopResources(file *workshop.File) map[string]string {
 		logger.Noticef("Allocating %v CPUs for %q workshop to accommodate extra PCI devices", vCPUs, file.Name)
 	}
 
+	// LXD's default of 1 GiB is too small for most development environments.
+	memory := DefaultMemoryVM
+	if file.Memory != "" {
+		memory = file.Memory
+	}
+
 	return map[string]string{
 		"limits.cpu":           fmt.Sprint(vCPUs),
 		"limits.max_bus_ports": fmt.Sprint(maxBusPorts),
-		// LXD's default of 1 GiB is too small for most development environments.
-		"limits.memory": DefaultMemoryVM,
-	}
+		"limits.memory":        memory,
+	}, nil
 }
