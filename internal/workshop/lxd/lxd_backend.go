@@ -30,6 +30,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	lxd "github.com/canonical/lxd/client"
@@ -82,16 +84,38 @@ const (
 )
 
 var (
-	storagePoolDriver = "zfs"
+	// storageDrivers lists the supported pool drivers, most preferred first.
+	storageDrivers = []string{"zfs", "btrfs"}
+
+	storagePoolDriver atomic.Pointer[string]
+
+	// backendReadyMu serializes ensureBackendReady.
+	backendReadyMu sync.Mutex
 
 	workshopFormatsChecked = false
 )
 
-func init() {
-	if osutil.IsWSL() {
-		storagePoolDriver = "btrfs"
+// poolDriver returns the storage pool driver, or "" if unknown.
+func poolDriver() string {
+	if driver := storagePoolDriver.Load(); driver != nil {
+		return *driver
 	}
+	return ""
+}
 
+// adoptPoolDriver records driver as the storage pool driver if supported.
+func adoptPoolDriver(driver string) error {
+	if !slices.Contains(storageDrivers, driver) {
+		return fmt.Errorf("cannot use storage pool %q: unsupported driver %q (expected one of %s)", storagePool, driver, strings.Join(storageDrivers, ", "))
+	}
+	if old := poolDriver(); old != "" && old != driver {
+		logger.Noticef("Storage pool %q changed driver from %q to %q", storagePool, old, driver)
+	}
+	storagePoolDriver.Store(&driver)
+	return nil
+}
+
+func init() {
 	// Order matters: capabilities (version and storage) must be validated
 	// before ensureBackendReady attempts to create the storage pool and
 	// network. Registering it as a check also lets the daemon recover after
@@ -102,8 +126,7 @@ func init() {
 	syscheck.RegisterCheck(checkStorageSpace)
 }
 
-type Backend struct {
-}
+type Backend struct{}
 
 var _ workshop.Backend = (*Backend)(nil)
 
@@ -174,19 +197,30 @@ func checkVersion(version string) error {
 	return nil
 }
 
-func checkStorageDriver(drivers []api.ServerStorageDriverInfo) error {
-	hasDriver := func(driver api.ServerStorageDriverInfo) bool {
-		return driver.Name == storagePoolDriver
+// preferredDriver returns the first supported storage driver in order of
+// preference (ZFS, then btrfs), or an error if none is supported.
+func preferredDriver(supported []api.ServerStorageDriverInfo) (string, error) {
+	for _, driver := range storageDrivers {
+		if slices.ContainsFunc(supported, func(d api.ServerStorageDriverInfo) bool {
+			return d.Name == driver
+		}) {
+			return driver, nil
+		}
 	}
-	if slices.ContainsFunc(drivers, hasDriver) {
+	return "", fmt.Errorf("suitable storage backend not found: none of %s is available", strings.Join(storageDrivers, ", "))
+}
+
+// checkStoragePool checks that the storage pool is usable or can be created.
+func checkStoragePool(conn lxd.InstanceServer, supported []api.ServerStorageDriverInfo) error {
+	if _, _, err := conn.GetStoragePool(storagePool); err == nil {
 		return nil
+	} else if !api.StatusErrorCheck(err, http.StatusNotFound) {
+		return fmt.Errorf("%q storage pool unavailable: %w", storagePool, err)
 	}
 
-	// The LXD error message when creating a pool is:
-	//  Error: Error loading "zfs" module: Failed to run: modprobe -b zfs:
-	//  exit status 1 (modprobe: FATAL: Module zfs not found ...)
-	// We keep the first part for consistency, the rest doesn't add much.
-	return fmt.Errorf(`suitable storage backend not found: error loading %q module`, storagePoolDriver)
+	// The pool is missing; make sure it can be created.
+	_, err := preferredDriver(supported)
+	return err
 }
 
 // checkStorageSpace puts the daemon into degraded mode when the workshop
@@ -250,7 +284,7 @@ func checkServerCapabilities() error {
 
 	workshop.WorkshopVMsSupportSDKs.Store(checkVMsSupportSDKs(conn))
 
-	return checkStorageDriver(info.Environment.StorageSupportedDrivers)
+	return checkStoragePool(conn, info.Environment.StorageSupportedDrivers)
 }
 
 // vmDiskShiftSupported checks whether LXD supports mounting shifted SDK
@@ -315,6 +349,9 @@ func New() (*Backend, error) {
 // ensureBackendReady creates the LXD storage pool and network the backend
 // relies on, it is idempotent.
 func ensureBackendReady() error {
+	backendReadyMu.Lock()
+	defer backendReadyMu.Unlock()
+
 	// TODO: consider separating the storage pool or network for different users.
 	conn, err := lxd.ConnectLXDUnix("", nil)
 	if err != nil {
@@ -322,21 +359,34 @@ func ensureBackendReady() error {
 	}
 	defer conn.Disconnect()
 
-	// Create LXD storage pool if it doesn't exist.
-	pools, err := conn.GetStoragePools()
-	if err != nil {
-		return err
-	}
-	if idx := slices.IndexFunc(pools, func(p api.StoragePool) bool { return p.Name == storagePool }); idx < 0 {
+	// Create the LXD storage pool if it doesn't exist, and record its driver so
+	// pool operations can reuse it.
+	existingPool, _, err := conn.GetStoragePool(storagePool)
+	if api.StatusErrorCheck(err, http.StatusNotFound) {
+		// Reuse the driver already in use, if any.
+		driver := poolDriver()
+		if driver == "" {
+			info, _, err := conn.GetServer()
+			if err != nil {
+				return err
+			}
+			driver, err = preferredDriver(info.Environment.StorageSupportedDrivers)
+			if err != nil {
+				return err
+			}
+		}
 		req := api.StoragePoolsPost{
 			Name:   storagePool,
-			Driver: storagePoolDriver,
+			Driver: driver,
 		}
 		op, err := conn.CreateStoragePool(req)
 		if err != nil {
 			return err
 		}
 		if err := op.Wait(); err != nil {
+			return err
+		}
+		if err := adoptPoolDriver(driver); err != nil {
 			return err
 		}
 
@@ -369,8 +419,10 @@ func ensureBackendReady() error {
 
 			logger.Noticef("On ensureBackendReady: set storage pool to the minimal size: %dGiB", storagePoolMinimalGiB)
 		}
-	} else if pools[idx].Driver != storagePoolDriver {
-		return fmt.Errorf("storage pool %q already exists with a different driver: %q (expected %q)", storagePool, pools[idx].Driver, storagePoolDriver)
+	} else if err != nil {
+		return err
+	} else if err := adoptPoolDriver(existingPool.Driver); err != nil {
+		return err
 	}
 
 	network, etag, err := conn.GetNetwork(networkName)
@@ -1014,7 +1066,7 @@ func (s *Backend) execCommand(conn lxd.InstanceServer, ctx context.Context, name
 	}
 
 	opmeta := op.Get()
-	var env = map[string]string{}
+	env := map[string]string{}
 	for k, v := range opmeta.Metadata["environment"].(map[string]any) {
 		if value, ok := v.(string); ok {
 			env[k] = value
@@ -1038,7 +1090,7 @@ func (s *Backend) execCommand(conn lxd.InstanceServer, ctx context.Context, name
 			// unconditionally right after the operation has exited, so it will not be
 			// blocked if we are here
 			<-done
-			var status = int(op.Get().Metadata["return"].(float64))
+			status := int(op.Get().Metadata["return"].(float64))
 			if status != 0 {
 				return &workshop.ErrExec{Status: status}
 			}
