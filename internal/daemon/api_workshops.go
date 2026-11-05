@@ -110,6 +110,7 @@ type WorkshopInfo struct {
 	Name      string     `json:"name"`
 	Base      string     `json:"base"`
 	Runtime   string     `json:"runtime"`
+	CPUs      int        `json:"cpus,omitempty"`
 	Status    string     `json:"status"`
 	Sdks      []*SdkInfo `json:"sdks,omitempty"`
 	Hostname  string     `json:"hostname,omitempty"`
@@ -208,6 +209,7 @@ func workshopToInfo(w *workshop.Workshop, health healthstate.HealthState) (*Work
 		return nil, err
 	}
 	info.Runtime = string(runtime)
+	info.CPUs = w.CPUs
 
 	sdkSetups := w.SdksByInstallOrder()
 
@@ -267,6 +269,7 @@ func workshopToInfoFull(ctx context.Context, w *workshop.Workshop, health health
 		return nil, err
 	}
 	info.Runtime = string(runtime)
+	info.CPUs = w.CPUs
 
 	files, err := w.SdkFilesByInstallOrder(ctx)
 	if err != nil {

@@ -160,6 +160,7 @@ Confirm what you got:
      hostname:  <NAME>.my-project.wp
      status:    ready
      runtime:   lxd-vm
+     cpus:      2
      notes:     --
 
 

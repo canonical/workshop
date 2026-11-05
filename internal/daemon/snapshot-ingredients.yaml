@@ -29,6 +29,7 @@ Workshop:
   Format: sdk.Revision
   Image: workshop.BaseImage
   Running: bool
+  CPUs:
   Sdks: map[string]workshop.SdkInstallation
   Profiles:
   Hostname:
