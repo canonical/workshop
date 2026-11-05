@@ -299,6 +299,10 @@ func hasUpdates(current, latest Manifest) bool {
 		return true
 	}
 
+	if current.File.CPUs != latest.File.CPUs || current.File.Memory != latest.File.Memory {
+		return true
+	}
+
 	for _, sk := range finalSnapshot.Sdks {
 		a := sdkAdditions(current.File.Sdks, sk.Name)
 		b := sdkAdditions(latest.File.Sdks, sk.Name)
