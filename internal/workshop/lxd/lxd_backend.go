@@ -1273,6 +1273,7 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		logger.Debugf("Ignoring unexpected CPU limit: %v", err)
 		cpus = 0
 	}
+	memory := inst.Config["limits.memory"]
 
 	sdks := map[string]workshop.SdkInstallation{}
 	for key, device := range inst.Devices {
@@ -1312,6 +1313,7 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		Image:          image,
 		Running:        running,
 		CPUs:           cpus,
+		Memory:         memory,
 		Sdks:           sdks,
 		Profiles:       profs,
 		File:           f,
