@@ -177,7 +177,8 @@
           "mount": "#/$defs/MountPlug",
           "secret": "#/$defs/SecretPlug",
           "ssh-agent": "#/$defs/SSHAgentPlug",
-          "tunnel": "#/$defs/TunnelPlug"
+          "tunnel": "#/$defs/TunnelPlug",
+          "virtualization": "#/$defs/VirtualizationPlug"
         },
         "propertyName": "interface"
       },
@@ -205,6 +206,9 @@
         },
         {
           "$ref": "#/$defs/TunnelPlug"
+        },
+        {
+          "$ref": "#/$defs/VirtualizationPlug"
         }
       ]
     },
@@ -357,6 +361,22 @@
       "$ref": "#/$defs/Int",
       "ge": 0,
       "lt": 4294967295
+    },
+    "VirtualizationPlug": {
+      "additionalProperties": false,
+      "description": "SDKcraft project virtualization plug definition.",
+      "properties": {
+        "interface": {
+          "const": "virtualization",
+          "title": "Interface",
+          "type": "string"
+        }
+      },
+      "required": [
+        "interface"
+      ],
+      "title": "VirtualizationPlug",
+      "type": "object"
     }
   },
   "additionalProperties": false,

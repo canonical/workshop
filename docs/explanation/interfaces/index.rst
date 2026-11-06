@@ -37,6 +37,7 @@ such as displays, GPUs, and cameras:
    custom-device-interface
    desktop-interface
    gpu-interface
+   virtualization-interface
 
 
 Data and connectivity
