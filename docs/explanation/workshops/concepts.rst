@@ -249,7 +249,7 @@ A simple workshop definition might look like this:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: "1.26"
+       channel: "1.27"
 
 
 .. @artefact SDK
@@ -538,7 +538,7 @@ intended as utility helpers for a development environment:
    base: ubuntu@24.04
    sdks:
      - name: go
-       channel: 1.26
+       channel: 1.27
    actions:
      lint: |
        golangci-lint run  --out-format=colored-line-number -c .golangci.yaml

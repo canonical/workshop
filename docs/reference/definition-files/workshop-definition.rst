@@ -144,7 +144,7 @@ Each item in :samp:`sdks` is an object with these fields:
        .. note::
 
           Quote channel values in YAML when they look numeric
-          (for example, :samp:`channel: "1.26"`)
+          (for example, :samp:`channel: "1.27"`)
           to avoid type coercion.
 
    * - :samp:`plugs`

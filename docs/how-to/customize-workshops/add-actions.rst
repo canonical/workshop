@@ -35,7 +35,7 @@ from the :ref:`tut_sketch_sdks` tutorial section:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: 1.26
+       channel: 1.27
    
    actions:
      lint: |
@@ -72,7 +72,7 @@ to :command:`go test`:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: 1.26
+       channel: 1.27
 
    actions:
      tests: go test "$@"

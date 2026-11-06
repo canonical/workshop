@@ -56,7 +56,7 @@ parts:
       - build-essential
       - git
     build-snaps:
-      - go/1.26/stable
+      - go/1.27/stable
     build-environment:
       - CGO_LDFLAGS_ALLOW: ".*"
     override-build: |

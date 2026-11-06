@@ -1,6 +1,6 @@
 module github.com/canonical/workshop
 
-go 1.26.10
+go 1.27.3
 
 require (
 	github.com/adrg/xdg v0.5.3
