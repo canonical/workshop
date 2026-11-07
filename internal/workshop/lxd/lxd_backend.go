@@ -145,8 +145,10 @@ To start the LXD daemon: 'sudo snap start lxd'`, err)
 
 Maybe LXD isn't installed?
 To install LXD: 'sudo snap install --channel=6/stable lxd'`, err)
+	case api.StatusErrorCheck(err):
+		return fmt.Errorf("cannot set up LXD connection: %w", err)
 	default:
-		return err
+		return fmt.Errorf("cannot connect to LXD: %w", err)
 	}
 }
 
@@ -209,7 +211,7 @@ func checkStorageSpace() error {
 		return nil
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot query LXD storage pool free space: %w", err)
 	}
 
 	if res.Space.Total == 0 {
@@ -241,7 +243,7 @@ func checkServerCapabilities() error {
 
 	info, _, err := conn.GetServer()
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot query LXD version: %w", err)
 	}
 
 	if err := checkVersion(info.Environment.ServerVersion); err != nil {
@@ -275,7 +277,7 @@ func checkWorkshopFormats() error {
 	backend := Backend{}
 	allprojects, err := backend.Projects(context.Background())
 	if err != nil {
-		return fmt.Errorf("cannot check project compatibility: %w", err)
+		return fmt.Errorf("cannot list projects with LXD workshops: %w", err)
 	}
 
 	for user, projects := range allprojects {
@@ -284,7 +286,7 @@ func checkWorkshopFormats() error {
 			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 			workshops, err := backend.ProjectWorkshops(pctx)
 			if err != nil {
-				return fmt.Errorf("cannot check workshop compatibility in %q: %w", project.Path, err)
+				return fmt.Errorf("cannot list LXD workshops in project %q: %w", project.Path, err)
 			}
 			for _, workshop := range workshops {
 				if workshop.Format.N > backend.FormatRevision().N {
@@ -325,7 +327,7 @@ func ensureBackendReady() error {
 	// Create LXD storage pool if it doesn't exist.
 	pools, err := conn.GetStoragePools()
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot list LXD storage pools: %w", err)
 	}
 	if idx := slices.IndexFunc(pools, func(p api.StoragePool) bool { return p.Name == storagePool }); idx < 0 {
 		req := api.StoragePoolsPost{
@@ -334,21 +336,21 @@ func ensureBackendReady() error {
 		}
 		op, err := conn.CreateStoragePool(req)
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot create LXD storage pool: %w", err)
 		}
 		if err := op.Wait(); err != nil {
-			return err
+			return fmt.Errorf("cannot create LXD storage pool: %w", err)
 		}
 
 		// Ensure the new pool has enough total space available.
 		pool, etag, err := conn.GetStoragePool(storagePool)
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot query LXD storage pool size: %w", err)
 		}
 
 		res, err := conn.GetStoragePoolResources(storagePool)
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot query LXD storage pool size: %w", err)
 		}
 
 		gibTotal := uint64(res.Space.Total) / (1024 * 1024 * 1024)
@@ -360,11 +362,11 @@ func ensureBackendReady() error {
 			pool.Config["size"] = strconv.FormatUint(storagePoolMinimalGiB*1024*1024*1024, 10)
 			op, err = conn.UpdateStoragePool(storagePool, pool.Writable(), etag)
 			if err != nil {
-				return err
+				return fmt.Errorf("cannot resize LXD storage pool: %w", err)
 			}
 			if err := op.Wait(); err != nil {
 				logger.Noticef("On ensureBackendReady: failed to set storage pool to the minimal size: %dGiB, %s", storagePoolMinimalGiB, err)
-				return err
+				return fmt.Errorf("cannot resize LXD storage pool: %w", err)
 			}
 
 			logger.Noticef("On ensureBackendReady: set storage pool to the minimal size: %dGiB", storagePoolMinimalGiB)
@@ -388,23 +390,23 @@ func ensureBackendReady() error {
 
 		op, err := conn.CreateNetwork(req)
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot create LXD network: %w", err)
 		}
 		if err := op.Wait(); err != nil {
-			return err
+			return fmt.Errorf("cannot create LXD network: %w", err)
 		}
 	} else if err != nil {
-		return err
+		return fmt.Errorf("cannot query LXD network configuration: %w", err)
 	} else if network.Type != networkType {
 		return fmt.Errorf("network %q already exists with a different type: %q", networkName, network.Type)
 	} else if network.Config["dns.domain"] != networkDomain {
 		network.Config["dns.domain"] = networkDomain
 		op, err := conn.UpdateNetwork(network.Name, network.Writable(), etag)
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot update LXD network: %w", err)
 		}
 		if err := op.Wait(); err != nil {
-			return err
+			return fmt.Errorf("cannot update LXD network: %w", err)
 		}
 	}
 
