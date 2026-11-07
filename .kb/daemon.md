@@ -30,6 +30,11 @@ Implications of the socket activation that the daemon relies on:
 Triggered when `syscheck.CheckSystem()` fails (LXD missing/incompatible/down; out of storage space).
 
 - Blocks all non-`GET` requests with the degraded error; `GET` still works.
+- If the daemon **starts** degraded, the overlord ensure loop does not run (so
+  no tasks run, including ones resumed from `state.json`) until degraded mode
+  is first cleared. Tasks can therefore rely on state written by the system
+  checks (e.g. the LXD storage pool driver). Becoming degraded later does
+  not pause tasks. A daemon that starts degraded cannot go into standby until it recovers.
 - A recovery ticker re-runs `CheckSystem()` continuously and clears degraded
   mode automatically; it also detects LXD disappearing _after_ startup.
 

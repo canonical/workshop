@@ -83,6 +83,11 @@ type Overlord struct {
 	ensureRun   int32
 	pruneTicker *time.Ticker
 
+	// ensureGate, when set by DeferEnsure, holds back the first Ensure
+	// until AllowEnsure closes it.
+	ensureGate     chan struct{}
+	ensureGateOnce sync.Once
+
 	// managers
 	inited      bool
 	startedUp   bool
@@ -384,7 +389,17 @@ func (o *Overlord) ensureBefore(d time.Duration) {
 // Loop runs a loop in a goroutine to ensure the current state regularly through StateEngine Ensure.
 func (o *Overlord) Loop() {
 	o.ensureTimerSetup()
+	o.ensureLock.Lock()
+	gate := o.ensureGate
+	o.ensureLock.Unlock()
 	o.loopTomb.Go(func() error {
+		if gate != nil {
+			select {
+			case <-gate:
+			case <-o.loopTomb.Dying():
+				return nil
+			}
+		}
 		for {
 			// TODO: pass a proper context into Ensure
 			o.ensureTimerReset()
@@ -405,6 +420,32 @@ func (o *Overlord) Loop() {
 			}
 		}
 	})
+}
+
+// DeferEnsure makes Loop wait for AllowEnsure before running Ensure for the
+// first time, so no tasks run until the system is known to be healthy. It must
+// be called before Loop.
+func (o *Overlord) DeferEnsure() {
+	o.ensureLock.Lock()
+	defer o.ensureLock.Unlock()
+	if o.ensureTimer != nil {
+		panic("cannot use DeferEnsure after Overlord.Loop")
+	}
+	if o.ensureGate == nil {
+		o.ensureGate = make(chan struct{})
+	}
+}
+
+// AllowEnsure lets a Loop held back by DeferEnsure start running Ensure. Any
+// writes made before calling it are visible to the managers. It is a no-op if
+// DeferEnsure was not called or AllowEnsure was already called.
+func (o *Overlord) AllowEnsure() {
+	o.ensureLock.Lock()
+	gate := o.ensureGate
+	o.ensureLock.Unlock()
+	if gate != nil {
+		o.ensureGateOnce.Do(func() { close(gate) })
+	}
 }
 
 func (o *Overlord) ensureDidRun() {
