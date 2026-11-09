@@ -304,12 +304,20 @@ func checkWorkshopFormats() error {
 // the daemon into degraded mode and retries until LXD becomes available.
 func New() (*Backend, error) {
 	server := Backend{}
+	loadEnvConfig()
+	return &server, ensureBackendReady()
+}
 
+// loadEnvConfig reads the backend's configuration from the environment,
+// where the snap's run_daemon script puts the snap options.
+func loadEnvConfig() {
 	if srv := os.Getenv("WORKSHOP_IMAGE_SERVER"); srv != "" {
 		imageServer = srv
 	}
-
-	return &server, ensureBackendReady()
+	// An image registry takes precedence over the image server.
+	if registry := os.Getenv("WORKSHOP_IMAGE_REGISTRY"); registry != "" {
+		imageRegistry = registry
+	}
 }
 
 // ensureBackendReady creates the LXD storage pool and network the backend

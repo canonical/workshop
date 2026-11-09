@@ -9,6 +9,9 @@ export WORKSHOP_DEBUG
 WORKSHOP_IMAGE_SERVER=$(snapctl get workshop.image.server.url)
 export WORKSHOP_IMAGE_SERVER
 
+WORKSHOP_IMAGE_REGISTRY=$(snapctl get workshop.image.registry)
+export WORKSHOP_IMAGE_REGISTRY
+
 WORKSHOP_EXPERIMENTAL_VMS=$(snapctl get workshop.experimental-vms)
 export WORKSHOP_EXPERIMENTAL_VMS
 
