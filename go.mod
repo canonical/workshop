@@ -16,15 +16,15 @@ require (
 	github.com/juju/ansiterm v1.0.1-0.20260902080743-06414fabd2b1
 	github.com/juju/clock v1.1.1
 	github.com/juju/retry v1.0.1
-	github.com/mdlayher/vsock v1.3.0
+	github.com/mdlayher/vsock v1.4.0
 	github.com/pkg/sftp v1.13.12
 	github.com/pkg/term v1.1.0
 	github.com/spf13/afero v1.15.0
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.58.0
-	golang.org/x/net v0.60.0
+	golang.org/x/net v0.62.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/term v0.47.0
 	golang.org/x/text v0.43.0
@@ -51,7 +51,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
-	github.com/mdlayher/socket v0.6.0 // indirect
+	github.com/mdlayher/socket v0.8.0 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/pkg/xattr v0.4.12 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
