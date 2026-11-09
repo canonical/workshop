@@ -61,6 +61,24 @@ starts with how SDKs are structured and operated at run-time:
    workshop-status
 
 
+.. _ref_configuration:
+
+Configuration
+-------------
+
+.. @artefact workshopd
+
+The |ws_markup| snap has configuration options
+that change where :program:`workshopd` downloads SDKs and base images from,
+and how it sets up workshops:
+
+.. toctree::
+   :titlesonly:
+   :class: flat-toctree
+
+   snap-options
+
+
 .. _ref_ai:
 
 AI agents
