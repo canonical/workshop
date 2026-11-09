@@ -180,12 +180,14 @@ func (s *imageRegistrySuite) SetUpTest(c *check.C) {
 	}
 	restoreServer := FakeImageServer("simplestreams:https://cloud-images.ubuntu.com/releases")
 	restoreRegistry := FakeImageRegistry("")
+	oldAptProxy, oldSnapStoreURL, oldGoProxy := aptProxy, snapStoreURL, goProxy
 
 	s.AddCleanup(func() {
 		connectLXDUnix = oldConnect
 		ConnectSimpleStreams = oldConnectSimpleStreams
 		restoreServer()
 		restoreRegistry()
+		aptProxy, snapStoreURL, goProxy = oldAptProxy, oldSnapStoreURL, oldGoProxy
 	})
 }
 

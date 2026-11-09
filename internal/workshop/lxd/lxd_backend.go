@@ -318,6 +318,9 @@ func loadEnvConfig() {
 	if registry := os.Getenv("WORKSHOP_IMAGE_REGISTRY"); registry != "" {
 		imageRegistry = registry
 	}
+	aptProxy = os.Getenv("WORKSHOP_APT_PROXY")
+	snapStoreURL = os.Getenv("WORKSHOP_SNAP_STORE_URL")
+	goProxy = os.Getenv("WORKSHOP_GO_PROXY")
 }
 
 // ensureBackendReady creates the LXD storage pool and network the backend
@@ -441,7 +444,12 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 		return err
 	}
 
-	config, err := s.workshopConfig(projectId, usr.Uid, usr.Gid, file, snapshot.Format, snapshot.Image.Fingerprint)
+	proxies, err := workshopProxies(ctx)
+	if err != nil {
+		return err
+	}
+
+	config, err := s.workshopConfig(projectId, usr.Uid, usr.Gid, file, snapshot.Format, snapshot.Image.Fingerprint, proxies)
 	if err != nil {
 		return err
 	}
@@ -1415,14 +1423,18 @@ func (s *Backend) workshopConfig(
 	file *workshop.File,
 	format sdk.Revision,
 	baseFingerprint string,
+	proxies proxyConfig,
 ) (map[string]string, error) {
 	t, err := cloudConfigTemplate()
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse cloud-config template: %w", err)
 	}
 
+	vars := makeCloudConfigVars(file)
+	vars.Proxies = proxies
+
 	var cloudConfig strings.Builder
-	err = t.Execute(&cloudConfig, makeCloudConfigVars(file))
+	err = t.Execute(&cloudConfig, vars)
 	if err != nil {
 		return nil, err
 	}

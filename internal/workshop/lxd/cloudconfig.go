@@ -16,6 +16,8 @@ package lxdbackend
 
 import (
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"text/template"
 
@@ -36,6 +38,10 @@ type cloudConfigVars struct {
 	// HasGRUB reports whether the runtime boots with GRUB and therefore
 	// needs the machine ID set through the kernel command line.
 	HasGRUB bool
+
+	// Proxies are the proxies that apt, snapd and go in the workshop
+	// download through.
+	Proxies proxyConfig
 
 	// StartTimeout is the wait-ready timeout in nanoseconds.
 	StartTimeout int64
@@ -129,6 +135,9 @@ bootcmd:
 # LXD containers use /dev/urandom from the host and VMs use virtio-rng.
 - install -D --mode=0644 /dev/null /var/cache/pollinate/seeded
 apt:
+{{- if .Proxies.AptProxy}}
+  http_proxy: {{yamlquote .Proxies.AptProxy}}
+{{- end}}
   conf: |
     # Installed by workshop
 
@@ -153,6 +162,27 @@ write_files:
     content: |
       [Unit]
       After=network.target
+{{- if .Proxies.SnapStoreURL}}
+  # Use the configured snap store API. runcmd restarts snapd, which systemd
+  # started before this drop-in was written.
+  - path: /etc/systemd/system/snapd.service.d/70-workshop-store.conf
+    content: |
+      [Service]
+      Environment=SNAPPY_FORCE_API_URL={{systemdescape .Proxies.SnapStoreURL}}
+{{- end}}
+{{- if or .Proxies.SnapStoreURL .Proxies.GoProxy}}
+  # Configure "snap download" and go. pam_env reads this file for sudo,
+  # which runs hooks and commands, and for SSH sessions.
+  - path: /etc/environment
+    append: true
+    content: |
+{{- if .Proxies.SnapStoreURL}}
+      SNAPPY_FORCE_API_URL={{.Proxies.SnapStoreURL}}
+{{- end}}
+{{- if .Proxies.GoProxy}}
+      GOPROXY={{.Proxies.GoProxy}}
+{{- end}}
+{{- end}}
   - path: /etc/ssh/sshd_config.d/90-workshop.conf
     content: |
       HostCertificate /etc/ssh/ssh_host_ed25519_key-cert.pub
@@ -232,6 +262,19 @@ runcmd:
 {{- if ne .FsFreezePath ""}}
   - ln -sf ../../bin/workshopctl {{shquote .FsFreezePath}}
 {{- end}}
+{{- if .Proxies.AptProxy}}
+  # apt uses an HTTP proxy for http:// sources only, so download Ubuntu's
+  # archives over HTTP; apt verifies them by their signatures.
+  - |
+    for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+      [ -f "$f" ] && sed -i -E 's#https://(archive|security|ports|old-releases)\.ubuntu\.com#http://\1.ubuntu.com#g' "$f"
+    done
+    true
+{{- end}}
+{{- if .Proxies.SnapStoreURL}}
+  - systemctl daemon-reload
+  - systemctl try-restart snapd.service
+{{- end}}
   - systemctl enable --now workshop-waitready.service
   - systemctl enable --now workshop-secret.socket
   # Linger starts the user manager for the specified user on boot, which then creates /run/user/$UID,
@@ -244,8 +287,16 @@ runcmd:
 `
 
 	funcs := map[string]any{
-		"shquote": shlex.Quote,
+		"shquote":       shlex.Quote,
+		"systemdescape": systemdEscape,
+		"yamlquote":     strconv.Quote,
 	}
 
 	return template.New("cloud-config").Funcs(funcs).Parse(tmpl)
+}
+
+// systemdEscape escapes the specifier character, "%", in a value of a
+// systemd unit setting.
+func systemdEscape(s string) string {
+	return strings.ReplaceAll(s, "%", "%%")
 }
