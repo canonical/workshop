@@ -17,6 +17,10 @@ Start an interactive terminal session for the workshop.
 
    $ workshop shell [<WORKSHOP>] [flags]
 
+.. rubric:: Aliases
+
+``sh``
+
 .. rubric:: Description
 
 The "shell" subcommand runs an interactive terminal session

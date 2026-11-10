@@ -467,3 +467,33 @@ func (m *workshopExec) TestMultipleWorkshopRunCompletion(c *check.C) {
 	c.Assert(compDirective, check.Equals, cobra.ShellCompDirectiveDefault)
 	c.Check(result, check.HasLen, 0)
 }
+
+func (m *workshopExec) TestWorkshopShellAliases(c *check.C) {
+	for _, name := range []string{"shell", "sh"} {
+		n := 0
+		m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+			n++
+			switch n {
+			case 1:
+				c.Check(r.Method, check.Equals, "POST")
+				c.Assert(r.URL.Path, check.Equals, "/v1/projects")
+				fmt.Fprintf(w, `{"type":"sync","result":{"id":%q,"path":%q}}`, m.prjId, m.prjDir)
+			case 2:
+				c.Check(r.Method, check.Equals, "POST")
+				c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops/ws/exec", m.prjId))
+				body := DecodedRequestBody(c, r)
+				c.Check(body["command"], check.DeepEquals, []any{"bash"})
+				c.Check(body["working-dir"], check.Equals, "/project")
+				w.WriteHeader(404)
+				fmt.Fprintln(w, mockWorkshopActionsError)
+			default:
+				c.Errorf("expected 2 calls, now on %d", n)
+			}
+		})
+
+		cmd := (&CmdRoot{cwd: m.prjDir}).Command()
+		cmd.SetArgs([]string{name, "ws"})
+		c.Check(cmd.Execute(), check.ErrorMatches, "workshop not found")
+		c.Check(n, check.Equals, 2)
+	}
+}

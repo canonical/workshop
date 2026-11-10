@@ -157,31 +157,36 @@ warning: |
 }
 
 func (s *warningSuite) TestOkay(c *check.C) {
-	t0 := time.Now()
-	WriteWarningTimestamp(t0)
+	for _, name := range []string{"okay", "ok"} {
+		t0 := time.Now()
+		WriteWarningTimestamp(t0)
 
-	var n int
-	s.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
-		n++
-		if n != 1 {
-			c.Fatalf("expected 1 request, now on %d", n)
-		}
-		c.Check(r.URL.Path, check.Equals, "/v1/warnings")
-		c.Check(r.URL.Query(), check.HasLen, 0)
-		c.Assert(DecodedRequestBody(c, r), check.DeepEquals, map[string]any{"action": "okay", "timestamp": t0.Format(time.RFC3339Nano)})
-		c.Check(r.Method, check.Equals, "POST")
-		w.WriteHeader(200)
-		fmt.Fprintln(w, `{
-			"status": "OK",
-			"status-code": 200,
-			"type": "sync"
-		}`)
-	})
+		var n int
+		s.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+			n++
+			if n != 1 {
+				c.Fatalf("expected 1 request, now on %d", n)
+			}
+			c.Check(r.URL.Path, check.Equals, "/v1/warnings")
+			c.Check(r.URL.Query(), check.HasLen, 0)
+			c.Assert(DecodedRequestBody(c, r), check.DeepEquals, map[string]any{"action": "okay", "timestamp": t0.Format(time.RFC3339Nano)})
+			c.Check(r.Method, check.Equals, "POST")
+			w.WriteHeader(200)
+			fmt.Fprintln(w, `{
+				"status": "OK",
+				"status-code": 200,
+				"type": "sync"
+			}`)
+		})
 
-	err := s.cmdO.Run(s.cmdO.Command(), nil)
-	c.Assert(err, check.IsNil)
-	c.Check(s.Stderr(), check.Equals, "")
-	c.Check(s.Stdout(), check.Equals, "")
+		cmd := (&CmdRoot{}).Command()
+		cmd.SetArgs([]string{name})
+		err := cmd.Execute()
+		c.Assert(err, check.IsNil)
+		c.Check(n, check.Equals, 1)
+		c.Check(s.Stderr(), check.Equals, "")
+		c.Check(s.Stdout(), check.Equals, "")
+	}
 }
 
 func (s *warningSuite) TestOkayBeforeWarnings(c *check.C) {
