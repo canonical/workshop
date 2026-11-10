@@ -57,8 +57,6 @@ The "--global" option lists all workshops from all projects in the system;
 however, it doesn't include any that are "Off".
 
 
-The "workshop ls" command is an alias for "workshop list".
-
 Notes:
 
 - For details of a single workshop, use "workshop info" instead.

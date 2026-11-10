@@ -17,6 +17,10 @@ Remove one or many workshops.
 
    $ workshop remove <WORKSHOP>... [flags]
 
+.. rubric:: Aliases
+
+``rm``
+
 .. rubric:: Description
 
 This command removes the workshops listed as arguments. For each workshop, it:
@@ -24,8 +28,6 @@ This command removes the workshops listed as arguments. For each workshop, it:
 - Checks that the workshop isn't "Off" or "Pending"
 - Stops the workshop if it's not already "Stopped"
 - Deletes the workshop but preserves its definition
-
-The "workshop rm" command is an alias for "workshop remove".
 
 Notes:
 

@@ -17,6 +17,10 @@ List project workshops.
 
    $ workshop list [flags]
 
+.. rubric:: Aliases
+
+``ls``
+
 .. rubric:: Description
 
 This command enumerates all workshops in the project, printing a compact list:
@@ -33,8 +37,6 @@ This command enumerates all workshops in the project, printing a compact list:
 The "--global" option lists all workshops from all projects in the system;
 however, it doesn't include any that are "Off".
 
-
-The "workshop ls" command is an alias for "workshop list".
 
 Notes:
 
