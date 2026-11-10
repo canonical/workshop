@@ -1255,6 +1255,74 @@ func (f *wsOps) TestLxdBackendLaunchArmsReserve(c *check.C) {
 	}
 }
 
+func (f *wsOps) TestLxdBackendFullPoolReleasesReserve(c *check.C) {
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+	conn = conn.UseProject(api.ProjectDefaultName)
+	pool, _, err := conn.GetStoragePool("workshop")
+	c.Assert(err, check.IsNil)
+	if pool.Driver != "zfs" {
+		c.Skip("the filler volume requires ZFS")
+	}
+
+	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+	_, _, err = conn.GetStoragePoolVolume("workshop", "custom", "workshop-reserve")
+	c.Assert(err, check.IsNil)
+
+	// Take up most of the pool quickly, and fill the rest from the workshop.
+	res, err := conn.GetStoragePoolResources("workshop")
+	c.Assert(err, check.IsNil)
+	filler := res.Space.Total - res.Space.Used - 128<<20
+	op, err := conn.CreateStoragePoolVolume("workshop", api.StorageVolumesPost{
+		Name:        "test-filler",
+		Type:        "custom",
+		ContentType: "filesystem",
+		StorageVolumePut: api.StorageVolumePut{Config: map[string]string{
+			"size":              strconv.FormatUint(filler, 10),
+			"zfs.reserve_space": "true",
+		}},
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(op.Wait(), check.IsNil)
+	defer func() {
+		op, err := conn.DeleteStoragePoolVolume("workshop", "custom", "test-filler")
+		c.Assert(err, check.IsNil)
+		c.Check(op.Wait(), check.IsNil)
+	}()
+
+	args := workshop.ExecArgs{
+		Command: []string{"sh", "-c", "dd if=/dev/urandom of=/fill bs=1M; sync; df --output=avail / | tail -1"},
+		WorkDir: "/",
+		Timeout: 2 * time.Minute,
+	}
+	output, err := helper.ExecOutput(f.ctx, f.bd, "test", args)
+	c.Assert(err, check.IsNil)
+	c.Assert(strings.TrimSpace(output), check.Equals, "0")
+
+	// Stopping needs space, which the reserve provides.
+	err = f.bd.StopWorkshop(f.ctx, "test", false)
+	c.Assert(err, check.IsNil)
+	_, _, err = conn.GetStoragePoolVolume("workshop", "custom", "workshop-reserve")
+	c.Check(api.StatusErrorCheck(err, http.StatusNotFound), check.Equals, true, check.Commentf("%v", err))
+
+	// Launching is refused until there's space for the reserve again.
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", workshop.RuntimeLXDContainer)
+	c.Assert(err, check.IsNil)
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
+	wf := &workshop.File{Name: "test2", Base: "ubuntu@24.04"}
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.ErrorMatches, `(?s)storage pool "workshop" is [0-9]+% full.*`)
+
+	// Removing the workshop frees space, so the next launch re-arms the reserve.
+	err = f.bd.RemoveWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
+	_, _, err = conn.GetStoragePoolVolume("workshop", "custom", "workshop-reserve")
+	c.Check(err, check.IsNil)
+}
+
 func modifiedByRebuild(key string) bool {
 	switch key {
 	case "user.workshop.file", "user.workshop.base-fingerprint":
