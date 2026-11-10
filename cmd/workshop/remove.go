@@ -39,6 +39,8 @@ This command removes the workshops listed as arguments. For each workshop, it:
 - Stops the workshop if it's not already "Stopped"
 - Deletes the workshop but preserves its definition
 
+The "workshop rm" command is an alias for "workshop remove".
+
 Notes:
 
 - If any listed workshop is "Off" or "Pending", none are removed.
