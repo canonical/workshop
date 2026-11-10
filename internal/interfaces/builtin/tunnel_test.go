@@ -1181,7 +1181,7 @@ slots:
 
 	err = deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot)
 	c.Check(err, check.ErrorMatches,
-		`cannot create socket .*: path already exists`)
+		`cannot create socket .*: path already exists and is not a unix socket`)
 
 	data, err := os.ReadFile(path)
 	c.Assert(err, check.IsNil)
@@ -1217,7 +1217,7 @@ slots:
 
 	err = deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot)
 	c.Check(err, check.ErrorMatches,
-		`cannot create socket .*: path already exists`)
+		`cannot create socket .*: path already exists and is not a unix socket`)
 }
 
 func (s *tunnelSuite) TestExistingSymlinkAsUnixPathRejected(c *check.C) {
@@ -1254,14 +1254,14 @@ slots:
 
 	err = deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot)
 	c.Check(err, check.ErrorMatches,
-		`cannot create socket .*: path already exists`)
+		`cannot create socket .*: path already exists and is not a unix socket`)
 
 	link, err := os.Readlink(path)
 	c.Assert(err, check.IsNil)
 	c.Check(link, check.Equals, target)
 }
 
-func (s *tunnelSuite) TestExistingUnixSocketAsUnixPathRejected(c *check.C) {
+func (s *tunnelSuite) TestExistingUnixSocketAsUnixPathAllowed(c *check.C) {
 	path := filepath.Join(testuser.HomeDir, "existing.sock")
 
 	listener, err := net.Listen("unix", path)
@@ -1291,9 +1291,7 @@ slots:
 	deviceSpec, err := lxd_device.NewSpecification(testuser.Username, "system")
 	c.Assert(err, check.IsNil)
 
-	err = deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot)
-	c.Check(err, check.ErrorMatches,
-		`cannot create socket .*: path already exists`)
+	c.Check(deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot), check.IsNil)
 
 	info, err := os.Lstat(path)
 	c.Assert(err, check.IsNil)
