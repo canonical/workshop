@@ -159,7 +159,7 @@ warning: |
 func (s *warningSuite) TestOkay(c *check.C) {
 	for _, name := range []string{"okay", "ok"} {
 		t0 := time.Now()
-		WriteWarningTimestamp(t0)
+		c.Assert(WriteWarningTimestamp(t0), check.IsNil)
 
 		var n int
 		s.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
