@@ -514,6 +514,97 @@ func (s *sdkStateSuite) TestUndoInstallSdkSuccess(c *check.C) {
 	c.Check(volume.Mounts, check.HasLen, 0)
 }
 
+func (s *sdkStateSuite) TestUndoInstallSdkPartialFailure(c *check.C) {
+	s.state.Lock()
+	defer s.state.Unlock()
+
+	defer builtin.MockSanitize(func(*builtin.Sanitizer, *sdk.Info, workshop.Runtime) error { return nil })()
+
+	newSdk := sdk.Meta{
+		Setup: sdk.Setup{
+			Name:      "test",
+			PackageID: "a9J51jhjzpckN8VxhqoZ8dNKcZ7pOrBb",
+			Channel:   "latest/stable",
+			Revision:  sdk.R(1),
+			Sha3_384:  "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd",
+		},
+		SdkYAML: sdkYaml,
+	}
+	s.mockSdk(c, newSdk)
+
+	t := s.state.NewTask("install-sdk", "test")
+	t.Set("sdk", newSdk.Name)
+
+	tretry := s.state.NewTask("retry-task", "keep the change running")
+	tretry.WaitFor(t)
+
+	chg := s.state.NewChange("sample", "...")
+	chg.Set("project-id", s.project.ProjectId)
+	chg.Set("user", "testuser")
+	chg.Set("ws_new_sdks", []sdk.Setup{newSdk.Setup})
+	chg.AddTask(t)
+	chg.AddTask(tretry)
+
+	setWorkshopProject("ws", s.project, t, tretry)
+
+	s.state.Unlock()
+	for range 6 {
+		c.Check(s.se.Ensure(), check.IsNil)
+		s.se.Wait()
+	}
+	s.state.Lock()
+
+	c.Assert(t.Status(), check.Equals, state.DoneStatus)
+	c.Check(s.repo.Plugs(s.project.ProjectId, "ws", "test"), check.HasLen, 2)
+
+	// Detach the volume manually so that undo fails to unmount it.
+	volumeName := sdk.VolumeName(newSdk.Name, newSdk.Revision)
+	volume := s.backend.Volumes[volumeName]
+	mounts := volume.Mounts
+	volume.Mounts = nil
+	s.backend.Volumes[volumeName] = volume
+
+	chg.Abort()
+	s.state.Unlock()
+	for range 6 {
+		c.Check(s.se.Ensure(), check.IsNil)
+		s.se.Wait()
+	}
+	s.state.Lock()
+
+	// The SDK should still be unregistered even if unmount failed.
+	c.Check(chg.Err(), check.ErrorMatches, `(?s).*volume "test-1" not mounted in "ws".*`)
+	c.Check(t.Status(), check.Equals, state.ErrorStatus)
+	c.Check(s.repo.Plugs(s.project.ProjectId, "ws", "test"), check.HasLen, 0)
+
+	// Clean up manually (in practice we'd remove or unstash the workshop).
+	volume.Mounts = mounts
+	s.backend.Volumes[volumeName] = volume
+	c.Assert(s.backend.UninstallSdk(s.ctx, "ws", newSdk.Name), check.IsNil)
+
+	// A second launch attempt should work.
+	t = s.state.NewTask("install-sdk", "test")
+	t.Set("sdk", newSdk.Name)
+
+	chg = s.state.NewChange("sample", "...")
+	chg.Set("user", "testuser")
+	chg.Set("ws_new_sdks", []sdk.Setup{newSdk.Setup})
+	chg.AddTask(t)
+
+	setWorkshopProject("ws", s.project, t)
+
+	s.state.Unlock()
+	for range 6 {
+		c.Check(s.se.Ensure(), check.IsNil)
+		s.se.Wait()
+	}
+	s.state.Lock()
+
+	c.Check(chg.Err(), check.IsNil)
+	c.Check(t.Status(), check.Equals, state.DoneStatus)
+	c.Check(s.repo.Plugs(s.project.ProjectId, "ws", "test"), check.HasLen, 2)
+}
+
 func (s *sdkStateSuite) TestRetrieveSystemSdkSuccess(c *check.C) {
 	s.state.Lock()
 	defer s.state.Unlock()

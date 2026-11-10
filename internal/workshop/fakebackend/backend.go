@@ -435,7 +435,6 @@ func (f *FakeWorkshopBackend) RemoveWorkshopMount(ctx context.Context, name, mou
 
 	f.workshopLock.Lock()
 	device, ok := f.Workshops[projectId][name].Devices[mount]
-	delete(f.Workshops[projectId][name].Devices, mount)
 	f.workshopLock.Unlock()
 	if !ok {
 		return fmt.Errorf("mount %q not found", mount)
@@ -452,7 +451,14 @@ func (f *FakeWorkshopBackend) RemoveWorkshopMount(ctx context.Context, name, mou
 		return err
 	}
 
-	return os.Remove(where)
+	if err := os.Remove(where); err != nil {
+		return err
+	}
+
+	f.workshopLock.Lock()
+	delete(f.Workshops[projectId][name].Devices, mount)
+	f.workshopLock.Unlock()
+	return nil
 }
 
 func (f *FakeWorkshopBackend) Workshop(ctx context.Context, name string) (*workshop.Workshop, error) {
@@ -836,15 +842,22 @@ func (b *FakeWorkshopBackend) UninstallSdk(ctx context.Context, name, sk string)
 	if !ok {
 		return nil
 	}
-	delete(wp.Sdks, sk)
 
 	if setup.IsVolume() {
 		what := sdk.VolumeName(setup.Name, setup.Revision)
 		where := sdk.SdkDir(setup.Name)
-		return b.detachVolume(ctx, name, what, where)
+		if err := b.detachVolume(ctx, name, what, where); err != nil {
+			return err
+		}
+	} else {
+		what := workshop.SdkDeviceName(setup.Name)
+		if err := b.RemoveWorkshopMount(ctx, name, what); err != nil {
+			return err
+		}
 	}
-	what := workshop.SdkDeviceName(setup.Name)
-	return b.RemoveWorkshopMount(ctx, name, what)
+
+	delete(wp.Sdks, sk)
+	return nil
 }
 
 func (s *FakeWorkshopBackend) detachVolume(ctx context.Context, name, what, where string) error {
