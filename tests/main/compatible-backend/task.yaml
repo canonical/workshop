@@ -11,7 +11,7 @@ execute: |
   lxd waitready
   snap restart workshop
   ! workshop_exec list > error.log 2>&1 || false
-  MATCH "^error: system is not healthy: incompatible backend: LXD server version .+ is not supported; required >= 6.8.\*$" < error.log
+  MATCH "^error: system is not healthy: incompatible backend: LXD server version .+ is not supported; required >= 6.10.\*$" < error.log
 
   # Check that workshopd reports a clear error when LXD is not installed,
   # and that it recovers automatically once LXD is installed again without

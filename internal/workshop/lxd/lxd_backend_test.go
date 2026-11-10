@@ -235,13 +235,13 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 }
 
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
-	err := lxdbackend.CheckServerVersion("6.8")
+	err := lxdbackend.CheckServerVersion("6.10")
+	c.Assert(err, check.IsNil)
+
+	err = lxdbackend.CheckServerVersion("6.11")
 	c.Assert(err, check.IsNil)
 
 	err = lxdbackend.CheckServerVersion("6.9")
-	c.Assert(err, check.IsNil)
-
-	err = lxdbackend.CheckServerVersion("6.7")
 	c.Assert(err, check.ErrorMatches, `(?s).*LXD server version.*is not supported.*`)
 
 	err = lxdbackend.CheckServerVersion("5.9")
@@ -256,9 +256,9 @@ func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
 	err = lxdbackend.CheckServerVersion("6.x")
 	c.Assert(err, check.ErrorMatches, ".*cannot parse LXD server version.*")
 
-	err = lxdbackend.CheckServerVersion("6.8.1")
+	err = lxdbackend.CheckServerVersion("6.10.1")
 	c.Assert(err, check.IsNil)
 
-	err = lxdbackend.CheckServerVersion("6.7.9")
+	err = lxdbackend.CheckServerVersion("6.9.9")
 	c.Assert(err, check.ErrorMatches, `(?s).*LXD server version.*is not supported.*`)
 }

@@ -33,9 +33,6 @@ execute: |
   workshop_exec remove ws-remove
   workshop_exec list | MATCH "^ws-remove[[:space:]]+Off[[:space:]]+-$"
 
-  # TODO: remove the next line once VMs support SDKs
-  [ "${RUNTIME}" = lxd-container ] || exit 0
-
   echo "Check the workshop can be removed and SDKs disconnected"
   workshop_exec launch ws-remove-mount
   workshop_exec remove ws-remove-mount

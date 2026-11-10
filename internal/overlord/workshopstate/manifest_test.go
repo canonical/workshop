@@ -1135,40 +1135,22 @@ func (s *manifestSuite) TestLaunchRejectsUnavailableVMs(c *check.C) {
 	c.Assert(f.Close(), check.IsNil)
 	c.Assert(err, check.IsNil)
 
-	os.Setenv("WORKSHOP_EXPERIMENTAL_VMS", "1")
-	defer os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS")
+	c.Assert(os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS"), check.IsNil)
 
 	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
-	c.Check(err, check.IsNil)
+	c.Check(err, check.ErrorMatches, `cannot launch "vm": runtime "lxd-vm" is experimental
+To opt in: "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd"`)
+
+	c.Assert(os.Setenv("WORKSHOP_EXPERIMENTAL_VMS", "1"), check.IsNil)
+	defer func() {
+		c.Check(os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS"), check.IsNil)
+	}()
+
+	manifests, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
+	c.Assert(err, check.IsNil)
+	c.Assert(manifests, check.HasLen, 1)
 
 	s.manager.SetVMsUnavailable(errors.New("no vsock"))
 	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
 	c.Check(err, check.ErrorMatches, `cannot launch "vm": virtual machines are unavailable: no vsock`)
-}
-
-func (s *manifestSuite) TestLaunchRejectsVMsWithSDKs(c *check.C) {
-	s.state.Lock()
-	defer s.state.Unlock()
-
-	sdks := []workshop.SdkRecord{{Name: "test", Channel: "latest/edge"}}
-	s.createWFile(c, "test", "ubuntu@24.04", sdks)
-	f, err := os.OpenFile(workshop.Filepath(s.project.Path, "test"), os.O_APPEND|os.O_WRONLY, 0644)
-	c.Assert(err, check.IsNil)
-	_, err = f.WriteString("runtime: lxd-vm\n")
-	c.Assert(f.Close(), check.IsNil)
-	c.Assert(err, check.IsNil)
-
-	os.Setenv("WORKSHOP_EXPERIMENTAL_VMS", "1")
-	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
-	c.Check(err, check.ErrorMatches, `cannot launch "test": SDKs are currently unavailable for virtual machines`)
-
-	old := workshop.WorkshopVMsSupportSDKs.Swap(true)
-	defer workshop.WorkshopVMsSupportSDKs.Store(old)
-	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
-	c.Check(err, check.IsNil)
-
-	os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS")
-	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"test"})
-	c.Check(err, check.ErrorMatches, `cannot launch "test": runtime "lxd-vm" is experimental
-To opt in: "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd"`)
 }
