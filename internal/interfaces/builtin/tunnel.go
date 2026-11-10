@@ -449,14 +449,17 @@ func authorizePath(listen workshop.ProxyTarget, user *user.User) error {
 }
 
 func checkSocketPath(path string) error {
-	_, err := os.Lstat(path)
+	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("cannot inspect socket %q: %w", path, err)
 	}
-	return fmt.Errorf("cannot create socket %q: path already exists", path)
+	if info.Mode()&os.ModeSocket != 0 {
+		return nil
+	}
+	return fmt.Errorf("cannot create socket %q: path already exists and is not a unix socket", path)
 }
 
 func init() {
