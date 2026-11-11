@@ -123,8 +123,8 @@ func New(s *state.State, runner *state.TaskRunner, repo *interfaces.Repository) 
 	runner.AddHandler("uninstall-sdk", OnDo(manager.doUninstallSdk), OnUndo(manager.doInstallSdk))
 	runner.AddHandler("snapshot-sdk", OnDo(manager.doSnapshotSdk), nil)
 
-	runner.AddCleanup("install-sdk", manager.doDeleteUnusedSdkVolumes)
-	runner.AddCleanup("uninstall-sdk", manager.doDeleteUnusedSdkVolumes)
+	runner.AddCleanup("install-sdk", RestoreStorageReserve(manager.doDeleteUnusedSdkVolumes))
+	runner.AddCleanup("uninstall-sdk", RestoreStorageReserve(manager.doDeleteUnusedSdkVolumes))
 
 	return manager
 }

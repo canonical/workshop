@@ -71,6 +71,8 @@ FakeWorkshopBackend:
   SnapshotCallback:
   Snapshots:
   RemovedSnapshots:
+  RestoreStorageReserveCallback:
+  RestoreStorageReserveCalls:
   BaseDir:
   SnapshotDir:
 FakeWorkshop:

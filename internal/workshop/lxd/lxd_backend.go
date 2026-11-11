@@ -54,7 +54,6 @@ const (
 	MiB = 1 << 20
 	GiB = 1 << 30
 
-	storagePool        = "workshop"
 	storagePoolMinSize = 5 * GiB
 
 	// configRootSize holds a container's root size while copied as a stash.
@@ -93,6 +92,7 @@ const (
 )
 
 var (
+	storagePool       = "workshop"
 	storagePoolDriver = "zfs"
 
 	workshopFormatsChecked = false
@@ -962,13 +962,18 @@ func (s *Backend) stopWorkshop(conn lxd.InstanceServer, ctx context.Context, nam
 		timeout = 30
 	}
 
-	// Workshop stopped, disable autostart.
+	// Workshop stopped, disable autostart. This writes to the instance's
+	// storage, so it fails if the pool or the workshop's quota is full; a
+	// forced stop precedes a remove or a rebuild, which reset autostart anyway.
 	if err := s.setAutoStart(conn, ctx, name, false); err != nil {
-		return err
+		if !force || !isStorageFull(err) {
+			return err
+		}
+		logger.Noticef("On StopWorkshop: failed to disable %q workshop autostart: %v", name, err)
 	}
 
 	err = s.updateInstanceState(conn, ctx, name, "stop", timeout)
-	if err != nil && force {
+	if err != nil && (force || inErrorStatus(conn, inst.Name)) {
 		logger.Noticef("On StopWorkshop: failed to stop %q workshop: %v", name, err)
 		err = s.updateInstanceState(conn, ctx, name, "stop", 0)
 	}
@@ -981,6 +986,17 @@ func (s *Backend) stopWorkshop(conn lxd.InstanceServer, ctx context.Context, nam
 	}
 
 	return nil
+}
+
+// inErrorStatus reports whether the instance is in Error status, which LXD
+// refuses to stop cleanly. This notably happens when QEMU pauses a VM after a
+// write fails because the storage pool is full, and LXD offers no way to
+// resume it (https://github.com/canonical/lxd/issues/19462). The guest is
+// frozen, so a forced stop is equivalent to a power cut: acknowledged writes
+// are durable and ext4 recovers from its journal on the next boot.
+func inErrorStatus(conn lxd.InstanceServer, instance string) bool {
+	inst, _, err := conn.GetInstance(instance)
+	return err == nil && inst.StatusCode == api.Error
 }
 
 func (s *Backend) setAutoStart(conn lxd.InstanceServer, ctx context.Context, name string, autostart bool) error {
@@ -1511,15 +1527,13 @@ func (s *Backend) RemoveWorkshop(ctx context.Context, name string) (err error) {
 	}
 	defer conn.Disconnect()
 
-	return withReserve(conn, func() error {
-		op, err := conn.DeleteInstance(InstanceName(name, projectId), false)
-		if err != nil {
-			return err
-		}
+	op, err := conn.DeleteInstance(InstanceName(name, projectId), false)
+	if err != nil {
+		return err
+	}
 
-		// DeleteInstance cannot be cancelled in LXD.
-		return op.Wait()
-	})
+	// DeleteInstance cannot be cancelled in LXD.
+	return op.Wait()
 }
 
 func (s *Backend) WorkshopFs(ctx context.Context, name string) (fsutil.Fs, error) {

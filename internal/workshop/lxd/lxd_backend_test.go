@@ -15,6 +15,7 @@
 package lxdbackend_test
 
 import (
+	"cmp"
 	"crypto/sha3"
 	"encoding/hex"
 	"errors"
@@ -385,15 +386,49 @@ func (f *LxdBeTests) TestCheckPoolSpace(c *check.C) {
 
 type reserveServer struct {
 	lxd.InstanceServer
-	exists  bool
-	deleted int
+	exists     bool
+	deleted    int
+	deleteErr  error
+	created    int
+	createErr  error
+	createdBy  string
+	totalSpace uint64
+	usedSpace  uint64
 }
 
 func (s *reserveServer) UseProject(string) lxd.InstanceServer { return s }
 
+func (s *reserveServer) GetStoragePoolVolume(pool, volType, name string) (*api.StorageVolume, string, error) {
+	if !s.exists {
+		return nil, "", api.StatusErrorf(http.StatusNotFound, "Storage volume not found")
+	}
+	return &api.StorageVolume{Name: name}, "", nil
+}
+
+func (s *reserveServer) GetStoragePoolResources(pool string) (*api.ResourcesStoragePool, error) {
+	res := &api.ResourcesStoragePool{}
+	res.Space.Total = s.totalSpace
+	res.Space.Used = s.usedSpace
+	return res, nil
+}
+
+func (s *reserveServer) CreateStoragePoolVolume(pool string, volume api.StorageVolumesPost) (lxd.Operation, error) {
+	s.created++
+	if s.createErr != nil {
+		// Simulate a concurrent caller winning the race.
+		s.exists = s.createdBy == "other"
+		return nil, s.createErr
+	}
+	s.exists = true
+	return doneOperation{}, nil
+}
+
 func (s *reserveServer) DeleteStoragePoolVolume(pool, volType, name string) (lxd.Operation, error) {
 	if pool != "workshop" || volType != "custom" || name != "workshop-reserve" {
 		return nil, fmt.Errorf("unexpected volume %s/%s/%s", pool, volType, name)
+	}
+	if s.deleteErr != nil {
+		return nil, s.deleteErr
 	}
 	if !s.exists {
 		return nil, api.StatusErrorf(http.StatusNotFound, "Storage volume not found")
@@ -407,16 +442,83 @@ type doneOperation struct{ lxd.Operation }
 
 func (doneOperation) Wait() error { return nil }
 
-func (f *LxdBeTests) TestWithReserve(c *check.C) {
-	full := errors.New("Failed writing backup.yaml: no space left on device")
+func (f *LxdBeTests) TestEnsurePoolSpace(c *check.C) {
+	const GiB, MiB = lxdbackend.GiB, lxdbackend.MiB
+	boom := errors.New("boom")
 
 	for _, t := range []struct {
-		summary string
-		exists  bool
-		errs    []error
-		calls   int
-		deleted int
-		err     error
+		summary   string
+		driver    string
+		exists    bool
+		used      uint64
+		createErr error
+		createdBy string
+		created   int
+		err       string
+	}{{
+		summary: "already armed",
+		exists:  true,
+		used:    GiB,
+	}, {
+		summary: "arms the reserve",
+		used:    GiB,
+		created: 1,
+	}, {
+		summary: "no space for the reserve",
+		used:    GiB + 1,
+		err:     `(?s)storage pool "workshop" is .*`,
+	}, {
+		summary:   "armed concurrently",
+		createErr: boom,
+		createdBy: "other",
+		created:   1,
+	}, {
+		summary:   "cannot arm",
+		createErr: boom,
+		created:   1,
+		err:       `cannot create storage pool "workshop" reserve: boom`,
+	}, {
+		summary: "btrfs keeps a margin without a reserve",
+		driver:  "btrfs",
+		used:    GiB,
+	}, {
+		summary: "btrfs margin exceeded",
+		driver:  "btrfs",
+		used:    GiB + 1,
+		err:     `(?s)storage pool "workshop" is .*`,
+	}} {
+		c.Logf("Summary: %s", t.summary)
+		restore := lxdbackend.MockStoragePool("workshop", cmp.Or(t.driver, "zfs"))
+		srv := &reserveServer{
+			exists:     t.exists,
+			createErr:  t.createErr,
+			createdBy:  t.createdBy,
+			totalSpace: 2*GiB + 256*MiB,
+			usedSpace:  t.used,
+		}
+		err := lxdbackend.EnsurePoolSpace(srv, GiB)
+		restore()
+		if t.err == "" {
+			c.Check(err, check.IsNil)
+		} else {
+			c.Check(err, check.ErrorMatches, t.err)
+		}
+		c.Check(srv.created, check.Equals, t.created)
+	}
+}
+
+func (f *LxdBeTests) TestWithReserve(c *check.C) {
+	full := errors.New("Failed writing backup.yaml: no space left on device")
+	deleteErr := errors.New("cannot delete")
+
+	for _, t := range []struct {
+		summary   string
+		exists    bool
+		deleteErr error
+		errs      []error
+		calls     int
+		deleted   int
+		err       string
 	}{{
 		summary: "success",
 		exists:  true,
@@ -427,7 +529,7 @@ func (f *LxdBeTests) TestWithReserve(c *check.C) {
 		exists:  true,
 		errs:    []error{errors.New("boom")},
 		calls:   1,
-		err:     errors.New("boom"),
+		err:     "boom",
 	}, {
 		summary: "retry after releasing the reserve",
 		exists:  true,
@@ -435,23 +537,34 @@ func (f *LxdBeTests) TestWithReserve(c *check.C) {
 		calls:   2,
 		deleted: 1,
 	}, {
-		summary: "no reserve to release",
-		errs:    []error{full},
-		calls:   1,
-		err:     full,
+		summary: "retry after reserve released concurrently",
+		errs:    []error{full, nil},
+		calls:   2,
+	}, {
+		summary: "still full",
+		errs:    []error{full, full},
+		calls:   2,
+		err:     regexp.QuoteMeta(full.Error()),
+	}, {
+		summary:   "cannot release the reserve",
+		exists:    true,
+		deleteErr: deleteErr,
+		errs:      []error{full, full},
+		calls:     2,
+		err:       regexp.QuoteMeta(full.Error() + "\n" + deleteErr.Error()),
 	}} {
 		c.Logf("Summary: %s", t.summary)
-		srv := &reserveServer{exists: t.exists}
+		srv := &reserveServer{exists: t.exists, deleteErr: t.deleteErr}
 		calls := 0
 		err := lxdbackend.WithReserve(srv, func() error {
 			err := t.errs[calls]
 			calls++
 			return err
 		})
-		if t.err == nil {
+		if t.err == "" {
 			c.Check(err, check.IsNil)
 		} else {
-			c.Check(err, check.ErrorMatches, regexp.QuoteMeta(t.err.Error()))
+			c.Check(err, check.ErrorMatches, t.err)
 		}
 		c.Check(calls, check.Equals, t.calls)
 		c.Check(srv.deleted, check.Equals, t.deleted)

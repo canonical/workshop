@@ -344,7 +344,7 @@ func ValidateFile(file *File) error {
 	if err := validateCPUs(file.CPUs); err != nil {
 		return err
 	}
-	if err := validateMemory(file.Memory); err != nil {
+	if err := validateMemory(file.Memory, file.Runtime); err != nil {
 		return err
 	}
 	if err := validateDisk(file.Disk); err != nil {
@@ -399,7 +399,7 @@ func validateCPUs(cpus int) error {
 	return nil
 }
 
-func validateMemory(memory string) error {
+func validateMemory(memory string, runtime Runtime) error {
 	if memory == "" {
 		return nil
 	}

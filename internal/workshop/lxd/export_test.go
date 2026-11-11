@@ -27,6 +27,8 @@ var (
 	CheckServerVersion   = checkVersion
 	GenerateCNAME        = generateCNAME
 	WithReserve          = withReserve
+	EnsurePoolSpace      = ensurePoolSpace
+	IsStorageFull        = isStorageFull
 )
 
 func MockFirewallChecker(f func(string) string) func() {
@@ -45,3 +47,12 @@ var (
 	CauseDocker          = causeDocker
 	CauseUFW             = causeUFW
 )
+
+const ReserveVolume = reserveVolume
+const ReserveSize = reserveSize
+
+func MockStoragePool(name, driver string) (restore func()) {
+	oldName, oldDriver := storagePool, storagePoolDriver
+	storagePool, storagePoolDriver = name, driver
+	return func() { storagePool, storagePoolDriver = oldName, oldDriver }
+}

@@ -15,6 +15,7 @@
 package handlersetup_test
 
 import (
+	"context"
 	"errors"
 	"sort"
 	"testing"
@@ -26,6 +27,7 @@ import (
 	"github.com/canonical/workshop/internal/overlord/handlersetup"
 	"github.com/canonical/workshop/internal/overlord/state"
 	"github.com/canonical/workshop/internal/workshop"
+	"github.com/canonical/workshop/internal/workshop/fakebackend"
 )
 
 type CommonStateFuncs struct {
@@ -184,4 +186,67 @@ func (s *CommonStateFuncs) TestInjectTasksMainAborted(c *check.C) {
 	// verify that extra tasks are on hold
 	c.Assert(t01.Status(), check.Equals, state.HoldStatus)
 	c.Assert(t02.Status(), check.Equals, state.HoldStatus)
+}
+
+func (s *CommonStateFuncs) TestRestoreStorageReserve(c *check.C) {
+	backend, err := fakebackend.New(c.MkDir())
+	c.Assert(err, check.IsNil)
+	workshop.ReplaceBackend(s.state, backend)
+	cleanups := 0
+	var cleanupErr error
+	handler := handlersetup.RestoreStorageReserve(func(task *state.Task, tomb *tomb.Tomb) error {
+		cleanups++
+		return cleanupErr
+	})
+
+	task := s.setupTask()
+	s.state.Lock()
+	task.SetStatus(state.DoneStatus)
+	s.state.Unlock()
+
+	// The cleanup fails, so the reserve isn't restored yet.
+	cleanupErr = errors.New("cannot clean up")
+	err = handler(task, &tomb.Tomb{})
+	c.Check(err, check.Equals, cleanupErr)
+	c.Check(cleanups, check.Equals, 1)
+	c.Check(backend.RestoreStorageReserveCalls, check.Equals, 0)
+
+	// The pool hasn't reclaimed the space yet.
+	cleanupErr = nil
+	backend.RestoreStorageReserveCallback = func(ctx context.Context) error {
+		return errors.New("storage pool is full")
+	}
+	err = handler(task, &tomb.Tomb{})
+	c.Check(err, check.FitsTypeOf, &state.Retry{})
+	c.Check(cleanups, check.Equals, 2)
+	c.Check(backend.RestoreStorageReserveCalls, check.Equals, 1)
+
+	// The cleanup isn't repeated.
+	backend.RestoreStorageReserveCallback = nil
+	err = handler(task, &tomb.Tomb{})
+	c.Check(err, check.IsNil)
+	c.Check(cleanups, check.Equals, 2)
+	c.Check(backend.RestoreStorageReserveCalls, check.Equals, 2)
+}
+
+func (s *CommonStateFuncs) TestRestoreStorageReserveGivesUp(c *check.C) {
+	defer handlersetup.MockStorageReserveRestoreWindow(0)()
+	backend, err := fakebackend.New(c.MkDir())
+	c.Assert(err, check.IsNil)
+	workshop.ReplaceBackend(s.state, backend)
+	backend.RestoreStorageReserveCallback = func(ctx context.Context) error {
+		return errors.New("storage pool is full")
+	}
+	handler := handlersetup.RestoreStorageReserve(func(task *state.Task, tomb *tomb.Tomb) error {
+		return nil
+	})
+
+	task := s.setupTask()
+	s.state.Lock()
+	task.SetStatus(state.DoneStatus)
+	s.state.Unlock()
+
+	err = handler(task, &tomb.Tomb{})
+	c.Check(err, check.IsNil)
+	c.Check(backend.RestoreStorageReserveCalls, check.Equals, 1)
 }

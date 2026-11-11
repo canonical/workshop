@@ -140,6 +140,10 @@ type FakeWorkshopBackend struct {
 
 	BaseDir     string
 	SnapshotDir string
+
+	reserveLock                   sync.Mutex
+	RestoreStorageReserveCallback func(ctx context.Context) error
+	RestoreStorageReserveCalls    int
 }
 
 var _ workshop.Backend = (*FakeWorkshopBackend)(nil)
@@ -899,6 +903,17 @@ func (s *FakeWorkshopBackend) detachVolume(ctx context.Context, name, what, wher
 	volume.Mounts = slices.Delete(volume.Mounts, idx, idx+1)
 	s.Volumes[what] = volume
 	return err
+}
+
+func (f *FakeWorkshopBackend) RestoreStorageReserve(ctx context.Context) error {
+	f.reserveLock.Lock()
+	defer f.reserveLock.Unlock()
+
+	f.RestoreStorageReserveCalls++
+	if f.RestoreStorageReserveCallback != nil {
+		return f.RestoreStorageReserveCallback(ctx)
+	}
+	return nil
 }
 
 func (f *FakeWorkshopBackend) FormatRevision() sdk.Revision {

@@ -29,6 +29,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1177,6 +1178,32 @@ func (f *wsOps) TestLxdBackendWorkshopCopyVMRootSize(c *check.C) {
 	c.Check(vol.Usage.Total, check.Equals, int64(10<<30))
 }
 
+func (f *wsOps) TestLxdBackendVMFreePageReporting(c *check.C) {
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", workshop.RuntimeLXDVM)
+	c.Assert(err, check.IsNil)
+	err = f.bd.DownloadBase(f.ctx, image, nil)
+	c.Assert(err, check.IsNil)
+
+	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04", Runtime: workshop.RuntimeLXDVM}
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDVM, image.Fingerprint)
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+	err = f.bd.StartWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+
+	// The guest negotiated VIRTIO_BALLOON_F_REPORTING (bit 5) with the device.
+	args := workshop.ExecArgs{
+		Command: []string{"sh", "-c", "cat /sys/bus/virtio/drivers/virtio_balloon/virtio*/features"},
+		WorkDir: "/",
+		Timeout: time.Minute,
+	}
+	output, err := helper.ExecOutput(f.ctx, f.bd, "test", args)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(output) > 5, check.Equals, true, check.Commentf("%q", output))
+	c.Check(output[5], check.Equals, byte('1'), check.Commentf("%q", output))
+}
+
 func (f *wsOps) TestLxdBackendStashFullContainer(c *check.C) {
 	image, err := f.bd.GetBase(f.ctx, "ubuntu@24.04", workshop.RuntimeLXDContainer)
 	c.Assert(err, check.IsNil)
@@ -1200,15 +1227,12 @@ func (f *wsOps) TestLxdBackendStashFullContainer(c *check.C) {
 	_, err = helper.ExecOutput(f.ctx, f.bd, "test", args)
 	c.Assert(err, check.IsNil)
 
-	// StopWorkshop cannot update the config of a full workshop, so stop it
-	// directly.
-	conn, err := f.bd.LxdClient(f.ctx)
+	// A full workshop's config can't be updated to disable autostart, which
+	// a forced stop (e.g. before a remove or rebuild) doesn't need.
+	err = f.bd.StopWorkshop(f.ctx, "test", false)
+	c.Assert(err, check.ErrorMatches, ".*disk quota exceeded.*")
+	err = f.bd.StopWorkshop(f.ctx, "test", true)
 	c.Assert(err, check.IsNil)
-	defer conn.Disconnect()
-	name := lxdbackend.InstanceName("test", f.project.ProjectId)
-	op, err := conn.UpdateInstanceState(name, api.InstanceStatePut{Action: "stop", Force: true, Timeout: -1}, "")
-	c.Assert(err, check.IsNil)
-	c.Assert(op.Wait(), check.IsNil)
 
 	// The stash keeps the size aside, since it couldn't hold the copy.
 	err = f.bd.StashWorkshop(f.ctx, "test")
@@ -1235,6 +1259,11 @@ func (f *wsOps) TestLxdBackendLaunchArmsReserve(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Disconnect()
 	conn = conn.UseProject(api.ProjectDefaultName)
+	pool, _, err := conn.GetStoragePool("workshop")
+	c.Assert(err, check.IsNil)
+	if pool.Driver != "zfs" {
+		c.Skip("only ZFS pools have a reserve")
+	}
 
 	op, err := conn.DeleteStoragePoolVolume("workshop", "custom", "workshop-reserve")
 	if err == nil {
@@ -1248,11 +1277,7 @@ func (f *wsOps) TestLxdBackendLaunchArmsReserve(c *check.C) {
 
 	vol, _, err := conn.GetStoragePoolVolume("workshop", "custom", "workshop-reserve")
 	c.Assert(err, check.IsNil)
-	if vol.ContentType == "filesystem" {
-		c.Check(vol.Config["zfs.reserve_space"], check.Equals, "true")
-	} else {
-		c.Check(vol.ContentType, check.Equals, "iso")
-	}
+	c.Check(vol.Config["zfs.reserve_space"], check.Equals, "true")
 }
 
 func (f *wsOps) TestLxdBackendFullPoolReleasesReserve(c *check.C) {
@@ -1321,6 +1346,77 @@ func (f *wsOps) TestLxdBackendFullPoolReleasesReserve(c *check.C) {
 	helper.LaunchTestWorkshop(c, f.ctx, f.bd, f.project.Path)
 	_, _, err = conn.GetStoragePoolVolume("workshop", "custom", "workshop-reserve")
 	c.Check(err, check.IsNil)
+}
+
+func (f *wsOps) TestLxdBackendFullPoolStopsPausedVM(c *check.C) {
+	conn, err := f.bd.LxdClient(f.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+	pool, _, err := conn.UseProject(api.ProjectDefaultName).GetStoragePool("workshop")
+	c.Assert(err, check.IsNil)
+	if pool.Driver != "zfs" {
+		c.Skip("the filler volume requires ZFS")
+	}
+
+	image, err := f.bd.GetBase(f.ctx, "ubuntu@26.04", workshop.RuntimeLXDVM)
+	c.Assert(err, check.IsNil)
+	err = f.bd.DownloadBase(f.ctx, image, nil)
+	c.Assert(err, check.IsNil)
+	wf := &workshop.File{Name: "test", Base: "ubuntu@26.04", Runtime: workshop.RuntimeLXDVM}
+	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDVM, image.Fingerprint)
+	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
+	c.Assert(err, check.IsNil)
+	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
+	err = f.bd.StartWorkshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+
+	defaultConn := conn.UseProject(api.ProjectDefaultName)
+	res, err := defaultConn.GetStoragePoolResources("workshop")
+	c.Assert(err, check.IsNil)
+	filler := res.Space.Total - res.Space.Used - 128<<20
+	op, err := defaultConn.CreateStoragePoolVolume("workshop", api.StorageVolumesPost{
+		Name:        "test-filler",
+		Type:        "custom",
+		ContentType: "filesystem",
+		StorageVolumePut: api.StorageVolumePut{Config: map[string]string{
+			"size":              strconv.FormatUint(filler, 10),
+			"zfs.reserve_space": "true",
+		}},
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(op.Wait(), check.IsNil)
+	defer func() {
+		op, err := defaultConn.DeleteStoragePoolVolume("workshop", "custom", "test-filler")
+		c.Assert(err, check.IsNil)
+		c.Check(op.Wait(), check.IsNil)
+	}()
+
+	// QEMU pauses the VM when its disk runs out of space, which hangs the
+	// command until it's cancelled.
+	execCtx, cancel := context.WithCancel(f.ctx)
+	defer cancel()
+	go helper.ExecOutput(execCtx, f.bd, "test", workshop.ExecArgs{
+		Command: []string{"dd", "if=/dev/urandom", "of=/fill", "bs=1M", "conv=fsync"},
+		WorkDir: "/",
+	})
+	name := lxdbackend.InstanceName("test", f.project.ProjectId)
+	var inst *api.Instance
+	for start := time.Now(); time.Since(start) < 3*time.Minute; time.Sleep(time.Second) {
+		inst, _, err = conn.GetInstance(name)
+		c.Assert(err, check.IsNil)
+		if inst.StatusCode == api.Error {
+			break
+		}
+	}
+	c.Assert(inst.StatusCode, check.Equals, api.Error)
+	cancel()
+
+	// A paused VM can't be stopped cleanly, so it's forced even when not asked to.
+	err = f.bd.StopWorkshop(f.ctx, "test", false)
+	c.Assert(err, check.IsNil)
+	inst, _, err = conn.GetInstance(name)
+	c.Assert(err, check.IsNil)
+	c.Check(inst.StatusCode, check.Equals, api.Stopped)
 }
 
 func modifiedByRebuild(key string) bool {

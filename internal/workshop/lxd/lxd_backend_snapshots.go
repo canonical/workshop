@@ -765,9 +765,7 @@ func (s *Backend) RemoveSnapshot(ctx context.Context, snapshot workshop.Snapshot
 	// For completeness we should probably check for collisions here. But if
 	// the given snapshot is being removed, it was recently part of a workshop
 	// and we already checked for collisions on launch.
-	return withReserve(conn, func() error {
-		return s.deleteSnapshot(snapshotConn, sdkSnapshotName(snapshot, digest))
-	})
+	return s.deleteSnapshot(snapshotConn, sdkSnapshotName(snapshot, digest))
 }
 
 func (s *Backend) StashWorkshop(ctx context.Context, name string) error {
@@ -960,9 +958,7 @@ func (s *Backend) RemoveWorkshopStash(ctx context.Context, name string) error {
 	}
 	defer conn.Disconnect()
 
-	return withReserve(conn, func() error {
-		return s.deleteSnapshot(conn, instanceStashName(name, projectId))
-	})
+	return s.deleteSnapshot(conn, instanceStashName(name, projectId))
 }
 
 func (s *Backend) deleteSnapshot(snapshotConn lxd.InstanceServer, snapshot string) error {

@@ -26,6 +26,7 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v3"
 
+	"github.com/canonical/workshop/internal/logger"
 	"github.com/canonical/workshop/internal/overlord/conflict"
 	"github.com/canonical/workshop/internal/overlord/ifacestate/schema"
 	"github.com/canonical/workshop/internal/overlord/state"
@@ -98,6 +99,54 @@ func OnDo(handler state.HandlerFunc) state.HandlerFunc {
 			return err
 		}
 
+		return nil
+	}
+}
+
+// storageReserveRestoreWindow is how long after a change is ready its cleanup
+// keeps trying to restore the storage reserve. Some storage drivers take a
+// while to reclaim the space freed up by the change.
+var storageReserveRestoreWindow = time.Minute
+
+// RestoreStorageReserve wraps a cleanup handler for tasks which may free up
+// storage space, so that afterwards it restores the storage reserve, in case
+// it was released while storage was full.
+func RestoreStorageReserve(cleanup state.HandlerFunc) state.HandlerFunc {
+	return func(task *state.Task, tomb *tomb.Tomb) error {
+		st := task.State()
+		st.Lock()
+		var cleaned bool
+		err := task.Get("cleaned-up", &cleaned)
+		st.Unlock()
+		if err != nil && !errors.Is(err, state.ErrNoState) {
+			return err
+		}
+
+		if !cleaned {
+			if err := cleanup(task, tomb); err != nil {
+				return err
+			}
+			st.Lock()
+			task.Set("cleaned-up", true)
+			st.Unlock()
+		}
+
+		st.Lock()
+		backend := workshop.WorkshopBackend(st)
+		st.Unlock()
+		err = backend.RestoreStorageReserve(tomb.Context(context.Background()))
+		if err == nil {
+			return nil
+		}
+
+		st.Lock()
+		change := task.Change()
+		readyTime, changeID := change.ReadyTime(), change.ID()
+		st.Unlock()
+		if time.Since(readyTime) < storageReserveRestoreWindow {
+			return &state.Retry{After: storageReserveRestoreWindow / 6}
+		}
+		logger.Noticef("Cannot restore storage reserve after change %s: %v", changeID, err)
 		return nil
 	}
 }

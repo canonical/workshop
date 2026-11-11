@@ -78,10 +78,10 @@ func New(st *state.State, runner *state.TaskRunner) *WorkshopManager {
 	runner.AddHandler("create-state-storage", OnDo(manager.doCreateStateStorage), OnUndo(manager.doRemoveStateStorage))
 	runner.AddHandler("remove-state-storage", OnDo(manager.doRemoveStateStorage), nil)
 
-	runner.AddCleanup("create-workshop", manager.doDeleteUnusedSnapshots)
-	runner.AddCleanup("remove-workshop", manager.doDeleteUnusedSnapshots)
-	runner.AddCleanup("stash-workshop", manager.doDeleteUnusedSnapshots)
-	runner.AddCleanup("remove-workshop-stash", manager.doDeleteUnusedSnapshots)
+	runner.AddCleanup("create-workshop", RestoreStorageReserve(manager.doDeleteUnusedSnapshots))
+	runner.AddCleanup("remove-workshop", RestoreStorageReserve(manager.doDeleteUnusedSnapshots))
+	runner.AddCleanup("stash-workshop", RestoreStorageReserve(manager.doDeleteUnusedSnapshots))
+	runner.AddCleanup("remove-workshop-stash", RestoreStorageReserve(manager.doDeleteUnusedSnapshots))
 
 	return manager
 }

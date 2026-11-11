@@ -280,6 +280,12 @@ type Backend interface {
 	// Number representing workshop and snapshot compatibility level.
 	FormatRevision() sdk.Revision
 
+	// Set aside storage space again, so that later operations can still stop
+	// workshops when storage runs out. The space is released when an
+	// operation runs out of storage, and can only be restored once enough
+	// space was freed up, e.g. by removing a workshop.
+	RestoreStorageReserve(ctx context.Context) error
+
 	// Look up the given snapshot. On success, returns the given snapshot and
 	// the workshops that are based on it. On failure, returns an error. In the
 	// unlikely event the error is caused by a snapshot conflict (i.e. a name

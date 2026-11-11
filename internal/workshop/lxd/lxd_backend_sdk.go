@@ -292,9 +292,7 @@ func (s *Backend) DeleteSdk(ctx context.Context, setup sdk.Setup) error {
 	}
 	defer conn.Disconnect()
 
-	return withReserve(conn, func() error {
-		return s.deleteVolume(conn, sdk.VolumeName(setup.Name, setup.Revision))
-	})
+	return s.deleteVolume(conn, sdk.VolumeName(setup.Name, setup.Revision))
 }
 
 func (s *Backend) deleteVolume(conn lxd.InstanceServer, name string) error {

@@ -160,6 +160,7 @@ jobs:
               tests/integration/project-tracking
               tests/integration/sdk-store
               tests/integration/ssh
+              tests/integration/storage-reserve
               tests/integration/workshop-exec
               tests/integration/workshop-network
               tests/integration/workshop-ops

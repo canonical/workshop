@@ -201,6 +201,9 @@ However, day-to-day usage requires little manual intervention.
 
 |ws_markup| keeps a reserve of 256 MiB in the storage pool,
 as a custom volume named :samp:`workshop-reserve`.
+On WSL, where the pool uses Btrfs,
+|ws_markup| keeps the same amount of space free without a volume,
+as Btrfs doesn't need the reserve to stop workshops on a full pool.
 Operations that consume a lot of space check the pool before they start,
 and fail with a report of the pool usage
 if the space they need would cut into the reserve:
@@ -215,11 +218,21 @@ if the space they need would cut into the reserve:
 
 If the pool still fills up,
 for example because of files written inside workshops,
-operations such as stopping or removing a workshop
+operations such as stopping a workshop
 release the reserve when they run out of space, and try again.
+Removing workshops, stashes or SDKs doesn't need the reserve.
 |ws_markup| creates the reserve again
-before the next launch or SDK installation,
-once the pool has enough space.
+once an operation that changes the pool completes
+and the pool has enough space,
+or else before the next launch or SDK installation.
+
+A virtual machine workshop that runs out of space in the pool
+is paused by LXD and reported in the :samp:`ERROR` status.
+LXD can't resume or cleanly shut it down,
+so stopping, refreshing or removing it forces it to stop,
+like a power cut.
+Files that were being written may be incomplete,
+but the workshop's file system recovers on the next start.
 
 To recover, remove unused workshops or SDKs,
 or expand the pool by setting a larger size at the pool level:

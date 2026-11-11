@@ -338,6 +338,18 @@ memory: 8
 	file, err = f.project.Workshop("xbert-gpu")
 	c.Check(file, check.IsNil)
 	c.Check(err, check.ErrorMatches, `invalid memory size "0GiB": must be a positive integer followed by a unit, e.g. 8GiB`)
+
+	yaml = strings.Replace(yaml, "memory: 0GiB", "memory: 255MiB", 1)
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err = f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, `invalid memory size "255MiB": must be at least 256MiB for containers`)
+
+	yaml = strings.Replace(yaml, "memory: 255MiB", "memory: 256MiB\nruntime: lxd-vm", 1)
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err = f.project.Workshop("xbert-gpu")
+	c.Check(file, check.IsNil)
+	c.Check(err, check.ErrorMatches, `invalid memory size "256MiB": must be at least 512MiB for virtual machines`)
 }
 
 func (f *workshopFile) TestDisk(c *check.C) {
