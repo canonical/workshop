@@ -526,9 +526,9 @@ type filesystem struct {
 
 // workshopRootFS performs operations while the workshop is running to make it
 // easy to mount its rootfs elsewhere once it has stopped. For containers, it
-// returns the source ZFS dataset, and the subdirectory of the rootfs within
-// that. For VMs, it relabels the filesystem to make it easier to locate when
-// mounting the parent block device in another VM.
+// returns the source ZFS dataset or btrfs device, and the subdirectory of the
+// rootfs within that. For VMs, it relabels the filesystem to make it easier to
+// locate when mounting the parent block device in another VM.
 func (s *snapshotSuite) workshopRootFS(name string, runtime workshop.Runtime) (filesystem, error) {
 	args := workshop.ExecArgs{
 		Command: []string{"findmnt", "--json", "--mountpoint=/", "--nofsroot", "--output=fsroot,fstype,source"},
@@ -582,8 +582,6 @@ func (s *snapshotSuite) mountRootFS(c *check.C, source filesystem, name, path st
 // on the host and then bind-mount the mountpoint into the other workshop. The
 // host mount is ID-mapped so the container can modify the files.
 func (s *snapshotSuite) mountContainerRootFS(c *check.C, source filesystem, name, path string) *revert.Reverter {
-	c.Assert(source.Fstype, check.Equals, "zfs")
-
 	userns := s.workshopUserNS(c, name)
 	defer userns.Close()
 

@@ -18,8 +18,11 @@ import (
 	"crypto/sha3"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"testing"
 
+	lxd "github.com/canonical/lxd/client"
+	"github.com/canonical/lxd/shared/api"
 	"gopkg.in/check.v1"
 
 	"github.com/canonical/workshop/internal/sdk"
@@ -261,4 +264,107 @@ func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
 
 	err = lxdbackend.CheckServerVersion("6.7.9")
 	c.Assert(err, check.ErrorMatches, `(?s).*LXD server version.*is not supported.*`)
+}
+
+func driverInfo(names ...string) []api.ServerStorageDriverInfo {
+	infos := make([]api.ServerStorageDriverInfo, 0, len(names))
+	for _, n := range names {
+		infos = append(infos, api.ServerStorageDriverInfo{Name: n})
+	}
+	return infos
+}
+
+// preferredDriver keeps ZFS whenever LXD reports it, falls back to Btrfs
+// otherwise, and errors when neither is supported. It trusts LXD's
+// supported-drivers list (which LXD builds by trying to load each driver's
+// module) rather than probing modules.
+func (f *LxdBeTests) TestPreferredDriver(c *check.C) {
+	driver, err := lxdbackend.PreferredDriver(driverInfo("zfs", "btrfs", "dir"))
+	c.Check(err, check.IsNil)
+	c.Check(driver, check.Equals, "zfs")
+
+	driver, err = lxdbackend.PreferredDriver(driverInfo("btrfs", "zfs"))
+	c.Check(err, check.IsNil)
+	c.Check(driver, check.Equals, "zfs")
+
+	driver, err = lxdbackend.PreferredDriver(driverInfo("btrfs", "dir"))
+	c.Check(err, check.IsNil)
+	c.Check(driver, check.Equals, "btrfs")
+
+	driver, err = lxdbackend.PreferredDriver(driverInfo("dir"))
+	c.Check(err, check.ErrorMatches, "suitable storage backend not found.*")
+	c.Check(driver, check.Equals, "")
+
+	driver, err = lxdbackend.PreferredDriver(nil)
+	c.Check(err, check.ErrorMatches, "suitable storage backend not found.*")
+	c.Check(driver, check.Equals, "")
+}
+
+// poolServer is an lxd.InstanceServer whose GetStoragePool returns pool, or
+// err if set, and whose GetServer reports the supported storage drivers.
+type poolServer struct {
+	lxd.InstanceServer
+	pool      api.StoragePool
+	err       error
+	supported []api.ServerStorageDriverInfo
+}
+
+func (s poolServer) GetStoragePool(string) (*api.StoragePool, string, error) {
+	if s.err != nil {
+		return nil, "", s.err
+	}
+	return &s.pool, "", nil
+}
+
+func (s poolServer) GetServer() (*api.Server, string, error) {
+	return &api.Server{Environment: api.ServerEnvironment{StorageSupportedDrivers: s.supported}}, "", nil
+}
+
+func (f *LxdBeTests) TestEnsureStoragePool(c *check.C) {
+	defer lxdbackend.MockPoolDriver()()
+
+	created := api.StoragePool{Driver: "zfs", Status: api.StoragePoolStatusCreated}
+	c.Check(lxdbackend.EnsureStoragePool(poolServer{pool: created}), check.IsNil)
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "zfs")
+
+	// An existing pool LXD failed to initialize is unusable.
+	unavailable := api.StoragePool{Driver: "btrfs", Status: api.StoragePoolStatusUnvailable}
+	err := lxdbackend.EnsureStoragePool(poolServer{pool: unavailable})
+	c.Check(err, check.ErrorMatches, `"workshop" storage pool unavailable: LXD cannot initialize it with the "btrfs" driver`)
+
+	// Only a fully created pool is ready.
+	for _, status := range []string{api.StoragePoolStatusPending, api.StoragePoolStatusErrored, api.StoragePoolStatusUnknown} {
+		pool := api.StoragePool{Driver: "btrfs", Status: status}
+		err = lxdbackend.EnsureStoragePool(poolServer{pool: pool})
+		c.Check(err, check.ErrorMatches, fmt.Sprintf(`"workshop" storage pool unavailable: LXD reports its status as %q`, status))
+	}
+
+	// The driver of a pool that isn't ready is not adopted.
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "zfs")
+
+	// A missing pool with no usable driver can't be created.
+	notFound := api.StatusErrorf(http.StatusNotFound, "not found")
+	err = lxdbackend.EnsureStoragePool(poolServer{err: notFound, supported: driverInfo("dir")})
+	c.Check(err, check.ErrorMatches, "suitable storage backend not found.*")
+
+	// Any other error means the pool can't be checked.
+	err = lxdbackend.EnsureStoragePool(poolServer{err: fmt.Errorf("connection reset")})
+	c.Check(err, check.ErrorMatches, `"workshop" storage pool unavailable: connection reset`)
+}
+
+func (f *LxdBeTests) TestAdoptPoolDriver(c *check.C) {
+	defer lxdbackend.MockPoolDriver()()
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "")
+
+	c.Assert(lxdbackend.AdoptPoolDriver("zfs"), check.IsNil)
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "zfs")
+
+	// A pool recreated on another supported driver is adopted.
+	c.Assert(lxdbackend.AdoptPoolDriver("btrfs"), check.IsNil)
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "btrfs")
+
+	// An unsupported driver is rejected and the recorded one is kept.
+	err := lxdbackend.AdoptPoolDriver("dir")
+	c.Check(err, check.ErrorMatches, `cannot use storage pool "workshop": unsupported driver "dir" \(expected one of zfs, btrfs\)`)
+	c.Check(lxdbackend.PoolDriver(), check.Equals, "btrfs")
 }

@@ -47,8 +47,7 @@ Prerequisites
 
 |ws_markup| is supported on Ubuntu
 and other :program:`snap`-enabled Linux distributions;
-it is also compatible with Windows Subsystem for Linux (WSL2),
-where it uses Btrfs instead of ZFS for storage.
+it is also compatible with Windows Subsystem for Linux (WSL2).
 
 |ws_markup| relies on
 `LXD 6.8+ <https://canonical.com/lxd>`_
