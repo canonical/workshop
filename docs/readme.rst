@@ -42,7 +42,7 @@ In your project directory, define a workshop from a comma-separated list of SDKs
 
 .. code-block:: console
 
-   workshop init dev --sdks opencode,go/1.26/stable
+   workshop init dev --sdks opencode,go/1.27/stable
 
 
 This writes ``.workshop/dev.yaml``, which you can extend with named actions:
@@ -55,7 +55,7 @@ This writes ``.workshop/dev.yaml``, which you can extend with named actions:
    sdks:
      - name: opencode
      - name: go
-       channel: 1.26/stable
+       channel: 1.27/stable
    actions:                # add your own
      analyzer: |
        go vet ./...
