@@ -453,7 +453,7 @@ With emphasis:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: 1.27
+       channel: "1.27"
    
    actions:
      lint: |
@@ -728,7 +728,7 @@ Example with options:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: 1.27
+       channel: "1.27"
 ```
 
 **Spacing and formatting**
@@ -1083,7 +1083,7 @@ Always include caption when it can be deduced from context:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: 1.27
+       channel: "1.27"
 ```
 
 Indentation: Use commonly recognized formatting:

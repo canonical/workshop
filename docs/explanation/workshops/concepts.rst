@@ -538,7 +538,7 @@ intended as utility helpers for a development environment:
    base: ubuntu@24.04
    sdks:
      - name: go
-       channel: 1.27
+       channel: "1.27"
    actions:
      lint: |
        golangci-lint run  --out-format=colored-line-number -c .golangci.yaml
