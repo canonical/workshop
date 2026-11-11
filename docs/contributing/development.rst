@@ -72,10 +72,10 @@ to the versions the project checks against:
 - The :samp:`go` SDK tracks :samp:`1.27/stable`,
   matching the :samp:`go` directive in :file:`go.mod`.
 
-- :program:`golangci-lint` is pinned to v2.11.3,
+- :program:`golangci-lint` is pinned to v2.15.0,
   matching the :samp:`rev` in :file:`.pre-commit-config.yaml`;
   the linting workflow in :file:`.github/workflows/lint.yaml`
-  tracks the same v2.11 minor version.
+  tracks the same v2.15 minor version.
 
 Linting in the workshop therefore uses the same version
 as the linting workflow,
