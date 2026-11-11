@@ -975,6 +975,23 @@ func (s *Backend) HashSnapshot(snapshot workshop.Snapshot) (string, error) {
 		return "", err
 	}
 
+	// The base container is configured to use the proxies, if any, on its
+	// first boot, and every snapshot of it keeps that configuration. A
+	// workshop made from a snapshot of a container with other proxies, or
+	// none, would use those.
+	for _, proxy := range []struct{ name, value string }{
+		{"apt-proxy", aptProxy},
+		{"snap-store-url", snapStoreURL},
+		{"go-proxy", goProxy},
+	} {
+		if proxy.value == "" {
+			continue
+		}
+		if _, err := fmt.Fprintf(hash, "%s %s\x00", proxy.name, proxy.value); err != nil {
+			return "", err
+		}
+	}
+
 	for _, sk := range snapshot.Sdks {
 		// Different types of SDKs result in different workshops. There
 		// are really only two types: those which use SDK volumes and
