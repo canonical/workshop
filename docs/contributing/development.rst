@@ -69,7 +69,7 @@ then launch the workshop from the repository root:
 The definition pins the toolchain
 to the versions the project checks against:
 
-- The :samp:`go` SDK tracks :samp:`1.26/stable`,
+- The :samp:`go` SDK tracks :samp:`1.27/stable`,
   matching the :samp:`go` directive in :file:`go.mod`.
 
 - :program:`golangci-lint` is pinned to v2.11.3,
