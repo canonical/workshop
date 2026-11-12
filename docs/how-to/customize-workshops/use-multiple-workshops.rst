@@ -78,7 +78,7 @@ for the server-side code:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: 1.26
+       channel: "1.27"
    actions:
      test: |
        go test ./...
@@ -232,7 +232,7 @@ Both workshops can then include it:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: 1.26
+       channel: "1.27"
      - name: project-common-tools
 
 
@@ -314,7 +314,7 @@ by pairing a :samp:`system` plug with a regular SDK slot:
    base: ubuntu@22.04
    sdks:
      - name: go
-       channel: 1.26
+       channel: "1.27"
        slots:
          api:
            interface: tunnel

@@ -29,7 +29,7 @@ The supported bases are ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
 The supported runtimes are lxd-container (the default) and lxd-vm.
 
 SDKs are specified as a comma-separated list. Each SDK entry can optionally
-include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.26/stable").
+include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.27/stable").
 
 .. rubric:: Examples
 
@@ -43,7 +43,7 @@ Create a workshop with a specific SDK channel:
 
 .. code-block:: console
 
-   $ workshop init dev --sdks go/1.26/stable
+   $ workshop init dev --sdks go/1.27/stable
 
 Create a workshop using a specific base:
 
