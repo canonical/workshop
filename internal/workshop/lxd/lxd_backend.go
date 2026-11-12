@@ -284,7 +284,7 @@ func checkWorkshopFormats() error {
 			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 			workshops, err := backend.ProjectWorkshops(pctx)
 			if err != nil {
-				return fmt.Errorf("cannot check workshop compatibility in %q: %w", project.Path, err)
+				return err
 			}
 			for _, workshop := range workshops {
 				if workshop.Format.N > backend.FormatRevision().N {
@@ -1273,20 +1273,45 @@ func (s *Backend) ProjectWorkshops(ctx context.Context) ([]*workshop.Workshop, e
 	}
 	instances, err := conn.GetInstances(args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot list workshops in project %q: %w", p.Path, err)
 	}
 
 	var workshops []*workshop.Workshop
+	var loadNames []string
+	var loadErrs []error
 	for _, i := range instances {
 		ws, err := s.loadWorkshop(conn, &i, user, p, nil)
 		if err != nil {
-			logger.Debugf("Workshop Backend on ProjectsWorkshops: %v", err)
+			loadNames = append(loadNames, workshopName(i.Name))
+			loadErrs = append(loadErrs, err)
 			continue
 		}
 		workshops = append(workshops, ws)
 	}
 
+	if len(loadErrs) > 0 {
+		return workshops, workshopLoadErrors{projectPath: p.Path, names: loadNames, errs: loadErrs}
+	}
 	return workshops, nil
+}
+
+type workshopLoadErrors struct {
+	projectPath string
+	names       []string
+	errs        []error
+}
+
+func (e workshopLoadErrors) Error() string {
+	var buf strings.Builder
+	fmt.Fprintf(&buf, "cannot load workshops from %q:\n", e.projectPath)
+	for i := range e.errs {
+		fmt.Fprintf(&buf, "- %q (%s)\n", e.names[i], e.errs[i])
+	}
+	return strings.TrimSuffix(buf.String(), "\n")
+}
+
+func (e workshopLoadErrors) Unwrap() []error {
+	return e.errs
 }
 
 func (s *Backend) RemoveWorkshop(ctx context.Context, name string) (err error) {
