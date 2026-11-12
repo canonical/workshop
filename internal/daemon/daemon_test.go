@@ -646,6 +646,33 @@ func (s *daemonSuite) TestStartStop(c *check.C) {
 	c.Check(err, check.IsNil)
 }
 
+func (s *daemonSuite) TestStartDegradedDefersEnsure(c *check.C) {
+	d := s.newDaemon(c)
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	c.Assert(err, check.IsNil)
+	d.generalListener = l
+
+	d.SetDegradedMode(fmt.Errorf("foo error"))
+	c.Assert(d.Start(), check.IsNil)
+	defer d.Stop(nil)
+
+	time.Sleep(100 * time.Millisecond)
+	c.Check(d.overlord.CanStandby(), check.Equals, false)
+
+	// Staying degraded keeps the overlord paused.
+	d.SetDegradedMode(fmt.Errorf("bar error"))
+	time.Sleep(100 * time.Millisecond)
+	c.Check(d.overlord.CanStandby(), check.Equals, false)
+
+	d.SetDegradedMode(nil)
+	for start := time.Now(); !d.overlord.CanStandby(); time.Sleep(10 * time.Millisecond) {
+		if time.Since(start) > 2*time.Second {
+			c.Fatal("Ensure did not run after leaving degraded mode")
+		}
+	}
+}
+
 func (s *daemonSuite) TestRestartWiring(c *check.C) {
 	d := s.newDaemon(c)
 
