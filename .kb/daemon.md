@@ -27,7 +27,8 @@ Implications of the socket activation that the daemon relies on:
 
 ## Degraded mode
 
-Triggered when `syscheck.CheckSystem()` fails (LXD missing/incompatible/down; out of storage space).
+Triggered when `syscheck.CheckSystem()` fails (host OS too old; LXD
+missing/incompatible/down; out of storage space).
 
 - Blocks all non-`GET` requests with the degraded error; `GET` still works.
 - A recovery ticker re-runs `CheckSystem()` continuously and clears degraded
