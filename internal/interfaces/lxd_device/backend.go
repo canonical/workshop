@@ -774,6 +774,12 @@ func (b *Backend) Setup(ctx context.Context, sdkRef sdk.Ref, repo *interfaces.Re
 	}
 	defer conn.Disconnect()
 
+	server, _, err := conn.GetServer()
+	if err != nil {
+		return err
+	}
+	dropUnsupportedOwnershipInherit(spec.devices, server.APIExtensions)
+
 	name := lxdbackend.ProfileName(sdkRef.ProjectId, sdkRef.Workshop, sdkRef.Sdk)
 	prev := workshop.NewSdkProfile(sdkRef.Sdk)
 
@@ -893,5 +899,19 @@ func MockWorkshopFs(f func(conn lxd.InstanceServer, pid, w string) (fsutil.Fs, e
 	workshopFs = f
 	return func() {
 		workshopFs = old
+	}
+}
+
+// TODO: Remove this compatibility helper once all supported LXD versions
+// advertise usb_ownership_inherit.
+func dropUnsupportedOwnershipInherit(devices map[string]map[string]string, apiExtensions []string) {
+	if slices.Contains(apiExtensions, "usb_ownership_inherit") {
+		return
+	}
+
+	for _, device := range devices {
+		if device["type"] == "usb" {
+			delete(device, "ownership.inherit")
+		}
 	}
 }
