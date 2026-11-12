@@ -37,6 +37,11 @@ type cloudConfigVars struct {
 	// needs the machine ID set through the kernel command line.
 	HasGRUB bool
 
+	// ShmemHugePages reports whether the workshop should let shared memory
+	// use transparent huge pages when advised, so that nested VMs can back
+	// guest RAM with huge pages.
+	ShmemHugePages bool
+
 	// StartTimeout is the wait-ready timeout in nanoseconds.
 	StartTimeout int64
 
@@ -67,9 +72,10 @@ func makeCloudConfigVars(file *workshop.File) cloudConfigVars {
 		startTimeout = startTimeoutVM
 	}
 	return cloudConfigVars{
-		FsFreezePath: fsFreezePath,
-		HasGRUB:      file.Runtime == workshop.RuntimeLXDVM,
-		StartTimeout: startTimeout.Nanoseconds(),
+		FsFreezePath:   fsFreezePath,
+		HasGRUB:        file.Runtime == workshop.RuntimeLXDVM,
+		ShmemHugePages: file.Runtime == workshop.RuntimeLXDVM,
+		StartTimeout:   startTimeout.Nanoseconds(),
 		WorkshopCtlPath: filepath.Join(
 			dirs.WorkshopGuestBinDir,
 			filepath.Base(dirs.WorkshopCtlPath),
@@ -197,6 +203,14 @@ write_files:
       GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:+$GRUB_CMDLINE_LINUX }"'systemd.machine_id=${workshop_machine_id}'
       GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT:+$GRUB_CMDLINE_LINUX_DEFAULT }quiet"
 {{- end}}
+{{- if .ShmemHugePages}}
+  # QEMU requests transparent huge pages for guest RAM with MADV_HUGEPAGE, but
+  # the kernel ignores this for shared memory by default, and LXD backs guest
+  # RAM with memfd. Huge pages make nested VMs boot much faster.
+  - path: /etc/tmpfiles.d/70-workshop-shmem-thp.conf
+    content: |
+      w /sys/kernel/mm/transparent_hugepage/shmem_enabled - - - - advise
+{{- end}}
   - path: /etc/systemd/system/workshop-secret.socket
     content: |
       [Unit]
@@ -238,6 +252,10 @@ runcmd:
   # sets $XDG_RUNTIME_DIR and more. Interfaces such as desktop rely on both of these to be present.
   # This does not introduce any additional modification beyond what a login session would normally create.
   - loginctl enable-linger workshop
+{{- if .ShmemHugePages}}
+  # systemd-tmpfiles-setup runs before cloud-init writes files on first boot.
+  - systemd-tmpfiles --create /etc/tmpfiles.d/70-workshop-shmem-thp.conf
+{{- end}}
 {{- if .HasGRUB}}
   - update-grub
 {{- end}}

@@ -111,6 +111,7 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	// Validate
 	c.Assert(err, check.IsNil)
 	c.Assert(cfg["cloud-init.user-data"], check.Not(testutil.Contains), "GRUB_CMDLINE_LINUX")
+	c.Assert(cfg["cloud-init.user-data"], check.Not(testutil.Contains), "shmem_enabled")
 	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1001 1000\ngid 1001 1000\n")
 	c.Assert(cfg["raw.lxc"], check.Equals, "lxc.mount.entry = tmpfs tmp tmpfs defaults")
 	c.Assert(cfg["security.nesting"], check.Equals, "true")
@@ -147,6 +148,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// Validate
 	c.Assert(err, check.IsNil)
 	c.Assert(cfg["cloud-init.user-data"], testutil.Contains, "GRUB_CMDLINE_LINUX")
+	c.Assert(cfg["cloud-init.user-data"], testutil.Contains, "w /sys/kernel/mm/transparent_hugepage/shmem_enabled - - - - advise")
 	c.Assert(cfg["raw.idmap"], testutil.Contains, "uid 1002 1000\n")
 	c.Assert(cfg["raw.idmap"], testutil.Contains, "gid 1002 1000\n")
 	_, ok := cfg["raw.lxc"]
@@ -163,7 +165,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	// cloud-config changes won't apply to new workshops until the user
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
-	c.Check(hex.EncodeToString(digest[:]), check.Equals, "10aacf882e4e6afa912c255edde2a6d462fbcb273500c42ee88f5ef1e41d08270cdde27e23b44580e878875ae986dfc7")
+	c.Check(hex.EncodeToString(digest[:]), check.Equals, "483c74d693d45ddcfcd515cdd59195241e5a96d04d596e674ea75ec75e30d036b814f46539b8497ff6184c31baeac77c")
 }
 
 // The cloud-init user-data must install and enable the systemd socket unit
