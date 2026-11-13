@@ -48,7 +48,7 @@ Your work is split across two environments:
        and the LXD integration tests.
 
 :program:`workshopd` connects to LXD
-and expects the ZFS storage driver,
+and expects the ZFS or btrfs storage driver,
 neither of which the :samp:`dev` workshop ships,
 so the host-side commands run outside it.
 
