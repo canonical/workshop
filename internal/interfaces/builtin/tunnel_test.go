@@ -22,6 +22,7 @@ package builtin_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -1118,6 +1119,183 @@ slots:
 
 	err = deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot)
 	c.Check(err, check.ErrorMatches, fmt.Sprintf(`user "testuser" cannot create socket %q for security reasons`, shadowLink))
+}
+
+func (s *tunnelSuite) TestNonexistentUnixPathAllowed(c *check.C) {
+	path := filepath.Join(testuser.HomeDir, "new.sock")
+
+	plug := builtin.MockPlug(c, `name: system
+base: ubuntu@22.04
+type: system
+plugs:
+  tunnel-plug:
+    interface: tunnel
+    endpoint: $HOME/new.sock
+`, s.projectId, "ws", "system", "tunnel-plug")
+	connectedPlug := interfaces.NewConnectedPlug(plug, nil, nil)
+
+	slot := builtin.MockSlot(c, `name: service
+base: ubuntu@22.04
+slots:
+  tunnel-slot:
+    interface: tunnel
+    endpoint: /run/app.sock
+`, s.projectId, "ws", "service", "tunnel-slot")
+	connectedSlot := interfaces.NewConnectedSlot(slot, nil, nil)
+
+	_, err := os.Lstat(path)
+	c.Assert(os.IsNotExist(err), check.Equals, true)
+
+	deviceSpec, err := lxd_device.NewSpecification(testuser.Username, "system")
+	c.Assert(err, check.IsNil)
+
+	c.Check(deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot), check.IsNil)
+}
+
+func (s *tunnelSuite) TestExistingRegularFileAsUnixPathRejected(c *check.C) {
+	path := filepath.Join(testuser.HomeDir, "regular.txt")
+	c.Assert(os.WriteFile(path, []byte("sentinel"), 0644), check.IsNil)
+	defer os.Remove(path)
+
+	plug := builtin.MockPlug(c, `name: system
+base: ubuntu@22.04
+type: system
+plugs:
+  tunnel-plug:
+    interface: tunnel
+    endpoint: $HOME/regular.txt
+`, s.projectId, "ws", "system", "tunnel-plug")
+	connectedPlug := interfaces.NewConnectedPlug(plug, nil, nil)
+
+	slot := builtin.MockSlot(c, `name: service
+base: ubuntu@22.04
+slots:
+  tunnel-slot:
+    interface: tunnel
+    endpoint: /run/app.sock
+`, s.projectId, "ws", "service", "tunnel-slot")
+	connectedSlot := interfaces.NewConnectedSlot(slot, nil, nil)
+
+	deviceSpec, err := lxd_device.NewSpecification(testuser.Username, "system")
+	c.Assert(err, check.IsNil)
+
+	err = deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot)
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+
+	data, err := os.ReadFile(path)
+	c.Assert(err, check.IsNil)
+	c.Check(string(data), check.Equals, "sentinel")
+}
+
+func (s *tunnelSuite) TestExistingDirectoryAsUnixPathRejected(c *check.C) {
+	path := filepath.Join(testuser.HomeDir, "existing-directory")
+	c.Assert(os.Mkdir(path, 0755), check.IsNil)
+	defer os.Remove(path)
+
+	plug := builtin.MockPlug(c, `name: system
+base: ubuntu@22.04
+type: system
+plugs:
+  tunnel-plug:
+    interface: tunnel
+    endpoint: $HOME/existing-directory
+`, s.projectId, "ws", "system", "tunnel-plug")
+	connectedPlug := interfaces.NewConnectedPlug(plug, nil, nil)
+
+	slot := builtin.MockSlot(c, `name: service
+base: ubuntu@22.04
+slots:
+  tunnel-slot:
+    interface: tunnel
+    endpoint: /run/app.sock
+`, s.projectId, "ws", "service", "tunnel-slot")
+	connectedSlot := interfaces.NewConnectedSlot(slot, nil, nil)
+
+	deviceSpec, err := lxd_device.NewSpecification(testuser.Username, "system")
+	c.Assert(err, check.IsNil)
+
+	err = deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot)
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+}
+
+func (s *tunnelSuite) TestExistingSymlinkAsUnixPathRejected(c *check.C) {
+	target := filepath.Join(testuser.HomeDir, "symlink-target.txt")
+	path := filepath.Join(testuser.HomeDir, "symlink.sock")
+
+	c.Assert(os.WriteFile(target, []byte("sentinel"), 0644), check.IsNil)
+	defer os.Remove(target)
+
+	c.Assert(os.Symlink(target, path), check.IsNil)
+	defer os.Remove(path)
+
+	plug := builtin.MockPlug(c, `name: system
+base: ubuntu@22.04
+type: system
+plugs:
+  tunnel-plug:
+    interface: tunnel
+    endpoint: $HOME/symlink.sock
+`, s.projectId, "ws", "system", "tunnel-plug")
+	connectedPlug := interfaces.NewConnectedPlug(plug, nil, nil)
+
+	slot := builtin.MockSlot(c, `name: service
+base: ubuntu@22.04
+slots:
+  tunnel-slot:
+    interface: tunnel
+    endpoint: /run/app.sock
+`, s.projectId, "ws", "service", "tunnel-slot")
+	connectedSlot := interfaces.NewConnectedSlot(slot, nil, nil)
+
+	deviceSpec, err := lxd_device.NewSpecification(testuser.Username, "system")
+	c.Assert(err, check.IsNil)
+
+	err = deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot)
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+
+	link, err := os.Readlink(path)
+	c.Assert(err, check.IsNil)
+	c.Check(link, check.Equals, target)
+}
+
+func (s *tunnelSuite) TestExistingUnixSocketAsUnixPathAllowed(c *check.C) {
+	path := filepath.Join(testuser.HomeDir, "existing.sock")
+
+	listener, err := net.Listen("unix", path)
+	c.Assert(err, check.IsNil)
+	defer listener.Close()
+	defer os.Remove(path)
+
+	plug := builtin.MockPlug(c, `name: system
+base: ubuntu@22.04
+type: system
+plugs:
+  tunnel-plug:
+    interface: tunnel
+    endpoint: $HOME/existing.sock
+`, s.projectId, "ws", "system", "tunnel-plug")
+	connectedPlug := interfaces.NewConnectedPlug(plug, nil, nil)
+
+	slot := builtin.MockSlot(c, `name: service
+base: ubuntu@22.04
+slots:
+  tunnel-slot:
+    interface: tunnel
+    endpoint: /run/app.sock
+`, s.projectId, "ws", "service", "tunnel-slot")
+	connectedSlot := interfaces.NewConnectedSlot(slot, nil, nil)
+
+	deviceSpec, err := lxd_device.NewSpecification(testuser.Username, "system")
+	c.Assert(err, check.IsNil)
+
+	c.Check(deviceSpec.AddConnectedPlug(s.iface, connectedPlug, connectedSlot), check.IsNil)
+
+	info, err := os.Lstat(path)
+	c.Assert(err, check.IsNil)
+	c.Check(info.Mode()&os.ModeSocket != 0, check.Equals, true)
 }
 
 func (s *tunnelSuite) TestAutoConnectHostToWorkshop(c *check.C) {

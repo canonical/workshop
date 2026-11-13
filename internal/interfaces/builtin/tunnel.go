@@ -438,14 +438,28 @@ func authorizePath(listen workshop.ProxyTarget, user *user.User) error {
 	}
 
 	if realDir == user.HomeDir || strings.HasPrefix(realDir, user.HomeDir+"/") {
-		return nil
+		return checkSocketPath(listen.Address)
 	}
 	runtimeDir := filepath.Join(dirs.XdgRuntimeDirBase, user.Uid)
 	if realDir == runtimeDir || strings.HasPrefix(realDir, runtimeDir+"/") {
-		return nil
+		return checkSocketPath(listen.Address)
 	}
 
 	return fmt.Errorf("user %q cannot create socket %q for security reasons", user.Username, listen.Address)
+}
+
+func checkSocketPath(path string) error {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("cannot inspect socket %q: %w", path, err)
+	}
+	if info.Mode()&os.ModeSocket != 0 {
+		return nil
+	}
+	return fmt.Errorf("cannot create socket %q: path already exists and is not a unix socket", path)
 }
 
 func init() {
