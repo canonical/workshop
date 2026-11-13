@@ -1268,6 +1268,13 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 	}
 
+	cpus, err := strconv.Atoi(inst.Config["limits.cpu"])
+	if err != nil {
+		logger.Debugf("Ignoring unexpected CPU limit: %v", err)
+		cpus = 0
+	}
+	memory := inst.Config["limits.memory"]
+
 	sdks := map[string]workshop.SdkInstallation{}
 	for key, device := range inst.Devices {
 		s, err := maybeSdkInstallation(key, device)
@@ -1305,6 +1312,8 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		Format:         format,
 		Image:          image,
 		Running:        running,
+		CPUs:           cpus,
+		Memory:         memory,
 		Sdks:           sdks,
 		Profiles:       profs,
 		File:           f,
@@ -1561,6 +1570,12 @@ func (s *Backend) workshopConfig(
 		// directory) to allow us to mount X11 sockets reliably.
 		// See: https://github.com/lxc/lxc/issues/434
 		cfg["raw.lxc"] = "lxc.mount.entry = tmpfs tmp tmpfs defaults"
+		if file.CPUs > 0 {
+			cfg["limits.cpu"] = fmt.Sprint(file.CPUs)
+		}
+		if file.Memory != "" {
+			cfg["limits.memory"] = file.Memory
+		}
 	} else {
 		// Ensure the NIC is named "eth0" so we can configure it.
 		cfg["agent.nic_config"] = "true"
@@ -1592,7 +1607,7 @@ func (s *Backend) workshopConfig(
 			portsPerSdk = 4
 			maxPorts    = 192
 
-			minCPUs      = 2
+			defaultCPUs  = 2
 			irqsPerMount = 4
 			irqsPerCPU   = 128
 		)
@@ -1605,12 +1620,19 @@ func (s *Backend) workshopConfig(
 		maxBusPorts := min(minPorts+portsPerSdk*regularSdks, maxPorts)
 		cfg["limits.max_bus_ports"] = fmt.Sprint(maxBusPorts)
 
+		minCPUs := defaultCPUs
+		if file.CPUs > 0 {
+			minCPUs = file.CPUs
+		}
 		minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
 		vCPUs := max(minCPUs, minCPUsForPCI)
 		cfg["limits.cpu"] = fmt.Sprint(vCPUs)
 
 		// LXD's default of 1 GiB is too small for most development environments.
 		cfg["limits.memory"] = "4GiB"
+		if file.Memory != "" {
+			cfg["limits.memory"] = file.Memory
+		}
 
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"

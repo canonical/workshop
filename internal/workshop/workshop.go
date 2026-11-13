@@ -62,6 +62,8 @@ type Workshop struct {
 	Format  sdk.Revision
 	Image   BaseImage
 	Running bool
+	CPUs    int
+	Memory  string
 	// Installed SDKs.
 	Sdks map[string]SdkInstallation
 	// Workshop devices installed.
