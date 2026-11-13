@@ -53,16 +53,17 @@ type Tunnel struct {
 }
 
 type Sdk struct {
-	Name        string       `json:"name"`
-	Version     string       `json:"version,omitempty"`
-	Channel     string       `json:"channel"`
-	Source      string       `json:"source"`
-	Revision    string       `json:"revision"`
-	BuiltAt     time.Time    `json:"built-at"`
-	InstalledAt time.Time    `json:"installed-at"`
-	Health      *HealthCheck `json:"health-check,omitempty"`
-	Mounts      []*Mount     `json:"mounts,omitempty"`
-	Tunnels     []*Tunnel    `json:"tunnels,omitempty"`
+	Name              string       `json:"name"`
+	Version           string       `json:"version,omitempty"`
+	Channel           string       `json:"channel"`
+	Source            string       `json:"source"`
+	Revision          string       `json:"revision"`
+	BuiltAt           time.Time    `json:"built-at"`
+	InstalledAt       time.Time    `json:"installed-at"`
+	Health            *HealthCheck `json:"health-check,omitempty"`
+	Mounts            []*Mount     `json:"mounts,omitempty"`
+	Tunnels           []*Tunnel    `json:"tunnels,omitempty"`
+	ApparmorDenyWrite []string     `json:"apparmor-deny-write,omitempty"`
 }
 
 type Workshops struct {

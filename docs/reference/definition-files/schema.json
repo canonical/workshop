@@ -111,6 +111,20 @@
               }
             },
             "additionalProperties": false
+          },
+          "apparmor": {
+            "type": "object",
+            "description": "AppArmor-based write protection applied to the whole workshop instance. Only valid on the system SDK entry and only supported on the lxd-container runtime.",
+            "properties": {
+              "deny-write": {
+                "type": "array",
+                "description": "Absolute in-workshop paths where writes, creates, renames, and deletes are denied, including everything beneath them. $PROJECT expands to /project.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [

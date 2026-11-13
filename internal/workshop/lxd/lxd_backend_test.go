@@ -106,6 +106,9 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	c.Assert(cfg["raw.idmap"], check.Equals, "uid 1001 1000\ngid 1001 1000\n")
 	c.Assert(cfg["raw.lxc"], check.Equals, "lxc.mount.entry = tmpfs tmp tmpfs defaults")
 	c.Assert(cfg["security.nesting"], check.Equals, "true")
+	if _, ok := cfg["raw.apparmor"]; ok {
+		c.Fatalf("raw.apparmor must be absent by default, got %q", cfg["raw.apparmor"])
+	}
 	c.Assert(cfg["user.workshop.project-id"], check.Equals, f.project.ProjectId)
 	c.Assert(cfg["user.workshop.file"], check.Equals, containerFile)
 	c.Assert(cfg["user.workshop.format-revision"], check.Equals, b.FormatRevision().String())
@@ -117,6 +120,28 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	// downloads a new base image or system SDK.
 	digest := sha3.Sum384([]byte(cfg["cloud-init.user-data"]))
 	c.Check(hex.EncodeToString(digest[:]), check.Equals, "eecdd7227020df46220bdcb82a41d4a4b456b28623888fc3b58b7a057dcf058e00ffe163af0d51df74686169156c9806")
+}
+
+func (f *LxdBeTests) TestDefaultContainerConfigAppArmorDenyWrite(c *check.C) {
+	// Setup
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name: "test",
+		Base: "ubuntu@22.04",
+		Sdks: []workshop.SdkRecord{
+			{Name: "system", Apparmor: &workshop.ApparmorPolicy{
+				DenyWrite: []string{"/project/.git/hooks"},
+			}},
+		},
+	}
+
+	// Execute
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1001", "1001", file, b.FormatRevision(), "fakeimage12345")
+
+	// Validate
+	c.Assert(err, check.IsNil)
+	c.Assert(cfg["raw.apparmor"], check.Equals,
+		"deny /project/.git/hooks/ w,\ndeny /project/.git/hooks/** w,")
 }
 
 var vmFile = `name: test

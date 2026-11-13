@@ -161,6 +161,11 @@ Each item in :samp:`sdks` is an object with these fields:
        and any interface-specific attributes.
        See :ref:`ref_workshop_definition_interfaces`.
 
+   * - :samp:`apparmor`
+     - object
+     - AppArmor-based write protection, valid only on the :samp:`system` SDK.
+       See :ref:`ref_workshop_definition_apparmor`.
+
 
 .. _ref_workshop_definition_plug_slot:
 
@@ -274,6 +279,71 @@ Each entry in :samp:`actions` maps an action name to a shell script body:
 Actions are interpreted lazily:
 edits to :samp:`actions` are available immediately,
 without :command:`workshop refresh`.
+
+.. _ref_workshop_definition_apparmor:
+
+AppArmor write protection (system SDK only)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. @artefact apparmor deny-write
+
+The :samp:`system` SDK entry may carry an :samp:`apparmor` block
+to deny write access to specific in-workshop paths,
+for example to stop an AI coding agent from touching :file:`.git/hooks/`:
+
+.. list-table::
+   :header-rows: 1
+   :width: 95
+   :widths: 2 1 6
+
+   * - Key
+     - Value
+     - Description
+
+   * - :samp:`deny-write`
+     - array of strings
+     - Absolute in-workshop paths.
+       Every write, create, rename, or delete
+       under each path, and the path itself, is denied,
+       including through :command:`sudo`.
+       :samp:`$PROJECT` expands to :file:`/project`
+       (the project checkout mount),
+       following the same convention as
+       :samp:`$SDK`/:samp:`$HOME` in mount targets.
+
+Restrictions:
+
+- Only valid under :samp:`name: system`;
+  any other SDK entry with an :samp:`apparmor` block fails validation.
+- Only supported on the :samp:`lxd-container` runtime (the default);
+  rejected on :samp:`runtime: lxd-vm`,
+  since AppArmor there confines the host-side QEMU process,
+  not the workshop's guest filesystem.
+- Each path must be absolute, clean (no :samp:`..`),
+  free of AppArmor glob characters (:samp:`* ? [ ] { } ^`),
+  and a strict sub-path of a mount root:
+  :file:`/project` itself cannot be denied, only something under it.
+- Changes take effect on the next :command:`workshop launch`
+  (after :command:`workshop remove`), not on :command:`workshop refresh`.
+
+Example:
+
+.. code-block:: yaml
+   :caption: workshop.yaml
+   :emphasize-lines: 4-6
+
+   name: dev
+   base: ubuntu@24.04
+   sdks:
+     - name: system
+       apparmor:
+         deny-write:
+           - $PROJECT/.git/hooks
+
+:command:`workshop info` lists the resolved paths
+under the :samp:`system` SDK's :samp:`apparmor` block;
+see :ref:`ref_workshop_info`.
+
 
 
 .. _ref_workshop_definition_interfaces:

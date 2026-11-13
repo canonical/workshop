@@ -68,16 +68,17 @@ type HealthCheckInfo struct {
 }
 
 type SdkInfo struct {
-	Name        string           `json:"name"`
-	Version     string           `json:"version,omitempty"`
-	Channel     string           `json:"channel,omitempty"`
-	Source      string           `json:"source,omitempty"`
-	Revision    string           `json:"revision"`
-	BuiltAt     *time.Time       `json:"built-at,omitempty"`
-	InstalledAt time.Time        `json:"installed-at,omitzero"`
-	Health      *HealthCheckInfo `json:"health-check,omitempty"`
-	Mounts      []*Mount         `json:"mounts,omitempty"`
-	Tunnels     []*Tunnel        `json:"tunnels,omitempty"`
+	Name              string           `json:"name"`
+	Version           string           `json:"version,omitempty"`
+	Channel           string           `json:"channel,omitempty"`
+	Source            string           `json:"source,omitempty"`
+	Revision          string           `json:"revision"`
+	BuiltAt           *time.Time       `json:"built-at,omitempty"`
+	InstalledAt       time.Time        `json:"installed-at,omitzero"`
+	Health            *HealthCheckInfo `json:"health-check,omitempty"`
+	Mounts            []*Mount         `json:"mounts,omitempty"`
+	Tunnels           []*Tunnel        `json:"tunnels,omitempty"`
+	ApparmorDenyWrite []string         `json:"apparmor-deny-write,omitempty"`
 }
 
 type Mount struct {
@@ -229,13 +230,19 @@ func workshopToInfo(w *workshop.Workshop, health healthstate.HealthState) (*Work
 			}
 		}
 
+		var apparmorDenyWrite []string
+		if sdk.IsSystem(sk.Name) {
+			apparmorDenyWrite = w.File.ApparmorDenyWrite()
+		}
+
 		info.Sdks = append(info.Sdks, &SdkInfo{
-			Name:        sk.Name,
-			Channel:     sk.Channel,
-			Source:      source,
-			Revision:    sk.Revision.String(),
-			InstalledAt: sk.InstalledAt,
-			Health:      healthInfo,
+			Name:              sk.Name,
+			Channel:           sk.Channel,
+			Source:            source,
+			Revision:          sk.Revision.String(),
+			InstalledAt:       sk.InstalledAt,
+			Health:            healthInfo,
+			ApparmorDenyWrite: apparmorDenyWrite,
 		})
 	}
 
@@ -302,17 +309,23 @@ func workshopToInfoFull(ctx context.Context, w *workshop.Workshop, health health
 			return nil, err
 		}
 
+		var apparmorDenyWrite []string
+		if sdk.IsSystem(sk.Name) {
+			apparmorDenyWrite = w.File.ApparmorDenyWrite()
+		}
+
 		info.Sdks = append(info.Sdks, &SdkInfo{
-			Name:        sk.Name,
-			Version:     file.Version,
-			Channel:     sk.Channel,
-			Source:      source,
-			Revision:    sk.Revision.String(),
-			BuiltAt:     file.BuiltAt,
-			InstalledAt: sk.InstalledAt,
-			Health:      healthInfo,
-			Mounts:      mntInfos,
-			Tunnels:     tunnelInfos,
+			Name:              sk.Name,
+			Version:           file.Version,
+			Channel:           sk.Channel,
+			Source:            source,
+			Revision:          sk.Revision.String(),
+			BuiltAt:           file.BuiltAt,
+			InstalledAt:       sk.InstalledAt,
+			Health:            healthInfo,
+			Mounts:            mntInfos,
+			Tunnels:           tunnelInfos,
+			ApparmorDenyWrite: apparmorDenyWrite,
 		})
 	}
 

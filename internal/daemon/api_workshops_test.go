@@ -62,6 +62,15 @@ base: ubuntu@22.04
 base: ubuntu@22.04
 `
 
+	basic_apparmor = `name: basic-apparmor
+base: ubuntu@22.04
+sdks:
+  - name: system
+    apparmor:
+      deny-write:
+        - $PROJECT/.git/hooks
+`
+
 	basic_refreshed = `name: basic
 base: ubuntu@22.04
 sdks:
@@ -883,6 +892,32 @@ func (s *apiSuite) TestGetWorkshopInfoSomePlugsBound(c *check.C) {
 			},
 		},
 		Path: workshop.Filepath(s.project.Path, "somebound")})
+}
+
+func (s *apiSuite) TestGetWorkshopInfoApparmor(c *check.C) {
+	// Setup (create a running workshop with an apparmor deny-write policy)
+	s.daemon(c)
+	s.d.Overlord().Loop()
+	defer s.d.Overlord().Stop()
+
+	s.launchWorkshop(c, "basic-apparmor", basic_apparmor)
+
+	// Execute
+	projectsCmd := apiCmd("/v1/projects/{id}/workshops/{name}")
+	s.vars = map[string]string{"id": s.project.ProjectId, "name": "basic-apparmor"}
+	req, err := s.createProjectsRequest("GET", "/v1/projects/"+s.project.ProjectId+"/workshops/basic-apparmor", nil)
+	c.Assert(err, check.IsNil)
+
+	rsp := v1GetProjectWorkshop(projectsCmd, req, nil).(*resp)
+
+	// Verify
+	c.Assert(rsp.Type, check.Equals, ResponseTypeSync)
+	c.Assert(rsp.Status, check.Equals, http.StatusOK)
+
+	result := rsp.Result.(Workshop)
+	idx := slices.IndexFunc(result.Sdks, func(sk *SdkInfo) bool { return sk.Name == "system" })
+	c.Assert(idx, testutil.IntGreaterEqual, 0)
+	c.Check(result.Sdks[idx].ApparmorDenyWrite, check.DeepEquals, []string{"/project/.git/hooks"})
 }
 
 func (s *apiSuite) TestGetWorkshopActions(c *check.C) {

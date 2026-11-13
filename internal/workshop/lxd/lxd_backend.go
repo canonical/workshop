@@ -1442,6 +1442,13 @@ func (s *Backend) workshopConfig(
 		"user.workshop.base-fingerprint": baseFingerprint,
 	}
 
+	// ValidateFile guarantees deny-write paths are only set on a container
+	// runtime, and that raw.apparmor is set nowhere else (no per-SDK LXD
+	// profile may set this key; see design/apparmor-write-protection/spec.md).
+	if raw := workshop.RenderAppArmorDenyWrite(file.ApparmorDenyWrite()); raw != "" {
+		cfg["raw.apparmor"] = raw
+	}
+
 	if file.Runtime == workshop.RuntimeLXDContainer {
 		cfg["security.nesting"] = "true"
 		// LXC appears to have a race condition wherein a proxy device mounted in
