@@ -37,6 +37,7 @@ type CmdList struct {
 func (c *CmdList) Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     "list",
+		Aliases: []string{"ls"},
 		Args:    cobra.ExactArgs(0),
 		Short:   "List project workshops",
 		GroupID: GrpExplore,

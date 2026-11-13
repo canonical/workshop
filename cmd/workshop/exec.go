@@ -249,6 +249,7 @@ func execArgs(av []string, argsLenAtDash int) *ExecArgs {
 func (c *CmdShell) Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     "shell [<WORKSHOP>]",
+		Aliases: []string{"sh"},
 		Args:    cobra.MaximumNArgs(1),
 		Short:   shortShellHelp,
 		GroupID: GrpExec,

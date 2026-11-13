@@ -123,49 +123,51 @@ ws        Off     -
 }
 
 func (m *workshopInfo) TestWorkshopList(c *check.C) {
-	n := 0
-	m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
-		n++
-		switch n {
-		case 1, 3:
-			c.Check(r.Method, check.Equals, "POST")
-			c.Assert(r.URL.Path, check.Equals, "/v1/projects")
-			r := fmt.Sprintf(`{"type": "sync", "result": {"id":"%s","path":"%s"}}`, m.prjId, "/home/project")
-			fmt.Fprintln(w, r)
-		case 2, 4:
-			c.Check(r.Method, check.Equals, "GET")
-			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
-			w.WriteHeader(200)
-			fmt.Fprintln(w, mockWorkshopList)
-		default:
-			c.Errorf("expected 4 calls, now on %d", n)
-		}
-	})
+	for _, name := range []string{"list", "ls"} {
+		n := 0
+		m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+			n++
+			switch n {
+			case 1, 3:
+				c.Check(r.Method, check.Equals, "POST")
+				c.Assert(r.URL.Path, check.Equals, "/v1/projects")
+				r := fmt.Sprintf(`{"type": "sync", "result": {"id":"%s","path":"%s"}}`, m.prjId, "/home/project")
+				fmt.Fprintln(w, r)
+			case 2, 4:
+				c.Check(r.Method, check.Equals, "GET")
+				c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops", m.prjId))
+				w.WriteHeader(200)
+				fmt.Fprintln(w, mockWorkshopList)
+			default:
+				c.Errorf("expected 4 calls, now on %d", n)
+			}
+		})
 
-	cmd := (&CmdRoot{}).Command()
-	cmd.SetArgs([]string{"list"})
-	err := cmd.Execute()
-	c.Assert(err, check.IsNil)
-	c.Assert(m.stdout.String(), check.Matches, `WORKSHOP  STATUS  NOTES
+		cmd := (&CmdRoot{}).Command()
+		cmd.SetArgs([]string{name})
+		err := cmd.Execute()
+		c.Assert(err, check.IsNil)
+		c.Assert(m.stdout.String(), check.Matches, `WORKSHOP  STATUS  NOTES
 as-1      Ready   -
 ws        Error   missing-project
 ds-1      Off     -
 zs-1      Off     -
 `)
-	m.ResetStdStreams()
-	c.Check(n, check.Equals, 2)
+		m.ResetStdStreams()
+		c.Check(n, check.Equals, 2)
 
-	cmd = (&CmdRoot{}).Command()
-	cmd.SetArgs([]string{"list", "--no-headers"})
-	err = cmd.Execute()
-	c.Assert(err, check.IsNil)
-	c.Assert(m.stdout.String(), check.Matches, `as-1  Ready  -
+		cmd = (&CmdRoot{}).Command()
+		cmd.SetArgs([]string{name, "--no-headers"})
+		err = cmd.Execute()
+		c.Assert(err, check.IsNil)
+		c.Assert(m.stdout.String(), check.Matches, `as-1  Ready  -
 ws    Error  missing-project
 ds-1  Off    -
 zs-1  Off    -
 `)
-	m.ResetStdStreams()
-	c.Check(n, check.Equals, 4)
+		m.ResetStdStreams()
+		c.Check(n, check.Equals, 4)
+	}
 }
 
 func (m *workshopInfo) TestWorkshopListGlobal(c *check.C) {

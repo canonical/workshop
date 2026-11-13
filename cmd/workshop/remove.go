@@ -29,6 +29,7 @@ type CmdRemove struct {
 func (c *CmdRemove) Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     "remove <WORKSHOP>...",
+		Aliases: []string{"rm"},
 		Short:   "Remove one or many workshops",
 		GroupID: GrpCRUD,
 		Long: `

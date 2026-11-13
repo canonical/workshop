@@ -17,6 +17,10 @@ List SDK volumes available on this machine.
 
    $ sdk list [flags]
 
+.. rubric:: Aliases
+
+``ls``
+
 .. rubric:: Description
 
 This command lists all local SDK volumes.

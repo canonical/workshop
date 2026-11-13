@@ -17,6 +17,10 @@ Acknowledge listed warnings.
 
    $ workshop okay [flags]
 
+.. rubric:: Aliases
+
+``ok``
+
 .. rubric:: Description
 
 This command acknowledges all warnings
