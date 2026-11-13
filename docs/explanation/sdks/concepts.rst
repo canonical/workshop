@@ -183,6 +183,12 @@ and workshop resources are exposed using the same logic.
 You can also define additional plugs and slots for the system SDK,
 just as with any other SDK.
 
+The system SDK entry can also carry an :samp:`apparmor` block
+to deny write access to specific in-workshop paths,
+for example to stop an AI coding agent from touching :file:`.git/hooks/`.
+See :ref:`ref_workshop_definition_apparmor`
+and :ref:`how_restrict_writes`.
+
 .. _exp_sketch_sdk:
 
 Sketch SDK

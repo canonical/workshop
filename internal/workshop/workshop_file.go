@@ -141,11 +141,22 @@ func (b PlugRef) MarshalYAML() (any, error) {
 }
 
 type SdkRecord struct {
-	Name    string                `yaml:"name"`
-	Channel string                `yaml:"channel,omitempty"`
-	Source  sdk.Source            `yaml:"source,omitempty"`
-	Plugs   map[string]PlugOrBind `yaml:"plugs,omitempty"`
-	Slots   map[string]any        `yaml:"slots,omitempty"`
+	Name     string                `yaml:"name"`
+	Channel  string                `yaml:"channel,omitempty"`
+	Source   sdk.Source            `yaml:"source,omitempty"`
+	Plugs    map[string]PlugOrBind `yaml:"plugs,omitempty"`
+	Slots    map[string]any        `yaml:"slots,omitempty"`
+	Apparmor *ApparmorPolicy       `yaml:"apparmor,omitempty"`
+}
+
+// ApparmorPolicy declares AppArmor-based write restrictions applied to the
+// whole workshop instance. It is only valid on the "system" SDK entry and
+// only supported on the "lxd-container" runtime; see ValidateFile.
+type ApparmorPolicy struct {
+	// DenyWrite lists absolute in-workshop paths that no process may write
+	// to, create, or modify, including everything beneath them. $PROJECT
+	// expands to the project mount (see WorkshopProjectPath).
+	DenyWrite []string `yaml:"deny-write,omitempty"`
 }
 
 func (s SdkRecord) MarshalYAML() (any, error) {
@@ -165,10 +176,11 @@ func (s *SdkRecord) UnmarshalYAML(value *yaml.Node) error {
 	// Omit Source field so it counts as an "unknown field." Apart from that,
 	// keep this in sync with SdkRecord.
 	var record struct {
-		Name    string                `yaml:"name"`
-		Channel string                `yaml:"channel,omitempty"`
-		Plugs   map[string]PlugOrBind `yaml:"plugs,omitempty"`
-		Slots   map[string]any        `yaml:"slots,omitempty"`
+		Name     string                `yaml:"name"`
+		Channel  string                `yaml:"channel,omitempty"`
+		Plugs    map[string]PlugOrBind `yaml:"plugs,omitempty"`
+		Slots    map[string]any        `yaml:"slots,omitempty"`
+		Apparmor *ApparmorPolicy       `yaml:"apparmor,omitempty"`
 	}
 	if err := yamlutil.UnmarshalStrict(&record, value); err != nil {
 		context := "workshop definition YAML: SDK"
@@ -184,11 +196,12 @@ func (s *SdkRecord) UnmarshalYAML(value *yaml.Node) error {
 	}
 
 	*s = SdkRecord{
-		Name:    name,
-		Channel: record.Channel,
-		Source:  source,
-		Plugs:   record.Plugs,
-		Slots:   record.Slots,
+		Name:     name,
+		Channel:  record.Channel,
+		Source:   source,
+		Plugs:    record.Plugs,
+		Slots:    record.Slots,
+		Apparmor: record.Apparmor,
 	}
 	return nil
 }
@@ -341,6 +354,10 @@ func ValidateFile(file *File) error {
 		return err
 	}
 
+	if err := validateApparmor(file.Sdks, file.Runtime); err != nil {
+		return err
+	}
+
 	if err := validateBinding(file.Sdks); err != nil {
 		return err
 	}
@@ -397,6 +414,94 @@ func validateSdks(sdks []SdkRecord) error {
 		}
 	}
 	return nil
+}
+
+// apparmorGlobChars are AppArmor path-glob metacharacters that are rejected
+// in user-supplied deny-write paths, since they would change the meaning of
+// the generated rule rather than matching a literal path.
+const apparmorGlobChars = `*?[]{}^`
+
+// validateApparmor validates and normalizes the "apparmor" block on the
+// "system" SDK entry, if any. It rejects the block on any other entry,
+// rejects deny-write paths on runtimes that cannot enforce them (D4), and
+// expands/sorts/dedupes the paths in place so downstream consumers (the LXD
+// backend, "workshop info") can use them directly.
+func validateApparmor(sdks []SdkRecord, runtime Runtime) error {
+	for i, s := range sdks {
+		if s.Apparmor == nil {
+			continue
+		}
+		if !sdk.IsSystem(s.Name) {
+			return fmt.Errorf("%q SDK: apparmor is only valid on the %q SDK", s.Name, sdk.System.String())
+		}
+		if len(s.Apparmor.DenyWrite) == 0 {
+			continue
+		}
+		if runtime == RuntimeLXDVM {
+			return errors.New(`apparmor deny-write is not supported on the "lxd-vm" runtime`)
+		}
+
+		seen := make(map[string]bool, len(s.Apparmor.DenyWrite))
+		paths := make([]string, 0, len(s.Apparmor.DenyWrite))
+		for _, template := range s.Apparmor.DenyWrite {
+			path, err := validateApparmorPath(template)
+			if err != nil {
+				return err
+			}
+			if seen[path] {
+				continue
+			}
+			seen[path] = true
+			paths = append(paths, path)
+		}
+		slices.Sort(paths)
+		sdks[i].Apparmor.DenyWrite = paths
+	}
+	return nil
+}
+
+func validateApparmorPath(template string) (string, error) {
+	path, err := expandApparmorPath(template)
+	if err != nil {
+		return "", err
+	}
+
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("apparmor deny-write path %q must be absolute", path)
+	}
+	if filepath.Clean(path) != path {
+		return "", fmt.Errorf("apparmor deny-write path %q is not clean", path)
+	}
+	if path == "/" || path == WorkshopProjectPath {
+		return "", fmt.Errorf("apparmor deny-write path %q must be a sub-path, not a mount root", path)
+	}
+	if strings.ContainsAny(path, apparmorGlobChars) {
+		return "", fmt.Errorf("apparmor deny-write path %q must not contain any of %q", path, apparmorGlobChars)
+	}
+
+	return path, nil
+}
+
+// expandApparmorPath expands $PROJECT to the project mount, mirroring the
+// $SDK/$HOME expansion the mount interface applies to workshop-target.
+func expandApparmorPath(template string) (string, error) {
+	var err error
+	path := os.Expand(template, func(s string) string {
+		switch s {
+		case "PROJECT":
+			return WorkshopProjectPath
+		case "$":
+			// Unescape $$ -> $.
+			return "$"
+		default:
+			err = fmt.Errorf("unexpected variable %q", s)
+			return ""
+		}
+	})
+	if err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 func validateBinding(sdks []SdkRecord) error {

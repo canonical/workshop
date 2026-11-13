@@ -17,6 +17,7 @@ SdkRecord:
   Source: sdk.Source
   Plugs:
   Slots:
+  Apparmor:
 Workshop:
   Backend:
   User: string

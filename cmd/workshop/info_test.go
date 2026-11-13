@@ -170,6 +170,62 @@ sdks:
 	c.Check(n, check.Equals, 2)
 }
 
+var mockWorkshopWithApparmor = `{"type":"sync","status-code":200,"status":"OK","result":{
+    "name":"ws",
+    "base":"ubuntu@22.04",
+    "runtime":"lxd-container",
+    "project-id":"42424242",
+    "status":"Ready",
+    "sdks":[{
+        "name":"system",
+        "revision":"1",
+        "built-at":"2017-02-19T17:23:05.592623Z",
+        "installed-at":"2017-03-22T09:01:00.0Z",
+        "apparmor-deny-write":["/project/.git/hooks","/project/.github/workflows"]
+    }]
+}}`
+
+func (m *workshopInfo) TestWorkshopInfoWithApparmor(c *check.C) {
+	cmd := &CmdInfo{root: &CmdRoot{}}
+	workshop := "ws"
+	n := 0
+	m.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		switch n {
+		case 1:
+			c.Check(r.Method, check.Equals, "POST")
+			c.Assert(r.URL.Path, check.Equals, "/v1/projects")
+			r := fmt.Sprintf(`{"type": "sync", "result": {"id":"%s","path":"%s"}}`, m.prjId, m.prjDir)
+			fmt.Fprintln(w, r)
+		case 2:
+			c.Check(r.Method, check.Equals, "GET")
+			c.Assert(r.URL.Path, check.Equals, fmt.Sprintf("/v1/projects/%s/workshops/%s", m.prjId, workshop))
+			w.WriteHeader(200)
+			fmt.Fprintln(w, mockWorkshopWithApparmor)
+		default:
+			c.Errorf("expected 2 calls, now on %d", n)
+		}
+	})
+
+	err := cmd.Run(cmd.Command(), []string{workshop})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.stdout.String(), check.Matches, fmt.Sprintf(`name:     ws
+base:     ubuntu@22.04
+project:  %s
+status:   ready
+runtime:  lxd-container
+notes:    --
+sdks:
+  system:
+    installed:  2017-02-19  \(1\)
+    apparmor:
+      deny-write:
+        - /project/\.git/hooks
+        - /project/\.github/workflows
+`, m.prjDir))
+	c.Check(n, check.Equals, 2)
+}
+
 var mockWorkshopWithMounts = `{"type":"sync","status-code":200,"status":"OK","result":{
     "name":"ws",
     "base":"ubuntu@22.04",

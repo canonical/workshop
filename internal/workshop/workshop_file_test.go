@@ -791,3 +791,129 @@ connections:
 	_, err := f.project.Workshop("xbert-gpu")
 	c.Assert(err, check.ErrorMatches, `workshop definition YAML: connections entry contains unknown fields: "interface" at line 8, column 16`)
 }
+
+func (f *workshopFile) TestApparmorDenyWrite(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: system
+    apparmor:
+      deny-write:
+        - $PROJECT/.git/hooks
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.ApparmorDenyWrite(), check.DeepEquals, []string{"/project/.git/hooks"})
+}
+
+func (f *workshopFile) TestApparmorDenyWriteDedupesAndSorts(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: system
+    apparmor:
+      deny-write:
+        - /project/.github/workflows
+        - /project/.git/hooks
+        - /project/.git/hooks
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(err, check.IsNil)
+	c.Check(file.ApparmorDenyWrite(), check.DeepEquals, []string{
+		"/project/.git/hooks",
+		"/project/.github/workflows",
+	})
+}
+
+func (f *workshopFile) TestApparmorDenyWriteNotSystemSdk(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: cuda
+    apparmor:
+      deny-write:
+        - /project/.git/hooks
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `"cuda" SDK: apparmor is only valid on the "system" SDK`)
+}
+
+func (f *workshopFile) TestApparmorDenyWriteVMRuntimeRejected(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+runtime: lxd-vm
+sdks:
+  - name: system
+    apparmor:
+      deny-write:
+        - /project/.git/hooks
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `apparmor deny-write is not supported on the "lxd-vm" runtime`)
+}
+
+func (f *workshopFile) TestApparmorDenyWriteRelativePathRejected(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: system
+    apparmor:
+      deny-write:
+        - .git/hooks
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `apparmor deny-write path ".git/hooks" must be absolute`)
+}
+
+func (f *workshopFile) TestApparmorDenyWriteGlobCharRejected(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: system
+    apparmor:
+      deny-write:
+        - /project/*
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `apparmor deny-write path "/project/\*" must not contain any of "\*\?\[\]\{\}\^"`)
+}
+
+func (f *workshopFile) TestApparmorDenyWriteMountRootRejected(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: system
+    apparmor:
+      deny-write:
+        - $PROJECT
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `apparmor deny-write path "/project" must be a sub-path, not a mount root`)
+}
+
+func (f *workshopFile) TestApparmorDenyWriteUnexpectedVariable(c *check.C) {
+	yaml := `name: xbert-gpu
+base: ubuntu@24.04
+sdks:
+  - name: system
+    apparmor:
+      deny-write:
+        - $SDK/hooks
+`
+	f.createWFile(c, "xbert-gpu", yaml)
+	file, err := f.project.Workshop("xbert-gpu")
+	c.Assert(file, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `unexpected variable "SDK"`)
+}

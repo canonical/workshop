@@ -240,6 +240,14 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 			fmt.Fprintf(w, "        from:\t%s\n", escape(formatEndpoint(tunnel.From)))
 			fmt.Fprintf(w, "        to:\t%s\n", escape(formatEndpoint(tunnel.To)))
 		}
+
+		if len(sk.ApparmorDenyWrite) > 0 {
+			fmt.Fprintf(w, "    apparmor:\n")
+			fmt.Fprintf(w, "      deny-write:\n")
+		}
+		for _, path := range sk.ApparmorDenyWrite {
+			fmt.Fprintf(w, "        - %s\n", escape(path))
+		}
 	}
 
 	w.Flush()

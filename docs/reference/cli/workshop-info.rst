@@ -30,6 +30,8 @@ details for a workshop, formatting them as YAML. Specifically, it prints:
 
 - Currently connected mount interface plugs
 
+- AppArmor write-protection paths configured on the system SDK, if any
+
 
 Notes:
 
