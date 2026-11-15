@@ -317,6 +317,9 @@ func (iface *tunnelInterface) MountConnectedPlug(spec *lxd_device.Specification,
 		if err := authorizePath(entry.Listen, spec.User); err != nil {
 			return err
 		}
+		if err := checkSocketPath(entry.Listen); err != nil {
+			return err
+		}
 		if err := expandProxyPath(&entry.Connect, &workshop.User); err != nil {
 			return err
 		}
@@ -438,23 +441,28 @@ func authorizePath(listen workshop.ProxyTarget, user *user.User) error {
 	}
 
 	if realDir == user.HomeDir || strings.HasPrefix(realDir, user.HomeDir+"/") {
-		return checkSocketPath(listen.Address)
+		return nil
 	}
 	runtimeDir := filepath.Join(dirs.XdgRuntimeDirBase, user.Uid)
 	if realDir == runtimeDir || strings.HasPrefix(realDir, runtimeDir+"/") {
-		return checkSocketPath(listen.Address)
+		return nil
 	}
 
 	return fmt.Errorf("user %q cannot create socket %q for security reasons", user.Username, listen.Address)
 }
 
-func checkSocketPath(path string) error {
+func checkSocketPath(listen workshop.ProxyTarget) error {
+	if listen.Protocol != "unix" || strings.HasPrefix(listen.Address, "@") {
+		return nil
+	}
+
+	path := listen.Address
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("cannot inspect socket %q: %w", path, err)
+		return fmt.Errorf("cannot inspect socket: %q: %w", path, err)
 	}
 	if info.Mode()&os.ModeSocket != 0 {
 		return nil
