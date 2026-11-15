@@ -900,8 +900,7 @@ func (s *Backend) RemoveWorkshopStash(ctx context.Context, name string) error {
 	}
 	defer conn.Disconnect()
 
-	err1 := s.deleteSnapshot(conn, instanceStashName(name, projectId))
-	return cmp.Or(err, err1)
+	return s.deleteSnapshot(conn, instanceStashName(name, projectId))
 }
 
 func (s *Backend) deleteSnapshot(snapshotConn lxd.InstanceServer, snapshot string) error {
