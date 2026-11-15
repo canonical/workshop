@@ -29,6 +29,9 @@ launched:
       [device "qemu_spice-usb3"]
       [device "qemu_tablet"]
 
+      [device "qemu_balloon"]
+      free-page-reporting = "on"
+
       [machine]
       hpet = "off"
       sata = "off"
@@ -81,6 +84,9 @@ started:
       [device "qemu_spice-usb3"]
       [device "qemu_tablet"]
 
+      [device "qemu_balloon"]
+      free-page-reporting = "on"
+
       [machine]
       hpet = "off"
       sata = "off"
@@ -132,6 +138,9 @@ sdk-attached:
       [device "qemu_spice-usb2"]
       [device "qemu_spice-usb3"]
       [device "qemu_tablet"]
+
+      [device "qemu_balloon"]
+      free-page-reporting = "on"
 
       [machine]
       hpet = "off"
@@ -196,6 +205,9 @@ sdk-mounted:
       [device "qemu_spice-usb2"]
       [device "qemu_spice-usb3"]
       [device "qemu_tablet"]
+
+      [device "qemu_balloon"]
+      free-page-reporting = "on"
 
       [machine]
       hpet = "off"

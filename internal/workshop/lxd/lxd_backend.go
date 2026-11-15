@@ -1728,7 +1728,8 @@ func (s *Backend) workshopConfig(
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
 
-		// Remove devices to speed up firmware and udev.
+		// Remove devices to speed up firmware and udev, and report free pages
+		// so the host can reclaim unused memory.
 		cfg["raw.qemu.conf"] = `
 [device "qemu_gpu"]
 [device "qemu_usb"]
@@ -1736,6 +1737,9 @@ func (s *Backend) workshopConfig(
 [device "qemu_spice-usb2"]
 [device "qemu_spice-usb3"]
 [device "qemu_tablet"]
+
+[device "qemu_balloon"]
+free-page-reporting = "on"
 
 [machine]
 hpet = "off"
