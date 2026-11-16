@@ -23,6 +23,7 @@ import (
 
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
 	"github.com/canonical/workshop/internal/workshop"
@@ -375,4 +376,17 @@ func (f *LxdBeTests) TestCheckPoolSpace(c *check.C) {
 	c.Check(lxdbackend.CheckPoolSpace(1*GiB, 512*MiB, 256*MiB), check.IsNil)
 	err := lxdbackend.CheckPoolSpace(1*GiB, 512*MiB, 256*MiB+1)
 	c.Check(err, check.ErrorMatches, `(?s)storage pool "workshop" is 50% full \(512.0MiB available\).*`)
+}
+
+func (f *LxdBeTests) TestCheckAvailableMemory(c *check.C) {
+	const GiB = lxdbackend.GiB
+
+	mi := &osutil.MemInfo{TotalUsable: 4 * GiB, Available: 2 * GiB}
+	c.Check(lxdbackend.CheckAvailableMemory(mi, workshop.RuntimeLXDContainer), check.IsNil)
+	c.Check(lxdbackend.CheckAvailableMemory(mi, workshop.RuntimeLXDVM), check.IsNil)
+
+	mi.Available = GiB
+	c.Check(lxdbackend.CheckAvailableMemory(mi, workshop.RuntimeLXDContainer), check.IsNil)
+	err := lxdbackend.CheckAvailableMemory(mi, workshop.RuntimeLXDVM)
+	c.Check(err, check.ErrorMatches, `(?s)host memory is 75% used \(1.0GiB available\).*`)
 }

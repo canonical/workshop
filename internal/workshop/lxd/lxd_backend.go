@@ -466,6 +466,14 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 		return err
 	}
 
+	mi, err := osutil.ReadMemInfo()
+	if err != nil {
+		return err
+	}
+	if err := checkAvailableMemory(mi, file.Runtime); err != nil {
+		return err
+	}
+
 	res, err := conn.GetStoragePoolResources(storagePool)
 	if err != nil {
 		return err
@@ -528,6 +536,35 @@ func estimateNeededSpace(conn lxd.InstanceServer, snapshot workshop.Snapshot, ru
 	}
 
 	return needed
+}
+
+// checkAvailableMemory reports whether the host has enough memory available
+// to start a workshop with the given runtime.
+func checkAvailableMemory(mi *osutil.MemInfo, runtime workshop.Runtime) error {
+	const (
+		reserved = 512 * MiB
+		// Estimated container and VM memory consumption on launch.
+		container = 384 * MiB
+		vmGuest   = 1 * GiB
+		vmMonitor = 256 * MiB
+	)
+
+	needed := uint64(reserved)
+	switch runtime {
+	case workshop.RuntimeLXDContainer:
+		needed += container
+	case workshop.RuntimeLXDVM:
+		needed += vmMonitor + vmGuest
+	}
+
+	if mi.Available >= needed {
+		return nil
+	}
+
+	usedPct := float64(mi.TotalUsable-min(mi.Available, mi.TotalUsable)) / float64(mi.TotalUsable) * 100
+	return fmt.Errorf("host memory is %.0f%% used (%s available); "+
+		"stop another workshop with \"workshop stop\" to free up memory",
+		usedPct, units.GetByteSizeStringIEC(mi.Available, 1))
 }
 
 func instanceType(runtime workshop.Runtime) api.InstanceType {
