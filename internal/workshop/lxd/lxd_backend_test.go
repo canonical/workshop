@@ -365,3 +365,14 @@ func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
 	err = lxdbackend.CheckServerVersion("6.7.9")
 	c.Assert(err, check.ErrorMatches, `(?s).*LXD server version.*is not supported.*`)
 }
+
+func (f *LxdBeTests) TestCheckPoolSpace(c *check.C) {
+	const MiB, GiB = lxdbackend.MiB, lxdbackend.GiB
+
+	// Don't block anything if we don't know the pool size.
+	c.Check(lxdbackend.CheckPoolSpace(0, 0, 1<<40), check.IsNil)
+
+	c.Check(lxdbackend.CheckPoolSpace(1*GiB, 512*MiB, 256*MiB), check.IsNil)
+	err := lxdbackend.CheckPoolSpace(1*GiB, 512*MiB, 256*MiB+1)
+	c.Check(err, check.ErrorMatches, `(?s)storage pool "workshop" is 50% full \(512.0MiB available\).*`)
+}

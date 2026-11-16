@@ -199,7 +199,7 @@ as suggested in this `LXD documentation section
 <https://canonical.com/lxd/docs/latest/howto/storage_pools/>`_.
 However, day-to-day usage requires little manual intervention.
 
-When the storage pool is 90% or more full,
+When less than 256 MiB of the storage pool is free,
 the |ws_markup| daemon enters degraded mode:
 it rejects commands that change state, such as launching a workshop,
 and reports the pool usage instead.

@@ -17,6 +17,7 @@ package lxdbackend
 type CNAME = cname
 
 var (
+	CheckPoolSpace     = checkPoolSpace
 	DefaultConfig      = (*Backend).workshopConfig
 	DefaultDevices     = defaultDevices
 	ReadProjects       = readProjects
