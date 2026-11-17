@@ -17,6 +17,10 @@ Remove one or many workshops.
 
    $ workshop remove <WORKSHOP>... [flags]
 
+.. rubric:: Aliases
+
+``rm``
+
 .. rubric:: Description
 
 This command removes the workshops listed as arguments. For each workshop, it:

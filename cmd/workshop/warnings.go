@@ -102,6 +102,7 @@ By default, Unicode is used only if the output supports it.`)
 func (c *CmdOkay) Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     "okay",
+		Aliases: []string{"ok"},
 		Args:    cobra.ExactArgs(0),
 		Short:   "Acknowledge listed warnings",
 		GroupID: GrpWarnings,

@@ -37,6 +37,7 @@ type CmdList struct {
 func (c *CmdList) Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
+		Aliases: []string{"ls"},
 		Short:   "List SDK volumes available on this machine",
 		GroupID: GrpExplore,
 		Long: `
