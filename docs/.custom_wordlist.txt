@@ -148,6 +148,7 @@ OpenVINO
 passthrough
 pathname
 PCIe
+pkgproxy
 PlugRef
 preconfigured
 PRs

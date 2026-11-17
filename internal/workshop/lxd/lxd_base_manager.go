@@ -40,6 +40,11 @@ var (
 	ConnectSimpleStreams = lxd.ConnectSimpleStreams
 	imageServer          = "simplestreams:https://cloud-images.ubuntu.com/releases"
 
+	// imageRegistry names the LXD image registry that base images are
+	// resolved and downloaded through. When empty, workshopd connects to
+	// imageServer itself.
+	imageRegistry = ""
+
 	// However many backend instances are created, downloads are always a single
 	// instance map with the LXD backend.
 	imageLock        sync.Mutex
@@ -47,6 +52,10 @@ var (
 )
 
 func (b *Backend) GetBase(ctx context.Context, base string, runtime workshop.Runtime) (workshop.BaseImage, error) {
+	if imageRegistry != "" {
+		return b.getRegistryBase(ctx, base, runtime)
+	}
+
 	source, err := baseImageSource(base, runtime)
 	if err != nil {
 		return workshop.BaseImage{}, err
@@ -109,6 +118,10 @@ func (b *Backend) tryDownloadBase(ctx context.Context, op *downloadOp, image wor
 }
 
 func (b *Backend) downloadBase(ctx context.Context, op *downloadOp, image workshop.BaseImage) error {
+	if imageRegistry != "" {
+		return b.downloadRegistryBase(ctx, op, image)
+	}
+
 	source, err := baseImageSource(image.Name, image.Runtime)
 	if err != nil {
 		return err
@@ -177,14 +190,7 @@ func (b *Backend) downloadBase(ctx context.Context, op *downloadOp, image worksh
 		return fmt.Errorf("%q download failed: %w", image.Name, err)
 	}
 
-	copyop.AddHandler(func(o api.Operation) {
-		if o.Metadata == nil || imageInfo.Size <= 0 {
-			return
-		}
-		if upd := handleImageUpdate(o.Metadata, imageInfo.Size); upd != nil {
-			op.Update(*upd)
-		}
-	})
+	reportImageDownload(copyop, op, imageInfo.Size)
 
 	if err := copyop.Wait(); err != nil {
 		return fmt.Errorf("%q download failed: %w", image.Name, err)
@@ -193,13 +199,23 @@ func (b *Backend) downloadBase(ctx context.Context, op *downloadOp, image worksh
 	return nil
 }
 
-func baseImageSource(base string, runtime workshop.Runtime) (*api.ImageSource, error) {
+// baseImageAlias returns the image server alias of base, which is in the
+// form <NAME>@<VERSION>.
+func baseImageAlias(base string) (string, error) {
 	parts := strings.FieldsFunc(base, func(r rune) bool { return r == '@' })
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid base %q (expected <NAME>@<VERSION>)", base)
+		return "", fmt.Errorf("invalid base %q (expected <NAME>@<VERSION>)", base)
 	}
 	if parts[0] != "ubuntu" {
-		return nil, fmt.Errorf("base %q not supported", base)
+		return "", fmt.Errorf("base %q not supported", base)
+	}
+	return parts[1], nil
+}
+
+func baseImageSource(base string, runtime workshop.Runtime) (*api.ImageSource, error) {
+	alias, err := baseImageAlias(base)
+	if err != nil {
+		return nil, err
 	}
 
 	protocol, url, found := strings.Cut(imageServer, ":")
@@ -217,7 +233,7 @@ func baseImageSource(base string, runtime workshop.Runtime) (*api.ImageSource, e
 	// There's a risk this doesn't work correctly for some 32-bit ARM
 	// variants, but it should be OK for x86_64, aarch64 and riscv64.
 	source := api.ImageSource{
-		Alias:     parts[1],
+		Alias:     alias,
 		ImageType: string(instanceType(runtime)),
 		Protocol:  protocol,
 		Server:    url,
@@ -304,6 +320,19 @@ func connectImageServer(source api.ImageSource) (lxd.ImageServer, error) {
 	default:
 		return nil, fmt.Errorf("unknown image server URL prefix (supported: simplestreams, lxd)")
 	}
+}
+
+// reportImageDownload forwards the progress of copyop, which downloads an
+// image of size bytes, to the reporters of op.
+func reportImageDownload(copyop lxd.Operation, op *downloadOp, size int64) {
+	_, _ = copyop.AddHandler(func(o api.Operation) {
+		if o.Metadata == nil || size <= 0 {
+			return
+		}
+		if upd := handleImageUpdate(o.Metadata, size); upd != nil {
+			op.Update(*upd)
+		}
+	})
 }
 
 func waitDownloadOp(ctx context.Context, op *downloadOp) error {
@@ -415,4 +444,12 @@ func FakeImageServer(server string) func() {
 	oldImageServer := imageServer
 	imageServer = server
 	return func() { imageServer = oldImageServer }
+}
+
+// FakeImageRegistry sets the LXD image registry that base images come from,
+// and returns a function restoring the previous one.
+func FakeImageRegistry(registry string) func() {
+	oldImageRegistry := imageRegistry
+	imageRegistry = registry
+	return func() { imageRegistry = oldImageRegistry }
 }

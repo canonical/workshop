@@ -14,7 +14,10 @@
 
 package lxdbackend
 
-type CNAME = cname
+type (
+	CNAME       = cname
+	ProxyConfig = proxyConfig
+)
 
 var (
 	DefaultConfig      = (*Backend).workshopConfig

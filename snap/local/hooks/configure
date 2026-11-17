@@ -2,3 +2,8 @@
 
 # This empty hook is required by `snap set`. For simplicity we read the config
 # values in run_daemon instead of creating an intermediate config file here.
+#
+# The hook could validate workshop.apt.proxy (http://HOST[:PORT]),
+# workshop.snap.store.url (http[s]://HOST[:PORT][/PATH]), workshop.go.proxy (a
+# GOPROXY list) and workshop.image.registry (an LXD image registry name), so
+# that a bad value fails at `snap set` instead of at the next launch.

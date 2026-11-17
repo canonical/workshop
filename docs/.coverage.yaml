@@ -651,6 +651,26 @@
   type: command
   specs: []
 
+"workshop.apt.proxy":
+  category: "workshopd"
+  type: option
+  specs: []
+
+"workshop.go.proxy":
+  category: "workshopd"
+  type: option
+  specs: []
+
+"workshop.image.registry":
+  category: "workshopd"
+  type: option
+  specs: []
+
+"workshop.snap.store.url":
+  category: "workshopd"
+  type: option
+  specs: []
+
 "workshopctl":
   category: workshop (container)
   type: tool

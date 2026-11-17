@@ -98,7 +98,7 @@ func (f *LxdBeTests) TestDefaultContainerConfig(c *check.C) {
 	}
 
 	// Execute
-	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1001", "1001", file, b.FormatRevision(), "fakeimage12345")
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1001", "1001", file, b.FormatRevision(), "fakeimage12345", lxdbackend.ProxyConfig{})
 
 	// Validate
 	c.Assert(err, check.IsNil)
@@ -134,7 +134,7 @@ func (f *LxdBeTests) TestDefaultVMConfig(c *check.C) {
 	}
 
 	// Execute
-	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1002", "1002", file, b.FormatRevision(), "fakeimage12345")
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1002", "1002", file, b.FormatRevision(), "fakeimage12345", lxdbackend.ProxyConfig{})
 
 	// Validate
 	c.Assert(err, check.IsNil)
@@ -168,7 +168,7 @@ func (f *LxdBeTests) TestWorkshopConfigSecretSocketUnits(c *check.C) {
 		Base: "ubuntu@22.04",
 	}
 
-	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1001", "1001", file, b.FormatRevision(), "fakeimage12345")
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1001", "1001", file, b.FormatRevision(), "fakeimage12345", lxdbackend.ProxyConfig{})
 	c.Assert(err, check.IsNil)
 
 	userData := cfg["cloud-init.user-data"]
@@ -190,7 +190,7 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 		Base:    "ubuntu@22.04",
 		Runtime: workshop.RuntimeLXDVM,
 	}
-	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345", lxdbackend.ProxyConfig{})
 	c.Assert(err, check.IsNil)
 	c.Check(cfg["limits.max_bus_ports"], check.Equals, "8")
 	c.Check(cfg["limits.cpu"], check.Equals, "2")
@@ -200,7 +200,7 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 		regularSdks := i + 1
 		file.Sdks = append(file.Sdks, workshop.SdkRecord{Name: fmt.Sprintf("sdk%v", regularSdks)})
 
-		cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+		cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345", lxdbackend.ProxyConfig{})
 		c.Assert(err, check.IsNil)
 
 		maxBusPorts := min(8+4*regularSdks, 192)
@@ -222,13 +222,13 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 
 	// Check the system SDK is accounted for already.
 	file.Sdks = file.Sdks[:14]
-	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345", lxdbackend.ProxyConfig{})
 	c.Assert(err, check.IsNil)
 	c.Check(cfg["limits.max_bus_ports"], check.Equals, "64")
 	c.Check(cfg["limits.cpu"], check.Equals, "2")
 
 	file.Sdks = append(file.Sdks, workshop.SdkRecord{Name: "system", Source: sdk.SystemSource})
-	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345", lxdbackend.ProxyConfig{})
 	c.Assert(err, check.IsNil)
 	c.Check(cfg["limits.max_bus_ports"], check.Equals, "64")
 	c.Check(cfg["limits.cpu"], check.Equals, "2")

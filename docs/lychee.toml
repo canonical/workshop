@@ -25,6 +25,7 @@ exclude = [
     "^http://localhost",
     "^http://127\\.0\\.0\\.1",
     "^http://backend:",  # example workshop hostname in the cross-workshop networking how-to
+    "^http://10\\.153\\.172\\.1:",  # example workshopbr0 address in the caching proxies how-to
     "^file://",
 
     # Templated URLs in code samples — `$VAR`, `${VAR}`, or URL-encoded `$%7BVAR%7D`
@@ -37,6 +38,7 @@ exclude = [
 
     # API endpoints that reject HEAD/GET (405 Method Not Allowed) but are valid references
     "^https://api\\.snapcraft\\.io/api/",
+    "^https://api\\.pkg\\.store/?$",  # SDK Store API root, the default of store.url
 
     # GitHub release downloads intentionally redirect to short-lived signed asset URLs
     "^https://github\\.com/ollama/ollama/releases/download/v0\\.9\\.6/ollama-linux-amd64\\.tgz$",
