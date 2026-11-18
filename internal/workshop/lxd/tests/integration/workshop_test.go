@@ -1231,6 +1231,10 @@ func (f *wsOps) TestLxdBackendWorkshopRestoreResetsConfiguration(c *check.C) {
 	err = f.bd.StartWorkshop(f.ctx, "test")
 	c.Assert(err, check.IsNil)
 
+	w, err := f.bd.Workshop(f.ctx, "test")
+	c.Assert(err, check.IsNil)
+	c.Check(w.Disk, check.Equals, "20GiB")
+
 	err = f.bd.InstallSdk(f.ctx, "test", meta.Setup)
 	c.Assert(err, check.IsNil)
 	defer func() { c.Check(f.bd.UninstallSdk(f.ctx, "test", meta.Name), check.IsNil) }()
@@ -1269,15 +1273,17 @@ func (f *wsOps) TestLxdBackendWorkshopRestoreResetsConfiguration(c *check.C) {
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
-	w, err := f.bd.Workshop(f.ctx, "test")
+	w, err = f.bd.Workshop(f.ctx, "test")
 	c.Assert(err, check.IsNil)
 	c.Check(w.Running, check.Equals, false)
 
 	// Check that Restore uses the provided "user.workshop.file," keeps its
-	// base fingerprint and removes both SDKs from the workshop.
+	// base fingerprint, removes both SDKs from the workshop, and shrinks the
+	// root disk.
 	c.Check(w.File, check.DeepEquals, wf)
 	c.Check(w.Image, check.Equals, image)
 	c.Check(w.Sdks, check.HasLen, 0)
+	c.Check(w.Disk, check.Equals, "")
 
 	fs, err = f.bd.WorkshopFs(f.ctx, "test")
 	c.Assert(err, check.IsNil)

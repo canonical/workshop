@@ -162,6 +162,7 @@ Confirm what you got:
      runtime:   lxd-vm
      cpus:      2
      memory:    4GiB
+     disk:      10GiB
      notes:     --
 
 

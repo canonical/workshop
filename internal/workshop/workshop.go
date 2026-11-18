@@ -64,6 +64,7 @@ type Workshop struct {
 	Running bool
 	CPUs    int
 	Memory  string
+	Disk    string
 	// Installed SDKs.
 	Sdks map[string]SdkInstallation
 	// Workshop devices installed.

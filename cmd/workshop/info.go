@@ -161,6 +161,9 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 	if workshop.Memory != "" {
 		fmt.Fprintf(w, "memory:\t%s\n", escape(workshop.Memory))
 	}
+	if workshop.Disk != "" {
+		fmt.Fprintf(w, "disk:\t%s\n", escape(workshop.Disk))
+	}
 
 	// get the workshop notes
 	notes := workshop.Notes

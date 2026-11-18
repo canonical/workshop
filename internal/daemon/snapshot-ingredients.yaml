@@ -33,6 +33,7 @@ Workshop:
   Running: bool
   CPUs:
   Memory:
+  Disk:
   Sdks: map[string]workshop.SdkInstallation
   Profiles:
   Hostname:
@@ -77,4 +78,3 @@ FakeWorkshop:
   Devices: map[string]map[string]string
   WorkshopFilesystem:
   CurrentSnapshot: workshop.Snapshot
-  Disk:
