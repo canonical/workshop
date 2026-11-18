@@ -33,6 +33,7 @@ Workshop:
   Running: bool
   CPUs:
   Memory:
+  Disk:
   Sdks: map[string]workshop.SdkInstallation
   Profiles:
   Hostname:
