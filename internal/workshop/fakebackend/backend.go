@@ -46,7 +46,6 @@ type ExecFunc func(ctx context.Context, name string, args *workshop.Execution) (
 type FakeWorkshop struct {
 	*workshop.Workshop
 	Devices            map[string]map[string]string
-	Disk               string
 	WorkshopFilesystem fsutil.Fs
 	CurrentSnapshot    workshop.Snapshot
 }

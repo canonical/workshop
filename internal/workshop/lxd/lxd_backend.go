@@ -1309,6 +1309,7 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		}
 	}
 	memory := inst.Config["limits.memory"]
+	disk := inst.Devices["root"]["size"]
 
 	sdks := map[string]workshop.SdkInstallation{}
 	for key, device := range inst.Devices {
@@ -1349,6 +1350,7 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		Running:        running,
 		CPUs:           cpus,
 		Memory:         memory,
+		Disk:           disk,
 		Sdks:           sdks,
 		Profiles:       profs,
 		File:           f,
