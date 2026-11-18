@@ -709,6 +709,10 @@ func setupProfile(conn lxd.InstanceServer, user *user.User, env map[string]strin
 	}
 	defer fs.Close()
 
+	if err := checkTunnelSocketPaths(fs, next.Tunnels); err != nil {
+		return nil, err
+	}
+
 	rev := revert.New()
 	defer rev.Fail()
 
@@ -740,6 +744,28 @@ func setupProfile(conn lxd.InstanceServer, user *user.User, env map[string]strin
 	clone := rev.Clone()
 	rev.Success()
 	return clone, nil
+}
+
+func checkTunnelSocketPaths(fs fsutil.Fs, tunnels []workshop.Tunnel) error {
+	for _, tunnel := range tunnels {
+		listen := tunnel.Listen
+		if tunnel.Direction != workshop.WorkshopToHost ||
+			listen.Protocol != "unix" || strings.HasPrefix(listen.Address, "@") {
+			continue
+		}
+
+		info, err := fs.Lstat(listen.Address)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("cannot inspect socket: %q: %w", listen.Address, err)
+		}
+		if info.Mode()&os.ModeSocket == 0 {
+			return fmt.Errorf("cannot create socket %q: path already exists and is not a unix socket", listen.Address)
+		}
+	}
+	return nil
 }
 
 func cleanupProfile(conn lxd.InstanceServer, sdkRef sdk.Ref) error {
