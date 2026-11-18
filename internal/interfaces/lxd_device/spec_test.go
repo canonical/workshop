@@ -161,13 +161,13 @@ func (s *lxdSpecSuite) TestCheckTunnelSocketPathsIgnoresOtherEndpoints(c *check.
 }
 
 func workshopTunnel(direction workshop.ProxyDirection, protocol, address string) workshop.Tunnel {
-	return workshop.Tunnel{ProxyEntry: workshop.ProxyEntry{
-		Listen: workshop.ProxyTarget{
-			Protocol: protocol,
-			Address:  address,
-		},
-		Direction: direction,
-	}}
+	var tunnel workshop.Tunnel
+	tunnel.Listen = workshop.ProxyTarget{
+		Protocol: protocol,
+		Address:  address,
+	}
+	tunnel.Direction = direction
+	return tunnel
 }
 
 func (s *lxdSpecSuite) TestSetGpuCDINoGpuDetected(c *check.C) {
