@@ -16,12 +16,16 @@ package lxd_device
 
 import (
 	"context"
+	"net"
+	"os"
 	"os/user"
+	"path/filepath"
 	"testing"
 
 	"github.com/canonical/lxd/shared/api"
 	"gopkg.in/check.v1"
 
+	"github.com/canonical/workshop/internal/fsutil"
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/workshop"
 )
@@ -51,6 +55,119 @@ func (s *lxdSpecSuite) TearDownTest(c *check.C) {
 	}
 	s.restoreUserEnv()
 	s.restoreUserLookup()
+}
+
+func (s *lxdSpecSuite) TestNonexistentWorkshopUnixPathAllowed(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(root)
+	defer fs.Close()
+
+	path := "/new.sock"
+
+	_, err := fs.Lstat(path)
+	c.Assert(os.IsNotExist(err), check.Equals, true)
+
+	tunnel := workshopTunnel(workshop.WorkshopToHost, "unix", path)
+	c.Check(checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel}), check.IsNil)
+}
+
+func (s *lxdSpecSuite) TestExistingRegularFileAsWorkshopUnixPathRejected(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(root)
+	defer fs.Close()
+
+	path := "/regular.txt"
+	c.Assert(os.WriteFile(filepath.Join(root, path), []byte("sentinel"), 0644), check.IsNil)
+
+	tunnel := workshopTunnel(workshop.WorkshopToHost, "unix", path)
+	err := checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel})
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+
+	data, err := os.ReadFile(filepath.Join(root, path))
+	c.Assert(err, check.IsNil)
+	c.Check(string(data), check.Equals, "sentinel")
+}
+
+func (s *lxdSpecSuite) TestExistingDirectoryAsWorkshopUnixPathRejected(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(root)
+	defer fs.Close()
+
+	path := "/existing-directory"
+	c.Assert(os.Mkdir(filepath.Join(root, path), 0755), check.IsNil)
+
+	tunnel := workshopTunnel(workshop.WorkshopToHost, "unix", path)
+	err := checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel})
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+}
+
+func (s *lxdSpecSuite) TestExistingSymlinkAsWorkshopUnixPathRejected(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(root)
+	defer fs.Close()
+
+	target := filepath.Join(root, "symlink-target.txt")
+	path := "/symlink.sock"
+	fullPath := filepath.Join(root, path)
+
+	c.Assert(os.WriteFile(target, []byte("sentinel"), 0644), check.IsNil)
+	c.Assert(os.Symlink(target, fullPath), check.IsNil)
+
+	tunnel := workshopTunnel(workshop.WorkshopToHost, "unix", path)
+	err := checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel})
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+
+	link, err := os.Readlink(fullPath)
+	c.Assert(err, check.IsNil)
+	c.Check(link, check.Equals, target)
+}
+
+func (s *lxdSpecSuite) TestExistingUnixSocketAsWorkshopUnixPathAllowed(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(root)
+	defer fs.Close()
+
+	path := "/existing.sock"
+	fullPath := filepath.Join(root, path)
+
+	listener, err := net.Listen("unix", fullPath)
+	c.Assert(err, check.IsNil)
+	defer listener.Close()
+
+	tunnel := workshopTunnel(workshop.WorkshopToHost, "unix", path)
+	c.Check(checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel}), check.IsNil)
+
+	info, err := os.Lstat(fullPath)
+	c.Assert(err, check.IsNil)
+	c.Check(info.Mode()&os.ModeSocket != 0, check.Equals, true)
+}
+
+func (s *lxdSpecSuite) TestCheckTunnelSocketPathsIgnoresOtherEndpoints(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(root)
+	defer fs.Close()
+
+	c.Assert(os.WriteFile(filepath.Join(root, "regular"), []byte("sentinel"), 0644), check.IsNil)
+	tunnels := []workshop.Tunnel{
+		workshopTunnel(workshop.WorkshopToHost, "unix", "@regular"),
+		workshopTunnel(workshop.WorkshopToHost, "tcp", "/regular"),
+		workshopTunnel(workshop.HostToWorkshop, "unix", "/regular"),
+	}
+
+	c.Check(checkTunnelSocketPaths(fs, tunnels), check.IsNil)
+}
+
+func workshopTunnel(direction workshop.ProxyDirection, protocol, address string) workshop.Tunnel {
+	var tunnel workshop.Tunnel
+	tunnel.Listen = workshop.ProxyTarget{
+		Protocol: protocol,
+		Address:  address,
+	}
+	tunnel.Direction = direction
+	return tunnel
 }
 
 func (s *lxdSpecSuite) TestSetGpuCDINoGpuDetected(c *check.C) {
