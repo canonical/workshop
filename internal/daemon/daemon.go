@@ -443,8 +443,14 @@ func (d *Daemon) setVMsUnavailable(err error) {
 //
 // When the system is fine again calling "DegradedMode(nil)" is enough
 // to put the daemon into full operation again.
+//
+// If the daemon was started in degraded mode, the overlord does not run any
+// tasks until the first time degraded mode is cleared.
 func (d *Daemon) SetDegradedMode(err error) {
 	d.degradedErr = err
+	if err == nil && d.overlord != nil {
+		d.overlord.AllowEnsure()
+	}
 }
 
 func (d *Daemon) IsDegraded() bool {
@@ -531,6 +537,11 @@ func (d *Daemon) Start() error {
 
 	d.initStandbyHandling()
 
+	// Don't run any tasks (including ones resumed from the state) until the
+	// system checks pass: they may depend on state initialized by the checks.
+	if d.IsDegraded() {
+		d.overlord.DeferEnsure()
+	}
 	d.overlord.Loop()
 
 	d.tomb.Go(func() error {
