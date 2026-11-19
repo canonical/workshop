@@ -1,3 +1,5 @@
 name: ws-two
 base: ubuntu@22.04
 runtime: lxd-vm
+sdks:
+  - name: test-sdk-basic-2

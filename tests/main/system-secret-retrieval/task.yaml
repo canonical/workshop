@@ -1,10 +1,17 @@
 summary: Check the system SDK serves a secret from the host keyring
+
+environment:
+  RUNTIME/ctr: lxd-container
+  RUNTIME/vm: lxd-vm
+
 prepare: |
   . "$TESTSLIB"/utils.sh
   . "$TESTSLIB"/secret-service.sh
 
   install_secret_service
   start_secret_service
+  envsubst '${RUNTIME}' < .workshop/ws-system-secret.yaml.in > .workshop/ws-system-secret.yaml
+  chown ubuntu:ubuntu .workshop/ws-system-secret.yaml
   workshop_exec launch ws-system-secret
 restore: |
   . "$TESTSLIB"/utils.sh
