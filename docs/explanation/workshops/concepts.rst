@@ -132,6 +132,7 @@ The table below summarizes when to use each command
 and what it does to the workshop and to its interface connections:
 
 .. list-table::
+   :class: auto-layout
    :header-rows: 1
    :widths: 15 30 30 25
 
