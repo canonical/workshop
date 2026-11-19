@@ -269,7 +269,15 @@ func (m retryMiddleware) RoundTrip(req *http.Request) (*http.Response, error) {
 func (m retryMiddleware) roundTrip(req *http.Request) (*http.Response, bool, error) {
 	res, err := m.wrappedRoundTripper.RoundTrip(req)
 	if err != nil {
-		return nil, isRetryableNetworkError(req, err), err
+		// Network failures can happen before an HTTP response exists. For example,
+		// a TLS handshake timeout from net/http is returned as an error from
+		// RoundTrip rather than as an HTTP 5xx response. Treat timeout errors as
+		// retryable so transient connection setup failures can use the same retry
+		// policy as retryable status codes. Only safe methods are repeated.
+		if !isSafeMethod(req.Method) {
+			return nil, false, err
+		}
+		return nil, IsRetryableNetworkError(err), err
 	}
 
 	switch res.StatusCode {
@@ -286,16 +294,8 @@ func (m retryMiddleware) roundTrip(req *http.Request) (*http.Response, bool, err
 	}
 }
 
-func isRetryableNetworkError(req *http.Request, err error) bool {
-	// Network failures can happen before an HTTP response exists. For example,
-	// a TLS handshake timeout from net/http is returned as an error from
-	// RoundTrip rather than as an HTTP 5xx response. Treat timeout errors as
-	// retryable so transient connection setup failures can use the same retry
-	// policy as retryable status codes.
-	if !isSafeMethod(req.Method) {
-		return false
-	}
-
+// IsRetryableNetworkError reports whether err is a network timeout.
+func IsRetryableNetworkError(err error) bool {
 	// Do not retry explicit caller cancellation or request deadline expiry.
 	// These indicate that the request context itself is done, so retrying would
 	// ignore the caller's intent rather than recover from a transient network failure.

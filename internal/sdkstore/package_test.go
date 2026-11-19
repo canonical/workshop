@@ -15,6 +15,7 @@ import (
 
 //go:generate mockgen -typed -package sdkstore -destination client_mock_test.go github.com/canonical/workshop/internal/https HTTPClient
 //go:generate mockgen -typed -package sdkstore -destination http_mock_test.go github.com/canonical/workshop/internal/sdkstore RESTClient
+//go:generate mockgen -typed -package sdkstore -destination clock_mock_test.go github.com/juju/clock Clock
 
 func Test(t *testing.T) {
 	check.TestingT(t)

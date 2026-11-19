@@ -8,8 +8,10 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"go.uber.org/mock/gomock"
 	"gopkg.in/check.v1"
@@ -68,6 +70,47 @@ func (s *ResolveSuite) TestResolveFailure(c *check.C) {
 	_, err := client.Resolve(context.Background(), transport.ResolveRequest{})
 	c.Assert(err, check.ErrorMatches, "boom")
 }
+
+func (s *ResolveSuite) TestResolveRetriesAfterTimeout(c *check.C) {
+	ctrl := gomock.NewController(c)
+	defer ctrl.Finish()
+
+	baseURL := MustParseURL(c, "http://api.foo.bar")
+
+	p := path.MakePath(baseURL)
+
+	restClient := NewMockRESTClient(ctrl)
+
+	gomock.InOrder(
+		restClient.EXPECT().Post(gomock.Any(), p, gomock.Any(), gomock.Any(), gomock.Any()).Return(restResponse{}, timeoutError{}),
+		restClient.EXPECT().Post(gomock.Any(), p, gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, _ path.Path, _ http.Header, _ any, result any) (restResponse, error) {
+				result.(*resolveResponse).PackageResults = []transport.ResolvePackageResponse{{ID: "id"}}
+				return restResponse{}, nil
+			}),
+	)
+
+	clockMock := NewMockClock(ctrl)
+	ch := make(chan time.Time, 1)
+	ch <- time.Now()
+	clockMock.EXPECT().Now().Return(time.Now()).AnyTimes()
+	clockMock.EXPECT().After(defaultRetryDelay).Return(ch).Times(1)
+
+	client := newResolveClient(p, restClient)
+	client.clock = clockMock
+
+	response, err := client.Resolve(context.Background(), transport.ResolveRequest{})
+	c.Assert(err, check.IsNil)
+	c.Check(response.PackageResults, check.DeepEquals, []transport.ResolvePackageResponse{{ID: "id"}})
+}
+
+type timeoutError struct{}
+
+func (timeoutError) Error() string   { return "i/o timeout" }
+func (timeoutError) Timeout() bool   { return true }
+func (timeoutError) Temporary() bool { return true }
+
+var _ net.Error = timeoutError{}
 
 func (s *ResolveSuite) expectPost(client *MockRESTClient, p path.Path) {
 	client.EXPECT().Post(gomock.Any(), p, gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, _ path.Path, _ http.Header, _, r any) (restResponse, error) {
