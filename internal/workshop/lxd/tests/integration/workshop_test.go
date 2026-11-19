@@ -994,6 +994,8 @@ func (f *wsOps) TestLxdBackendWorkshopLaunch(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04"}
+	helper.CreateProject(c, f.ctx, f.bd, f.project.Path, wf)
+
 	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
