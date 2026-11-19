@@ -77,6 +77,8 @@ Guillaumebeuzeboc
 GUIs
 hardcoded
 hardcoding
+hardlinking
+hardlinks
 hoc
 hostname
 hostnames
@@ -152,6 +154,7 @@ PlugRef
 preconfigured
 PRs
 prebuilt
+preconfigured
 predefined
 preexisting
 prepackaged
@@ -234,6 +237,8 @@ Unescapes
 unexported
 unicode
 unix
+unmount
+unmounting
 unmounts
 unparam
 unprefixed
