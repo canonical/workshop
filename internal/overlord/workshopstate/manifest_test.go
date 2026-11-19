@@ -1135,17 +1135,6 @@ func (s *manifestSuite) TestLaunchRejectsUnavailableVMs(c *check.C) {
 	c.Assert(f.Close(), check.IsNil)
 	c.Assert(err, check.IsNil)
 
-	c.Assert(os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS"), check.IsNil)
-
-	_, err = s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
-	c.Check(err, check.ErrorMatches, `cannot launch "vm": runtime "lxd-vm" is experimental
-To opt in: "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd"`)
-
-	c.Assert(os.Setenv("WORKSHOP_EXPERIMENTAL_VMS", "1"), check.IsNil)
-	defer func() {
-		c.Check(os.Unsetenv("WORKSHOP_EXPERIMENTAL_VMS"), check.IsNil)
-	}()
-
 	manifests, err := s.manager.LaunchManifests(s.ctx, s.project, []string{"vm"})
 	c.Assert(err, check.IsNil)
 	c.Assert(manifests, check.HasLen, 1)
