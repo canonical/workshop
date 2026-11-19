@@ -7,7 +7,7 @@ This is an overview of security considerations for Workshop and SDKcraft.
 ## Privileges
 
 Workshop has a client-server architecture; its CLI, which is the contact surface
-for the users, is confined as a snap and neither needs nor requires elevated
+for the users, is packaged as a snap and neither needs nor requires elevated
 privileges to run. Instead, it uses a RESTful API to communicate with the
 `workshopd` daemon, which performs all the heavy lifting and does indeed run
 with elevated privileges. The use of
