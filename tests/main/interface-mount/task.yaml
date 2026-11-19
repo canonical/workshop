@@ -1,6 +1,13 @@
 summary: Check mount interface scenarios
+
+environment:
+  RUNTIME/ctr: lxd-container
+  RUNTIME/vm: lxd-vm
+
 prepare: |
   . "$TESTSLIB"/utils.sh
+  envsubst '${RUNTIME}' < workshop.yaml.in > workshop.yaml
+  chown ubuntu:ubuntu workshop.yaml
   workshop_exec launch
 restore: |
   . "$TESTSLIB"/utils.sh

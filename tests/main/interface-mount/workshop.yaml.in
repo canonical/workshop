@@ -1,5 +1,6 @@
 name: ws-mount
 base: ubuntu@22.04
+runtime: ${RUNTIME}
 sdks:
   - name: test-sdk-mount
     plugs:

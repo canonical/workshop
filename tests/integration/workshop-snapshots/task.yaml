@@ -2,8 +2,7 @@ summary: Run LXD integration tests for workshop snapshots
 
 environment:
   METHOD/ctrformat: TestLxdBackendSnapshotFormatContainer
-  # TODO: enable vmformat when LXD supports mounting SDKs (likely 6.10).
-  # METHOD/vmformat: TestLxdBackendSnapshotFormatVM
+  METHOD/vmformat: TestLxdBackendSnapshotFormatVM
   METHOD/ctr22: TestLxdBackendSnapshotDiffContainer22
   METHOD/ctr24: TestLxdBackendSnapshotDiffContainer24
   METHOD/ctr26: TestLxdBackendSnapshotDiffContainer26
