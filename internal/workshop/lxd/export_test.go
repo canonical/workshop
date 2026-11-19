@@ -23,7 +23,20 @@ var (
 	HandleImageUpdate  = handleImageUpdate
 	CheckServerVersion = checkVersion
 	GenerateCNAME      = generateCNAME
+	PreferredDriver    = preferredDriver
+	CheckStoragePool   = checkStoragePool
+	AdoptPoolDriver    = adoptPoolDriver
+	PoolDriver         = poolDriver
 )
+
+// MockPoolDriver clears the recorded storage pool driver and returns a
+// function restoring it.
+func MockPoolDriver() (restore func()) {
+	old := storagePoolDriver.Swap(nil)
+	return func() {
+		storagePoolDriver.Store(old)
+	}
+}
 
 func MockFirewallChecker(f func(string) string) func() {
 	old := firewallChecker

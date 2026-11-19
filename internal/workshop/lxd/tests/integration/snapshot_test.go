@@ -526,9 +526,9 @@ type filesystem struct {
 
 // workshopRootFS performs operations while the workshop is running to make it
 // easy to mount its rootfs elsewhere once it has stopped. For containers, it
-// returns the source ZFS dataset, and the subdirectory of the rootfs within
-// that. For VMs, it relabels the filesystem to make it easier to locate when
-// mounting the parent block device in another VM.
+// returns the source ZFS dataset or btrfs device, and the subdirectory of the
+// rootfs within that. For VMs, it relabels the filesystem to make it easier to
+// locate when mounting the parent block device in another VM.
 func (s *snapshotSuite) workshopRootFS(name string, runtime workshop.Runtime) (filesystem, error) {
 	args := workshop.ExecArgs{
 		Command: []string{"findmnt", "--json", "--mountpoint=/", "--nofsroot", "--output=fsroot,fstype,source"},
@@ -582,7 +582,7 @@ func (s *snapshotSuite) mountRootFS(c *check.C, source filesystem, name, path st
 // on the host and then bind-mount the mountpoint into the other workshop. The
 // host mount is ID-mapped so the container can modify the files.
 func (s *snapshotSuite) mountContainerRootFS(c *check.C, source filesystem, name, path string) *revert.Reverter {
-	c.Assert(source.Fstype, check.Equals, "zfs")
+	c.Assert(source.Fstype, check.Equals, s.poolDriver(c))
 
 	userns := s.workshopUserNS(c, name)
 	defer userns.Close()
@@ -614,6 +614,16 @@ func (s *snapshotSuite) mountContainerRootFS(c *check.C, source filesystem, name
 	clone := rev.Clone()
 	rev.Success()
 	return clone
+}
+
+func (s *snapshotSuite) poolDriver(c *check.C) string {
+	conn, err := s.bd.LxdClient(s.ctx)
+	c.Assert(err, check.IsNil)
+	defer conn.Disconnect()
+
+	pool, _, err := conn.GetStoragePool("workshop")
+	c.Assert(err, check.IsNil)
+	return pool.Driver
 }
 
 func (s *snapshotSuite) workshopUserNS(c *check.C, name string) *os.File {

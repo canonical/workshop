@@ -110,6 +110,20 @@ function cleanup_workshop() {
     loginctl disable-linger ubuntu
 }
 
+# Removes the workshop LXD projects and storage pool like the snap remove hook.
+function remove_workshop_pool() {
+    # shellcheck source=snap/local/lib/lxc-utils
+    . "$PROJECT_PATH"/snap/local/lib/lxc-utils
+
+    for p in $(get_projects); do
+        remove_instances "$p"
+        remove_profiles "$p"
+        remove_images "$p"
+        remove_project "$p"
+    done
+    remove_volumes
+}
+
 # Workshop sub-command wrappers
 function workshop_exec() {
     sudo -u ubuntu -- workshop "$@" 2>&1

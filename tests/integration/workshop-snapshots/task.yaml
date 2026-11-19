@@ -1,6 +1,7 @@
 summary: Run LXD integration tests for workshop snapshots
 
 environment:
+  DRIVER: zfs
   METHOD/ctrformat: TestLxdBackendSnapshotFormatContainer
   # TODO: enable vmformat when LXD supports mounting SDKs (likely 6.10).
   # METHOD/vmformat: TestLxdBackendSnapshotFormatVM
@@ -10,9 +11,25 @@ environment:
   METHOD/vm22: TestLxdBackendSnapshotDiffVM22
   METHOD/vm24: TestLxdBackendSnapshotDiffVM24
   METHOD/vm26: TestLxdBackendSnapshotDiffVM26
+  # The backend adopts an existing pool, so pre-create it to cover btrfs.
+  METHOD/ctr24btrfs: TestLxdBackendSnapshotDiffContainer24
+  DRIVER/ctr24btrfs: btrfs
 
 warn-timeout: 30m
 kill-timeout: 60m
+
+prepare: |
+  if [ "$DRIVER" != zfs ]; then
+    . "$TESTSLIB"/utils.sh
+    remove_workshop_pool
+    lxc storage create workshop "$DRIVER"
+  fi
+
+restore: |
+  if [ "$DRIVER" != zfs ]; then
+    . "$TESTSLIB"/utils.sh
+    remove_workshop_pool
+  fi
 
 execute: |
   rm -rf cover
