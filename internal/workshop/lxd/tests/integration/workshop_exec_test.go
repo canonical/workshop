@@ -114,7 +114,22 @@ func (f *wsExec) SetUpSuite(c *check.C) {
 		return f.project.ProjectId, nil
 	}, &workshop.NewProjectId)
 
-	helper.LaunchTestWorkshop(c, f.ctx, f.be, f.project.Path)
+	action := `
+pwd
+whoami
+printf '%s\n' "$@"
+`[1:]
+	wf := &workshop.File{
+		Name: "test",
+		Base: "ubuntu@24.04",
+		Actions: map[string]workshop.Action{
+			"info": workshop.Action(action),
+		},
+	}
+	helper.CreateProject(c, f.ctx, f.be, f.project.Path, wf)
+	helper.LaunchWorkshop(c, f.ctx, f.be, wf)
+	err = f.be.StartWorkshop(f.ctx, wf.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (f *wsExec) TearDownSuite(c *check.C) {
