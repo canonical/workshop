@@ -1,11 +1,9 @@
 .. _how_use_virtual_machines:
 
 .. meta::
-   :description: How-to guide on opting into the experimental virtual machine
-                 runtime for workshops, covering the LXD channel it needs,
-                 the experimental snap setting and daemon restart,
-                 both ways to declare the
-                 lxd-vm runtime, launching and verifying the workshop,
+   :description: How-to guide on creating virtual machine workshops,
+                 adding the lxd-vm runtime to an existing workshop definition,
+                 launching and verifying the workshop,
                  and the limitations that separate it from a container.
 
 How to use virtual machines
@@ -27,17 +25,11 @@ and outbound network access is still open,
 so a virtual machine doesn't protect the project
 from a coding agent that works in it.
 
-.. warning::
+.. note::
 
-   The virtual machine runtime is experimental.
-   Containers remain the default and the supported choice.
    A virtual machine consumes more memory and disk than a container,
    and it does not support every feature a container does;
    the :ref:`how_use_virtual_machines_limitations` section lists what it skips.
-   A |ws_markup| upgrade can also change the runtime incompatibly,
-   so you may need to remove your virtual machine workshops
-   before you upgrade.
-   Opt in only when you need the stronger boundary.
 
 
 Prerequisites
@@ -46,8 +38,7 @@ Prerequisites
 Before starting, ensure you have these requirements satisfied:
 
 - A |ws_markup| installation that supports the :samp:`runtime` key.
-- LXD from the :samp:`6/candidate` channel,
-  on a host with hardware virtualization available.
+- A host with hardware virtualization available.
 - A workshop you have not launched yet.
   The runtime is fixed when a workshop is launched,
   so an already running container workshop cannot be converted.
@@ -61,48 +52,6 @@ Check that |ws_markup| lists the runtimes it supports:
      ...
      The supported runtimes are lxd-container (the default) and lxd-vm.
      ...
-
-
-Switch LXD to the :samp:`6/candidate` channel:
-
-.. code-block:: console
-
-   $ sudo snap refresh --channel=6/candidate lxd
-
-
-.. warning::
-
-   The :samp:`candidate` channel carries LXD builds that haven't been released yet,
-   so it is experimental as well.
-   The switch applies to the whole host, including your container workshops,
-   and LXD doesn't support moving back from :samp:`6/candidate` to :samp:`6/stable`.
-
-
-Opt in to virtual machines
---------------------------
-
-.. @artefact workshop launch
-
-Until you opt in,
-|ws_markup| refuses to launch a virtual machine workshop
-and reports the two commands that change that:
-
-.. code-block:: console
-
-   $ workshop launch <NAME>
-
-     error: cannot launch "<NAME>": runtime "lxd-vm" is experimental
-     To opt in: "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd"
-
-
-Run both of them:
-
-.. code-block:: console
-
-   $ sudo snap set workshop workshop.experimental-vms=1
-   $ sudo snap restart workshop.workshopd
-
-     Restarted.
 
 
 Create a virtual machine workshop
@@ -229,22 +178,6 @@ and refreshing it fails:
 Remove the workshop and launch it again to change the runtime.
 
 
-SDK support depends on LXD
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-On LXD from the :samp:`6/stable` channel,
-a virtual machine workshop that declares an SDK is refused:
-
-.. code-block:: console
-
-   $ workshop refresh <NAME>
-
-     error: cannot refresh "<NAME>": cannot refresh "<NAME>": SDKs are currently unavailable for virtual machines
-
-
-Switch LXD to :samp:`6/candidate` as the prerequisites require.
-
-
 Most interfaces are unsupported
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -267,6 +200,17 @@ This can prevent removing a stopped workshop.
 Either start the workshop before removing it,
 or see :ref:`how_purge`.
 A future |ws_markup| release will remove this limitation.
+
+
+Sessions end when the host suspends
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. @artefact workshop shell
+
+If the host suspends for 35 seconds or longer,
+:command:`workshop shell` sessions exit abruptly when the host resumes.
+The command inside the workshop may still be running.
+A future LXD release will fix this issue.
 
 
 Virtual hardware is restrictive

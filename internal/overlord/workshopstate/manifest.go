@@ -262,13 +262,6 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 			a.state.Unlock()
 		}
 
-		if file.Runtime != workshop.RuntimeLXDContainer && !refresh && !osutil.GetenvBool("WORKSHOP_EXPERIMENTAL_VMS") {
-			runtime, err := file.Runtime.MarshalText()
-			if err == nil {
-				err = fmt.Errorf("runtime %q is experimental\nTo opt in: %q", runtime, "sudo snap set workshop workshop.experimental-vms=1 && sudo snap restart workshop.workshopd")
-			}
-			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
-		}
 		if file.Runtime == workshop.RuntimeLXDVM && a.vmsUnavailable != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: virtual machines are unavailable: %w", action, name, a.vmsUnavailable)
 		}

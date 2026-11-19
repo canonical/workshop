@@ -138,8 +138,8 @@ autonomy:
     and
     [custom device](https://ubuntu.com/workshop/docs/explanation/interfaces/custom-device-interface/)
     interfaces pass host devices into the workshop.
-* **A virtual machine changes the kernel, not the rest.** The experimental
-  virtual machine runtime gives a workshop its own kernel, but the project
+* **A virtual machine changes the kernel, not the rest.** The virtual
+  machine runtime gives a workshop its own kernel, but the project
   directory is still mounted read-write, and outbound network access is still
   open.
 
