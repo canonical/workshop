@@ -2,4 +2,4 @@ name: dev
 base: ubuntu@22.04
 sdks:
   - name: go
-    channel: 1.26
+    channel: "1.27"

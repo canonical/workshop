@@ -17,6 +17,13 @@
 
    $ {{ .Synopsis }}
 
+{{- if .Aliases }}
+
+.. rubric:: Aliases
+
+{{ range $i, $alias := .Aliases }}{{ if $i }}, {{ end }}``{{ $alias }}``{{ end }}
+{{- end }}
+
 .. rubric:: Description
 
 {{ .Long | trimSpace }}

@@ -21,6 +21,7 @@ package safejson_test
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -67,6 +68,7 @@ func (escapeSuite) TestStrings(c *check.C) {
 	}
 }
 
+// TestBadStrings checks that both decoding paths reject malformed strings.
 func (escapeSuite) TestBadStrings(c *check.C) {
 	var u1 safejson.String
 
@@ -84,23 +86,25 @@ func (escapeSuite) TestBadStrings(c *check.C) {
 		}
 	}
 
-	table := map[string][][]byte{
-		// these are from json itself (so we're not checking them):
-		"invalid character '.+' in string literal":     cc0,
-		"invalid character '.+' in string escape code": badesc,
-		`invalid character '.+' in \\u .*`:             {[]byte(`"\u02"`), []byte(`"\u02zz"`)},
-		"invalid character '\"' after top-level value": {[]byte(`"""`)},
-		"unexpected end of JSON input":                 {[]byte(`"\"`)},
+	invalidStrings := [][][]byte{
+		cc0,
+		badesc,
+		{[]byte(`"\u02"`), []byte(`"\u02zz"`)},
+		{[]byte(`"""`)},
+		{[]byte(`"\"`)},
 	}
 
-	for e, js := range table {
+	// Check rejection without depending on standard-library diagnostics.
+	for _, js := range invalidStrings {
 		for _, j := range js {
 			comm := check.Commentf("%q", j)
-			c.Check(json.Unmarshal(j, &u1), check.ErrorMatches, e, comm)
+			err := json.Unmarshal(j, &u1)
+			_, ok := errors.AsType[*json.SyntaxError](err)
+			c.Check(ok, check.Equals, true, comm)
 		}
 	}
 
-	table = map[string][][]byte{
+	table := map[string][][]byte{
 		// these are from our lib
 		`missing string delimiters.*`:                 {{}, {'"'}},
 		`unexpected control character at 0 in "\\.+"`: cc0,

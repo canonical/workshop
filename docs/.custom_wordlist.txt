@@ -151,6 +151,7 @@ passthrough
 pathname
 PCIe
 PlugRef
+preconfigured
 PRs
 prebuilt
 preconfigured

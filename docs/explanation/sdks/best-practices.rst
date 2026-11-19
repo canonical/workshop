@@ -247,7 +247,7 @@ to address interaction between SDK behavior and workshop architecture:
    cat <<EOF >> ~/.profile
 
    # SDK uses 'mount' interface to preserve
-   # uv cache across refreshes, thus, hardlinking is
+   # uv cache across refreshes, thus, hard linking is
    # not available on 'uv sync'.
    export UV_LINK_MODE=copy
    EOF

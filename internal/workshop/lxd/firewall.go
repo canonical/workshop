@@ -3,6 +3,7 @@ package lxdbackend
 import (
 	"encoding/json"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/canonical/workshop/internal/logger"
@@ -35,13 +36,35 @@ func checkBridgeFirewall(bridgeName string) string {
 		return ""
 	}
 
-	out, err := exec.Command(nft, "-j", "list", "table", "ip", "filter").CombinedOutput()
+	out, err := exec.Command(nft, "-j", "list", "tables", "ip").CombinedOutput()
 	if err != nil {
 		logger.Noticef("%s", out)
-		return "" // no filter table
+		return ""
+	}
+	if !hasFilterTable(out) {
+		return ""
+	}
+
+	out, err = exec.Command(nft, "-j", "list", "table", "ip", "filter").CombinedOutput()
+	if err != nil {
+		logger.Noticef("%s", out)
+		return ""
 	}
 
 	return analyzeNftJSON(out, bridgeName)
+}
+
+// hasFilterTable reports whether `nft -j list tables ip` output contains the
+// "ip filter" table.
+func hasFilterTable(data []byte) bool {
+	var ruleset nftRuleset
+	if err := json.Unmarshal(data, &ruleset); err != nil {
+		return false
+	}
+
+	return slices.ContainsFunc(ruleset.Nftables, func(obj nftObject) bool {
+		return obj.Table != nil && obj.Table.Family == "ip" && obj.Table.Name == "filter"
+	})
 }
 
 // nftRuleset represents the top-level nft JSON output.
@@ -52,8 +75,15 @@ type nftRuleset struct {
 // nftObject is a single entry in the nftables array. Each entry contains
 // exactly one of the possible object types.
 type nftObject struct {
+	Table *nftTable `json:"table,omitempty"`
 	Chain *nftChain `json:"chain,omitempty"`
 	Rule  *nftRule  `json:"rule,omitempty"`
+}
+
+// nftTable represents a table object from nft JSON output.
+type nftTable struct {
+	Family string `json:"family"`
+	Name   string `json:"name"`
 }
 
 // nftChain represents a chain object from nft JSON output.

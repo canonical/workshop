@@ -43,14 +43,14 @@ The supported bases are ubuntu@22.04, ubuntu@24.04, and ubuntu@26.04.
 The supported runtimes are lxd-container (the default) and lxd-vm.
 
 SDKs are specified as a comma-separated list. Each SDK entry can optionally
-include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.26/stable").
+include a channel using the <NAME>/<CHANNEL> syntax (e.g., "go/1.27/stable").
 `,
 		Example: `
 Create a workshop called "dev" with the Go and UV SDKs:
 $ workshop init dev --sdks go,uv
 
 Create a workshop with a specific SDK channel:
-$ workshop init dev --sdks go/1.26/stable
+$ workshop init dev --sdks go/1.27/stable
 
 Create a workshop using a specific base:
 $ workshop init dev --base ubuntu@22.04 --sdks go`,
@@ -103,7 +103,7 @@ func (c *CmdInit) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// parseSdkArgs converts a list of strings like ["go/1.26/stable", "python"]
+// parseSdkArgs converts a list of strings like ["go/1.27/stable", "python"]
 // into SdkRecord entries.
 func parseSdkArgs(args []string) ([]workshop.SdkRecord, error) {
 	var sdks []workshop.SdkRecord

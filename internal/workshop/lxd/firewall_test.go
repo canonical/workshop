@@ -115,6 +115,28 @@ func (s *FirewallTests) TestAnalyzeNftJSONNoForwardChain(c *check.C) {
 	c.Assert(msg, check.Equals, "")
 }
 
+// --- hasFilterTable tests ---
+
+func (s *FirewallTests) TestHasFilterTablePresent(c *check.C) {
+	data := `{"nftables": [
+		{"metainfo": {"version": "1.0.9", "release_name": "Old Doc Yak #3", "json_schema_version": 1}},
+		{"table": {"family": "ip", "name": "nat", "handle": 1}},
+		{"table": {"family": "ip", "name": "filter", "handle": 2}}
+	]}`
+	c.Check(hasFilterTable([]byte(data)), check.Equals, true)
+}
+
+func (s *FirewallTests) TestHasFilterTableAbsent(c *check.C) {
+	data := `{"nftables": [
+		{"metainfo": {"version": "1.0.9", "release_name": "Old Doc Yak #3", "json_schema_version": 1}}
+	]}`
+	c.Check(hasFilterTable([]byte(data)), check.Equals, false)
+}
+
+func (s *FirewallTests) TestHasFilterTableInvalidJSON(c *check.C) {
+	c.Check(hasFilterTable([]byte("not json")), check.Equals, false)
+}
+
 // --- bridgeBlockedWarning tests ---
 
 func (s *FirewallTests) TestBridgeBlockedWarningDocker(c *check.C) {

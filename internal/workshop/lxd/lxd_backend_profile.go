@@ -170,6 +170,8 @@ func LxdToSdkProfile(profile string, devs map[string]map[string]string, config m
 			default:
 				logger.Noticef("On reading %q SDK profile: unknown device type %q", profile, devtype)
 			}
+		case "usb":
+			// USB devices are only used to workaround deficiencies in unix-hotplug.
 		case "none":
 			cfg, exist := config[DeviceConfigKey(devname)]
 			if !exist {
@@ -191,6 +193,12 @@ func LxdToSdkProfile(profile string, devs map[string]map[string]string, config m
 					return pr, err
 				}
 				pr.Mounts[name] = mnt
+			case "custom-device":
+				var customDevice workshop.CustomDevice
+				if err := json.Unmarshal([]byte(cfg), &customDevice); err != nil {
+					return pr, err
+				}
+				pr.CustomDevices = append(pr.CustomDevices, customDevice)
 			default:
 				logger.Noticef("On reading %q SDK profile: unknown device type %q", profile, devtype)
 			}

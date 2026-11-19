@@ -105,7 +105,7 @@ runtime: lxd-vm
 func (s *workshopInit) TestInitWithSdkChannel(c *check.C) {
 	projectDir := c.MkDir()
 	cmd := s.makeCmd(projectDir)
-	cmd.sdks = []string{"go/1.26/stable", "python"}
+	cmd.sdks = []string{"go/1.27/stable", "python"}
 
 	err := s.run(cmd, "dev")
 	c.Assert(err, check.IsNil)
@@ -117,7 +117,7 @@ func (s *workshopInit) TestInitWithSdkChannel(c *check.C) {
 base: ubuntu@24.04
 sdks:
   - name: go
-    channel: 1.26/stable
+    channel: 1.27/stable
   - name: python
 `)
 }
@@ -473,7 +473,7 @@ func (s *workshopInit) TestInitProjectFlagOverride(c *check.C) {
 func (s *workshopInit) TestInitYamlRoundTrip(c *check.C) {
 	projectDir := c.MkDir()
 	cmd := s.makeCmd(projectDir)
-	cmd.sdks = []string{"go/1.26/stable", "system", "python"}
+	cmd.sdks = []string{"go/1.27/stable", "system", "python"}
 
 	err := s.run(cmd, "dev")
 	c.Assert(err, check.IsNil)
@@ -486,7 +486,7 @@ func (s *workshopInit) TestInitYamlRoundTrip(c *check.C) {
 	c.Assert(file.Base, check.Equals, "ubuntu@24.04")
 	c.Assert(file.Sdks, check.HasLen, 3)
 	c.Assert(file.Sdks[0].Name, check.Equals, "go")
-	c.Assert(file.Sdks[0].Channel, check.Equals, "1.26/stable")
+	c.Assert(file.Sdks[0].Channel, check.Equals, "1.27/stable")
 	c.Assert(file.Sdks[1].Name, check.Equals, "system")
 	c.Assert(file.Sdks[2].Name, check.Equals, "python")
 }

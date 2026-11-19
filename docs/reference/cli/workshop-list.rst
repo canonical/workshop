@@ -17,6 +17,10 @@ List project workshops.
 
    $ workshop list [flags]
 
+.. rubric:: Aliases
+
+``ls``
+
 .. rubric:: Description
 
 This command enumerates all workshops in the project, printing a compact list:
