@@ -283,9 +283,7 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot %s %q: %w", action, name, err)
 		}
-		if file.Runtime == workshop.RuntimeLXDContainer || workshop.WorkshopVMsSupportSDKs.Load() {
-			sdks = slices.Insert(sdks, 0, systemMeta.Setup)
-		}
+		sdks = slices.Insert(sdks, 0, systemMeta.Setup)
 		storeSdks = append(storeSdks, sdks)
 	}
 
@@ -327,9 +325,6 @@ func (a *artifactFinder) launchOrRefreshManifests(ctx context.Context, names []s
 		format := a.backend.FormatRevision()
 		installOrder := sdkInstallOrder(files[i])
 		sdks := ordered(installOrder, storeSdks[i], localSdks)
-		if files[i].Runtime != workshop.RuntimeLXDContainer && len(sdks) > 0 && !workshop.WorkshopVMsSupportSDKs.Load() {
-			return nil, nil, fmt.Errorf("cannot %s %q: SDKs are currently unavailable for virtual machines", action, name)
-		}
 		latest = append(latest, Manifest{File: files[i], Format: format, Image: images[i], Sdks: sdks})
 	}
 

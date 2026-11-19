@@ -51,7 +51,7 @@ it is also compatible with Windows Subsystem for Linux (WSL2),
 where it uses Btrfs instead of ZFS for storage.
 
 |ws_markup| relies on
-`LXD 6.8+ <https://canonical.com/lxd>`_
+`LXD 6.10+ <https://canonical.com/lxd>`_
 for low-level operation
 and uses its
 `REST API <https://canonical.com/lxd/docs/latest/restapi_landing/>`_
