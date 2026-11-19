@@ -337,6 +337,7 @@ func writeMountProfile(fs fsutil.Fs, mounts io.WriterTo) error {
 func runCommand(conn lxd.InstanceServer, pid, w string, cmd []string) error {
 	c := api.InstanceExecPost{
 		Command:     cmd,
+		WaitForWS:   true,
 		Interactive: false,
 	}
 
