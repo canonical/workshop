@@ -109,6 +109,23 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 				VendorID:  "0403",
 				ProductID: "6001"}},
 		},
+		{
+			Sdk:    "sdk",
+			Mounts: map[string]workshop.Mount{},
+			CustomDevices: []workshop.CustomDevice{{
+				Name:      "mydevice",
+				Subsystem: "usb",
+				VendorID:  "0403",
+				ProductID: "6001"}},
+		},
+		{
+			Sdk:    "sdk",
+			Mounts: map[string]workshop.Mount{},
+			CustomDevices: []workshop.CustomDevice{{
+				Name:      "mydevice",
+				VendorID:  "0403",
+				ProductID: "6001"}},
+		},
 	}
 
 	for i, t := range []struct {
@@ -212,6 +229,42 @@ func (f *LxdBeTests) TestLxdToSdkProfileOK(c *check.C) {
 				"sdk_mydevice": {
 					"type":              "unix-hotplug",
 					"subsystem":         "tty",
+					"vendorid":          "0403",
+					"productid":         "6001",
+					"required":          "false",
+					"ownership.inherit": "true"}},
+			map[string]string{
+				"user.workshop.sdk_mydevice.type": "custom-device"},
+		}, {
+			"sdk",
+			map[string]map[string]string{
+				"sdk_mydevice": {
+					"type": "none"},
+				"sdk_mydevice_usb": {
+					"type":              "usb",
+					"vendorid":          "0403",
+					"productid":         "6001",
+					"required":          "false",
+					"ownership.inherit": "true"}},
+			map[string]string{
+				"user.workshop.sdk_mydevice.type": "custom-device",
+				"user.workshop.sdk_mydevice": `{
+					"name":      "mydevice",
+					"subsystem": "usb",
+					"vendorid":  "0403",
+					"productid": "6001"
+				}`},
+		}, {
+			"sdk",
+			map[string]map[string]string{
+				"sdk_mydevice": {
+					"type":              "unix-hotplug",
+					"vendorid":          "0403",
+					"productid":         "6001",
+					"required":          "false",
+					"ownership.inherit": "true"},
+				"sdk_mydevice_usb": {
+					"type":              "usb",
 					"vendorid":          "0403",
 					"productid":         "6001",
 					"required":          "false",

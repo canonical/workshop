@@ -284,26 +284,55 @@ func (s *Specification) SetCamera(camera workshop.Camera) error {
 func (s *Specification) AddCustomDevice(device workshop.CustomDevice) error {
 	s.Profile.CustomDevices = append(s.Profile.CustomDevices, device)
 
+	// LXD skips the usb subsystem when enumerating nodes for unix-hotplug
+	// devices. When subsystem=usb we don't need a unix-hotplug device at
+	// all, but it's helpful to have a placeholder for consistency.
 	name := lxdbackend.DeviceName(s.Profile.Sdk, device.Name)
-	lxdDevice := map[string]string{
-		"type":              "unix-hotplug",
-		"required":          "false",
-		"ownership.inherit": "true",
-	}
-	// Only set the device identifiers that are provided so that an unset one does
-	// not constrain which host devices match.
-	if device.Subsystem != "" {
-		lxdDevice["subsystem"] = device.Subsystem
-	}
-	if device.VendorID != "" {
-		lxdDevice["vendorid"] = device.VendorID
-	}
-	if device.ProductID != "" {
-		lxdDevice["productid"] = device.ProductID
-	}
+	if device.Subsystem == "usb" {
+		buf, err := json.Marshal(device)
+		if err != nil {
+			return err
+		}
+		s.devices[name] = map[string]string{"type": "none"}
+		s.config[lxdbackend.DeviceConfigKey(name)] = string(buf)
+	} else {
+		lxdDevice := map[string]string{
+			"type":              "unix-hotplug",
+			"required":          "false",
+			"ownership.inherit": "true",
+		}
+		// Only set the device identifiers that are provided so that an unset one
+		// does not constrain which host devices match.
+		if device.Subsystem != "" {
+			lxdDevice["subsystem"] = device.Subsystem
+		}
+		if device.VendorID != "" {
+			lxdDevice["vendorid"] = device.VendorID
+		}
+		if device.ProductID != "" {
+			lxdDevice["productid"] = device.ProductID
+		}
 
-	s.devices[name] = lxdDevice
+		s.devices[name] = lxdDevice
+	}
 	s.config[lxdbackend.DeviceTypeConfigKey(name)] = "custom-device"
+
+	if device.Subsystem == "usb" || device.Subsystem == "" {
+		name := lxdbackend.DeviceName(s.Profile.Sdk, device.Name, "usb")
+		lxdDevice := map[string]string{
+			"type":              "usb",
+			"required":          "false",
+			"ownership.inherit": "true",
+		}
+		if device.VendorID != "" {
+			lxdDevice["vendorid"] = device.VendorID
+		}
+		if device.ProductID != "" {
+			lxdDevice["productid"] = device.ProductID
+		}
+
+		s.devices[name] = lxdDevice
+	}
 
 	return nil
 }

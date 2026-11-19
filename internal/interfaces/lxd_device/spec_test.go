@@ -16,6 +16,7 @@ package lxd_device
 
 import (
 	"context"
+	"encoding/json"
 	"os/user"
 	"testing"
 
@@ -24,6 +25,7 @@ import (
 
 	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/workshop"
+	lxdbackend "github.com/canonical/workshop/internal/workshop/lxd"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -219,4 +221,105 @@ func (s *lxdSpecSuite) TestSetGpuCDIUnknownVendorWithoutDRM(c *check.C) {
 	err = spec.SetGpu(workshop.Gpu{Name: "gpu"})
 	c.Assert(err, check.IsNil)
 	c.Assert(spec.devices, check.HasLen, 0)
+}
+
+func (s *lxdSpecSuite) TestAddCustomDeviceUSB(c *check.C) {
+	s.restoreLxdInfo = MockLxdServerInfo(func(ctx context.Context) (*api.Resources, error) {
+		return &api.Resources{}, nil
+	})
+	spec, err := NewSpecification("testuser", "test-sdk")
+	c.Assert(err, check.IsNil)
+
+	err = spec.AddCustomDevice(workshop.CustomDevice{
+		Name:      "probe",
+		Subsystem: "usb",
+		VendorID:  "1366",
+		ProductID: "1065",
+	})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(spec.devices, check.HasLen, 2)
+	c.Check(spec.devices["test-sdk_probe"], check.DeepEquals, map[string]string{
+		"type": "none",
+	})
+	c.Check(spec.config[lxdbackend.DeviceTypeConfigKey("test-sdk_probe")], check.Equals, "custom-device")
+
+	var stored workshop.CustomDevice
+	err = json.Unmarshal([]byte(spec.config[lxdbackend.DeviceConfigKey("test-sdk_probe")]), &stored)
+	c.Assert(err, check.IsNil)
+	c.Check(stored, check.DeepEquals, workshop.CustomDevice{
+		Name:      "probe",
+		Subsystem: "usb",
+		VendorID:  "1366",
+		ProductID: "1065",
+	})
+
+	c.Check(spec.devices["test-sdk_probe_usb"], check.DeepEquals, map[string]string{
+		"type":              "usb",
+		"vendorid":          "1366",
+		"productid":         "1065",
+		"required":          "false",
+		"ownership.inherit": "true",
+	})
+	_, hasType := spec.config[lxdbackend.DeviceTypeConfigKey("test-sdk_probe_usb")]
+	c.Check(hasType, check.Equals, false)
+}
+
+func (s *lxdSpecSuite) TestAddCustomDeviceSubsystem(c *check.C) {
+	s.restoreLxdInfo = MockLxdServerInfo(func(ctx context.Context) (*api.Resources, error) {
+		return &api.Resources{}, nil
+	})
+	spec, err := NewSpecification("testuser", "test-sdk")
+	c.Assert(err, check.IsNil)
+
+	err = spec.AddCustomDevice(workshop.CustomDevice{
+		Name:      "serial",
+		Subsystem: "tty",
+		VendorID:  "0403",
+		ProductID: "6001",
+	})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(spec.devices, check.HasLen, 1)
+	c.Check(spec.devices["test-sdk_serial"], check.DeepEquals, map[string]string{
+		"type":              "unix-hotplug",
+		"subsystem":         "tty",
+		"vendorid":          "0403",
+		"productid":         "6001",
+		"required":          "false",
+		"ownership.inherit": "true",
+	})
+	_, hasUSB := spec.devices["test-sdk_serial_usb"]
+	c.Check(hasUSB, check.Equals, false)
+}
+
+func (s *lxdSpecSuite) TestAddCustomDeviceAnySubsystem(c *check.C) {
+	s.restoreLxdInfo = MockLxdServerInfo(func(ctx context.Context) (*api.Resources, error) {
+		return &api.Resources{}, nil
+	})
+	spec, err := NewSpecification("testuser", "test-sdk")
+	c.Assert(err, check.IsNil)
+
+	err = spec.AddCustomDevice(workshop.CustomDevice{
+		Name:      "probe",
+		VendorID:  "1366",
+		ProductID: "1065",
+	})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(spec.devices, check.HasLen, 2)
+	c.Check(spec.devices["test-sdk_probe"], check.DeepEquals, map[string]string{
+		"type":              "unix-hotplug",
+		"vendorid":          "1366",
+		"productid":         "1065",
+		"required":          "false",
+		"ownership.inherit": "true",
+	})
+	c.Check(spec.devices["test-sdk_probe_usb"], check.DeepEquals, map[string]string{
+		"type":              "usb",
+		"vendorid":          "1366",
+		"productid":         "1065",
+		"required":          "false",
+		"ownership.inherit": "true",
+	})
 }
