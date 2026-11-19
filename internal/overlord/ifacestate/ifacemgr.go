@@ -208,7 +208,7 @@ func (m *InterfaceManager) ensureBackendInit() error {
 			pctx := context.WithValue(ctx, workshop.ContextProjectId, project.ProjectId)
 			workshops, err := m.backend.ProjectWorkshops(pctx)
 			if err != nil {
-				return fmt.Errorf("cannot load workshops from %q: %w", project.Path, err)
+				return err
 			}
 			for _, workshop := range workshops {
 				workshopNames[project.ProjectId] = append(workshopNames[project.ProjectId], workshop.Name)
@@ -422,6 +422,7 @@ func (m *InterfaceManager) reloadConnections(workshopNames map[string][]string, 
 
 		// Remove connections involving nonexistent workshops.
 		if !slices.Contains(workshopNames[connRef.PlugRef.ProjectId], connRef.PlugRef.Workshop) || !slices.Contains(workshopNames[connRef.SlotRef.ProjectId], connRef.SlotRef.Workshop) {
+			logger.Noticef("On reloadConnections: dropping connection %q: workshop no longer exists", connId)
 			delete(conns, connId)
 			connStateChanged = true
 			continue

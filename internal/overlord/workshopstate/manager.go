@@ -182,11 +182,7 @@ func (w *WorkshopManager) ResolveWorkshopInstanceID(
 			)
 			workshops, err := w.backend.ProjectWorkshops(projectCtx)
 			if err != nil {
-				return nil, fmt.Errorf(
-					"cannot list workshops for project %q: %w",
-					project.ProjectId,
-					err,
-				)
+				return nil, err
 			}
 
 			for _, candidate := range workshops {
