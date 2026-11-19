@@ -332,9 +332,20 @@ func ensureBackendReady() error {
 		return err
 	}
 	if idx := slices.IndexFunc(pools, func(p api.StoragePool) bool { return p.Name == storagePool }); idx < 0 {
+		config := map[string]string{}
+		if storagePoolDriver == "zfs" {
+			// A refquota caps the "referenced" bytes of a ZFS dataset. For a
+			// container rootfs, this includes files that belong to the base
+			// image and SDK snapshots, but not files later deleted or
+			// overwritten. So this setting means container and VM disk sizes
+			// measure roughly the same thing.
+			config["volume.zfs.use_refquota"] = "true"
+		}
+
 		req := api.StoragePoolsPost{
-			Name:   storagePool,
-			Driver: storagePoolDriver,
+			Name:           storagePool,
+			Driver:         storagePoolDriver,
+			StoragePoolPut: api.StoragePoolPut{Config: config},
 		}
 		op, err := conn.CreateStoragePool(req)
 		if err != nil {
