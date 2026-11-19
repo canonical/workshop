@@ -134,6 +134,7 @@ and what it does to the workshop and to its interface connections:
 .. list-table::
    :header-rows: 1
    :widths: 15 30 30 25
+   :class: auto-layout
 
    * - Command
      - Use case

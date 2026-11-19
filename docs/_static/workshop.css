@@ -47,3 +47,11 @@ pre.mermaid > svg {
 .home-get-started {
     font-weight: bold;
 }
+
+/* Size columns to their content instead of Vanilla's fixed layout, which
+   clips non-breaking command literals in narrow columns (td overflow:
+   hidden). Vanilla's u-table-layout--auto can't be set from :class:
+   because docutils collapses the double hyphen. */
+table.auto-layout {
+    table-layout: auto;
+}
