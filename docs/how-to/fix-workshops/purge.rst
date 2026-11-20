@@ -1,8 +1,9 @@
 .. _how_purge:
 
 .. meta::
-   :description: How-to guide on purging malfunctioning workshops, covering steps to
-                 remove containers, metadata, and files thoroughly.
+   :description: How-to guide on purging malfunctioning workshops, covering how to
+                 copy files out of them first, then remove containers,
+                 metadata, and files thoroughly.
 
 How to purge malfunctioning workshops
 =====================================
@@ -24,14 +25,150 @@ Before starting, ensure you have these requirements satisfied:
 
 - Identified the workshop and project you intend to purge.
 
-- Tried :command:`workshop remove <WORKSHOP>`
-  or confirmed that the standard removal flow cannot be used.
-
-- Backed up any workshop data you need to keep;
+- Copied out any files you need from inside the workshop,
+  as described in the next section;
   manual cleanup can permanently delete containers, metadata, and files.
 
-- Access to :command:`sudo` and :command:`lxc`
+- Checked that you can run :command:`sudo` and :command:`lxc`
   for manual LXD cleanup.
+
+
+.. _how_purge_before_removing:
+
+Before removing a workshop
+--------------------------
+
+Removing a workshop deletes everything inside it,
+along with the host directories
+that |ws_markup| allocated for its mount plugs under
+:file:`~/.local/share/workshop/id/<PROJECT-ID>/<WORKSHOP>/mount/`;
+copy any files you need from there to another place on the host first.
+Only host directories that you manage yourself survive,
+such as the project directory at :file:`/project`
+or a directory relocated with :command:`workshop remount`.
+Files elsewhere in the workshop,
+such as the :samp:`workshop` user's home directory,
+are lost.
+
+If the workshop still runs,
+open a shell in it and copy the files you need
+into a new directory in the project:
+
+.. code-block:: console
+
+   $ workshop shell <WORKSHOP>
+
+   workshop@<WORKSHOP>:/project$ mkdir /project/workshop-recovery
+   workshop@<WORKSHOP>:/project$ cp -a ~/<PATH> /project/workshop-recovery/
+
+
+If the workshop doesn't start or you can't open a shell in it,
+copy the files out of its LXD instance instead,
+as described in the next subsection.
+
+
+.. _how_purge_copy_out:
+
+Copy files out of a broken workshop
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each workshop runs as an LXD instance named :samp:`<WORKSHOP>-<PROJECT-ID>`
+in the :samp:`workshop.<USERNAME>` LXD project,
+where :samp:`<USERNAME>` is your system username or,
+if the username can't be used in an LXD project name,
+your numeric user ID (:command:`id -u`).
+Find the instance and check whether it's a container or a virtual machine:
+
+.. code-block:: console
+
+   $ lxc list --project workshop.<USERNAME> --columns nst
+
+
+For a container,
+pull the files into a new directory on the host:
+
+.. code-block:: console
+
+   $ mkdir ~/workshop-recovery
+   $ lxc file pull --recursive --project workshop.<USERNAME> <INSTANCE>/home/workshop/<PATH> ~/workshop-recovery/
+
+
+Run :command:`lxc` without :command:`sudo` here,
+so that the copies belong to your host user;
+this requires membership in the :samp:`lxd` group.
+Symbolic links are copied as links;
+:command:`lxc` doesn't follow them out of the container.
+
+For a virtual machine,
+:command:`lxc file pull` works only while the VM runs
+and its LXD agent responds.
+Otherwise, mount the disk of the broken VM in another VM workshop
+and copy the files from there;
+don't mount it on the host,
+because anything inside the VM could have changed that disk.
+
+#. Launch a VM workshop to recover the files with,
+   as described in :ref:`how_use_virtual_machines`,
+   and find its instance name the same way.
+
+#. Stop the broken VM if it's still running:
+
+   .. code-block:: console
+
+      $ lxc stop --force --project workshop.<USERNAME> <INSTANCE>
+
+
+#. Allow its root volume to be attached to another instance,
+   then attach it to the recovery VM:
+
+   .. code-block:: console
+
+      $ lxc storage volume set --project workshop.<USERNAME> workshop virtual-machine/<INSTANCE> security.shared=true
+      $ lxc config device add --project workshop.<USERNAME> <RECOVERY-INSTANCE> recovery disk pool=workshop source=<INSTANCE> source.type=virtual-machine
+
+
+#. Open a shell in the recovery workshop
+   and find the attached disk;
+   it's the one whose partitions have no mount points:
+
+   .. code-block:: console
+
+      $ workshop shell <RECOVERY-WORKSHOP>
+
+      workshop@<RECOVERY-WORKSHOP>:/project$ lsblk -f
+
+        NAME    FSTYPE FSVER LABEL           UUID                                 FSAVAIL FSUSE% MOUNTPOINTS
+        sda
+        ├─sda1  ext4   1.0   cloudimg-rootfs 59134bd0-a76f-4ea0-8e4a-770b2e1eafc2      7G    19% /
+        ├─sda14
+        ├─sda15 vfat   FAT32 UEFI            0E9D-3FD8                              98.2M     6% /boot/efi
+        └─sda16 ext4   1.0   BOOT            b4f0deba-ce7d-45dc-9999-0427f2720320  755.4M     7% /boot
+        sdb
+        ├─sdb1  ext4   1.0   cloudimg-rootfs 59134bd0-a76f-4ea0-8e4a-770b2e1eafc2
+        ├─sdb14
+        ├─sdb15 vfat   FAT32 UEFI            0E9D-3FD8
+        └─sdb16 ext4   1.0   BOOT            b4f0deba-ce7d-45dc-9999-0427f2720320
+
+
+#. Mount the :samp:`cloudimg-rootfs` partition of that disk read-only
+   and copy the files you need into a new directory in the project:
+
+   .. code-block:: console
+
+      workshop@<RECOVERY-WORKSHOP>:/project$ sudo mkdir /mnt/recovery
+      workshop@<RECOVERY-WORKSHOP>:/project$ sudo mount -o ro /dev/sdb1 /mnt/recovery
+      workshop@<RECOVERY-WORKSHOP>:/project$ mkdir /project/workshop-recovery
+      workshop@<RECOVERY-WORKSHOP>:/project$ cp -a /mnt/recovery/home/workshop/<PATH> /project/workshop-recovery/
+
+
+#. Unmount the disk and detach it from the recovery VM:
+
+   .. code-block:: console
+
+      workshop@<RECOVERY-WORKSHOP>:/project$ sudo umount /mnt/recovery
+      workshop@<RECOVERY-WORKSHOP>:/project$ exit
+
+      $ lxc config device remove --project workshop.<USERNAME> <RECOVERY-INSTANCE> recovery
 
 
 Standard removal procedure
@@ -324,11 +461,15 @@ Explanation:
 
 How-to guides:
 
+- :ref:`how_add_mounts`
 - :ref:`how_debug_issues_workshops`
 - :ref:`how_troubleshoot`
+- :ref:`how_use_virtual_machines`
 
 
 Reference:
 
 - :ref:`ref_workshop_list`
+- :ref:`ref_workshop_remount`
 - :ref:`ref_workshop_remove`
+- :ref:`ref_workshop_shell`
