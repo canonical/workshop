@@ -51,14 +51,15 @@ such as the :samp:`workshop` user's home directory,
 are lost.
 
 If the workshop still runs,
-open a shell in it and move the files you need
-into the project directory:
+open a shell in it and copy the files you need
+into a new directory in the project:
 
 .. code-block:: console
 
    $ workshop shell <WORKSHOP>
 
-   workshop@<WORKSHOP>:/project$ mv ~/<PATH> /project/
+   workshop@<WORKSHOP>:/project$ mkdir /project/workshop-recovery
+   workshop@<WORKSHOP>:/project$ cp -a ~/<PATH> /project/workshop-recovery/
 
 
 If the workshop doesn't start or you can't open a shell in it,
@@ -73,7 +74,9 @@ Copy files out of a broken workshop
 
 Each workshop runs as an LXD instance named :samp:`<WORKSHOP>-<PROJECT-ID>`
 in the :samp:`workshop.<USERNAME>` LXD project,
-where :samp:`<USERNAME>` is your system username.
+where :samp:`<USERNAME>` is your system username or,
+if the username can't be used in an LXD project name,
+your numeric user ID (:command:`id -u`).
 Find the instance and check whether it's a container or a virtual machine:
 
 .. code-block:: console
