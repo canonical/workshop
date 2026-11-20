@@ -335,14 +335,20 @@ func (m *SdkManager) doUninstallSdk(task *state.Task, tomb *tomb.Tomb) error {
 		return err
 	}
 	cleanupCtx := context.WithoutCancel(ctx)
-	rev.Add(func() {
-		cleanupCtx, cancel := context.WithTimeout(cleanupCtx, 30*time.Second)
-		defer cancel()
+	if task.Kind() == "uninstall-sdk" {
+		// We only revert changes to the repo on Do, not Undo. Undo handlers
+		// only fail in rare cases, often requiring manual intervention; the
+		// user can manually unmount the SDK but has no way to unregister it
+		// besides restarting workshopd.
+		rev.Add(func() {
+			cleanupCtx, cancel := context.WithTimeout(cleanupCtx, 30*time.Second)
+			defer cancel()
 
-		if reverr := m.registerSdk(cleanupCtx, task, w, sdkSetup.Name); reverr != nil {
-			logger.Noticef("On doUninstallSdk: cannot re-register %q SDK on cleanup: %v", sdkSetup.Name, reverr)
-		}
-	})
+			if reverr := m.registerSdk(cleanupCtx, task, w, sdkSetup.Name); reverr != nil {
+				logger.Noticef("On doUninstallSdk: cannot re-register %q SDK on cleanup: %v", sdkSetup.Name, reverr)
+			}
+		})
+	}
 
 	if sdkSetup.IsVolume() && sdkSetup.Source != sdk.SystemSource {
 		// Record when the volume was last used in this change. The cleanup logic
