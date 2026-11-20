@@ -26,10 +26,10 @@ Before starting, ensure you have these requirements satisfied:
 - Identified the workshop and project you intend to purge.
 
 - Copied out any files you need from inside the workshop,
-  as described in :ref:`how_purge_before_removing`;
+  as described in the next section;
   manual cleanup can permanently delete containers, metadata, and files.
 
-- Access to :command:`sudo` and :command:`lxc`
+- Checked that you can run :command:`sudo` and :command:`lxc`
   for manual LXD cleanup.
 
 
@@ -62,7 +62,8 @@ into the project directory:
 
 
 If the workshop doesn't start or you can't open a shell in it,
-:ref:`copy the files out of its LXD instance <how_purge_copy_out>` instead.
+copy the files out of its LXD instance instead,
+as described in the next subsection.
 
 
 .. _how_purge_copy_out:
@@ -71,8 +72,8 @@ Copy files out of a broken workshop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each workshop runs as an LXD instance named :samp:`<WORKSHOP>-<PROJECT-ID>`
-in the :samp:`workshop.<USERNAME>` LXD project;
-see :ref:`how_purge_manual` for what :samp:`<USERNAME>` stands for.
+in the :samp:`workshop.<USERNAME>` LXD project,
+where :samp:`<USERNAME>` is your system username.
 Find the instance and check whether it's a container or a virtual machine:
 
 .. code-block:: console
@@ -81,8 +82,7 @@ Find the instance and check whether it's a container or a virtual machine:
 
 
 For a container,
-pull the files into a new directory on the host;
-this works whether the container is running or stopped:
+pull the files into a new directory on the host:
 
 .. code-block:: console
 
