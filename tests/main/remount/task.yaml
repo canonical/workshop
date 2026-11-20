@@ -1,4 +1,12 @@
 summary: Check workshop remount scenarios
+
+environment:
+  RUNTIME/ctr: lxd-container
+  RUNTIME/vm: lxd-vm
+
+prepare: |
+  envsubst '${RUNTIME}' < workshop.yaml.in > workshop.yaml
+  chown ubuntu:ubuntu workshop.yaml
 restore: |
   . "$TESTSLIB"/utils.sh
 

@@ -86,9 +86,8 @@ func unixDialer(socketPath string) func(context.Context, string, string) (net.Co
 }
 
 func vsockDialer(cid, port uint32) func(context.Context, string, string) (net.Conn, error) {
-	return func(context.Context, string, string) (net.Conn, error) {
-		// TODO: use DialContext when we update to vsock > v1.3.0.
-		return vsock.Dial(cid, port, nil)
+	return func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return vsock.DialContext(ctx, cid, port, nil)
 	}
 }
 

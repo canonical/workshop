@@ -1,4 +1,5 @@
-name: ws-remount
+name: ws-remove-mount
 base: ubuntu@22.04
+runtime: ${RUNTIME}
 sdks:
   - name: test-sdk-mount

@@ -27,7 +27,7 @@ Installation
 ------------
 
 Workshop runs on Ubuntu or WSL
-and requires `LXD 6.8+ <https://canonical.com/lxd>`_:
+and requires `LXD 6.10+ <https://canonical.com/lxd>`_:
 
 .. code-block:: console
 

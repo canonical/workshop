@@ -25,6 +25,10 @@ linters:
       - path: _test\.go$
         linters: [unparam]
         text: always receives (".*"|[0-9]+)$
+      # TODO: remove once images are pulled through LXD image registries.
+      - path: ^internal/workshop/lxd/lxd_base_manager\.go$
+        linters: [staticcheck]
+        text: "SA1019: .* is deprecated: Use ImageRegistry"
 
 issues:
   # these values ensure that all issues will be surfaced

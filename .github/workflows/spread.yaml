@@ -169,6 +169,7 @@ jobs:
               tests/integration/workshop-snapshots
             paths-fast: >-
               tests/integration/workshop-snapshots:ctrformat
+              tests/integration/workshop-snapshots:vmformat
               tests/integration/workshop-snapshots:ctr24
               tests/integration/workshop-snapshots:vm24
     runs-on: [self-hosted, linux, jammy, x64, xlarge]
