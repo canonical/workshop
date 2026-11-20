@@ -18,6 +18,7 @@ import (
 	"crypto/sha3"
 	"encoding/hex"
 	"fmt"
+	"os/user"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -194,6 +195,7 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(cfg["limits.max_bus_ports"], check.Equals, "8")
 	c.Check(cfg["limits.cpu"], check.Equals, "2")
+	c.Check(cfg["limits.memory"], check.Equals, lxdbackend.DefaultMemoryVM)
 
 	// Check per-SDK limits.
 	for i := range 64 {
@@ -232,6 +234,16 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(cfg["limits.max_bus_ports"], check.Equals, "64")
 	c.Check(cfg["limits.cpu"], check.Equals, "2")
+}
+
+func (f *LxdBeTests) TestDiskSize(c *check.C) {
+	usr := &user.User{Uid: "1000", Gid: "1000"}
+
+	devices := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDContainer)
+	c.Check(devices["root"]["size"], check.Equals, "")
+
+	devices = lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDVM)
+	c.Check(devices["root"]["size"], check.Equals, lxdbackend.DiskSizeVM)
 }
 
 func (f *LxdBeTests) TestCheckLxdVersion(c *check.C) {
