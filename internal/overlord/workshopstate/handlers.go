@@ -373,6 +373,26 @@ func (m *WorkshopManager) doStop(task *state.Task, tomb *tomb.Tomb) error {
 	}
 }
 
+func (m *WorkshopManager) doExpandWorkshopDisk(task *state.Task, tomb *tomb.Tomb) error {
+	user, prj, w, err := UserProjectWorkshop(task)
+	if err != nil {
+		return err
+	}
+
+	st := task.State()
+	st.Lock()
+	wf, err := WorkshopFile(task.Change(), w, NewWorkshop)
+	st.Unlock()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := BackendContext(tomb, user, prj.ProjectId)
+	defer cancel()
+
+	return m.backend.ExpandWorkshopDisk(ctx, w, wf.Disk)
+}
+
 func (m *WorkshopManager) doRemoveWorkshop(task *state.Task, tomb *tomb.Tomb) error {
 	user, prj, w, err := UserProjectWorkshop(task)
 	if err != nil {

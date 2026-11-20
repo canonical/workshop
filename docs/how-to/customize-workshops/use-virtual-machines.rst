@@ -160,6 +160,9 @@ Confirm what you got:
      hostname:  <NAME>.my-project.wp
      status:    ready
      runtime:   lxd-vm
+     cpus:      2
+     memory:    4GiB
+     disk:      10GiB
      notes:     --
 
 
@@ -271,13 +274,14 @@ Virtual hardware is restrictive
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Virtual machines are modeled on physical hardware,
-and have some of the same limitations.
-When the workshop starts,
-the following quantities are set in stone:
+and have hard limits for:
 
 - The number of processors.
 - Total system memory.
-- The root filesystem size.
+- The root disk size.
+
+These quantities can be adjusted in the workshop definition file.
+Changes will be applied on the next :command:`workshop refresh`.
 
 Interfaces can be connected and disconnected while the workshop is running,
 but much like devices plugged into a physical machine,

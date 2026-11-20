@@ -75,6 +75,9 @@ type WorkshopInfo struct {
 	Name      string   `json:"name"`
 	Base      string   `json:"base"`
 	Runtime   string   `json:"runtime"`
+	CPUs      int      `json:"cpus,omitempty"`
+	Memory    string   `json:"memory,omitempty"`
+	Disk      string   `json:"disk,omitempty"`
 	Status    string   `json:"status"`
 	Sdks      []*Sdk   `json:"sdks,omitempty"`
 	Hostname  string   `json:"hostname,omitempty"`

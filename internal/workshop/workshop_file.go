@@ -39,6 +39,7 @@ var (
 
 	workshopName = regexp.MustCompile(`^[a-z](?:-?[a-z0-9])*$`)
 	actionName   = workshopName
+	byteSize     = regexp.MustCompile(`^[1-9][0-9]*(?:|k|M|G|T|P|E|Ki|Mi|Gi|Ti|Pi|Ei)B$`)
 
 	Directory = ".workshop"
 	Filenames = []string{"workshop.yaml", ".workshop.yaml"}
@@ -269,6 +270,9 @@ type File struct {
 	Name        string            `yaml:"name"`
 	Base        string            `yaml:"base"`
 	Runtime     Runtime           `yaml:"runtime,omitempty"`
+	CPUs        int               `yaml:"cpus,omitempty"`
+	Memory      string            `yaml:"memory,omitempty"`
+	Disk        string            `yaml:"disk,omitempty"`
 	Sdks        []SdkRecord       `yaml:"sdks,omitempty"`
 	Connections []Connection      `yaml:"connections,omitempty"`
 	Actions     map[string]Action `yaml:"actions,omitempty"`
@@ -337,6 +341,16 @@ func ValidateFile(file *File) error {
 		return fmt.Errorf("base %q not supported", file.Base)
 	}
 
+	if err := validateCPUs(file.CPUs); err != nil {
+		return err
+	}
+	if err := validateMemory(file.Memory); err != nil {
+		return err
+	}
+	if err := validateDisk(file.Disk); err != nil {
+		return err
+	}
+
 	if err := validateSdks(file.Sdks); err != nil {
 		return err
 	}
@@ -376,6 +390,33 @@ func readWorkshop(path string) (*File, error) {
 	}
 
 	return &file, nil
+}
+
+func validateCPUs(cpus int) error {
+	if cpus < 0 {
+		return fmt.Errorf("invalid CPU count %d: must be a positive integer", cpus)
+	}
+	return nil
+}
+
+func validateMemory(memory string) error {
+	if memory == "" {
+		return nil
+	}
+	if !byteSize.MatchString(memory) {
+		return fmt.Errorf("invalid memory size %q: must be a positive integer followed by a unit, e.g. 8GiB", memory)
+	}
+	return nil
+}
+
+func validateDisk(disk string) error {
+	if disk == "" {
+		return nil
+	}
+	if !byteSize.MatchString(disk) {
+		return fmt.Errorf("invalid disk size %q: must be a positive integer followed by a unit, e.g. 20GiB", disk)
+	}
+	return nil
 }
 
 func validateSdks(sdks []SdkRecord) error {

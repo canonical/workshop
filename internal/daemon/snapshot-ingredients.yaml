@@ -7,6 +7,9 @@
 File:
   Name: string
   Base: string
+  CPUs: int
+  Memory: string
+  Disk: string
   Runtime: workshop.Runtime
   Sdks: '[]workshop.SdkRecord'
   Actions:
@@ -28,6 +31,9 @@ Workshop:
   Format: sdk.Revision
   Image: workshop.BaseImage
   Running: bool
+  CPUs:
+  Memory:
+  Disk:
   Sdks: map[string]workshop.SdkInstallation
   Profiles:
   Hostname:

@@ -15,6 +15,7 @@
 package lxdbackend
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"embed"
@@ -34,6 +35,7 @@ import (
 
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
+	"github.com/canonical/lxd/shared/units"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 
@@ -331,9 +333,20 @@ func ensureBackendReady() error {
 		return err
 	}
 	if idx := slices.IndexFunc(pools, func(p api.StoragePool) bool { return p.Name == storagePool }); idx < 0 {
+		config := map[string]string{}
+		if storagePoolDriver == "zfs" {
+			// A refquota caps the "referenced" bytes of a ZFS dataset. For a
+			// container rootfs, this includes files that belong to the base
+			// image and SDK snapshots, but not files later deleted or
+			// overwritten. So this setting means container and VM disk sizes
+			// measure roughly the same thing.
+			config["volume.zfs.use_refquota"] = "true"
+		}
+
 		req := api.StoragePoolsPost{
 			Name:   storagePool,
 			Driver: storagePoolDriver,
+			Config: config,
 		}
 		op, err := conn.CreateStoragePool(req)
 		if err != nil {
@@ -440,10 +453,14 @@ func (s *Backend) LaunchOrRebuildWorkshop(ctx context.Context, file *workshop.Fi
 	if err != nil {
 		return err
 	}
+	devices, err := defaultDevices(usr, projectId, file)
+	if err != nil {
+		return err
+	}
 	req := api.InstancesPost{
 		InstancePut: api.InstancePut{
 			Config:  config,
-			Devices: defaultDevices(usr, projectId, file.Name, file.Runtime),
+			Devices: devices,
 		},
 		Name: InstanceName(file.Name, projectId),
 		Type: instanceType(file.Runtime),
@@ -926,6 +943,104 @@ func (s *Backend) setAutoStart(conn lxd.InstanceServer, ctx context.Context, nam
 	return op.WaitContext(ctx)
 }
 
+func (s *Backend) ExpandWorkshopDisk(ctx context.Context, name, size string) error {
+	conn, err := s.LxdClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Disconnect()
+
+	projectId, ok := ctx.Value(workshop.ContextProjectId).(string)
+	if !ok {
+		return fmt.Errorf("context key project-id not found")
+	}
+
+	inst, etag, err := conn.GetInstance(InstanceName(name, projectId))
+	if err != nil {
+		return err
+	}
+
+	root := inst.Devices["root"]
+	if root == nil {
+		return fmt.Errorf("internal error: %q workshop has no rootfs", name)
+	}
+
+	rev := revert.New()
+	defer rev.Fail()
+
+	running := inst.StatusCode == api.Running || inst.StatusCode == api.Ready
+	needStop := inst.Type != string(api.InstanceTypeContainer)
+	if root["size"] != size {
+		// LXD doesn't notify QEMU when the root disk grows, so a running VM
+		// only sees the new size after restarting. TODO: remove when
+		// https://github.com/canonical/lxd/issues/13311 is fixed.
+		if running && needStop {
+			if err := s.stopWorkshop(conn, ctx, name, false); err != nil {
+				return err
+			}
+			rev.Add(func() {
+				if reverr := s.startWorkshop(conn, ctx, name); reverr != nil {
+					logger.Noticef("On ExpandWorkshopDisk: %v", reverr)
+				}
+			})
+			running = false
+
+			inst, etag, err = conn.GetInstance(inst.Name)
+			if err != nil {
+				return err
+			}
+			root = inst.Devices["root"]
+		}
+
+		root["size"] = size
+		op, err := conn.UpdateInstance(inst.Name, inst.Writable(), etag)
+		if err != nil {
+			return err
+		}
+		if err := op.Wait(); err != nil {
+			return err
+		}
+	}
+
+	rev.Success()
+	if !needStop {
+		return nil
+	}
+
+	// We grow the filesystem (starting the workshop if needed) even if we
+	// didn't update the root disk. This handles the unlikely case where the
+	// expansion was interrupted partway. Once VMs support live resizing we can
+	// drop it.
+	if !running {
+		if err := s.startWorkshop(conn, ctx, name); err != nil {
+			return err
+		}
+	}
+	return s.growRootFilesystem(conn, ctx, name)
+}
+
+func (s *Backend) growRootFilesystem(conn lxd.InstanceServer, ctx context.Context, name string) error {
+	for _, module := range []string{"growpart", "resizefs"} {
+		var errbuf bytes.Buffer
+		args := workshop.Execution{
+			Command: []string{"cloud-init", "single", "--name", module, "--frequency", "always"},
+			WorkDir: "/",
+			Stderr:  &errbuf,
+		}
+		exectx, err := s.execCommand(conn, ctx, name, &args)
+		if err == nil {
+			err = exectx.WaitExecution(ctx)
+		}
+		if _, ok := errors.AsType[*workshop.ErrExec](err); ok {
+			err = fmt.Errorf("%w, cloud-init output: %s", err, bytes.TrimSpace(errbuf.Bytes()))
+		}
+		if err != nil {
+			return fmt.Errorf("cannot grow %q workshop filesystem: %s: %w", name, module, err)
+		}
+	}
+	return nil
+}
+
 func (s *Backend) AddWorkshopMount(ctx context.Context, name string, mount workshop.Mount) error {
 	conn, err := s.LxdClient(ctx)
 	if err != nil {
@@ -1184,6 +1299,18 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		Fingerprint: inst.Config[workshop.ConfigWorkshopBaseFingerprint],
 	}
 
+	cpus := 0
+	if limitsCpu := inst.Config["limits.cpu"]; limitsCpu != "" {
+		n, err := strconv.Atoi(limitsCpu)
+		if err != nil {
+			logger.Debugf("Ignoring unexpected CPU limit: %v", err)
+		} else {
+			cpus = n
+		}
+	}
+	memory := inst.Config["limits.memory"]
+	disk := inst.Devices["root"]["size"]
+
 	sdks := map[string]workshop.SdkInstallation{}
 	for key, device := range inst.Devices {
 		s, err := maybeSdkInstallation(key, device)
@@ -1221,6 +1348,9 @@ func (b *Backend) loadWorkshop(conn lxd.InstanceServer, inst *api.Instance, user
 		Format:         format,
 		Image:          image,
 		Running:        running,
+		CPUs:           cpus,
+		Memory:         memory,
+		Disk:           disk,
 		Sdks:           sdks,
 		Profiles:       profs,
 		File:           f,
@@ -1380,34 +1510,52 @@ func (s *Backend) LxdClient(ctx context.Context) (lxd.InstanceServer, error) {
 	return ConnectLxd(ctx)
 }
 
-func defaultDevices(usr *user.User, pid, w string, runtime workshop.Runtime) map[string]map[string]string {
+func defaultDevices(usr *user.User, pid string, file *workshop.File) (map[string]map[string]string, error) {
+	const GiB int64 = 1024 * 1024 * 1024
+
 	devices := map[string]map[string]string{
 		"root":             {"type": "disk", "pool": storagePool, "path": "/"},
 		"workshop.network": {"type": "nic", "network": networkName, "name": "eth0"},
 	}
 
-	if runtime == workshop.RuntimeLXDVM {
+	if file.Disk != "" {
+		disk, err := units.ParseByteSizeString(file.Disk)
+		if err != nil {
+			return nil, fmt.Errorf("invalid disk size %q: must be a positive integer followed by a unit, e.g. 20GiB", file.Disk)
+		}
+		minDisk, message := 2*GiB, "2GiB for containers"
+		if file.Runtime == workshop.RuntimeLXDVM {
+			minDisk, message = 10*GiB, "10GiB for virtual machines"
+		}
+		if disk < minDisk {
+			return nil, fmt.Errorf("invalid disk size %q: must be at least %s", file.Disk, message)
+		}
+	}
+
+	if file.Runtime == workshop.RuntimeLXDVM {
 		// Make the LXD default explicit. VM workshops should have consistent
 		// disk sizes (at least at first) so their snapshots can be reused
 		// easily. Once a snapshot is taken, it's not easy to shrink the block
 		// device for other workshops. SDKs which require a lot of space can
 		// use mount plugs to avoid expanding the root disk too much.
 		devices["root"]["size"] = DiskSizeVM
+	} else if file.Disk != "" {
+		devices["root"]["size"] = file.Disk
 	}
 
-	mounts, proxies := workshop.DefaultDevices(pid, w)
+	mounts, proxies := workshop.DefaultDevices(pid, file.Name)
 	for _, mount := range mounts {
 		devices[mount.Name] = mountToLxdDisk(mount)
 	}
 
 	// LXD VMs have only limited support for proxy devices.
-	if runtime == workshop.RuntimeLXDContainer {
+	if file.Runtime == workshop.RuntimeLXDContainer {
 		for _, proxy := range proxies {
 			devices[proxy.Name] = proxyToLxdDevice(usr, proxy)
 		}
 	}
 
-	return devices
+	return devices, nil
 }
 
 func proxyToLxdDevice(usr *user.User, proxy workshop.ProxyEntry) map[string]string {
@@ -1456,6 +1604,11 @@ func (s *Backend) workshopConfig(
 		return nil, err
 	}
 
+	resources, err := workshopResources(file)
+	if err != nil {
+		return nil, err
+	}
+
 	// Include all options we might change, even those with default values,
 	// so that workshops can be rebuilt.
 	cfg := map[string]string{
@@ -1484,50 +1637,6 @@ func (s *Backend) workshopConfig(
 		// Allows SDKs to install unsigned kernels and kernel modules.
 		cfg["boot.mode"] = "uefi-nosecureboot"
 
-		// Each virtiofs mount consumes a PCIe port and 3 interrupt vectors.
-		// The port consumes another interrupt vector on top of that. KVM
-		// allocates up to 32 slots, with 8 functions each, but some are
-		// reserved. So we set a conservative upper bound of 192 ports.
-		// Interrupt vectors are also capped at around 256 per vCPU. A single
-		// CPU only has headroom for about 160 interrupt vectors, so we make
-		// another conservative estimate of 128 interrupt vectors per CPU.
-		// Extra CPUs have more headroom than the first, but we don't lose
-		// much by adding more CPUs by default. We want to hit the port limit
-		// well before the IRQ limit because LXD doesn't handle the latter
-		// well: see https://github.com/canonical/lxd/issues/19164.
-		// Typical SDKs have one mount for the SDK itself and another for
-		// config or cache, but some (e.g. node) have several different cache
-		// mounts. Each port we allocate costs about 100ms on first boot, and
-		// 75ms after that. So allowing 4 per SDK seems like a good balance of
-		// allowing some headroom without slowing down the boot too much. The
-		// system SDK reserves 8 ports to match LXD defaults and allow some
-		// headroom if the only other SDK is something like node (or there's a
-		// sketch SDK, which we can't observe from the File alone).
-		const (
-			minPorts    = 8
-			portsPerSdk = 4
-			maxPorts    = 192
-
-			minCPUs      = 2
-			irqsPerMount = 4
-			irqsPerCPU   = 128
-		)
-		regularSdks := len(file.Sdks)
-		for _, s := range file.Sdks {
-			if s.Source == sdk.SystemSource || s.Source == sdk.SketchSource {
-				regularSdks--
-			}
-		}
-		maxBusPorts := min(minPorts+portsPerSdk*regularSdks, maxPorts)
-		cfg["limits.max_bus_ports"] = fmt.Sprint(maxBusPorts)
-
-		minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
-		vCPUs := max(minCPUs, minCPUsForPCI)
-		cfg["limits.cpu"] = fmt.Sprint(vCPUs)
-
-		// LXD's default of 1 GiB is too small for most development environments.
-		cfg["limits.memory"] = DefaultMemoryVM
-
 		// Skip 3s pause in firmware boot menu.
 		cfg["raw.qemu"] = "-boot menu=on,splash-time=0"
 
@@ -1545,6 +1654,8 @@ hpet = "off"
 sata = "off"
 `[1:]
 	}
+
+	maps.Copy(cfg, resources)
 
 	return cfg, nil
 }
@@ -1626,4 +1737,91 @@ func formatIdmap(idmapSet *idmap.IdmapSet) string {
 		entries.WriteByte('\n')
 	}
 	return entries.String()
+}
+
+func workshopResources(file *workshop.File) (map[string]string, error) {
+	const MiB int64 = 1024 * 1024
+
+	if file.Memory != "" {
+		memory, err := units.ParseByteSizeString(file.Memory)
+		if err != nil {
+			return nil, fmt.Errorf("invalid memory size %q: must be a positive integer followed by a unit, e.g. 8GiB", file.Memory)
+		}
+		minMemory, message := 256*MiB, "256MiB for containers"
+		if file.Runtime == workshop.RuntimeLXDVM {
+			minMemory, message = 512*MiB, "512MiB for virtual machines"
+		}
+		if memory < minMemory {
+			return nil, fmt.Errorf("invalid memory size %q: must be at least %s", file.Memory, message)
+		}
+	}
+
+	if file.Runtime == workshop.RuntimeLXDContainer {
+		cfg := map[string]string{}
+		if file.CPUs > 0 {
+			cfg["limits.cpu"] = fmt.Sprint(file.CPUs)
+		}
+		if file.Memory != "" {
+			cfg["limits.memory"] = file.Memory
+		}
+		return cfg, nil
+	}
+
+	// Each virtiofs mount consumes a PCIe port and 3 interrupt vectors.
+	// The port consumes another interrupt vector on top of that. KVM
+	// allocates up to 32 slots, with 8 functions each, but some are
+	// reserved. So we set a conservative upper bound of 192 ports.
+	// Interrupt vectors are also capped at around 256 per vCPU. A single
+	// CPU only has headroom for about 160 interrupt vectors, so we make
+	// another conservative estimate of 128 interrupt vectors per CPU.
+	// Extra CPUs have more headroom than the first, but we don't lose
+	// much by adding more CPUs by default. We want to hit the port limit
+	// well before the IRQ limit because LXD doesn't handle the latter
+	// well: see https://github.com/canonical/lxd/issues/19164.
+	// Typical SDKs have one mount for the SDK itself and another for
+	// config or cache, but some (e.g. node) have several different cache
+	// mounts. Each port we allocate costs about 100ms on first boot, and
+	// 75ms after that. So allowing 4 per SDK seems like a good balance of
+	// allowing some headroom without slowing down the boot too much. The
+	// system SDK reserves 8 ports to match LXD defaults and allow some
+	// headroom if the only other SDK is something like node (or there's a
+	// sketch SDK, which we can't observe from the File alone).
+	const (
+		minPorts    = 8
+		portsPerSdk = 4
+		maxPorts    = 192
+
+		defaultCPUs  = 2
+		irqsPerMount = 4
+		irqsPerCPU   = 128
+	)
+	regularSdks := len(file.Sdks)
+	for _, s := range file.Sdks {
+		if s.Source == sdk.SystemSource || s.Source == sdk.SketchSource {
+			regularSdks--
+		}
+	}
+	maxBusPorts := min(minPorts+portsPerSdk*regularSdks, maxPorts)
+
+	minCPUs := defaultCPUs
+	if file.CPUs > 0 {
+		minCPUs = file.CPUs
+	}
+	minCPUsForPCI := (irqsPerMount*maxBusPorts-1)/irqsPerCPU + 1
+	vCPUs := max(minCPUs, minCPUsForPCI)
+	if file.CPUs > 0 && vCPUs != file.CPUs {
+		logger.Noticef("Allocating %v CPUs for %q workshop to accommodate extra PCI devices", vCPUs, file.Name)
+	}
+
+	// LXD's default of 1 GiB is too small for most development environments.
+	memory := DefaultMemoryVM
+	if file.Memory != "" {
+		memory = file.Memory
+	}
+
+	return map[string]string{
+		"limits.cpu":           fmt.Sprint(vCPUs),
+		"limits.max_bus_ports": fmt.Sprint(maxBusPorts),
+		"limits.memory":        memory,
+	}, nil
 }

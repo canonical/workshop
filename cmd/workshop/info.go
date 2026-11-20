@@ -155,6 +155,15 @@ func (c *CmdInfo) Run(cmd *cobra.Command, av []string) error {
 	}
 	fmt.Fprintf(w, "status:\t%s\n", strings.ToLower(workshop.Status))
 	fmt.Fprintf(w, "runtime:\t%s\n", workshop.Runtime)
+	if workshop.CPUs > 0 {
+		fmt.Fprintf(w, "cpus:\t%d\n", workshop.CPUs)
+	}
+	if workshop.Memory != "" {
+		fmt.Fprintf(w, "memory:\t%s\n", escape(workshop.Memory))
+	}
+	if workshop.Disk != "" {
+		fmt.Fprintf(w, "disk:\t%s\n", escape(workshop.Disk))
+	}
 
 	// get the workshop notes
 	notes := workshop.Notes
