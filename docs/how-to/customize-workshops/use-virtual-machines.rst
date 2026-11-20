@@ -250,6 +250,7 @@ Most interfaces are unsupported
 
 Currently, virtual machine workshops only support the :samp:`mount` and :samp:`secret` interfaces.
 Other interfaces will not be auto-connected and cannot be connected manually.
+The :samp:`mount` interface can only be connected when the workshop is running.
 
 Virtual machine workshops can still install SDKs
 that contain unsupported plugs and slots,
@@ -260,6 +261,7 @@ Removing stopped workshops
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Disconnecting a :samp:`mount` interface plug
+from a slot with :samp:`workshop-source`
 requires the workshop to be running.
 This can prevent removing a stopped workshop.
 Either start the workshop before removing it,

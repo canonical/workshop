@@ -62,11 +62,14 @@ func (b *Backend) Name() interfaces.SecuritySystem {
 	return interfaces.SecurityLxdDevice
 }
 
-func setupMounts(conn lxd.InstanceServer, fs fsutil.Fs, user *user.User, pid, w string, prev, next map[string]workshop.Mount) (*revert.Reverter, error) {
+func setupMounts(conn lxd.InstanceServer, lfs *lazyFs, user *user.User, pid, w string, prev, next map[string]workshop.Mount) (*revert.Reverter, error) {
 	var mounts *osutil.MountProfile
 	var content []byte
 	if containsWorkshopWorkshop(prev) || containsWorkshopWorkshop(next) {
-		var err error
+		fs, err := lfs.Get()
+		if err != nil {
+			return nil, err
+		}
 		mounts, content, err = readMountProfile(fs)
 		if err != nil {
 			return nil, err
@@ -88,7 +91,7 @@ func setupMounts(conn lxd.InstanceServer, fs fsutil.Fs, user *user.User, pid, w 
 		if mnt == prev[mnt.Name] {
 			continue
 		}
-		if err := prepareMount(fs, user, mnt); err != nil {
+		if err := prepareMount(lfs, user, mnt); err != nil {
 			return nil, err
 		}
 		if addMountEntry(mounts, mnt) {
@@ -101,6 +104,11 @@ func setupMounts(conn lxd.InstanceServer, fs fsutil.Fs, user *user.User, pid, w 
 		return rev, nil
 	}
 	defer rev.Fail()
+
+	fs, err := lfs.Get()
+	if err != nil {
+		return nil, err
+	}
 
 	rev.Add(func() {
 		if reverr := reloadMounts(conn, pid, w); reverr != nil {
@@ -138,10 +146,13 @@ func setupMounts(conn lxd.InstanceServer, fs fsutil.Fs, user *user.User, pid, w 
 	return clone, nil
 }
 
-func removeMounts(conn lxd.InstanceServer, fs fsutil.Fs, pid, w string, prev map[string]workshop.Mount) error {
+func removeMounts(conn lxd.InstanceServer, lfs *lazyFs, pid, w string, prev map[string]workshop.Mount) error {
 	var mounts *osutil.MountProfile
 	if containsWorkshopWorkshop(prev) {
-		var err error
+		fs, err := lfs.Get()
+		if err != nil {
+			return err
+		}
 		mounts, _, err = readMountProfile(fs)
 		if err != nil {
 			return err
@@ -157,6 +168,11 @@ func removeMounts(conn lxd.InstanceServer, fs fsutil.Fs, pid, w string, prev map
 
 	if len(removed) == 0 {
 		return nil
+	}
+
+	fs, err := lfs.Get()
+	if err != nil {
+		return err
 	}
 
 	var errs []error
@@ -184,18 +200,18 @@ func containsWorkshopWorkshop(mounts map[string]workshop.Mount) bool {
 	return false
 }
 
-func prepareMount(fs fsutil.Fs, user *user.User, mnt workshop.Mount) error {
+func prepareMount(lfs *lazyFs, user *user.User, mnt workshop.Mount) error {
 	switch mnt.Type {
 	case workshop.HostWorkshop:
-		return prepareHostWorkshopMount(fs, user, mnt)
+		return prepareHostWorkshopMount(lfs, user, mnt)
 	case workshop.WorkshopWorkshop:
-		return prepareWorkshopWorkshopMount(fs, mnt)
+		return prepareWorkshopWorkshopMount(lfs, mnt)
 	default:
 		return fmt.Errorf("unknown device type: %v", mnt.Type)
 	}
 }
 
-func prepareHostWorkshopMount(fs fsutil.Fs, user *user.User, mnt workshop.Mount) error {
+func prepareHostWorkshopMount(lfs *lazyFs, user *user.User, mnt workshop.Mount) error {
 	info, err := os.Stat(mnt.What)
 	isDir := err == nil && info.IsDir()
 
@@ -217,10 +233,19 @@ func prepareHostWorkshopMount(fs fsutil.Fs, user *user.User, mnt workshop.Mount)
 		return err
 	}
 
+	fs, err := lfs.Get()
+	if err != nil {
+		return err
+	}
 	return prepareMountWhere(fs, mnt, isDir)
 }
 
-func prepareWorkshopWorkshopMount(fs fsutil.Fs, mnt workshop.Mount) error {
+func prepareWorkshopWorkshopMount(lfs *lazyFs, mnt workshop.Mount) error {
+	fs, err := lfs.Get()
+	if err != nil {
+		return err
+	}
+
 	isDir := true
 	if mnt.MakeWhat {
 		if err := fs.MkdirAllChmodChown(mnt.What, mnt.Mode, int(mnt.Owner), int(mnt.Group)); err != nil {
@@ -380,12 +405,17 @@ func reloadMounts(conn lxd.InstanceServer, pid, w string) error {
 	return runCommand(conn, pid, w, []string{"systemctl", "restart", "local-fs.target"})
 }
 
-func setupSshAgent(fs fsutil.Fs, prev, next *workshop.SshAgent) error {
+func setupSshAgent(lfs *lazyFs, prev, next *workshop.SshAgent) error {
 	if prev.Equal(next) {
 		return nil
 	}
 	if next == nil {
-		return removeSshAgent(fs, prev)
+		return removeSshAgent(lfs, prev)
+	}
+
+	fs, err := lfs.Get()
+	if err != nil {
+		return err
 	}
 
 	script := "/etc/profile.d/workshop-ssh-agent.sh"
@@ -399,21 +429,31 @@ func setupSshAgent(fs fsutil.Fs, prev, next *workshop.SshAgent) error {
 	return fs.AtomicWriteTo(envScript(envVars), script, 0644)
 }
 
-func removeSshAgent(fs fsutil.Fs, prev *workshop.SshAgent) error {
+func removeSshAgent(lfs *lazyFs, prev *workshop.SshAgent) error {
 	if prev == nil {
 		return nil
+	}
+
+	fs, err := lfs.Get()
+	if err != nil {
+		return err
 	}
 
 	script := "/etc/profile.d/workshop-ssh-agent.sh"
 	return fs.RemoveIfExists(script)
 }
 
-func setupDesktop(conn lxd.InstanceServer, fs fsutil.Fs, user *user.User, env map[string]string, pid, w string, prev, next *workshop.Desktop) error {
+func setupDesktop(conn lxd.InstanceServer, lfs *lazyFs, user *user.User, env map[string]string, pid, w string, prev, next *workshop.Desktop) error {
 	if prev.Equal(next) {
 		return nil
 	}
 	if next == nil {
-		return removeDesktop(conn, fs, pid, w, prev)
+		return removeDesktop(conn, lfs, pid, w, prev)
+	}
+
+	fs, err := lfs.Get()
+	if err != nil {
+		return err
 	}
 
 	script := "/etc/profile.d/workshop-desktop.sh"
@@ -438,12 +478,16 @@ func setupDesktop(conn lxd.InstanceServer, fs fsutil.Fs, user *user.User, env ma
 	return nil
 }
 
-func removeDesktop(conn lxd.InstanceServer, fs fsutil.Fs, pid, w string, prev *workshop.Desktop) error {
+func removeDesktop(conn lxd.InstanceServer, lfs *lazyFs, pid, w string, prev *workshop.Desktop) error {
 	if prev == nil {
 		return nil
 	}
 
-	err := fs.RemoveIfExists("/etc/profile.d/workshop-desktop.sh")
+	fs, err := lfs.Get()
+	if err != nil {
+		return err
+	}
+	err = fs.RemoveIfExists("/etc/profile.d/workshop-desktop.sh")
 	err2 := removeXauthority(conn, fs, pid, w)
 	return cmp.Or(err, err2)
 }
@@ -637,6 +681,39 @@ func uninstallUnit(fs fsutil.Fs, path, target string) error {
 	return fs.RemoveIfExists(filepath.Join(unitDir, target+".wants", filepath.Base(path)))
 }
 
+// lazyFs caches a filesystem (i.e. an SFTP connection), so it's only connected
+// when needed, without the overhead of a new connection each time. The
+// connection fails for stopped VMs, so we want to avoid connecting it for
+// operations that don't need it. The main beneficiary is remount, which
+// sometimes requires the workshop to be stopped. TODO: remove SFTP for VMs
+// in favor of a oneshot unit that creates mountpoints before the lxd-agent
+// starts, and populates the environment based on the connected interfaces.
+type lazyFs struct {
+	conn lxd.InstanceServer
+	pid  string
+	w    string
+	fs   fsutil.Fs
+}
+
+func (l *lazyFs) Get() (fsutil.Fs, error) {
+	if (l.fs != fsutil.Fs{}) {
+		return l.fs, nil
+	}
+
+	fs, err := workshopFs(l.conn, l.pid, l.w)
+	if err == nil {
+		l.fs = fs
+	}
+	return l.fs, err
+}
+
+func (l *lazyFs) Close() error {
+	if (l.fs != fsutil.Fs{}) {
+		return l.fs.Close()
+	}
+	return nil
+}
+
 func sftpFs(conn lxd.InstanceServer, pid, w string) (fsutil.Fs, error) {
 	sftp, err := conn.GetInstanceFileSFTP(lxdbackend.InstanceName(w, pid))
 	if err != nil {
@@ -704,35 +781,32 @@ func assignNewProfile(ctx context.Context, conn lxd.InstanceServer, sdkRef sdk.R
 }
 
 func setupProfile(conn lxd.InstanceServer, user *user.User, env map[string]string, sdkRef sdk.Ref, prev, next workshop.SdkProfile) (*revert.Reverter, error) {
-	fs, err := workshopFs(conn, sdkRef.ProjectId, sdkRef.Workshop)
-	if err != nil {
-		return nil, err
-	}
-	defer fs.Close()
+	lfs := &lazyFs{conn: conn, pid: sdkRef.ProjectId, w: sdkRef.Workshop}
+	defer lfs.Close()
 
 	rev := revert.New()
 	defer rev.Fail()
 
-	if err := setupSshAgent(fs, prev.Agent, next.Agent); err != nil {
+	if err := setupSshAgent(lfs, prev.Agent, next.Agent); err != nil {
 		return nil, err
 	}
 	rev.Add(func() {
-		if reverr := setupSshAgent(fs, next.Agent, prev.Agent); reverr != nil {
+		if reverr := setupSshAgent(lfs, next.Agent, prev.Agent); reverr != nil {
 			logger.Noticef("On setupProfile: cannot undo SSH agent changes: %v", reverr)
 		}
 	})
 
-	if err := setupDesktop(conn, fs, user, env, sdkRef.ProjectId, sdkRef.Workshop, prev.Desktop, next.Desktop); err != nil {
+	if err := setupDesktop(conn, lfs, user, env, sdkRef.ProjectId, sdkRef.Workshop, prev.Desktop, next.Desktop); err != nil {
 		return nil, err
 	}
 	rev.Add(func() {
-		if reverr := setupDesktop(conn, fs, user, env, sdkRef.ProjectId, sdkRef.Workshop, next.Desktop, prev.Desktop); reverr != nil {
+		if reverr := setupDesktop(conn, lfs, user, env, sdkRef.ProjectId, sdkRef.Workshop, next.Desktop, prev.Desktop); reverr != nil {
 			logger.Noticef("On setupProfile: cannot undo desktop interface changes: %v", reverr)
 		}
 	})
 
 	// Setup mounts last so other interfaces can create directories to mount.
-	r, err := setupMounts(conn, fs, user, sdkRef.ProjectId, sdkRef.Workshop, prev.Mounts, next.Mounts)
+	r, err := setupMounts(conn, lfs, user, sdkRef.ProjectId, sdkRef.Workshop, prev.Mounts, next.Mounts)
 	if err != nil {
 		return nil, err
 	}
@@ -749,15 +823,12 @@ func cleanupProfile(conn lxd.InstanceServer, sdkRef sdk.Ref) error {
 		return err
 	}
 
-	fs, err := workshopFs(conn, sdkRef.ProjectId, sdkRef.Workshop)
-	if err != nil {
-		return err
-	}
-	defer fs.Close()
+	lfs := &lazyFs{conn: conn, pid: sdkRef.ProjectId, w: sdkRef.Workshop}
+	defer lfs.Close()
 
-	err = removeMounts(conn, fs, sdkRef.ProjectId, sdkRef.Workshop, prof.Mounts)
-	err2 := removeDesktop(conn, fs, sdkRef.ProjectId, sdkRef.Workshop, prof.Desktop)
-	err3 := removeSshAgent(fs, prof.Agent)
+	err = removeMounts(conn, lfs, sdkRef.ProjectId, sdkRef.Workshop, prof.Mounts)
+	err2 := removeDesktop(conn, lfs, sdkRef.ProjectId, sdkRef.Workshop, prof.Desktop)
+	err3 := removeSshAgent(lfs, prof.Agent)
 	return cmp.Or(err, err2, err3)
 }
 
