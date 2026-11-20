@@ -160,8 +160,6 @@ For the workflows that run the same checks on your pull request,
 see :ref:`contributing_cicd`.
 
 
-.. _contributing_doc_commit:
-
 Commit
 ~~~~~~
 
