@@ -19,7 +19,7 @@ Remove one or many workshops.
 
 .. rubric:: Aliases
 
-``rm``
+``workshop rm``
 
 .. rubric:: Description
 
