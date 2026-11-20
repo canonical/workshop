@@ -19,7 +19,7 @@ List SDK volumes available on this machine.
 
 .. rubric:: Aliases
 
-``ls``
+``sdk ls``
 
 .. rubric:: Description
 

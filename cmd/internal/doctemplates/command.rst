@@ -21,7 +21,7 @@
 
 .. rubric:: Aliases
 
-{{ range $i, $alias := .Aliases }}{{ if $i }}, {{ end }}``{{ $alias }}``{{ end }}
+{{ range $i, $alias := .Aliases }}{{ if $i }}, {{ end }}``{{ $.Parent }} {{ $alias }}``{{ end }}
 {{- end }}
 
 .. rubric:: Description

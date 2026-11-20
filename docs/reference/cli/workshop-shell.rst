@@ -19,7 +19,7 @@ Start an interactive terminal session for the workshop.
 
 .. rubric:: Aliases
 
-``sh``
+``workshop sh``
 
 .. rubric:: Description
 
