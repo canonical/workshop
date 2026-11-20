@@ -1,8 +1,8 @@
 .. _how_purge:
 
 .. meta::
-   :description: How-to guide on purging malfunctioning workshops, covering steps to
-                 repair them or copy out files first, then remove containers,
+   :description: How-to guide on purging malfunctioning workshops, covering how to
+                 copy files out of them first, then remove containers,
                  metadata, and files thoroughly.
 
 How to purge malfunctioning workshops
@@ -45,71 +45,127 @@ that |ws_markup| allocated for its mount plugs under
 copy any files you need from there to another place on the host first.
 Only host directories that you manage yourself survive,
 such as the project directory at :file:`/project`
-or a source set with :command:`workshop remount`.
+or a directory relocated with :command:`workshop remount`.
 Files elsewhere in the workshop,
 such as the :samp:`workshop` user's home directory,
 are lost.
 
-If a command inside the workshop broke it,
-for example by stopping a service or unmounting a directory,
-try these steps first,
-from the least destructive to the most:
+If the workshop still runs,
+open a shell in it and move the files you need
+into the project directory:
 
-#. Restart the workshop:
+.. code-block:: console
+
+   $ workshop shell <WORKSHOP>
+
+   workshop@<WORKSHOP>:/project$ mv ~/<PATH> /project/
+
+
+If the workshop doesn't start or you can't open a shell in it,
+:ref:`copy the files out of its LXD instance <how_purge_copy_out>` instead.
+
+
+.. _how_purge_copy_out:
+
+Copy files out of a broken workshop
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each workshop runs as an LXD instance named :samp:`<WORKSHOP>-<PROJECT-ID>`
+in the :samp:`workshop.<USERNAME>` LXD project;
+see :ref:`how_purge_manual` for what :samp:`<USERNAME>` stands for.
+Find the instance and check whether it's a container or a virtual machine:
+
+.. code-block:: console
+
+   $ lxc list --project workshop.<USERNAME> --columns nst
+
+
+For a container,
+pull the files into a new directory on the host;
+this works whether the container is running or stopped:
+
+.. code-block:: console
+
+   $ mkdir ~/workshop-recovery
+   $ lxc file pull --recursive --project workshop.<USERNAME> <INSTANCE>/home/workshop/<PATH> ~/workshop-recovery/
+
+
+Run :command:`lxc` without :command:`sudo` here,
+so that the copies belong to your host user;
+this requires membership in the :samp:`lxd` group.
+Symbolic links are copied as links;
+:command:`lxc` doesn't follow them out of the container.
+
+For a virtual machine,
+:command:`lxc file pull` works only while the VM runs
+and its LXD agent responds.
+Otherwise, mount the disk of the broken VM in another VM workshop
+and copy the files from there;
+don't mount it on the host,
+because anything inside the VM could have changed that disk.
+
+#. Launch a VM workshop to recover the files with,
+   as described in :ref:`how_use_virtual_machines`,
+   and find its instance name the same way.
+
+#. Stop the broken VM if it's still running:
 
    .. code-block:: console
 
-      $ workshop stop <WORKSHOP>
-      $ workshop start <WORKSHOP>
+      $ lxc stop --force --project workshop.<USERNAME> <INSTANCE>
 
 
-   A restart remounts the workshop's directories
-   and starts its enabled services again.
-
-#. Copy the files you need into a new directory in the project:
+#. Allow its root volume to be attached to another instance,
+   then attach it to the recovery VM:
 
    .. code-block:: console
 
-      $ workshop exec <WORKSHOP> -- mkdir /project/workshop-recovery \
-          && workshop exec <WORKSHOP> -- cp -a /home/workshop/<PATH> /project/workshop-recovery/
+      $ lxc storage volume set --project workshop.<USERNAME> workshop virtual-machine/<INSTANCE> security.shared=true
+      $ lxc config device add --project workshop.<USERNAME> <RECOVERY-INSTANCE> recovery disk pool=workshop source=<INSTANCE> source.type=virtual-machine
 
 
-   The copies belong to your host user.
-   To keep them out of the project directory,
-   stream an archive into a new directory under your host home directory instead:
-
-   .. code-block:: console
-
-      $ mkdir ~/workshop-recovery \
-          && workshop exec <WORKSHOP> -- tar -C /home/workshop -cf - . > ~/workshop-recovery/home.tar
-
-
-   In both commands, if the directory already exists,
-   :command:`mkdir` fails and nothing is copied;
-   pick another name so that the copies don't overwrite
-   project files or earlier copies.
-
-#. Restore the workshop to its state after the last launch or refresh:
+#. Open a shell in the recovery workshop
+   and find the attached disk;
+   it's the one whose partitions have no mount points:
 
    .. code-block:: console
 
-      $ workshop restore <WORKSHOP>
+      $ workshop shell <RECOVERY-WORKSHOP>
+
+      workshop@<RECOVERY-WORKSHOP>:/project$ lsblk -f
+
+        NAME    FSTYPE FSVER LABEL           UUID                                 FSAVAIL FSUSE% MOUNTPOINTS
+        sda
+        ├─sda1  ext4   1.0   cloudimg-rootfs 59134bd0-a76f-4ea0-8e4a-770b2e1eafc2      7G    19% /
+        ├─sda14
+        ├─sda15 vfat   FAT32 UEFI            0E9D-3FD8                              98.2M     6% /boot/efi
+        └─sda16 ext4   1.0   BOOT            b4f0deba-ce7d-45dc-9999-0427f2720320  755.4M     7% /boot
+        sdb
+        ├─sdb1  ext4   1.0   cloudimg-rootfs 59134bd0-a76f-4ea0-8e4a-770b2e1eafc2
+        ├─sdb14
+        ├─sdb15 vfat   FAT32 UEFI            0E9D-3FD8
+        └─sdb16 ext4   1.0   BOOT            b4f0deba-ce7d-45dc-9999-0427f2720320
 
 
-   This rolls the container filesystem back to that point,
-   discarding changes made inside the workshop since then,
-   and resets its connections to their defaults.
-   It doesn't undo changes in host-mounted directories,
-   including the project directory,
-   or in state that SDKs carry across it
-   with their :samp:`save-state` and :samp:`restore-state` hooks.
+#. Mount the :samp:`cloudimg-rootfs` partition of that disk read-only
+   and copy the files you need into a new directory in the project:
+
+   .. code-block:: console
+
+      workshop@<RECOVERY-WORKSHOP>:/project$ sudo mkdir /mnt/recovery
+      workshop@<RECOVERY-WORKSHOP>:/project$ sudo mount -o ro /dev/sdb1 /mnt/recovery
+      workshop@<RECOVERY-WORKSHOP>:/project$ mkdir /project/workshop-recovery
+      workshop@<RECOVERY-WORKSHOP>:/project$ cp -a /mnt/recovery/home/workshop/<PATH> /project/workshop-recovery/
 
 
-If a copy fails, read the error before you go further:
-fix the path or free up space on the destination,
-then copy again into a new directory.
-Restore or remove the workshop only after the copies succeed,
-or once you accept losing the files.
+#. Unmount the disk and detach it from the recovery VM:
+
+   .. code-block:: console
+
+      workshop@<RECOVERY-WORKSHOP>:/project$ sudo umount /mnt/recovery
+      workshop@<RECOVERY-WORKSHOP>:/project$ exit
+
+      $ lxc config device remove --project workshop.<USERNAME> <RECOVERY-INSTANCE> recovery
 
 
 Standard removal procedure
@@ -398,7 +454,6 @@ See also
 Explanation:
 
 - :ref:`exp_projects`
-- :ref:`exp_sdk_hooks`
 
 
 How-to guides:
@@ -406,13 +461,12 @@ How-to guides:
 - :ref:`how_add_mounts`
 - :ref:`how_debug_issues_workshops`
 - :ref:`how_troubleshoot`
+- :ref:`how_use_virtual_machines`
 
 
 Reference:
 
-- :ref:`ref_workshop_exec`
 - :ref:`ref_workshop_list`
+- :ref:`ref_workshop_remount`
 - :ref:`ref_workshop_remove`
-- :ref:`ref_workshop_restore`
-- :ref:`ref_workshop_start`
-- :ref:`ref_workshop_stop`
+- :ref:`ref_workshop_shell`

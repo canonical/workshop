@@ -110,16 +110,14 @@ autonomy:
   as `root`.
   An agent can read and change anything in the workshop, including other SDKs'
   files and the credentials they store.
-* **An agent can break the workshop itself.** With `sudo`, an agent can stop
-  services or unmount directories that the workshop relies on. Restarting the
-  workshop remounts its directories and starts its enabled services again;
-  `workshop restore` rolls the container filesystem back to its last launch or
-  refresh. A restore doesn't undo an agent's changes in host-mounted
-  directories, such as the project directory, or in state that SDKs carry
-  across it with their `save-state` and `restore-state` hooks. Keep work you
-  care about in the project directory, and
-  [copy out other files](https://ubuntu.com/workshop/docs/how-to/fix-workshops/purge/)
-  before you restore or remove the workshop.
+* **An agent can break the workshop itself.** With `sudo`, an agent can leave
+  the workshop unable to start, and neither restarting it nor `workshop restore`
+  is sure to bring it back. The supported way out is `workshop remove`; before
+  you run it,
+  [copy out the files you need](https://ubuntu.com/workshop/docs/how-to/fix-workshops/purge/#before-removing-a-workshop).
+  An agent can also delete or change files in the project directory, so back up
+  your work regularly, for example by committing it and pushing it to a remote
+  repository.
 * **Outbound network access is open.** Workshop doesn't filter outgoing traffic,
   so an agent can reach any host that the workshop's network can reach and send
   project data there.
