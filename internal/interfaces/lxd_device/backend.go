@@ -65,7 +65,7 @@ func (b *Backend) Name() interfaces.SecuritySystem {
 func setupMounts(conn lxd.InstanceServer, lfs *lazyFs, user *user.User, pid, w string, prev, next map[string]workshop.Mount) (*revert.Reverter, error) {
 	var mounts *osutil.MountProfile
 	var content []byte
-	if containsWorkshopWorkshop(prev) || containsWorkshopWorkshop(next) {
+	if changesWorkshopWorkshop(prev, next) || changesWorkshopWorkshop(next, prev) {
 		fs, err := lfs.Get()
 		if err != nil {
 			return nil, err
@@ -91,7 +91,7 @@ func setupMounts(conn lxd.InstanceServer, lfs *lazyFs, user *user.User, pid, w s
 		if mnt == prev[mnt.Name] {
 			continue
 		}
-		if err := prepareMount(lfs, user, mnt); err != nil {
+		if err := prepareMount(lfs, user, prev[mnt.Name], mnt); err != nil {
 			return nil, err
 		}
 		if addMountEntry(mounts, mnt) {
@@ -148,7 +148,7 @@ func setupMounts(conn lxd.InstanceServer, lfs *lazyFs, user *user.User, pid, w s
 
 func removeMounts(conn lxd.InstanceServer, lfs *lazyFs, pid, w string, prev map[string]workshop.Mount) error {
 	var mounts *osutil.MountProfile
-	if containsWorkshopWorkshop(prev) {
+	if changesWorkshopWorkshop(prev, nil) {
 		fs, err := lfs.Get()
 		if err != nil {
 			return err
@@ -191,19 +191,19 @@ func removeMounts(conn lxd.InstanceServer, lfs *lazyFs, pid, w string, prev map[
 	return cmp.Or(errs...)
 }
 
-func containsWorkshopWorkshop(mounts map[string]workshop.Mount) bool {
+func changesWorkshopWorkshop(mounts, other map[string]workshop.Mount) bool {
 	for _, mnt := range mounts {
-		if mnt.Type == workshop.WorkshopWorkshop {
+		if mnt.Type == workshop.WorkshopWorkshop && mnt != other[mnt.Name] {
 			return true
 		}
 	}
 	return false
 }
 
-func prepareMount(lfs *lazyFs, user *user.User, mnt workshop.Mount) error {
+func prepareMount(lfs *lazyFs, user *user.User, prev, mnt workshop.Mount) error {
 	switch mnt.Type {
 	case workshop.HostWorkshop:
-		return prepareHostWorkshopMount(lfs, user, mnt)
+		return prepareHostWorkshopMount(lfs, user, prev, mnt)
 	case workshop.WorkshopWorkshop:
 		return prepareWorkshopWorkshopMount(lfs, mnt)
 	default:
@@ -211,7 +211,7 @@ func prepareMount(lfs *lazyFs, user *user.User, mnt workshop.Mount) error {
 	}
 }
 
-func prepareHostWorkshopMount(lfs *lazyFs, user *user.User, mnt workshop.Mount) error {
+func prepareHostWorkshopMount(lfs *lazyFs, user *user.User, prev, mnt workshop.Mount) error {
 	info, err := os.Stat(mnt.What)
 	isDir := err == nil && info.IsDir()
 
@@ -233,6 +233,10 @@ func prepareHostWorkshopMount(lfs *lazyFs, user *user.User, mnt workshop.Mount) 
 		return err
 	}
 
+	// Avoid using SFTP if possible, to allow remounts on stopped VMs.
+	if prev.Where == mnt.Where && prev.Mode == mnt.Mode && prev.Owner == mnt.Owner && prev.Group == mnt.Group {
+		return nil
+	}
 	fs, err := lfs.Get()
 	if err != nil {
 		return err
