@@ -790,6 +790,7 @@ func (s *snapshotSuite) extractUniqueFiles(c *check.C, name, path string) unique
 		"var/cache/snapd",
 		"var/lib/chrony",
 		"var/lib/cloud",
+		"var/lib/logrotate",
 		"var/lib/snapd",
 		"var/log",
 		"var/snap/lxd/common",

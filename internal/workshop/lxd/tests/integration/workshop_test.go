@@ -1006,6 +1006,10 @@ func (f *wsOps) TestLxdBackendWorkshopLaunch(c *check.C) {
 	err = f.bd.DownloadBase(f.ctx, image, nil)
 	c.Assert(err, check.IsNil)
 
+	createWFile(c, f.project.Path, "test", "name: test\nbase: ubuntu@24.04\n")
+	_, _, err = f.bd.CreateOrLoadProject(f.ctx, f.project.Path)
+	c.Assert(err, check.IsNil)
+
 	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04"}
 	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
