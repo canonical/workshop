@@ -9,7 +9,8 @@ execute: |
   . "$TESTSLIB"/utils.sh
 
   function validate_host_mounts() {
-    test -d "$source_one" && test -d "$source_two"
+    test -d "$source_one"
+    test -d "$source_two"
     workshop_exec exec -- bash -c "mountpoint -q /mnt/one && mountpoint -q /opt/two"
   }
 
@@ -61,8 +62,8 @@ execute: |
   echo "Check mount respects XDG_DATA_HOME"
   sudo -u ubuntu XDG_RUNTIME_DIR=/run/user/1000 systemctl --user set-environment XDG_DATA_HOME=/home/ubuntu/mydata
   workshop_exec launch
-  source_one="/home/ubuntu/mydata/workshop/id/"$project_id"/ws-mount/mount/test-sdk-mount_one"
-  source_two="/home/ubuntu/mydata/workshop/id/"$project_id"/ws-mount/mount/test-sdk-mount_two"
+  source_one="/home/ubuntu/mydata/workshop/id/"$project_id"/ws-mount/mount/test-sdk-mount/one"
+  source_two="/home/ubuntu/mydata/workshop/id/"$project_id"/ws-mount/mount/test-sdk-mount/two"
   validate_host_mounts
 
   echo "Check remove will clean up mount interface locations overridden with XDG_DATA_HOME"
