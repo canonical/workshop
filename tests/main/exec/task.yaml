@@ -85,6 +85,12 @@ execute: |
   workshop_exec run -- file | MATCH '^script$'
   workshop_exec run -- env | MATCH 'FOO=BAR' 
 
+  echo "Check action exit codes aren't overridden by ~/.bash_logout"
+  workshop_exec run ws-exec exit 0
+  exitcode=0
+  workshop_exec run ws-exec exit 125 || exitcode="$?"
+  [ "$exitcode" -eq 125 ]
+
   echo "Check actions can be updated without refreshing"
   sed -i 's/one line/1 LINE/g' workshop.yaml
   workshop_exec run ws-exec oneline | MATCH '^1 LINE$'

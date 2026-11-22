@@ -398,7 +398,11 @@ func (m *CommandManager) doInstallAction(task *state.Task, tomb *tomb.Tomb) erro
 	command = append(command,
 		"--",
 		"bash",
-		"-elo",
+		"-l",
+		"-c",
+		`exec -- "$0" "$@"`,
+		"bash",
+		"-eo",
 		"pipefail",
 		path,
 	)

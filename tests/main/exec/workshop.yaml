@@ -11,3 +11,4 @@ actions:
   fail: "false"
   file: ./script.sh
   env: env
+  exit: exit "$1"
