@@ -19,7 +19,7 @@ List project workshops.
 
 .. rubric:: Aliases
 
-``ls``
+``workshop ls``
 
 .. rubric:: Description
 

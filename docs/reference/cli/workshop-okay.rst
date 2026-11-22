@@ -19,7 +19,7 @@ Acknowledge listed warnings.
 
 .. rubric:: Aliases
 
-``ok``
+``workshop ok``
 
 .. rubric:: Description
 
