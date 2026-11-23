@@ -103,9 +103,13 @@ For a virtual machine,
 :command:`lxc file pull` works only while the VM runs
 and its LXD agent responds.
 Otherwise, mount the disk of the broken VM in another VM workshop
-and copy the files from there;
-don't mount it on the host,
-because anything inside the VM could have changed that disk.
+and copy the files from there.
+Don't mount it on the host:
+anything inside the VM could have written to that disk,
+and the host kernel's filesystem code isn't built to withstand
+a disk that was altered on purpose.
+Mounting such a disk can crash the host or give an attacker control of it;
+in another VM, the damage stays inside that VM.
 
 #. Launch a VM workshop to recover the files with,
    as described in :ref:`how_use_virtual_machines`,
