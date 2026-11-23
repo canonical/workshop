@@ -120,9 +120,8 @@ so recover into a VM whose project directory is empty.
    .. code-block:: console
 
       $ mkdir ~/vm-recovery
-      $ cd ~/vm-recovery
-      $ workshop init <RECOVERY-WORKSHOP> --runtime lxd-vm
-      $ workshop launch <RECOVERY-WORKSHOP>
+      $ workshop init <RECOVERY-WORKSHOP> --runtime lxd-vm --project ~/vm-recovery
+      $ workshop launch <RECOVERY-WORKSHOP> --project ~/vm-recovery
 
 
    Don't add SDKs to its definition;
@@ -151,7 +150,7 @@ so recover into a VM whose project directory is empty.
 
    .. code-block:: console
 
-      $ workshop shell <RECOVERY-WORKSHOP>
+      $ workshop shell <RECOVERY-WORKSHOP> --project ~/vm-recovery
 
       workshop@<RECOVERY-WORKSHOP>:/project$ lsblk -f
 
