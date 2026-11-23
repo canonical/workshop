@@ -65,6 +65,42 @@ Top-level fields
        SDKs that declare a :samp:`base` must use the same value;
        SDKs without a :samp:`base` are accepted on any workshop.
 
+   * - :samp:`runtime`
+     - string
+     - Type of sandboxing to use to run the workshop.
+       One of :samp:`lxd-container` or :samp:`lxd-vm`.
+
+   * - :samp:`cpus`
+     - integer
+     - Number of CPUs available to the workshop.
+       Virtual machine workshops are given 2 by default;
+       containers have no restrictions.
+
+       |ws_markup| may increase this number
+       if it determines that more are needed.
+
+   * - :samp:`memory`
+     - string
+     - Amount of memory available to the workshop.
+       Virtual machine workshops are given :samp:`4GiB` by default;
+       containers have no restrictions.
+       The minimum is :samp:`256MiB` for containers
+       and :samp:`512MiB` for virtual machines.
+
+   * - :samp:`disk`
+     - string
+     - Size of the workshop's root disk.
+       Virtual machine workshops are given :samp:`10GiB` by default;
+       containers are limited only by the storage pool.
+       The minimum is :samp:`2GiB` for containers
+       and :samp:`10GiB` for virtual machines.
+
+       For virtual machine workshops,
+       the disk is fixed at :samp:`10GiB` during :samp:`setup-base` hooks,
+       and expanded once they complete.
+       This allows |ws_markup| to snapshot the results of :samp:`setup-base`
+       and reuse them when launching a workshop with a smaller disk.
+
    * - :samp:`sdks`
      - array
      - Ordered list of SDK entries.

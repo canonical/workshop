@@ -165,6 +165,14 @@ func startWorkshop(st *state.State, name string) *state.TaskSet {
 	return state.NewTaskSet(start)
 }
 
+func expandWorkshopDisk(st *state.State, file *workshop.File) *state.TaskSet {
+	if file.Disk == "" {
+		return state.NewTaskSet()
+	}
+	task := st.NewTask("expand-workshop-disk", fmt.Sprintf("Expand %q workshop root disk to %s", file.Name, file.Disk))
+	return state.NewTaskSet(task)
+}
+
 func launch(st *state.State, project workshop.Project, manifest Manifest, intact int) *state.TaskSet {
 	var prevInstall *state.TaskSet
 	all := state.NewTaskSet()
@@ -211,6 +219,9 @@ func launch(st *state.State, project workshop.Project, manifest Manifest, intact
 
 	install := installSdks(st, newSdks)
 	addTaskSet(install)
+
+	expand := expandWorkshopDisk(st, manifest.File)
+	addTaskSet(expand)
 
 	configureTimezone := st.NewTask("configure-timezone", fmt.Sprintf("Configure %q workshop timezone", manifest.File.Name))
 	addTaskSet(state.NewTaskSet(configureTimezone))
@@ -296,6 +307,10 @@ func hasUpdates(current, latest Manifest) bool {
 	currentSnapshot := workshop.SdkSnapshot(current.Format, current.Image, current.Sdks)
 	finalSnapshot := workshop.SdkSnapshot(latest.Format, latest.Image, latest.Sdks)
 	if !currentSnapshot.Equal(finalSnapshot) {
+		return true
+	}
+
+	if current.File.CPUs != latest.File.CPUs || current.File.Memory != latest.File.Memory || current.File.Disk != latest.File.Disk {
 		return true
 	}
 
@@ -427,6 +442,9 @@ func refresh(st *state.State, project workshop.Project, current, latest Manifest
 	// Install updated SDKs to the rebuilt workshop.
 	install := installSdks(st, newSdks)
 	addTaskSet(install)
+
+	expand := expandWorkshopDisk(st, latest.File)
+	addTaskSet(expand)
 
 	if option == conflict.RefreshUpdate {
 		restoreConns := st.NewTask("restore-conns", fmt.Sprintf("Restore %q undesired connections", latest.File.Name))

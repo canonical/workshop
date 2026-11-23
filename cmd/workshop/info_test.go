@@ -42,6 +42,9 @@ var mockWorkshopWithSdks = `{"type":"sync","status-code":200,"status":"OK","resu
     "name":"ws",
     "base":"ubuntu@22.04",
     "runtime":"lxd-container",
+    "cpus":4,
+    "memory":"8GiB",
+    "disk":"20GiB",
     "project-id":"42424242",
     "status":"Error",
     "hostname":"ws.sdkcraft.wp",
@@ -101,6 +104,9 @@ project:   %s
 hostname:  ws\.sdkcraft\.wp
 status:    error
 runtime:   lxd-container
+cpus:      4
+memory:    8GiB
+disk:      20GiB
 notes:     missing-project
 sdks:
   go:

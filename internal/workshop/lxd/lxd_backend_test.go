@@ -222,6 +222,18 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 		c.Check(cfg["limits.cpu"], check.Equals, fmt.Sprint(vCPUs), check.Commentf("regularSDKs = %v", regularSdks))
 	}
 
+	// Check that more CPUs can be requested.
+	file.CPUs = 5
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "6")
+
+	file.CPUs = 7
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "7")
+	file.CPUs = 0
+
 	// Check the system SDK is accounted for already.
 	file.Sdks = file.Sdks[:14]
 	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
@@ -236,13 +248,92 @@ func (f *LxdBeTests) TestVMLimits(c *check.C) {
 	c.Check(cfg["limits.cpu"], check.Equals, "2")
 }
 
+func (f *LxdBeTests) TestCPUs(c *check.C) {
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name:    "test",
+		Base:    "ubuntu@22.04",
+		Runtime: workshop.RuntimeLXDContainer,
+	}
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "")
+
+	file.CPUs = 3
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "3")
+
+	file.Runtime = workshop.RuntimeLXDVM
+	file.CPUs = 0
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "2")
+
+	file.CPUs = 1
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "1")
+
+	file.CPUs = 3
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.cpu"], check.Equals, "3")
+}
+
+func (f *LxdBeTests) TestMemory(c *check.C) {
+	b := &lxdbackend.Backend{}
+	file := &workshop.File{
+		Name:    "test",
+		Base:    "ubuntu@22.04",
+		Runtime: workshop.RuntimeLXDContainer,
+	}
+	cfg, err := lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.memory"], check.Equals, "")
+
+	file.Memory = "2GB"
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.memory"], check.Equals, "2GB")
+
+	file.Memory = "1B"
+	_, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Check(err, check.ErrorMatches, `invalid memory size "1B": must be at least 256MiB for containers`)
+
+	file.Runtime = workshop.RuntimeLXDVM
+	file.Memory = ""
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.memory"], check.Equals, "4GiB")
+
+	file.Memory = "2GB"
+	cfg, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Assert(err, check.IsNil)
+	c.Check(cfg["limits.memory"], check.Equals, "2GB")
+
+	file.Memory = "1kB"
+	_, err = lxdbackend.DefaultConfig(b, f.project.ProjectId, "1000", "1000", file, b.FormatRevision(), "fakeimage12345")
+	c.Check(err, check.ErrorMatches, `invalid memory size "1kB": must be at least 512MiB for virtual machines`)
+}
+
 func (f *LxdBeTests) TestDiskSize(c *check.C) {
 	usr := &user.User{Uid: "1000", Gid: "1000"}
 
-	devices := lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDContainer)
+	file := &workshop.File{Name: "w", Base: "ubuntu@26.04", Runtime: workshop.RuntimeLXDContainer}
+	devices, err := lxdbackend.DefaultDevices(usr, "pid", file)
+	c.Assert(err, check.IsNil)
 	c.Check(devices["root"]["size"], check.Equals, "")
 
-	devices = lxdbackend.DefaultDevices(usr, "pid", "w", workshop.RuntimeLXDVM)
+	file.Disk = "20GiB"
+	devices, err = lxdbackend.DefaultDevices(usr, "pid", file)
+	c.Assert(err, check.IsNil)
+	c.Check(devices["root"]["size"], check.Equals, "20GiB")
+
+	// VMs start with the default size, and are expanded after snapshots.
+	file.Runtime = workshop.RuntimeLXDVM
+	devices, err = lxdbackend.DefaultDevices(usr, "pid", file)
+	c.Assert(err, check.IsNil)
 	c.Check(devices["root"]["size"], check.Equals, lxdbackend.DiskSizeVM)
 }
 
