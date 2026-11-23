@@ -925,8 +925,7 @@ func (s *Backend) RemoveWorkshopStash(ctx context.Context, name string) error {
 	}
 	defer conn.Disconnect()
 
-	err1 := s.deleteSnapshot(conn, instanceStashName(name, projectId))
-	return cmp.Or(err, err1)
+	return s.deleteSnapshot(conn, instanceStashName(name, projectId))
 }
 
 func (s *Backend) deleteSnapshot(snapshotConn lxd.InstanceServer, snapshot string) error {
@@ -981,7 +980,7 @@ func (s *Backend) snapshotClients(ctx context.Context) (lxd.InstanceServer, lxd.
 // replay some of the install-sdk and setup-base tasks. These can be handled in
 // the same way as in-progress launches and refreshes.
 func (s *Backend) FormatRevision() sdk.Revision {
-	return sdk.R(14)
+	return sdk.R(15)
 }
 
 func (s *Backend) HashSnapshot(snapshot workshop.Snapshot) (string, error) {
