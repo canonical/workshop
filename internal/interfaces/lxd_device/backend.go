@@ -749,23 +749,41 @@ func setupProfile(conn lxd.InstanceServer, user *user.User, env map[string]strin
 func checkTunnelSocketPaths(fs fsutil.Fs, tunnels []workshop.Tunnel) error {
 	for _, tunnel := range tunnels {
 		listen := tunnel.Listen
-		if tunnel.Direction != workshop.WorkshopToHost ||
-			listen.Protocol != "unix" || strings.HasPrefix(listen.Address, "@") {
+		if listen.Protocol != "unix" || strings.HasPrefix(listen.Address, "@") {
 			continue
 		}
 
-		info, err := fs.Lstat(listen.Address)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
+		var (
+			info    os.FileInfo
+			statErr error
+		)
+		switch tunnel.Direction {
+		case workshop.HostToWorkshop:
+			info, statErr = os.Lstat(listen.Address)
+		case workshop.WorkshopToHost:
+			info, statErr = fs.Lstat(listen.Address)
+		default:
+			return fmt.Errorf("unknown tunnel direction: %v", tunnel.Direction)
 		}
-		if err != nil {
-			return fmt.Errorf("cannot inspect socket: %q: %w", listen.Address, err)
-		}
-		if info.Mode()&os.ModeSocket == 0 {
-			return fmt.Errorf("cannot create socket %q: path already exists and is not a unix socket", listen.Address)
+
+		if err := checkSocketPath(listen.Address, info, statErr); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func checkSocketPath(path string, info os.FileInfo, err error) error {
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("cannot inspect socket: %q: %w", path, err)
+	}
+	if info.Mode()&os.ModeSocket != 0 {
+		return nil
+	}
+	return fmt.Errorf("cannot create socket %q: path already exists and is not a unix socket", path)
 }
 
 func cleanupProfile(conn lxd.InstanceServer, sdkRef sdk.Ref) error {

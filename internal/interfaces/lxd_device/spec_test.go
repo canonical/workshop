@@ -59,6 +59,92 @@ func (s *lxdSpecSuite) TearDownTest(c *check.C) {
 	s.restoreUserLookup()
 }
 
+func (s *lxdSpecSuite) TestNonexistentHostUnixPathAllowed(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(c.MkDir())
+	defer fs.Close()
+
+	path := filepath.Join(root, "new.sock")
+
+	_, err := os.Lstat(path)
+	c.Assert(os.IsNotExist(err), check.Equals, true)
+
+	tunnel := workshopTunnel(workshop.HostToWorkshop, "unix", path)
+	c.Check(checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel}), check.IsNil)
+}
+
+func (s *lxdSpecSuite) TestExistingRegularFileAsHostUnixPathRejected(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(c.MkDir())
+	defer fs.Close()
+
+	path := filepath.Join(root, "regular.txt")
+	c.Assert(os.WriteFile(path, []byte("sentinel"), 0644), check.IsNil)
+
+	tunnel := workshopTunnel(workshop.HostToWorkshop, "unix", path)
+	err := checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel})
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+
+	data, err := os.ReadFile(path)
+	c.Assert(err, check.IsNil)
+	c.Check(string(data), check.Equals, "sentinel")
+}
+
+func (s *lxdSpecSuite) TestExistingDirectoryAsHostUnixPathRejected(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(c.MkDir())
+	defer fs.Close()
+
+	path := filepath.Join(root, "existing-directory")
+	c.Assert(os.Mkdir(path, 0755), check.IsNil)
+
+	tunnel := workshopTunnel(workshop.HostToWorkshop, "unix", path)
+	err := checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel})
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+}
+
+func (s *lxdSpecSuite) TestExistingSymlinkAsHostUnixPathRejected(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(c.MkDir())
+	defer fs.Close()
+
+	target := filepath.Join(root, "symlink-target.txt")
+	path := filepath.Join(root, "symlink.sock")
+
+	c.Assert(os.WriteFile(target, []byte("sentinel"), 0644), check.IsNil)
+	c.Assert(os.Symlink(target, path), check.IsNil)
+
+	tunnel := workshopTunnel(workshop.HostToWorkshop, "unix", path)
+	err := checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel})
+	c.Check(err, check.ErrorMatches,
+		`cannot create socket .*: path already exists and is not a unix socket`)
+
+	link, err := os.Readlink(path)
+	c.Assert(err, check.IsNil)
+	c.Check(link, check.Equals, target)
+}
+
+func (s *lxdSpecSuite) TestExistingUnixSocketAsHostUnixPathAllowed(c *check.C) {
+	root := c.MkDir()
+	fs := fsutil.NewBasePathFs(c.MkDir())
+	defer fs.Close()
+
+	path := filepath.Join(root, "existing.sock")
+
+	listener, err := net.Listen("unix", path)
+	c.Assert(err, check.IsNil)
+	defer listener.Close()
+
+	tunnel := workshopTunnel(workshop.HostToWorkshop, "unix", path)
+	c.Check(checkTunnelSocketPaths(fs, []workshop.Tunnel{tunnel}), check.IsNil)
+
+	info, err := os.Lstat(path)
+	c.Assert(err, check.IsNil)
+	c.Check(info.Mode()&os.ModeSocket != 0, check.Equals, true)
+}
+
 func (s *lxdSpecSuite) TestNonexistentWorkshopUnixPathAllowed(c *check.C) {
 	root := c.MkDir()
 	fs := fsutil.NewBasePathFs(root)
@@ -152,11 +238,11 @@ func (s *lxdSpecSuite) TestCheckTunnelSocketPathsIgnoresOtherEndpoints(c *check.
 	fs := fsutil.NewBasePathFs(root)
 	defer fs.Close()
 
-	c.Assert(os.WriteFile(filepath.Join(root, "regular"), []byte("sentinel"), 0644), check.IsNil)
 	tunnels := []workshop.Tunnel{
 		workshopTunnel(workshop.WorkshopToHost, "unix", "@regular"),
 		workshopTunnel(workshop.WorkshopToHost, "tcp", "/regular"),
-		workshopTunnel(workshop.HostToWorkshop, "unix", "/regular"),
+		workshopTunnel(workshop.HostToWorkshop, "unix", "@regular"),
+		workshopTunnel(workshop.HostToWorkshop, "tcp", filepath.Join(root, "regular")),
 	}
 
 	c.Check(checkTunnelSocketPaths(fs, tunnels), check.IsNil)
