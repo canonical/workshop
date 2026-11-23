@@ -197,3 +197,30 @@ func (s *userSuite) TestSupplementWSLgDisplayEnvKeepsExisting(c *check.C) {
 		"XDG_RUNTIME_DIR": "/run/user/2000",
 	})
 }
+
+func (s *userSuite) TestCheckSystemdVersion(c *check.C) {
+	for _, t := range []struct {
+		script string
+		err    string
+	}{
+		{script: "echo 'systemd 248 (248.3-1ubuntu8)'"},
+		{script: "echo 'systemd 255 (255.4-1ubuntu8.6)'; echo '+PAM +AUDIT'"},
+		{script: "echo 'systemd 258~rc1 (258~rc1-1)'"},
+		{
+			script: "echo 'systemd 245 (245.4-4ubuntu3.24)'; echo '+PAM +AUDIT'",
+			err:    `(?s)systemd version 245 is not supported; required >= 248\nUpgrade the host .*`,
+		},
+		{script: "echo 'foo'", err: `cannot parse systemd version: .*`},
+		{script: "echo boom >&2; exit 1", err: `systemctl --version: boom\n`},
+	} {
+		cmd := testutil.FakeCommand(c, "systemctl", t.script)
+		err := osutil.CheckSystemdVersion()
+		c.Check(cmd.Calls(), check.DeepEquals, [][]string{{"systemctl", "--version"}})
+		cmd.Restore()
+		if t.err == "" {
+			c.Check(err, check.IsNil, check.Commentf("%s", t.script))
+			continue
+		}
+		c.Check(err, check.ErrorMatches, t.err, check.Commentf("%s", t.script))
+	}
+}

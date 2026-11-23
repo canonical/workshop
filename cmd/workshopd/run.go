@@ -28,10 +28,15 @@ import (
 	"github.com/canonical/workshop/internal/daemon"
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/logger"
+	"github.com/canonical/workshop/internal/osutil"
 	"github.com/canonical/workshop/internal/syscheck"
 	"github.com/canonical/workshop/internal/systemd"
 	"github.com/canonical/workshop/internal/version"
 )
+
+func init() {
+	syscheck.RegisterCheck(osutil.CheckSystemdVersion)
+}
 
 var shortRunHelp = "Run the workshop daemon"
 var longRunHelp = `
