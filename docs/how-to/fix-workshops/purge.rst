@@ -109,8 +109,9 @@ anything inside the VM could have written to that disk,
 and the host kernel's filesystem code isn't built to withstand
 a disk that was altered on purpose.
 Mounting such a disk can crash the host or give an attacker control of it.
-In a VM, the damage is limited to that VM
-and to the project directory it mounts read-write,
+A VM keeps that damage away from the host kernel,
+but the VM can still change the host directories it mounts read-write,
+including its project directory,
 so recover into a VM whose project directory is empty.
 
 #. In a new, empty directory,
