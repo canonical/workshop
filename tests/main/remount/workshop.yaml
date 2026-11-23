@@ -2,3 +2,8 @@ name: ws-remount
 base: ubuntu@22.04
 sdks:
   - name: test-sdk-mount
+    channel: stable
+    plugs:
+      three:
+        interface: mount
+        workshop-target: /mnt/three

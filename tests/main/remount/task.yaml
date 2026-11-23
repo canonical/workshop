@@ -6,7 +6,7 @@ restore: |
   workshop_exec okay || true
 
   umount /home/ubuntu/other-fs || true
-  rm -rf /home/ubuntu/{one,two,other-fs,two.1,two.2}
+  rm -rf /home/ubuntu/{one,two,three,other-fs,two.1,two.2}
 execute: |
   . "$TESTSLIB"/utils.sh
 
@@ -67,6 +67,23 @@ execute: |
     MATCH 'cannot find source "/home/ubuntu/two\.2" for "ws-remount/test-sdk-mount:two"; using existing directory "/home/ubuntu/two"'
   workshop_exec okay
   workshop_exec warnings | MATCH '^No further warnings.$'
+
+  echo "Remount: a manually connected plug keeps its remount after refresh"
+  # Reconnect a plug by hand so it is not auto-connected, then check that both
+  # its manual status and its remount survive a refresh.
+  workshop_exec disconnect ws-remount/test-sdk-mount:three
+  workshop_exec connect ws-remount/test-sdk-mount:three :mount
+  workshop_exec connections ws-remount | MATCH "^mount\s+ws-remount/test-sdk-mount:three\s+ws-remount/system:mount\s+manual$"
+  manual_source="/home/ubuntu/three"
+  mkdir -p "$manual_source"
+  workshop_exec remount ws-remount/test-sdk-mount:three "$manual_source"
+  workshop_exec info | yq '.sdks["test-sdk-mount"].mounts["three"]' | MATCH "^host-source:.*~/three"
+  # A no-op refresh reports "no updates available" and skips the reconnect
+  # logic, so change the SDK channel to force a real refresh.
+  sed -i 's/channel: stable/channel: edge/' workshop.yaml
+  workshop_exec refresh ws-remount | MATCH 'refreshed$'
+  workshop_exec connections ws-remount | MATCH "^mount\s+ws-remount/test-sdk-mount:three\s+ws-remount/system:mount\s+manual$"
+  workshop_exec info | yq '.sdks["test-sdk-mount"].mounts["three"]' | MATCH "^host-source:.*~/three"
 
   echo "Remount: workshop remove does not delete remounted dirs"
   workshop_exec remove

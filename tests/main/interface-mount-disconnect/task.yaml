@@ -1,0 +1,56 @@
+# Checks that a refresh keeps a manually connected mount plug while its
+# definition is unchanged, and drops it when a definition attribute changes.
+# The mount interface keeps a connection only while every definition attribute
+# on the plug and slot is unchanged.
+summary: Check a mount connection is kept or dropped when its definition changes
+prepare: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec launch ws-mount-disconnect
+restore: |
+  . "$TESTSLIB"/utils.sh
+  workshop_exec remove ws-mount-disconnect
+execute: |
+  . "$TESTSLIB"/utils.sh
+
+  echo "Check the manual connection is established"
+  # A mount plug auto-connects to the host mount slot. Disconnect that and
+  # connect the plug to a workshop slot manually, so the connection is manual.
+  workshop_exec disconnect ws-mount-disconnect/test-sdk-mount:data
+  workshop_exec connect \
+      ws-mount-disconnect/test-sdk-mount:data \
+      ws-mount-disconnect/test-sdk-mount:jobs
+  workshop_exec connections ws-mount-disconnect |
+      MATCH "^mount.+ws-mount-disconnect/test-sdk-mount:data.+ws-mount-disconnect/test-sdk-mount:jobs.+manual$"
+  workshop_exec exec ws-mount-disconnect -- mountpoint -q /mnt/data
+
+  echo "Refresh without changing the mount definition"
+  # A no-op refresh reports "no updates available" and skips the reconnect
+  # logic, so change the SDK channel to force a real refresh. The mount plug
+  # definition is unchanged, which also guards against the recorded mode/uid/gid
+  # attributes being read as changed after their JSON round-trip.
+  sed -i 's/channel: stable/channel: edge/' .workshop.yaml
+  workshop_exec refresh ws-mount-disconnect | MATCH 'refreshed$'
+  workshop_exec connections ws-mount-disconnect |
+      MATCH "^mount.+ws-mount-disconnect/test-sdk-mount:data.+ws-mount-disconnect/test-sdk-mount:jobs.+manual$"
+  workshop_exec exec ws-mount-disconnect -- mountpoint -q /mnt/data
+
+  echo "Move the mount target and refresh"
+  sed -i 's|workshop-target: /mnt/data|workshop-target: /mnt/data2|' .workshop.yaml
+  workshop_exec refresh ws-mount-disconnect |
+      MATCH '^WARNING: There is 1 new warning. See "workshop warnings".$'
+
+  echo "Check the connection is dropped and the mount is gone"
+  workshop_exec connections ws-mount-disconnect |
+      NOMATCH "ws-mount-disconnect/test-sdk-mount:data.+ws-mount-disconnect/test-sdk-mount:jobs.+manual"
+  ! workshop_exec exec ws-mount-disconnect -- mountpoint -q /mnt/data || false
+  ! workshop_exec exec ws-mount-disconnect -- mountpoint -q /mnt/data2 || false
+
+  echo "Check the drop is reported as a warning"
+  workshop_exec warnings |
+      tr -d '\n' |
+      sed -e 's,\s\+, ,g' |
+      MATCH 'disconnected "ws-mount-disconnect/test-sdk-mount:data" from "ws-mount-disconnect/test-sdk-mount:jobs" because its definition changed'
+
+  # Warnings are global state that persists across tests sharing a machine, so
+  # acknowledge this one to keep later tests' warning counts deterministic.
+  workshop_exec okay

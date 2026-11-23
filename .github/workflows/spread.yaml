@@ -71,6 +71,7 @@ jobs:
               tests/main/interface-desktop
               tests/main/interface-gpu
               tests/main/interface-mount
+              tests/main/interface-mount-disconnect
               tests/main/interface-plug-binding
               tests/main/interface-ssh-agent
               tests/main/interface-tunnel
