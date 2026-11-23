@@ -108,12 +108,26 @@ Don't mount it on the host:
 anything inside the VM could have written to that disk,
 and the host kernel's filesystem code isn't built to withstand
 a disk that was altered on purpose.
-Mounting such a disk can crash the host or give an attacker control of it;
-in another VM, the damage stays inside that VM.
+Mounting such a disk can crash the host or give an attacker control of it.
+In a VM, the damage is limited to that VM
+and to the project directory it mounts read-write,
+so recover into a VM whose project directory is empty.
 
-#. Launch a VM workshop to recover the files with,
-   as described in :ref:`how_use_virtual_machines`,
-   and find its instance name the same way.
+#. In a new, empty directory,
+   create a VM workshop to recover the files with and launch it,
+   as described in :ref:`how_use_virtual_machines`:
+
+   .. code-block:: console
+
+      $ mkdir ~/vm-recovery
+      $ cd ~/vm-recovery
+      $ workshop init <RECOVERY-WORKSHOP> --runtime lxd-vm
+      $ workshop launch <RECOVERY-WORKSHOP>
+
+
+   Don't add SDKs to its definition;
+   without them, no interfaces connect the VM to the host.
+   Find its instance name the same way as for the broken workshop.
 
 #. Stop the broken VM if it's still running:
 
@@ -173,6 +187,9 @@ in another VM, the damage stays inside that VM.
       workshop@<RECOVERY-WORKSHOP>:/project$ exit
 
       $ lxc config device remove --project workshop.<USERNAME> <RECOVERY-INSTANCE> recovery
+
+
+   The recovered files are in :file:`~/vm-recovery/workshop-recovery/` on the host.
 
 
 Standard removal procedure
