@@ -172,13 +172,7 @@ func (f *wsOps) TestLxdBackendWorkshopStashUnstash(c *check.C) {
 		Name: "test",
 		Base: "ubuntu@22.04",
 	}
-	image, err := f.bd.GetBase(f.ctx, wf.Base, workshop.RuntimeLXDContainer)
-	c.Assert(err, check.IsNil)
-	err = f.bd.DownloadBase(f.ctx, image, nil)
-	c.Assert(err, check.IsNil)
-	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
-	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
-	c.Assert(err, check.IsNil)
+	helper.LaunchWorkshop(c, f.ctx, f.bd, wf)
 
 	// Unstash workshop.
 	err = f.bd.UnstashWorkshop(f.ctx, "test")
@@ -882,15 +876,8 @@ func (f *wsOps) TestLxdBackendStartSurvivesRebootVM(c *check.C) {
 }
 
 func (f *wsOps) testStartSurvivesReboot(c *check.C, runtime workshop.Runtime) {
-	image, err := f.bd.GetBase(f.ctx, "ubuntu@26.04", runtime)
-	c.Assert(err, check.IsNil)
-	err = f.bd.DownloadBase(f.ctx, image, nil)
-	c.Assert(err, check.IsNil)
-
 	wf := &workshop.File{Name: "test", Base: "ubuntu@26.04", Runtime: runtime}
-	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, runtime, image.Fingerprint)
-	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
-	c.Assert(err, check.IsNil)
+	helper.LaunchWorkshop(c, f.ctx, f.bd, wf)
 	defer helper.RemoveTestWorkshop(c, f.ctx, f.bd)
 
 	conn, err := f.bd.LxdClient(f.ctx)
@@ -1008,6 +995,8 @@ func (f *wsOps) TestLxdBackendWorkshopLaunch(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	wf := &workshop.File{Name: "test", Base: "ubuntu@24.04"}
+	helper.CreateProject(c, f.ctx, f.bd, f.project.Path, wf)
+
 	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
 	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
@@ -1055,13 +1044,7 @@ func (f *wsOps) TestLxdBackendWorkshopRebuild(c *check.C) {
 		Name: "test",
 		Base: "ubuntu@22.04",
 	}
-	image, err := f.bd.GetBase(f.ctx, "ubuntu@22.04", workshop.RuntimeLXDContainer)
-	c.Assert(err, check.IsNil)
-	err = f.bd.DownloadBase(f.ctx, image, nil)
-	c.Assert(err, check.IsNil)
-	snapshot := workshop.BaseOnly(f.bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
-	err = f.bd.LaunchOrRebuildWorkshop(f.ctx, wf, snapshot)
-	c.Assert(err, check.IsNil)
+	snapshot := helper.LaunchWorkshop(c, f.ctx, f.bd, wf)
 
 	// Start workshop.
 	err = f.bd.StartWorkshop(f.ctx, "test")
@@ -1072,7 +1055,7 @@ func (f *wsOps) TestLxdBackendWorkshopRebuild(c *check.C) {
 	rebuilt := f.workshopMetadata(c, "test")
 	c.Check(rebuilt.config["image.workshop-base"], check.Equals, "ubuntu@22.04")
 	c.Check(rebuilt.config["user.workshop.file"], check.Equals, "name: test\nbase: ubuntu@22.04\n")
-	c.Check(rebuilt.config["user.workshop.base-fingerprint"], check.Equals, image.Fingerprint)
+	c.Check(rebuilt.config["user.workshop.base-fingerprint"], check.Equals, snapshot.Image.Fingerprint)
 	maps.DeleteFunc(rebuilt.config, func(k, v string) bool { return modifiedByRebuild(k) })
 	c.Check(rebuilt.config, check.DeepEquals, original.config)
 	c.Check(rebuilt.devices, check.DeepEquals, original.devices)

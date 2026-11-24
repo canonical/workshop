@@ -39,6 +39,8 @@ import (
 )
 
 type wsExec struct {
+	base                string
+	runtime             workshop.Runtime
 	lxdClient           lxd.InstanceServer
 	be                  workshop.Backend
 	ctx                 context.Context
@@ -54,7 +56,15 @@ type wsExec struct {
 	restoreDevices      func()
 }
 
-var _ = check.Suite(&wsExec{})
+type wsExecCtr struct {
+	wsExec
+}
+type wsExecVM struct {
+	wsExec
+}
+
+var _ = check.Suite(&wsExecCtr{base: "ubuntu@24.04", runtime: workshop.RuntimeLXDContainer})
+var _ = check.Suite(&wsExecVM{base: "ubuntu@26.04", runtime: workshop.RuntimeLXDVM})
 
 func (f *wsExec) SetUpSuite(c *check.C) {
 	dirs.SetRootDir(c.MkDir())
@@ -114,7 +124,23 @@ func (f *wsExec) SetUpSuite(c *check.C) {
 		return f.project.ProjectId, nil
 	}, &workshop.NewProjectId)
 
-	helper.LaunchTestWorkshop(c, f.ctx, f.be, f.project.Path)
+	action := `
+pwd
+whoami
+printf '%s\n' "$@"
+`[1:]
+	wf := &workshop.File{
+		Name:    "test",
+		Base:    f.base,
+		Runtime: f.runtime,
+		Actions: map[string]workshop.Action{
+			"info": workshop.Action(action),
+		},
+	}
+	helper.CreateProject(c, f.ctx, f.be, f.project.Path, wf)
+	helper.LaunchWorkshop(c, f.ctx, f.be, wf)
+	err = f.be.StartWorkshop(f.ctx, wf.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (f *wsExec) TearDownSuite(c *check.C) {
@@ -261,7 +287,11 @@ func (f *wsExec) TestLxdBackendExecAddEnvVar(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(env["USER"], check.Equals, "workshop")
 	c.Check(env["HOME"], check.Equals, "/home/workshop")
-	c.Check(env["PATH"], check.Equals, "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin")
+	if f.runtime == workshop.RuntimeLXDContainer {
+		c.Check(env["PATH"], check.Equals, "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin")
+	} else {
+		c.Check(env["PATH"], check.Equals, "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+	}
 	c.Check(env["FOO"], check.Equals, "BAR")
 	c.Check(env["LANG"], check.Equals, "C.UTF-8")
 	c.Check(env["PWD"], check.Equals, "/")

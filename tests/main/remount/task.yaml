@@ -1,4 +1,12 @@
 summary: Check workshop remount scenarios
+
+environment:
+  RUNTIME/ctr: lxd-container
+  RUNTIME/vm: lxd-vm
+
+prepare: |
+  envsubst '${RUNTIME}' < workshop.yaml.in > workshop.yaml
+  chown ubuntu:ubuntu workshop.yaml
 restore: |
   . "$TESTSLIB"/utils.sh
 
@@ -6,7 +14,7 @@ restore: |
   workshop_exec okay || true
 
   umount /home/ubuntu/other-fs || true
-  rm -rf /home/ubuntu/{one,two,other-fs,two.1,two.2}
+  rm -rf /home/ubuntu/{one,two,other-fs,two.*}
 execute: |
   . "$TESTSLIB"/utils.sh
 
@@ -49,22 +57,24 @@ execute: |
   workshop_exec start
 
   echo "Remount: old source removed"
-  workshop_exec remount ws-remount/test-sdk-mount:two "${new_source}.1"
-  rmdir "${new_source}.1"
-  workshop_exec remount ws-remount/test-sdk-mount:two "${new_source}.2" | MATCH "^WARNING: There is 1 new warning. See \"workshop warnings\".$"
-  rmdir "${new_source}.2"
+  temp_source="${new_source}.${SPREAD_VARIANT}.1"
+  workshop_exec remount ws-remount/test-sdk-mount:two "$temp_source"
+  rmdir "$temp_source"
+  temp_source="${new_source}.${SPREAD_VARIANT}.2"
+  workshop_exec remount ws-remount/test-sdk-mount:two "$temp_source" | MATCH "^WARNING: There is 1 new warning. See \"workshop warnings\".$"
+  rmdir "$temp_source"
   mkdir "$new_source"
   workshop_exec remount ws-remount/test-sdk-mount:two "$new_source" | MATCH "^WARNING: There are 2 new warnings. See \"workshop warnings\".$"
   workshop_exec list | MATCH "^WARNING: There are 2 new warnings. See \"workshop warnings\".$"
   workshop_exec warnings |
     tr -d '\n' | # remove newlines
     sed -e 's,\s\+, ,g' | # rename any extra spaces
-    MATCH 'cannot find source "/home/ubuntu/two\.1" for "ws-remount/test-sdk-mount:two"; created directory "/home/ubuntu/two\.2"'
+    MATCH 'cannot find source "/home/ubuntu/two\.'"$SPREAD_VARIANT"'\.1" for "ws-remount/test-sdk-mount:two"; created directory "/home/ubuntu/two\.'"$SPREAD_VARIANT"'\.2"'
   workshop_exec list | NOMATCH "new warning"
   workshop_exec warnings |
     tr -d '\n' | # remove newlines
     sed -e 's,\s\+, ,g' | # rename any extra spaces
-    MATCH 'cannot find source "/home/ubuntu/two\.2" for "ws-remount/test-sdk-mount:two"; using existing directory "/home/ubuntu/two"'
+    MATCH 'cannot find source "/home/ubuntu/two\.'"$SPREAD_VARIANT"'\.2" for "ws-remount/test-sdk-mount:two"; using existing directory "/home/ubuntu/two"'
   workshop_exec okay
   workshop_exec warnings | MATCH '^No further warnings.$'
 

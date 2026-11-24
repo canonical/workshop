@@ -29,6 +29,7 @@ import (
 	lxd "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
 	"gopkg.in/check.v1"
+	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/fsfreeze"
@@ -36,15 +37,6 @@ import (
 	"github.com/canonical/workshop/internal/waitready"
 	"github.com/canonical/workshop/internal/workshop"
 )
-
-var testYaml = `name: test
-base: ubuntu@22.04
-actions:
-  info: |
-    pwd
-    whoami
-    printf '%s\n' "$@"
-`
 
 var MinimalImageServer = "simplestreams:https://cloud-images.ubuntu.com/minimal/releases"
 
@@ -132,41 +124,43 @@ func CreateTestContext(username, projectId string) context.Context {
 }
 
 func LaunchTestWorkshop(c *check.C, ctx context.Context, bd workshop.Backend, dir string) {
-	image, err := bd.GetBase(ctx, "ubuntu@24.04", workshop.RuntimeLXDContainer)
-	c.Assert(err, check.IsNil)
-	err = bd.DownloadBase(ctx, image, nil)
-	c.Assert(err, check.IsNil)
-
 	wf := &workshop.File{
 		Name: "test",
 		Base: "ubuntu@24.04",
-		Actions: map[string]workshop.Action{"info": `
-
-
-
-pwd
-whoami
-printf '%s\n' "$@"
-`},
 	}
+	CreateProject(c, ctx, bd, dir, wf)
+	LaunchWorkshop(c, ctx, bd, wf)
 
-	path := workshop.Filepath(dir, "test")
+	err := bd.StartWorkshop(ctx, "test")
+	c.Assert(err, check.IsNil)
+}
 
-	err = os.MkdirAll(filepath.Dir(path), os.ModePerm)
+func CreateProject(c *check.C, ctx context.Context, bd workshop.Backend, dir string, wf *workshop.File) {
+	path := workshop.Filepath(dir, wf.Name)
+
+	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	c.Assert(err, check.IsNil)
 
-	err = os.WriteFile(path, []byte(testYaml), 0644)
+	data, err := yaml.Marshal(wf)
+	c.Assert(err, check.IsNil)
+	err = os.WriteFile(path, data, 0644)
 	c.Assert(err, check.IsNil)
 
 	_, _, err = bd.CreateOrLoadProject(ctx, dir)
 	c.Assert(err, check.IsNil)
+}
 
-	snapshot := workshop.BaseOnly(bd.FormatRevision(), image.Name, workshop.RuntimeLXDContainer, image.Fingerprint)
+func LaunchWorkshop(c *check.C, ctx context.Context, bd workshop.Backend, wf *workshop.File) workshop.Snapshot {
+	image, err := bd.GetBase(ctx, wf.Base, wf.Runtime)
+	c.Assert(err, check.IsNil)
+	err = bd.DownloadBase(ctx, image, nil)
+	c.Assert(err, check.IsNil)
+
+	snapshot := workshop.BaseOnly(bd.FormatRevision(), image.Name, wf.Runtime, image.Fingerprint)
 	err = bd.LaunchOrRebuildWorkshop(ctx, wf, snapshot)
 	c.Assert(err, check.IsNil)
 
-	err = bd.StartWorkshop(ctx, "test")
-	c.Assert(err, check.IsNil)
+	return snapshot
 }
 
 func RemoveTestWorkshop(c *check.C, ctx context.Context, bd workshop.Backend) {

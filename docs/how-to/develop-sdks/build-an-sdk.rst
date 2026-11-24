@@ -43,7 +43,7 @@ Before starting, ensure you have these requirements satisfied:
 
 - |sdk_markup| installed.
 
-- LXD 6.8 or later running on the host.
+- LXD 6.10 or later running on the host.
 
 - |ws_markup| installed and configured
   so that you can launch a workshop
