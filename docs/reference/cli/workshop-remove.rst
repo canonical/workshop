@@ -7,8 +7,6 @@
 workshop remove
 ---------------
 
-.. @artefact workshop remove
-
 Remove one or many workshops.
 
 .. rubric:: Usage

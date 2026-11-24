@@ -10,9 +10,6 @@ How to configure a mount
 
 .. @tests in tests/docs-how-to/configure-mount/task.yaml
 
-.. @artefact mount interface
-.. @artefact interface plug
-
 This guide shows how to tune ownership and permissions
 on a :samp:`mount` interface plug,
 overriding the defaults that |ws_markup| derives from the target path.

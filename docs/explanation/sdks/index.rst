@@ -6,8 +6,6 @@
 SDKs
 ====
 
-.. @artefact SDK
-
 SDKs are the pre-built, reusable blocks of functionality
 involved in the definition, design, distribution,
 and day-to-day operation of a workshop.

@@ -14,8 +14,6 @@ a practical introduction
 that takes you on a tour
 of the essential |ws_markup| activities.
 
-.. @artefact workshop (container)
-
 A *workshop* is a development environment running in a container,
 mapping your project to its contained dependencies.
 Here, you will practice all the major steps
@@ -36,10 +34,6 @@ Install |ws_markup|
 Install |ws_markup|,
 upgrading the prerequisites if needed,
 then ensure it runs.
-
-.. @artefact installation
-.. @artefact workshopd
-.. @artefact workshop (CLI)
 
 
 Prerequisites
@@ -114,11 +108,6 @@ First, you need to define a workshop.
 A definition is a YAML file that is stored in your project directory;
 it lists the components of the workshop to be instantiated at launch.
 
-.. @artefact sdkcraft (CLI)
-.. @artefact SDK
-.. @artefact SDK publisher
-.. @artefact SDK Store
-
 A definition can list many moving parts;
 perhaps, the most important are SDKs,
 which are basic, predefined building blocks
@@ -134,8 +123,6 @@ For demonstration purposes, assume we want to work with AI models using the
 `Ollama <https://ollama.com/>`__ platform.
 To do this, let's use the :samp:`ollama` SDK,
 which provides a local AI model server.
-
-.. @artefact sdk find
 
 Before adding an SDK to a workshop,
 search the SDK Store to confirm it exists
@@ -159,8 +146,6 @@ and :command:`sdk find agent` lists coding agents packaged as SDKs.
 Before running an agent in a workshop,
 learn :ref:`how to assess agent SDKs <ref_ai_agent_sdks>`
 and :ref:`what a workshop does and doesn't protect <security_coding_agents>`.
-
-.. @artefact sdk info
 
 To see which channels and bases are available for a specific SDK,
 inspect its details:
@@ -197,8 +182,6 @@ the bases each revision supports, and its on-disk size.
 For this tutorial, we'll use :samp:`cpu/stable`,
 which runs on any machine without GPU hardware.
 
-.. @artefact project
-
 For the project directory, create a new Python repository:
 
 .. code-block:: console
@@ -210,8 +193,6 @@ For the project directory, create a new Python repository:
 
 Everything you handle with your workshop goes here:
 your Python code, custom assets, and so on.
-
-.. @artefact workshop definition
 
 In the project directory,
 scaffold a workshop definition with :command:`workshop init`,
@@ -245,8 +226,6 @@ comes from the :samp:`cpu/stable` channel of the :samp:`cpu` track.
 
 To confirm that |ws_markup| sees the definition,
 list the workshops in the project directory:
-
-.. @artefact workshop list
 
 .. code-block:: console
 
@@ -299,8 +278,6 @@ Launch, start, and stop
 
 To get a workshop ready for use, you launch it:
 
-.. @artefact workshop launch
-
 .. code-block:: console
 
    $ workshop launch
@@ -313,8 +290,6 @@ you can start using it to build, debug, and run your code.
 
 After launching, check the runtime information
 to see what went into your workshop:
-
-.. @artefact workshop info
 
 .. code-block:: console
 
@@ -343,8 +318,6 @@ The output looks like the :ref:`definition <tut_define>`
 with extra details such as the :ref:`mounts <tut_interfaces>`;
 ignore these for now.
 
-.. @artefact sdk list
-
 While :command:`workshop info` shows the SDKs from *one* workshop's
 perspective, :command:`sdk list` reports every SDK volume currently
 stored on the machine, regardless of which workshop pulled it:
@@ -364,8 +337,6 @@ it won't appear here;
 at launch, |ws_markup| has pulled the SDK from the SDK Store
 and the revision shown matches the one in :command:`workshop info`.
 
-.. @artefact workshop .lock
-
 After launch, |ws_markup| tracks the project directory
 using a hidden :file:`.workshop.lock` file
 that must remain in the project directory
@@ -381,8 +352,6 @@ The workshop starts automatically at launch,
 but you can also stop and restart it at will.
 Suppose you want to free up some resources, so you stop the workshop:
 
-.. @artefact workshop stop
-
 .. code-block:: console
 
    $ workshop stop
@@ -390,8 +359,6 @@ Suppose you want to free up some resources, so you stop the workshop:
 This changes the status of the workshop to *Stopped*.
 
 To make it *Ready* again, start the workshop:
-
-.. @artefact workshop start
 
 .. code-block:: console
 
@@ -464,8 +431,6 @@ and refresh the workshop:
      - name: ollama
        channel: vulkan/stable
 
-.. @artefact workshop refresh
-
 .. code-block:: console
 
    $ workshop refresh
@@ -512,8 +477,6 @@ First, let's put our example workshop to practical use;
 download a simple AI model *inside the workshop*
 using the :command:`workshop exec` command.
 We'll use the :samp:`tinyllama` model, which is small and quick to download:
-
-.. @artefact workshop exec
 
 .. code-block:: console
 
@@ -562,8 +525,6 @@ if you need to perform multiple operations within a session.
 for the default nonprivileged user,
 who's also named :samp:`workshop`:
 
-.. @artefact workshop shell
-
 .. code-block:: console
 
    $ workshop shell
@@ -586,8 +547,6 @@ who's also named :samp:`workshop`:
 
 Reusable actions
 ~~~~~~~~~~~~~~~~
-
-.. @artefact workshop actions
 
 For complex commands that you run often,
 define actions in your workshop definition
@@ -664,8 +623,6 @@ To see how |ws_markup| keeps track of its activities around a project,
 check out the recent major operations, or changes,
 with :command:`workshop changes`:
 
-.. @artefact workshop changes
-
 .. code-block:: console
 
    $ workshop changes
@@ -684,8 +641,6 @@ To look at the latest change,
 run the :command:`workshop tasks` command without an argument.
 To find out which tasks went into a certain change,
 pass the change ID to the command:
-
-.. @artefact workshop tasks
 
 .. code-block:: console
 

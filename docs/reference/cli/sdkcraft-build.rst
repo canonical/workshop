@@ -7,8 +7,6 @@
 sdkcraft build
 --------------
 
-.. @artefact sdkcraft build
-
 Build artifacts defined for a part
 
 .. rubric:: Usage

@@ -7,8 +7,6 @@
 workshop disconnect
 -------------------
 
-.. @artefact workshop disconnect
-
 Disconnect a plug or a slot.
 
 .. rubric:: Usage

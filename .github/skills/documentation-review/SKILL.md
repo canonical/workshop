@@ -192,7 +192,5 @@ If any stage could not be completed, add an "Incomplete Stages" section to the r
   without explicit request.
 - Before restructuring large documentation sections
   (for example, moving files between tutorial and how-to), ask first.
-- Before suggesting new coverage entities, categories,
-  or metadata patterns, ask first.
 - If code examples seem correct
   but do not match your understanding of the codebase, ask first.

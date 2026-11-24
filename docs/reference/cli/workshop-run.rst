@@ -7,8 +7,6 @@
 workshop run
 ------------
 
-.. @artefact workshop run
-
 Run a named action from the workshop definition.
 
 .. rubric:: Usage

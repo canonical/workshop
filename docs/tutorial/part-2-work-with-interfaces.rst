@@ -18,9 +18,6 @@ where you learned how to create and run workshops.
 Here, you will learn how to make better use of SDKs in your workshop
 and integrate them with the host system.
 
-.. @artefact interface
-.. @artefact system SDK
-
 SDKs use interfaces to interact in an organized manner,
 exposing the resources they provide via slots and consuming them via plugs;
 the layout of these plugs and slots is defined by the SDK publishers.
@@ -35,8 +32,6 @@ Manage connections
 ------------------
 
 To check out the connected interfaces of a workshop, list the connections:
-
-.. @artefact workshop connections
 
 .. code-block:: console
 
@@ -68,9 +63,6 @@ without connecting it manually.
 In any case, you can connect and disconnect interfaces at will.
 To check the connection state, run :command:`workshop connections`:
 
-.. @artefact workshop connect
-.. @artefact workshop disconnect
-
 .. code-block:: console
 
    $ workshop disconnect dev/ollama:models
@@ -92,8 +84,6 @@ For example, to preserve models,
 conventionally stored under :file:`~/.ollama/models/`,
 after the workshop is removed or use some models downloaded previously,
 you can remount to a directory in your home:
-
-.. @artefact workshop remount
 
 .. code-block:: console
    :emphasize-lines: 18-21
@@ -153,8 +143,6 @@ to run Jupyter notebooks with the Ollama models:
        channel: vulkan/stable
      - name: jupyter
 
-
-.. @artefact tunnel interface
 
 Next, add the tunnel interface plug under the :samp:`system` SDK
 in the workshop definition;

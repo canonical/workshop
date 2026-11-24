@@ -8,13 +8,6 @@
 How to write runtime hooks
 ==========================
 
-.. @artefact SDK hook
-.. @artefact setup-base
-.. @artefact setup-project
-.. @artefact check-health
-.. @artefact save-state
-.. @artefact restore-state
-
 This guide shows how to write each of the five
 runtime hooks an SDK can ship,
 with a synthesized SDK that exercises the contract differences:

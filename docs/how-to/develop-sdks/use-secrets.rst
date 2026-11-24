@@ -11,9 +11,6 @@ How to use secrets in an SDK
 
 .. @tests in tests/docs-how-to/use-secrets/task.yaml
 
-.. @artefact secret interface
-.. @artefact workshopctl get-secret
-
 An SDK that needs a credential at runtime,
 such as an API key,
 declares a :samp:`secret` plug.

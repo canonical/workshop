@@ -9,8 +9,6 @@
 Custom device interface
 =======================
 
-.. @artefact custom-device interface
-
 The custom device interface
 enables access to arbitrary host devices inside the workshop,
 identified by the device *subsystem* they belong to
@@ -45,8 +43,6 @@ which can unlock additional SDK functionality.
 
 Device subsystems
 -----------------
-
-.. @artefact custom-device interface attributes
 
 The :samp:`subsystem` attribute for a given device
 is defined by the Linux kernel.
@@ -106,9 +102,6 @@ for security reasons.
 The :command:`workshop connect` and :command:`workshop disconnect` commands
 can be invoked manually after the workshop has started:
 
-.. @artefact workshop connect
-.. @artefact workshop disconnect
-
 .. code-block:: console
 
    $ workshop connect ws/input-sdk:input-device :custom-device
@@ -124,8 +117,6 @@ whereas unplugged devices will also be removed from the workshop.
 
 To check if the interface is connected:
 
-.. @artefact workshop connections
-
 .. code-block:: console
 
    $ workshop connections --all
@@ -137,8 +128,6 @@ To check if the interface is connected:
 
 This means the host's devices from the given subsystem
 are available inside the workshop:
-
-.. @artefact workshop shell
 
 .. code-block:: console
 

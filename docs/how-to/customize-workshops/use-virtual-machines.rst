@@ -9,9 +9,6 @@
 How to use virtual machines
 ===========================
 
-.. @artefact workshop init
-.. @artefact workshop info
-
 A workshop runs in an LXD container unless its definition says otherwise.
 |ws_markup| can instead run it as a full virtual machine
 with a kernel of its own,
@@ -159,8 +156,6 @@ for reaching a workshop by hostname.
 Limitations
 -----------
 
-.. @artefact workshop refresh
-
 Virtual machine workshops are not at parity with containers.
 The differences below change what you can do with one.
 
@@ -207,8 +202,6 @@ A future |ws_markup| release will remove this limitation.
 
 Sessions end when the host suspends
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. @artefact workshop shell
 
 If the host suspends for 35 seconds or longer,
 :command:`workshop shell` sessions exit abruptly when the host resumes.

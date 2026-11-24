@@ -10,9 +10,6 @@
 How to provide secrets to a workshop
 ====================================
 
-.. @artefact secret interface
-.. @artefact workshop exec
-
 Some SDKs need a credential at runtime,
 such as an API key for an AI coding agent.
 |ws_markup| can deliver that credential to the workshop

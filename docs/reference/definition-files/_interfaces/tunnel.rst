@@ -6,8 +6,6 @@
 Tunnel interface
 ~~~~~~~~~~~~~~~~
 
-.. @artefact tunnel interface
-
 The tunnel interface forwards a network address or Unix domain socket.
 
 Both tunnel plugs and tunnel slots take a single attribute:

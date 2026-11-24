@@ -34,10 +34,6 @@ to provide container-isolated development environments.
 Workshops and projects
 ----------------------
 
-.. @artefact project
-.. @artefact workshop (container)
-.. @artefact workshop definition
-
 Workshops are development environments, each running in a container,
 mapping your project to its contained dependencies.
 In turn, a project is a working directory
@@ -54,8 +50,6 @@ where multiple workshop definitions can be placed.
 
 SDKs
 ----
-
-.. @artefact SDK
 
 SDKs are packages of software dependencies that can be installed in workshops
 to create tailored development environments.

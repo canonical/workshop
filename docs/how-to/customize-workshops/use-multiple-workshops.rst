@@ -11,9 +11,6 @@ How to use multiple workshops in a project
 
 .. @tests in tests/docs-how-to/use-multiple-workshops/task.yaml
 
-.. @artefact project workshops
-.. @artefact workshop definition
-
 A project may require different toolchains for different components,
 such as a Go backend and a Node.js frontend.
 Instead of putting everything into a single workshop definition,
@@ -26,8 +23,6 @@ mounted at :file:`/project/`.
 
 Set up definitions
 ------------------
-
-.. @artefact workshop name
 
 When a project uses multiple workshops,
 store their definitions in the :file:`.workshop/` subdirectory
@@ -103,8 +98,6 @@ as described in a section below.
 Launch and manage workshops
 ---------------------------
 
-.. @artefact workshop launch
-
 Launch both workshops at once:
 
 .. code-block:: console
@@ -117,8 +110,6 @@ the workshop name is required in every command;
 you cannot omit it as you would with a single-workshop project.
 
 Check the status of both workshops:
-
-.. @artefact workshop list
 
 .. code-block:: console
 
@@ -201,8 +192,6 @@ When you no longer need the workshops, remove them:
 Share in-project tools
 ----------------------
 
-.. @artefact in-project SDK
-
 If multiple workshops need the same custom tooling,
 define an in-project SDK
 rather than duplicating hooks or configuration.
@@ -248,8 +237,6 @@ refresh the workshops to pick up the change:
 
 Cross-workshop networking
 -------------------------
-
-.. @artefact tunnel interface
 
 Workshops in the same project can reach each other directly by hostname.
 For instance, given a running :samp:`backend` workshop,

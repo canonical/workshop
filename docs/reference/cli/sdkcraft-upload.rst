@@ -7,8 +7,6 @@
 sdkcraft upload
 ---------------
 
-.. @artefact sdkcraft upload
-
 Upload an SDK artifact to the store
 
 .. rubric:: Usage

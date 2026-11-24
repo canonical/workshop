@@ -10,8 +10,6 @@
 Secret interface
 ================
 
-.. @artefact secret interface
-
 The secret interface lets an SDK use a credential,
 such as an API key,
 that stays in the user's host keyring.
@@ -112,9 +110,6 @@ see :ref:`exp_interface_auto_connection`.
 Users connect and disconnect the plug
 with :command:`workshop connect` and :command:`workshop disconnect`:
 
-.. @artefact workshop connect
-.. @artefact workshop disconnect
-
 .. code-block:: console
 
    $ workshop connect dev/secret-demo:api-key dev/system:demo-key
@@ -122,8 +117,6 @@ with :command:`workshop connect` and :command:`workshop disconnect`:
 
 
 The connection is listed as manual:
-
-.. @artefact workshop connections
 
 .. code-block:: console
 
@@ -179,8 +172,6 @@ A process can request the value in two ways.
 
 Command requests
 ~~~~~~~~~~~~~~~~
-
-.. @artefact workshopctl get-secret
 
 A command runs :command:`workshopctl get-secret <SDK>.<PLUG>`,
 typically in a wrapper script that a secret-consuming SDK ships.

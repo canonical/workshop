@@ -7,8 +7,6 @@
 sdk find
 --------
 
-.. @artefact sdk find
-
 Search the Store for SDKs.
 
 .. rubric:: Usage

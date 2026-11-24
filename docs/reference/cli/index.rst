@@ -13,11 +13,6 @@ for building and publishing SDKs on the host,
 and :program:`workshopctl`
 for SDK hooks to report state from inside a running workshop:
 
-.. @artefact workshop (CLI)
-.. @artefact sdk (CLI)
-.. @artefact sdkcraft (CLI)
-.. @artefact workshopctl
-
 .. toctree::
    :maxdepth: 1
 

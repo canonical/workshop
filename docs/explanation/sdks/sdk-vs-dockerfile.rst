@@ -9,9 +9,6 @@
 How SDKs compare to Dockerfiles
 ===============================
 
-.. @artefact SDK
-.. @artefact workshop (container)
-
 |ws_markup| didn't occur in a vacuum;
 there have been many attempts to provide developers with robust environments.
 A common approach is to use Docker
@@ -92,8 +89,6 @@ Parts and layers
 Docker relies on a temporally layered approach,
 where each change is built on top of the previous one.
 
-.. @artefact SDK hook
-
 Our SDKs are structured using :ref:`parts <exp_sdk_parts>`;
 their expressiveness makes them more diverse and semantically rich,
 allowing the layout of an SDK to be formalized in a modular way.
@@ -159,8 +154,6 @@ you need to mount a lot of directories to make it work,
 and the handling of these mounts both inside and outside the container
 can quickly become an overhead.
 
-.. @artefact SDK
-
 |ws_markup| addresses this issue by providing a way
 to reuse and share content between the host and the workshop via SDKs
 while keeping manual intervention to a necessary minimum.
@@ -193,8 +186,6 @@ you use the :samp:`mount` interface
 to define the target directory
 where the content will be mounted inside the workshop
 per each directory you want to retain during the workshop's lifecycle.
-
-.. @artefact sdkcraft (CLI)
 
 .. code-block:: yaml
    :caption: sdkcraft.yaml
@@ -269,8 +260,6 @@ it explicitly lists the host directories to be mounted to each target.
 This can also be done with |ws_markup|,
 and the :command:`workshop remount` command is the key to it:
 
-.. @artefact workshop remount
-
 .. code-block:: console
 
    $ workshop remount data/data-science:share-cache ~/.local/cache/
@@ -284,8 +273,6 @@ under the :samp:`data-science` SDK in the :samp:`data` workshop defined above.
 Feature mapping
 ---------------
 
-.. @artefact SDK publisher
-
 Any attempt at a straightforward comparison of these different,
 albeit vaguely similar, technologies is mostly futile.
 Again, a key difference is that a Dockerfile is controlled by the user,
@@ -298,9 +285,6 @@ so the functionality is split between the user-oriented |ws_markup|
 and the publisher-focused |sdk_markup|.
 
 Important Dockerfile instructions are mapped to |sdk_markup| as follows:
-
-.. @artefact check-health
-.. @artefact SDK definition
 
 
 .. list-table::
@@ -438,8 +422,6 @@ Its counterpart in |ws_markup| is the *project directory*
 where the workshop was defined and launched;
 it is automatically mounted as :file:`/project/` when the workshop is started:
 
-.. @artefact workshop launch
-
 .. code-block:: console
 
    $ workshop launch ros2jazzy  # must be run in the project directory
@@ -496,8 +478,6 @@ have no direct counterpart to bind mounts;
 plugs are more similar to Docker volumes.
 Yet, the :command:`workshop remount` command
 enables remounting existing plugs to new host directories:
-
-.. @artefact workshop remount
 
 .. code-block:: console
 

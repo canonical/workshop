@@ -8,9 +8,6 @@
 Workshop definition
 ===================
 
-.. @artefact project
-.. @artefact workshop definition
-
 A *workshop definition* is the YAML file
 that |ws_markup| reads to launch and refresh a workshop.
 It names the base image, lists the SDKs to install,
@@ -21,9 +18,6 @@ The file is authored by the workshop's user.
 
 Filename and location
 ---------------------
-
-.. @artefact project workshops
-.. @artefact workshop name
 
 A project may store a single workshop definition at its root,
 or several under :file:`.workshop/`.
@@ -127,9 +121,6 @@ Nested structures
 
 SDK entry
 ~~~~~~~~~
-
-.. @artefact plug binding
-.. @artefact $SDK
 
 Each item in :samp:`sdks` is an object with these fields:
 
@@ -280,8 +271,6 @@ cannot also be listed in :samp:`connections`.
 Action entry
 ~~~~~~~~~~~~
 
-.. @artefact workshop actions
-
 Each entry in :samp:`actions` maps an action name to a shell script body:
 
 .. list-table::
@@ -342,8 +331,6 @@ a workshop may graft additional plugs and slots that follow them.
 
 JSON Schema
 -----------
-
-.. @artefact workshop schema
 
 The following JSON Schema describes the structure above:
 

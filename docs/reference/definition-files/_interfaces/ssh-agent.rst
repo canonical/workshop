@@ -6,8 +6,6 @@
 SSH interface
 ~~~~~~~~~~~~~
 
-.. @artefact SSH interface
-
 The SSH interface exposes the user's SSH agent socket.
 
 - Plug attributes: none.

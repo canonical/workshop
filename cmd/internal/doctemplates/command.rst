@@ -7,8 +7,6 @@
 {{ .CommandName }}
 {{ repeat "-" .HeadingLen }}
 
-.. @artefact {{ .CommandName }}
-
 {{ .Short | trimSuffix "." }}.
 
 .. rubric:: Usage

@@ -8,10 +8,6 @@
 Plugs and slots
 ===============
 
-.. @artefact interface plug
-.. @artefact interface slot
-.. @artefact interface connection
-
 A workshop is a graph of capabilities.
 Each SDK can act as a provider, a consumer, or both,
 and the wiring between them

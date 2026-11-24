@@ -8,10 +8,6 @@
 SDK concepts
 ============
 
-.. @artefact SDK
-.. @artefact SDK publisher
-.. @artefact SDK Store
-
 With |sdk_markup|, you can package and publish software dependencies
 as isolated *SDKs* to be used in a workshop definition by |ws_markup|,
 instead of managing them system-wide or through container images.
@@ -33,8 +29,6 @@ SDKs are distributed through channels similar to
 SDK definition
 --------------
 
-.. @artefact SDK definition
-
 An SDK is described by two YAML files, one for building and one for installing:
 
 - :file:`sdkcraft.yaml`, authored by the SDK publisher,
@@ -48,8 +42,6 @@ A workshop pulls SDKs together through its own :file:`workshop.yaml`.
 
 A build-time definition looks like this:
 
-.. @artefact sdkcraft (CLI)
-
 .. literalinclude:: ../../examples/go-sdkcraft.yaml
    :language: yaml
    :caption: sdkcraft.yaml
@@ -57,8 +49,6 @@ A build-time definition looks like this:
 
 Runtime hooks
 -------------
-
-.. @artefact SDK hook
 
 |ws_markup| and |sdk_markup| enable optional runtime hooks
 that let an SDK extend the workshop's internal behavior.
@@ -74,8 +64,6 @@ is handled by the :samp:`save-state` and :samp:`restore-state` hooks.
 
 SDK platforms
 -------------
-
-.. @artefact SDK platforms
 
 Platforms describe where SDKs can be built and installed.
 Some SDKs include compiled code,
@@ -99,8 +87,6 @@ can use the :samp:`all` architecture instead.
 
 SDK Store
 ---------
-
-.. @artefact SDK channel
 
 The SDK Store is where an SDK stops being a local artifact
 and becomes something anyone can install.
@@ -163,8 +149,6 @@ A published SDK is packaged once and consumed anywhere.
 System SDK
 ----------
 
-.. @artefact system SDK
-
 Every workshop contains a special *system SDK*
 that exposes system resources through its slots.
 It cannot be installed from the SDK Store.
@@ -187,8 +171,6 @@ just as with any other SDK.
 
 Sketch SDK
 ----------
-
-.. @artefact sketch SDK
 
 The sketch SDK is another special type of SDK.
 Like the system SDK, it's unavailable from the SDK Store;
@@ -216,8 +198,6 @@ and the sketch SDK is always installed last.
 
 Testing and trying SDKs
 -----------------------
-
-.. @artefact sdkcraft (CLI)
 
 
 Once an SDK is packed,
@@ -249,8 +229,6 @@ However, this version can be tested in multiple workshops with different :ref:`b
 
 In-project SDKs
 ---------------
-
-.. @artefact in-project SDK
 
 An *in-project SDK* resides within your project's :file:`.workshop/` directory.
 Unlike regular SDKs, which are published and distributed through the SDK Store,

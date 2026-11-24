@@ -7,8 +7,6 @@
 sdkcraft login
 --------------
 
-.. @artefact sdkcraft login
-
 Log in to the SDK Store
 
 .. rubric:: Usage

@@ -8,13 +8,6 @@
 Design best practices
 =====================
 
-.. @artefact SDK
-.. @artefact SDK part
-.. @artefact SDK hook
-.. @artefact setup-base
-.. @artefact setup-project
-.. @artefact check-health
-
 When crafting SDKs for |ws_markup|,
 publishers face design decisions
 that affect how their SDKs install, integrate, and work inside workshops.

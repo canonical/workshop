@@ -10,8 +10,6 @@ How to manage Python environments with the uv SDK
 
 .. @tests in tests/docs-how-to/manage-python-environments/task.yaml
 
-.. @artefact uv SDK
-
 The :samp:`uv` SDK is the recommended way to manage Python projects in |ws_markup|.
 It ships :program:`uv` and :program:`uvx`,
 aliases :program:`pip` to :program:`uv pip` for compatibility,
@@ -86,8 +84,6 @@ Inspect what the SDK configures
 
 The SDK applies a few defaults
 so that :program:`uv` works correctly with the workshop's storage layout:
-
-.. @artefact UV_LINK_MODE
 
 - :envvar:`UV_LINK_MODE` is set to :samp:`copy` in the workshop user's environment
   because the persistent cache mount does not support hard links.

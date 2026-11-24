@@ -19,8 +19,6 @@ Follow these stages sequentially to perform a complete review. Do not skip stage
 **Actions**:
 1.  **Load Project Context**:
     - Identify affected packages and their dependencies.
-    - Parse `docs/.coverage.yaml` to understand documented entities.
-    - Parse `docs/coverage.md` to see current documentation locations.
     - Review PR description for stated intent and reversibility rationale.
 2.  **Map Changed Entities**: Build an internal map of:
     - New or modified public APIs, types, functions, methods
@@ -101,10 +99,10 @@ Follow these stages sequentially to perform a complete review. Do not skip stage
 
 **Outcome**: Identification of API/CLI surface changes and compatibility concerns.
 
-### Stage 6: Documentation Completeness (Coverage-based with Verification)
-**Intent**: Use the repository's coverage mechanism to detect documentation gaps for the code under review, then **verify all findings against the actual documentation corpus** before reporting. This mandatory verification pass prevents false positives by requiring evidence-based claims.
+### Stage 6: Documentation Completeness (with Verification)
+**Intent**: Detect documentation gaps for the code under review by searching the documentation corpus, then **verify all findings** before reporting. This mandatory verification pass prevents false positives by requiring evidence-based claims.
 
-**Inputs**: Coverage map (from Stage 1), changed entities (from Stage 1), [`docs/.coverage.yaml`](../../docs/.coverage.yaml), [`docs/coverage.md`](../../docs/coverage.md), full documentation corpus in `docs/`.
+**Inputs**: Changed entities (from Stage 1), full documentation corpus in `docs/`.
 
 **Sub-stage A: Discovery Scan (Initial Hypothesis Formation)**
 
@@ -116,8 +114,8 @@ Follow these stages sequentially to perform a complete review. Do not skip stage
     -   List all changed behaviors, error messages, or user-visible outputs
     -   List all new or modified interfaces or SDK connection types
 2.  **Quick Coverage Check**:
-    -   For each entity, check if it exists in `docs/.coverage.yaml`
-    -   For each entity in `.coverage.yaml`, check its presence in `docs/coverage.md` across all Diátaxis pillars:
+    -   For each entity, search `docs/**` for its name and code identifiers (command, flag, option, or interface name)
+    -   From the matches, note where the entity appears across the Diátaxis pillars (`docs/tutorial/`, `docs/how-to/`, `docs/explanation/`, `docs/reference/`):
         -   **Tutorial**: Is there a learning-oriented, step-by-step lesson that introduces this?
         -   **How-to**: Is there a task-oriented guide that shows how to use this for a specific goal?
         -   **Reference**: Is there an information-oriented lookup entry that describes this exhaustively?
@@ -153,7 +151,7 @@ Follow these stages sequentially to perform a complete review. Do not skip stage
 
 2.  **Check Alternative Locations**:
     
-    Even if not in coverage map, check these canonical locations:
+    Even if the quick check found no matches, check these canonical locations:
     
     - **CLI Reference**: `docs/reference/cli/` and `docs-gendocs/`
     - **Index pages**: `docs/*/index.rst`, `docs/index.rst`
@@ -217,7 +215,7 @@ Follow these stages sequentially to perform a complete review. Do not skip stage
     For each issue, include:
     
     ```markdown
-    **Entity: `<entity-name>`** (ref: `docs/.coverage.yaml` line X, category: Y, type: Z)
+    **Entity: `<entity-name>`** (type: command | flag | option | API | interface | behavior)
     
     - **Current Coverage**:
       - Tutorial: [file:line or "Missing"]
@@ -242,10 +240,8 @@ Follow these stages sequentially to perform a complete review. Do not skip stage
     - For "Present but Outdated": Specify exact outdated content to update
     - For "Confirmed Missing": Suggest minimal addition using existing doc patterns
 
-4.  **Link to Coverage Artefacts**:
+4.  **Cite Evidence**:
     
-    - Reference specific entries in `docs/.coverage.yaml` (entity name, category, type, specs)
-    - Reference specific locations in `docs/coverage.md` (current coverage status)
     - Include line numbers and file paths for all evidence
 
 **Outcome**: A final, evidence-based documentation gap report containing ONLY verified issues with supporting evidence and conservative, actionable recommendations.
@@ -390,7 +386,7 @@ All changed entities are properly documented across appropriate Diátaxis pillar
 ### Always Do
 -   **Reference `docs/coding-style-guide.md`** when making style suggestions.
 -   Check commit message format against [`docs/contributing/development.rst`](../../docs/contributing/development.rst).
--   Use the coverage mechanism (`docs/.coverage.yaml` and `docs/coverage.md`) to identify documentation gaps.
+-   Search the documentation corpus (`docs/**`) to identify documentation gaps for changed entities.
 -   **Complete verification pass (Stage 6, Sub-stage B)** before reporting documentation findings — search actual docs corpus with ≥2 query variants.
 -   **Provide evidence for all documentation claims**: Include search terms, file paths, line numbers, or explicit "no matches" statements.
 -   Flag security concerns (secrets, privilege escalation, input validation) immediately.
@@ -400,7 +396,6 @@ All changed entities are properly documented across appropriate Diátaxis pillar
 -   Before suggesting architectural changes that affect multiple packages.
 -   Before recommending removal of code that may be used in tests.
 -   If uncertain whether a change is breaking.
--   Before suggesting new coverage entities, categories, or metadata patterns in `.coverage.yaml`.
 
 ### Never Do
 -   Suggest bypassing test coverage for new features.

@@ -9,8 +9,6 @@ How to run JupyterLab in your browser
 
 .. @tests made redundant by tests/docs-tutorial/part-3/task.yaml
 
-.. @artefact workshop (container)
-
 A JupyterLab instance can run inside a workshop
 and be accessed from your browser via the :samp:`jupyter` SDK.
 

@@ -7,8 +7,6 @@
 sdkcraft pack
 -------------
 
-.. @artefact sdkcraft pack
-
 Create the final artifact
 
 .. rubric:: Usage

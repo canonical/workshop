@@ -7,8 +7,6 @@
 workshop shell
 --------------
 
-.. @artefact workshop shell
-
 Start an interactive terminal session for the workshop.
 
 .. rubric:: Usage

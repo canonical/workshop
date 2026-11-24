@@ -12,8 +12,6 @@ How to use host devices
 
 .. @tests in tests/docs-how-to/use-host-devices/task.yaml
 
-.. @artefact custom-device interface
-
 |ws_markup| exposes arbitrary host devices to a workshop
 through the custom device interface,
 identified by the device *subsystem* they belong to
@@ -41,8 +39,6 @@ Before starting, ensure you have these requirements satisfied:
 
 Identify the device attributes
 ------------------------------
-
-.. @artefact custom-device interface attributes
 
 Every device node on the host belongs to a subsystem
 defined by the Linux kernel.
@@ -163,8 +159,6 @@ Then reference the in-project SDK from the workshop definition:
 Connect the interface
 ---------------------
 
-.. @artefact workshop connect
-
 Launch the workshop to install the SDK:
 
 .. code-block:: console
@@ -196,8 +190,6 @@ and detached devices disappear.
 Verify the connection
 ---------------------
 
-.. @artefact workshop connections
-
 List the connections to confirm the plug is wired to the slot.
 The :option:`!--all` flag includes disconnected plugs:
 
@@ -216,8 +208,6 @@ rather than one established automatically at launch.
 Access the devices
 ------------------
 
-.. @artefact workshop shell
-
 Open a shell in the workshop
 and list the matching devices:
 
@@ -232,8 +222,6 @@ and list the matching devices:
 The matching host devices are now reachable inside the workshop.
 
 To revoke access, disconnect the plug:
-
-.. @artefact workshop disconnect
 
 .. code-block:: console
 

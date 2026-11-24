@@ -7,8 +7,6 @@
 sdkcraft try
 ------------
 
-.. @artefact sdkcraft try
-
 Try SDKs before publishing
 
 .. rubric:: Usage

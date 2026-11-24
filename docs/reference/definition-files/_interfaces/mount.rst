@@ -6,9 +6,6 @@
 Mount interface
 ~~~~~~~~~~~~~~~
 
-.. @artefact mount interface
-.. @artefact $SDK
-
 The mount interface exposes a directory between a slot owner and a plug owner.
 
 A mount plug is described by these attributes:

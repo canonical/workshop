@@ -5,10 +5,6 @@
 SDK and workshop definition files
 =================================
 
-.. @artefact SDK
-.. @artefact workshop definition
-.. @artefact SDK definition
-
 Three YAML files describe what a workshop is
 and how the SDKs inside it behave.
 Each file has one authoritative reference page:

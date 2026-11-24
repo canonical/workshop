@@ -7,8 +7,6 @@
 sdk (CLI)
 =========
 
-.. @artefact sdk (CLI)
-
 The :program:`sdk` utility exposes the following commands,
 each with its own set of options,
 and also has a number of global flags:

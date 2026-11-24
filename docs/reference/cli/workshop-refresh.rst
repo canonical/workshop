@@ -7,8 +7,6 @@
 workshop refresh
 ----------------
 
-.. @artefact workshop refresh
-
 Update workshops according to their definitions.
 
 .. rubric:: Usage

@@ -7,8 +7,6 @@
 sdkcraft whoami
 ---------------
 
-.. @artefact sdkcraft whoami
-
 Display login information
 
 .. rubric:: Usage

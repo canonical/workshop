@@ -8,12 +8,6 @@
 SDK lifecycle
 =============
 
-.. @artefact SDK
-.. @artefact SDK Store
-.. @artefact in-project SDK
-.. @artefact sketch SDK
-.. @artefact sdkcraft (CLI)
-
 An SDK rarely springs into existence ready to publish.
 It usually starts as a quick local hack,
 hardens into a project-private artifact,

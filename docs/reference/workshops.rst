@@ -13,9 +13,6 @@ This topic speaks about what goes into building and running a workshop.
 What a workshop is
 ------------------
 
-.. @artefact workshop (container)
-.. @artefact workshopd
-
 A workshop is a development environment running in a container,
 mapping your project to its contained dependencies.
 It is fully described in a :ref:`definition file <ref_workshop_definition>`.
@@ -26,9 +23,6 @@ but that is an implementation detail and potential subject to change.
 
 When you launch a workshop, you create and start a container with a base image.
 The image is downloaded from the container engine server and cached locally.
-
-.. @artefact SDK
-.. @artefact SDK Store
 
 On top of the base image, one or more SDKs are usually applied,
 which provide tools for development and runtime tasks.
@@ -56,10 +50,6 @@ preserving consistent ownership and permissions.
 User sessions and ID mapping
 ----------------------------
 
-.. @artefact workshop exec
-.. @artefact workshop run
-.. @artefact workshop shell
-
 By default, all commands that execute something inside a workshop
 (:command:`exec`, :command:`run`, :command:`shell`)
 run login shells as :samp:`uid=1000` and :samp:`gid=1000`,
@@ -77,8 +67,6 @@ However, you may need to restart the session to see the effect.
 
 How workshops are built
 -----------------------
-
-.. @artefact workshop launch
 
 At the container launch, |ws_markup| does the following:
 
@@ -120,8 +108,6 @@ tailored to a specific project.
 
 How workshops are updated
 -------------------------
-
-.. @artefact workshop refresh
 
 |ws_markup| has a refresh manager that tracks all updates in a workshop
 (changes to the base image, adding or removing SDKs, updates to the definition)
@@ -241,8 +227,6 @@ When a workshop is removed, the :program:`apt` cache directory is removed as wel
 
 Interfaces
 ----------
-
-.. @artefact interface
 
 As a reminder, |ws_markup| enforces resource access with plugs and slots.
 A plug requests a resource (for example, the GPU or a socket),

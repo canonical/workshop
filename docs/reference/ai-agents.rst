@@ -10,9 +10,6 @@
 Workshop and AI agents
 ======================
 
-.. @artefact SDK
-.. @artefact workshop (container)
-
 |ws_markup| integrates with AI coding agents,
 exposing documentation as Markdown that agents can fetch and parse directly,
 or retrieve through Context7,
@@ -178,9 +175,6 @@ and publishes the SDK to the SDK Store.
 
 Agent SDKs
 ----------
-
-.. @artefact sdk find
-.. @artefact sdk info
 
 Coding agents are published as SDKs on the SDK Store.
 Search for them with :command:`sdk find`:

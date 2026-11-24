@@ -7,8 +7,6 @@
 sdkcraft prime
 --------------
 
-.. @artefact sdkcraft prime
-
 Prime artifacts defined for a part
 
 .. rubric:: Usage

@@ -7,8 +7,6 @@
 workshop actions
 ----------------
 
-.. @artefact workshop actions
-
 List the named actions defined in a workshop.
 
 .. rubric:: Usage

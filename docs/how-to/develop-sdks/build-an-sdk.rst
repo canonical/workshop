@@ -11,18 +11,6 @@ How to build an SDK
 
 .. @tests in tests/docs-how-to/build-an-sdk/task.yaml
 
-.. @artefact SDK
-.. @artefact SDK definition
-.. @artefact SDK hook
-.. @artefact SDK part
-.. @artefact sdkcraft (CLI)
-.. @artefact setup-base
-.. @artefact setup-project
-.. @artefact check-health
-.. @artefact save-state
-.. @artefact restore-state
-.. @artefact try SDK
-
 A standalone SDK is a |sdk_markup| project
 with its own :file:`sdkcraft.yaml`,
 its own :file:`hooks/` tree,

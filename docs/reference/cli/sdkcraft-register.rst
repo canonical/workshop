@@ -7,8 +7,6 @@
 sdkcraft register
 -----------------
 
-.. @artefact sdkcraft register
-
 Register an SDK name on the store
 
 .. rubric:: Usage

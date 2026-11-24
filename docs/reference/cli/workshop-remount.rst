@@ -7,8 +7,6 @@
 workshop remount
 ----------------
 
-.. @artefact workshop remount
-
 Mount a new source location to the mount interface plug's target.
 
 .. rubric:: Usage

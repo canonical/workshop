@@ -10,10 +10,6 @@ Craft SDKs with |sdk_markup|
 
 .. @tests in tests/docs-tutorial/part-4/task.yaml
 
-.. @artefact sdkcraft (CLI)
-.. @artefact SDK
-.. @artefact interface
-
 This is the fourth section of the :ref:`four-part series <tut_index>`;
 you'll learn how to create full-featured SDKs
 that can be published and shared with others using |sdk_markup|.
@@ -98,8 +94,6 @@ First, create a directory named :file:`ollama/`:
 
    $ mkdir ollama/
 
-
-.. @artefact SDK definition
 
 It will contain your :ref:`SDK definition <exp_sdk_definition>`
 and other source files.
@@ -232,8 +226,6 @@ This defines how the Ollama daemon should run:
 Add plugs and slots
 -------------------
 
-.. @artefact interface plug
-
 In |sdk_markup|,
 :ref:`interfaces <exp_interface_concepts>` provide a controllable way
 of exposing the resources of the host system to the workshops,
@@ -297,8 +289,6 @@ and the :samp:`ollama-server` slot exposes the Ollama API on port 11434.
 Add hooks
 ---------
 
-.. @artefact SDK hook
-
 To prepare the SDK for use,
 add the :ref:`hooks <exp_sdk_hooks>`
 that run at different stages of the workshop's lifecycle,
@@ -312,9 +302,6 @@ This directory stores all the hooks for an SDK.
 
 Build: setup base, project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. @artefact setup-base
-.. @artefact setup-project
 
 Under :file:`ollama/hooks/`,
 edit the file
@@ -367,9 +354,6 @@ ensuring the AI model server is running and ready to use.
 Persist: save and restore
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. @artefact restore-state
-.. @artefact save-state
-
 Some SDKs need to preserve internal state during workshop refresh operations,
 such as configuration settings or temporary data that shouldn't be lost.
 For these cases,
@@ -405,13 +389,9 @@ However, the Ollama SDK doesn't need these hooks because:
 Report: check health
 ~~~~~~~~~~~~~~~~~~~~
 
-.. @artefact check-health
-
 Finally, create a hook named :file:`check-health`
 to test whether the installation is functional
 and report to |ws_markup| accordingly:
-
-.. @artefact workshopctl
 
 .. code-block:: shell
    :caption: check-health
@@ -454,8 +434,6 @@ the health is eventually set to :samp:`error` automatically.
 Try the SDK
 -----------
 
-.. @artefact sdkcraft (CLI)
-
 When you're confident the SDK is ready to be built,
 try it in-place before uploading it to the Store.
 
@@ -476,9 +454,6 @@ Optionally, you can clean the build cache before trying:
 
    $ sdkcraft clean && sdkcraft try
 
-
-.. @artefact SDK part
-.. @artefact SDK metadata
 
 The command builds and packs the SDK into files
 such as :file:`ollama_amd64_ubuntu@24.04.sdk`,
@@ -553,8 +528,6 @@ and runs the declared scenarios end-to-end.
 
 Publish the SDK
 ---------------
-
-.. @artefact SDK Store
 
 When an SDK is ready, built, and tried,
 publish it to the SDK Store

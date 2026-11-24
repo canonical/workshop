@@ -8,14 +8,6 @@
 Runtime hooks
 =============
 
-.. @artefact SDK
-.. @artefact SDK hook
-.. @artefact restore-state
-.. @artefact save-state
-.. @artefact setup-base
-.. @artefact setup-project
-.. @artefact check-health
-
 A *hook* is a bash script
 that an SDK ships under its :file:`hooks/` directory.
 |ws_markup| runs the script at a specific point in the workshop lifecycle
@@ -184,10 +176,6 @@ list it later in the workshop definition.
 
 Talking back with workshopctl
 -----------------------------
-
-.. @artefact workshopctl
-.. @artefact workshop status
-.. @artefact SDK health
 
 From inside a hook,
 the SDK can call :program:`workshopctl`

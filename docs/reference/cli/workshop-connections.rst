@@ -7,8 +7,6 @@
 workshop connections
 --------------------
 
-.. @artefact workshop connections
-
 List interface connections.
 
 .. rubric:: Usage

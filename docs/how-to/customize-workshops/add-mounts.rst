@@ -10,8 +10,6 @@ How to add mounts to a workshop
 
 .. @tests in tests/docs-how-to/add-mounts/task.yaml
 
-.. @artefact mount interface
-
 |ws_markup| exposes filesystem locations to a workshop
 through the mount interface.
 A plug declared on an SDK names a target directory inside the workshop;
@@ -46,8 +44,6 @@ with :samp:`workshop-target` only:
 
 Refresh the workshop to bind the target:
 
-.. @artefact workshop refresh
-
 .. code-block:: console
 
    $ workshop refresh
@@ -72,8 +68,6 @@ Remount a host directory inside the workshop
 If the workshop needs to consume some ad-hoc data from the host,
 declare the plug as before and then point it at a host path
 with :command:`workshop remount`.
-
-.. @artefact workshop remount
 
 .. code-block:: yaml
    :caption: workshop.yaml
@@ -118,8 +112,6 @@ not just one.
 
 Once a share source is set, :command:`workshop info` surfaces it
 alongside the :samp:`workshop-target`:
-
-.. @artefact workshop info
 
 .. code-block:: console
    :emphasize-lines: 8
@@ -277,9 +269,6 @@ and return the plug to its auto-allocated host directory,
 disconnect the plug with :option:`!--forget`,
 which discards the source override,
 then connect the plug to the system mount slot to re-establish it:
-
-.. @artefact workshop connect
-.. @artefact workshop disconnect
 
 .. code-block:: console
 

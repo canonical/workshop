@@ -23,9 +23,6 @@ that SDK hooks invoke to report state back to the daemon.
 workshop
 --------
 
-.. @artefact workshop (CLI)
-.. @artefact workshopd
-
 :program:`workshop` is the daily go-to instrument for regular users,
 with a set of commands that govern the entire lifecycle of a
 :ref:`workshop <exp_workshop>`.
@@ -108,8 +105,6 @@ There are several categories of commands that vary by their purpose:
 sdk
 ---
 
-.. @artefact sdk (CLI)
-
 :program:`sdk` makes it easy to find and learn more about
 the SDKs available to you.
 Like :program:`workshop`,
@@ -140,8 +135,6 @@ There is one category of commands:
 
 sdkcraft
 --------
-
-.. @artefact sdkcraft (CLI)
 
 :program:`sdkcraft` is what an SDK publisher uses on their workstation
 to scaffold, build, test, try, and publish SDKs to the SDK Store.
@@ -202,9 +195,6 @@ There are several categories of commands that vary by their purpose:
 
 workshopctl
 -----------
-
-.. @artefact workshopctl
-.. @artefact SDK hook
 
 :program:`workshopctl` reports SDK state back to the |ws_markup| daemon
 over a restricted socket.

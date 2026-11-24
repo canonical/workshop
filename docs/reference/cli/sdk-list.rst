@@ -7,8 +7,6 @@
 sdk list
 --------
 
-.. @artefact sdk list
-
 List SDK volumes available on this machine.
 
 .. rubric:: Usage

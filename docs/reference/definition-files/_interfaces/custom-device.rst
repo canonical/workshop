@@ -6,14 +6,10 @@
 Custom device interface
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. @artefact custom-device interface
-
 The custom device interface exposes host devices
 that belong to a Linux kernel subsystem.
 
 A custom device plug is described by these attributes:
-
-.. @artefact custom-device interface attributes
 
 .. list-table::
    :header-rows: 1

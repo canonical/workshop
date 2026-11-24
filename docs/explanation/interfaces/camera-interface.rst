@@ -9,8 +9,6 @@
 Camera interface
 ================
 
-.. @artefact camera interface
-
 The camera interface
 enables access to the host system's cameras
 and other video capture devices inside the workshop.
@@ -61,9 +59,6 @@ for security reasons.
 The :command:`workshop connect` and :command:`workshop disconnect` commands
 can be invoked manually after the workshop has started:
 
-.. @artefact workshop connect
-.. @artefact workshop disconnect
-
 .. code-block:: console
 
    $ workshop connect ws/camera-sdk:camera
@@ -79,8 +74,6 @@ whereas unplugged devices will also be removed from the workshop.
 
 To check if the interface is connected:
 
-.. @artefact workshop connections
-
 .. code-block:: console
 
    $ workshop connections --all
@@ -91,8 +84,6 @@ To check if the interface is connected:
 
 
 This means the host's cameras are available inside the workshop:
-
-.. @artefact workshop shell
 
 .. code-block:: console
 
