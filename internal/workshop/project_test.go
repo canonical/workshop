@@ -300,6 +300,27 @@ func (p *projectSuite) TestTrackExistingProject(c *check.C) {
 	c.Check(tracker.Projects, testutil.DeepUnsortedMatches, []workshop.Project{first, second})
 }
 
+func (p *projectSuite) TestTrackDeletedProject(c *check.C) {
+	d := filepath.Join(c.MkDir(), "deleted")
+	expected := workshop.Project{Path: d, ProjectId: "42424242"}
+
+	projects := []workshop.Project{{Path: d, ProjectId: "42424242"}}
+	tracker := workshop.ProjectTracker{Projects: projects}
+
+	// Tracked project whose directory no longer exists.
+	project, result, err := tracker.Track(d + "/")
+	c.Assert(err, check.IsNil)
+	c.Check(result, check.Equals, workshop.ProjectFound)
+	c.Check(project, check.DeepEquals, &expected)
+	c.Check(tracker.Projects, check.DeepEquals, []workshop.Project{expected})
+	c.Check(workshop.LockPath(d), testutil.FileAbsent)
+
+	// Untracked directory that doesn't exist.
+	_, _, err = tracker.Track(filepath.Join(d, "nested"))
+	c.Assert(err, check.ErrorMatches, `lstat .*/deleted: no such file or directory`)
+	c.Check(tracker.Projects, check.DeepEquals, []workshop.Project{expected})
+}
+
 func (p *projectSuite) TestTrackRecoversProjectIds(c *check.C) {
 	d := c.MkDir()
 	expected := workshop.Project{Path: d, ProjectId: "42424242"}

@@ -181,10 +181,19 @@ func (t *ProjectTracker) Track(path string) (*Project, TrackResult, error) {
 		return nil, ProjectError, ErrNoRelativePathsAllowed
 	}
 
-	path, err := ancestorProject(path)
+	resolved, err := ancestorProject(path)
+	if errors.Is(err, os.ErrNotExist) {
+		// Deleted projects stay tracked until their workshops are removed.
+		clean := filepath.Clean(path)
+		idx := slices.IndexFunc(t.Projects, func(p Project) bool { return p.Path == clean })
+		if idx >= 0 {
+			return &t.Projects[idx], ProjectFound, nil
+		}
+	}
 	if err != nil {
 		return nil, ProjectError, err
 	}
+	path = resolved
 
 	id, err := readProjectId(path)
 	if err != nil {
