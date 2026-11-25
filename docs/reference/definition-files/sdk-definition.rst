@@ -95,11 +95,11 @@ Top-level fields
 
    * - :samp:`assumes`
      - array of strings
-     - Workshop features the SDK requires.
+     - |ws_markup| features the SDK requires.
        Currently, only :samp:`workshop{VERSION}` is supported;
-       it specifies the minimum Workshop version.
-       For example, :samp:`workshop1.0` requires Workshop 1.0 or later.
-       If the installed Workshop version is too old,
+       it specifies the minimum |ws_markup| version.
+       For example, :samp:`workshop1.0` requires |ws_markup| 1.0 or later.
+       If the installed |ws_markup| version is too old,
        the SDK cannot be installed and launch or refresh is canceled.
 
    * - :samp:`base`
