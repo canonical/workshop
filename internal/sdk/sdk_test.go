@@ -85,13 +85,13 @@ assumes:
 	restoreVersion := version.MockVersion("1.0.0-dev")
 	_, err = sdk.ReadSdkInfo(sdkYaml, s.projectId, "ws", nil, sdk.Validate)
 	restoreVersion()
-	c.Check(err, check.ErrorMatches, `SDK requires Workshop version >= 1.0; current version is 1.0.0-dev`)
+	c.Check(err, check.IsNil)
 
 	restoreVersion = version.MockVersion("1.0.0")
-info, err := sdk.ReadSdkInfo(sdkYaml, s.projectId, "ws", nil, sdk.Validate)
-restoreVersion()
-c.Check(err, check.IsNil)
-c.Check(info.Assumes, check.DeepEquals, []string{"workshop1.0"})
+	info, err := sdk.ReadSdkInfo(sdkYaml, s.projectId, "ws", nil, sdk.Validate)
+	restoreVersion()
+	c.Check(err, check.IsNil)
+	c.Check(info.Assumes, check.DeepEquals, []string{"workshop1.0"})
 }
 
 func (s *SdkSuite) TestUnmarshalInvalidType(c *check.C) {

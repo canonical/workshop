@@ -169,7 +169,7 @@ assumes:
 	restoreVersion := version.MockVersion("1.0.0-dev")
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
 	restoreVersion()
-	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: SDK requires Workshop version >= 1.0; current version is 1.0.0-dev`)
+	c.Check(err, check.IsNil)
 
 	restoreVersion = version.MockVersion("1.0.0")
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)

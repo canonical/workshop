@@ -448,14 +448,14 @@ func validateAssumptions(assumptions []string) error {
 		}
 
 		currentVersion := strings.TrimPrefix(version.Version, "v")
-		currentVersion, _, prerelease := strings.Cut(currentVersion, "-")
+		currentVersion, _, _ = strings.Cut(currentVersion, "-")
 		currentParts, err := parseVersionParts(currentVersion)
 		if err != nil {
 			return fmt.Errorf("cannot check SDK assumption %q: invalid Workshop version %q", assumption, version.Version)
 		}
 
 		comparison := compareVersionParts(currentParts, requiredParts)
-		if comparison < 0 || (comparison == 0 && prerelease) {
+		if comparison < 0 {
 			return fmt.Errorf("SDK requires Workshop version >= %s; current version is %s", required, version.Version)
 		}
 	}
