@@ -78,9 +78,9 @@ become orphaned:
 their containers and stored state remain on the host,
 and :command:`workshop list --global` reports them
 in the *Error* state with a :samp:`missing-project` note.
-Commands that resolve the project by its pathname,
-including :command:`workshop remove`,
-no longer work for such workshops.
+To remove such workshops,
+pass the project's former path to the :option:`!--project` option
+of :command:`workshop remove`.
 
 .. note::
 
