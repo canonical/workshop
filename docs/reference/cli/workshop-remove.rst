@@ -39,7 +39,7 @@ Notes:
   non-default sources set by "workshop remount" aren't removed.
 
 - If the project directory was deleted,
-  pass its former path to "--project" to remove its workshops.
+  pass its former path to the :option:`!--project` option to remove its workshops.
 
 .. rubric:: Examples
 
