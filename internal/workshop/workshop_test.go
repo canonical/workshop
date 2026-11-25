@@ -164,12 +164,12 @@ assumes:
   - workshop1.0
 `
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
-	c.Check(err, check.ErrorMatches, `SDK requires Workshop version >= 1.0; current version is 0.9.10`)
+	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: SDK requires Workshop version >= 1.0; current version is 0.9.10`)
 
 	restoreVersion := version.MockVersion("1.0.0-dev")
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
 	restoreVersion()
-	c.Check(err, check.ErrorMatches, `SDK requires Workshop version >= 1.0; current version is 1.0.0-dev`)
+	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: SDK requires Workshop version >= 1.0; current version is 1.0.0-dev`)
 
 	restoreVersion = version.MockVersion("1.0.0")
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
@@ -181,7 +181,7 @@ assumes:
   - unknown-feature
 `
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
-	c.Check(err, check.ErrorMatches, `unsupported SDK assumption "unknown-feature"`)
+	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: unsupported SDK assumption "unknown-feature"`)
 }
 
 func (f *workshopSuite) TestValidateSdkPlugsAndSlots(c *check.C) {
