@@ -22,7 +22,6 @@ import (
 
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
-	"github.com/canonical/workshop/internal/version"
 )
 
 type SdkSuite struct {
@@ -69,29 +68,6 @@ base: ubuntu@24.04
 	c.Assert(info.Workshop, check.Equals, "ws")
 	c.Assert(info.Plugs, check.HasLen, 0)
 	c.Assert(info.Slots, check.HasLen, 0)
-}
-
-func (s *SdkSuite) TestReadSdkInfoAssumptions(c *check.C) {
-	restore := version.MockVersion("0.9.10")
-	defer restore()
-
-	sdkYaml := []byte(`name: sdk
-assumes:
-  - workshop1.0
-`)
-	_, err := sdk.ReadSdkInfo(sdkYaml, s.projectId, "ws", nil, sdk.Validate)
-	c.Check(err, check.ErrorMatches, `SDK requires Workshop version >= 1.0; current version is 0.9.10`)
-
-	restoreVersion := version.MockVersion("1.0.0-dev")
-	_, err = sdk.ReadSdkInfo(sdkYaml, s.projectId, "ws", nil, sdk.Validate)
-	restoreVersion()
-	c.Check(err, check.IsNil)
-
-	restoreVersion = version.MockVersion("1.0.0")
-	info, err := sdk.ReadSdkInfo(sdkYaml, s.projectId, "ws", nil, sdk.Validate)
-	restoreVersion()
-	c.Check(err, check.IsNil)
-	c.Check(info.Assumes, check.DeepEquals, []string{"workshop1.0"})
 }
 
 func (s *SdkSuite) TestUnmarshalInvalidType(c *check.C) {

@@ -163,10 +163,16 @@ func (f *workshopSuite) TestValidateSdkAssumes(c *check.C) {
 assumes:
   - workshop1.0
 `
+	_, err = sdk.ReadSdkInfo([]byte(sdkYaml), f.project.ProjectId, file.Name, nil, sdk.Validate)
+	c.Check(err, check.ErrorMatches, `SDK requires Workshop version >= 1.0; current version is 0.9.10`)
+
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
 	c.Check(err, check.ErrorMatches, `invalid "test-sdk-1" SDK: SDK requires Workshop version >= 1.0; current version is 0.9.10`)
 
 	restoreVersion := version.MockVersion("1.0.0-dev")
+	_, err = sdk.ReadSdkInfo([]byte(sdkYaml), f.project.ProjectId, file.Name, nil, sdk.Validate)
+	c.Check(err, check.IsNil)
+
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
 	restoreVersion()
 	c.Check(err, check.IsNil)
