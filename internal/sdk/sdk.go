@@ -17,7 +17,6 @@ package sdk
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/canonical/workshop/internal/timeutil"
 	"github.com/canonical/workshop/internal/version"
 	"github.com/canonical/workshop/internal/yamlutil"
+	"github.com/canonical/x-go/strutil"
 )
 
 type Meta struct {
@@ -442,19 +442,12 @@ func validateAssumptions(assumptions []string) error {
 			return fmt.Errorf("unsupported SDK assumption %q", assumption)
 		}
 
-		requiredParts, err := parseVersionParts(required)
-		if err != nil {
-			return fmt.Errorf("unsupported SDK assumption %q: invalid Workshop version", assumption)
-		}
-
 		currentVersion := strings.TrimPrefix(version.Version, "v")
-		currentVersion, _, _ = strings.Cut(currentVersion, "-")
-		currentParts, err := parseVersionParts(currentVersion)
+		comparison, err := strutil.VersionCompare(currentVersion, required)
 		if err != nil {
-			return fmt.Errorf("cannot check SDK assumption %q: invalid Workshop version %q", assumption, version.Version)
+			return fmt.Errorf("cannot compare SDK assumption %q with Workshop version %q: %w", assumption, version.Version, err)
 		}
 
-		comparison := compareVersionParts(currentParts, requiredParts)
 		if comparison < 0 {
 			return fmt.Errorf("SDK requires Workshop version >= %s; current version is %s", required, version.Version)
 		}
@@ -462,46 +455,6 @@ func validateAssumptions(assumptions []string) error {
 
 	return nil
 }
-
-func parseVersionParts(value string) ([]uint64, error) {
-	if value == "" {
-		return nil, fmt.Errorf("empty version")
-	}
-
-	parts := strings.Split(value, ".")
-	parsed := make([]uint64, len(parts))
-	for i, part := range parts {
-		if part == "" {
-			return nil, fmt.Errorf("empty version component")
-		}
-		parsedPart, err := strconv.ParseUint(part, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		parsed[i] = parsedPart
-	}
-	return parsed, nil
-}
-
-func compareVersionParts(left, right []uint64) int {
-	for i := 0; i < max(len(left), len(right)); i++ {
-		var leftPart, rightPart uint64
-		if i < len(left) {
-			leftPart = left[i]
-		}
-		if i < len(right) {
-			rightPart = right[i]
-		}
-		if leftPart < rightPart {
-			return -1
-		}
-		if leftPart > rightPart {
-			return 1
-		}
-	}
-	return 0
-}
-
 func setPlugsFromSdkFile(f *File, sdk *Info) error {
 	for name, data := range f.Plugs {
 		iface, label, attrs, err := convertToSlotOrPlugData("plug", name, data)
