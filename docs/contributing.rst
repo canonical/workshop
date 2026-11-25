@@ -40,6 +40,31 @@ Before you start, familiarize yourself with two documents:
   governs how the project's code is used and distributed.
 
 
+.. _contributing_ai:
+
+Acceptable use of AI
+~~~~~~~~~~~~~~~~~~~~
+
+AI assistance is welcome in contributions of any kind.
+The repository ships instructions, agents, and skills for GitHub Copilot
+(see :ref:`contributing_copilot`);
+to use another assistant, point it at :file:`agents.md`.
+
+Whichever tool you use, you're the author:
+be ready to explain any line of the change,
+its commit messages, and its pull request description in review.
+This includes pull requests that an AI agent opens at your request:
+review the draft yourself before you mark it ready for review.
+
+Commits don't need AI attribution.
+For documentation drafted with AI,
+run the :file:`.github/skills/documentation-review/SKILL.md` skill
+before you submit.
+
+Maintainers may close bulk or unreviewed AI-generated pull requests
+without discussion.
+
+
 Ways to contribute
 ------------------
 
