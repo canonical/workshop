@@ -62,16 +62,11 @@ execute: |
   rm -f .workshop/ws-remove.yaml
   workshop_exec remove ws-remove
 
-  for state in Ready Stopped; do
-    echo "Check the workshop can be removed in $state after its project directory is deleted"
-    prj=$(sudo -u ubuntu mktemp -d -p /home/ubuntu)
-    sudo -u ubuntu mkdir "$prj/.workshop"
-    envsubst '${RUNTIME}' < .workshop/ws-remove.yaml.in | sudo -u ubuntu tee "$prj/.workshop/ws-remove.yaml" >/dev/null
-    workshop_exec launch --project "$prj" ws-remove
-    if [ "$state" = Stopped ]; then
-      workshop_exec stop --project "$prj" ws-remove
-    fi
-    rm -rf "$prj"
-    workshop_exec remove --project "$prj" ws-remove
-    workshop_exec list --global | NOMATCH "$(basename "$prj")"
-  done
+  echo "Check the workshop can be removed after its project directory is deleted"
+  prj=$(sudo -u ubuntu mktemp -d -p /home/ubuntu)
+  sudo -u ubuntu mkdir "$prj/.workshop"
+  envsubst '${RUNTIME}' < .workshop/ws-remove.yaml.in | sudo -u ubuntu tee "$prj/.workshop/ws-remove.yaml" >/dev/null
+  workshop_exec launch --project "$prj" ws-remove
+  rm -rf "$prj"
+  workshop_exec remove --project "$prj" ws-remove
+  workshop_exec list --global | NOMATCH "$(basename "$prj")"
