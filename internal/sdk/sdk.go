@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/canonical/x-go/strutil"
 	"gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
 
@@ -28,7 +29,6 @@ import (
 	"github.com/canonical/workshop/internal/timeutil"
 	"github.com/canonical/workshop/internal/version"
 	"github.com/canonical/workshop/internal/yamlutil"
-	"github.com/canonical/x-go/strutil"
 )
 
 type Meta struct {
