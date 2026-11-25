@@ -282,7 +282,7 @@ type Info struct {
 	Summary     string
 	Description string
 	License     string
-	Assumes     []string `json:"-"`
+	Assumes     []string
 
 	Plugs map[string]*PlugInfo
 	Slots map[string]*SlotInfo
