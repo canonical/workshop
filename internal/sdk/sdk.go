@@ -130,6 +130,7 @@ type File struct {
 	Version     string
 	Summary     string
 	Description string
+	Assumes     []string
 
 	Base string
 	Arch string
@@ -182,6 +183,7 @@ func ReadSdkFile(yamlData []byte) (*File, error) {
 		Version:     sdkYaml.Version,
 		Summary:     sdkYaml.Summary,
 		Description: sdkYaml.Description,
+		Assumes:     sdkYaml.Assumes,
 		Base:        sdkYaml.Base,
 		Arch:        sdkYaml.Arch,
 		License:     sdkYaml.License,
@@ -194,11 +196,12 @@ func ReadSdkFile(yamlData []byte) (*File, error) {
 
 // Keep this in sync with sdkcraft.models.Metadata (+ Type & Hooks).
 type sdkYaml struct {
-	Name        string `yaml:"name"`
-	Title       string `yaml:"title,omitempty"`
-	Version     string `yaml:"version,omitempty"`
-	Summary     string `yaml:"summary,omitempty"`
-	Description string `yaml:"description,omitempty"`
+	Name        string   `yaml:"name"`
+	Title       string   `yaml:"title,omitempty"`
+	Version     string   `yaml:"version,omitempty"`
+	Summary     string   `yaml:"summary,omitempty"`
+	Description string   `yaml:"description,omitempty"`
+	Assumes     []string `yaml:"assumes,omitempty"`
 
 	Base string `yaml:"base,omitempty"`
 	Arch string `yaml:"architecture,omitempty"`
@@ -277,6 +280,7 @@ type Info struct {
 	Summary     string
 	Description string
 	License     string
+	Assumes     []string `json:"-"`
 
 	Plugs map[string]*PlugInfo
 	Slots map[string]*SlotInfo
@@ -391,6 +395,7 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additi
 		Summary:     file.Summary,
 		Description: file.Description,
 		License:     file.License,
+		Assumes:     file.Assumes,
 		Plugs:       make(map[string]*PlugInfo),
 		Slots:       make(map[string]*SlotInfo),
 	}

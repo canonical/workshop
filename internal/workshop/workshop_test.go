@@ -27,6 +27,7 @@ import (
 	"github.com/canonical/workshop/internal/arch"
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
+	"github.com/canonical/workshop/internal/version"
 	"github.com/canonical/workshop/internal/workshop"
 )
 
@@ -147,6 +148,40 @@ architecture: mock64
 `
 	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
 	c.Check(err, check.ErrorMatches, `"test-sdk-1" SDK has "mock64" architecture; required: "mock32" or "all"`)
+}
+
+func (f *workshopSuite) TestValidateSdkAssumes(c *check.C) {
+	wpath := filepath.Join(f.project.Path, "workshop.yaml")
+	writeFile(c, wpath, string(workshopyaml))
+	file, err := workshop.ReadWorkshop(wpath)
+	c.Assert(err, check.IsNil)
+
+	restore := version.MockVersion("0.9.10")
+	defer restore()
+
+	sdkYaml := `name: test-sdk-1
+assumes:
+  - workshop1.0
+`
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
+	c.Check(err, check.ErrorMatches, `SDK requires Workshop version >= 1.0; current version is 0.9.10`)
+
+	restoreVersion := version.MockVersion("1.0.0-dev")
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
+	restoreVersion()
+	c.Check(err, check.ErrorMatches, `SDK requires Workshop version >= 1.0; current version is 1.0.0-dev`)
+
+	restoreVersion = version.MockVersion("1.0.0")
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
+	restoreVersion()
+	c.Check(err, check.IsNil)
+
+	sdkYaml = `name: test-sdk-1
+assumes:
+  - unknown-feature
+`
+	err = workshop.ValidateSdkInfo(f.project.ProjectId, file, "test-sdk-1", []byte(sdkYaml), sdkValidate)
+	c.Check(err, check.ErrorMatches, `unsupported SDK assumption "unknown-feature"`)
 }
 
 func (f *workshopSuite) TestValidateSdkPlugsAndSlots(c *check.C) {

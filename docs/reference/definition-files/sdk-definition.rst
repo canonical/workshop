@@ -93,6 +93,15 @@ Top-level fields
      - UTC timestamp marking when |sdk_markup| started the build.
        Set automatically; do not edit by hand.
 
+   * - :samp:`assumes`
+     - array of strings
+     - Workshop features the SDK requires.
+       Currently, only :samp:`workshop{VERSION}` is supported;
+       it specifies the minimum Workshop version.
+       For example, :samp:`workshop1.0` requires Workshop 1.0 or later.
+       If the installed Workshop version is too old,
+       the SDK cannot be installed and launch or refresh is canceled.
+
    * - :samp:`base`
      - string
      - Base operating system image the SDK targets.
