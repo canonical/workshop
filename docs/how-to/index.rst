@@ -7,8 +7,6 @@
 How-to guides
 =============
 
-.. @artefact workshop
-
 These articles
 cover the needs and corner cases
 that arise when you use |ws_markup| and |sdk_markup|.
@@ -47,8 +45,6 @@ IDEs, version control, and CI/CD workflows all work inside a workshop:
 
 Develop SDKs
 ------------
-
-.. @artefact SDK
 
 These guides cover the work of authoring an SDK with |sdk_markup|,
 from project layout and interface declarations

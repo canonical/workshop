@@ -7,8 +7,6 @@
 workshop exec
 -------------
 
-.. @artefact workshop exec
-
 Run an ad-hoc shell command in a workshop.
 
 .. rubric:: Usage

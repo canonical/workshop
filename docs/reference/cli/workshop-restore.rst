@@ -7,8 +7,6 @@
 workshop restore
 ----------------
 
-.. @artefact workshop restore
-
 Restore workshops to the state of the last launch or refresh.
 
 .. rubric:: Usage

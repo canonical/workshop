@@ -7,8 +7,6 @@
 workshop info
 -------------
 
-.. @artefact workshop info
-
 Print the current status and details of a workshop as YAML.
 
 .. rubric:: Usage

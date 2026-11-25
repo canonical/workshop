@@ -7,8 +7,6 @@
 workshop changes
 ----------------
 
-.. @artefact workshop changes
-
 List recent changes to the workshops in a project.
 
 .. rubric:: Usage

@@ -7,8 +7,6 @@
 sdkcraft pull
 -------------
 
-.. @artefact sdkcraft pull
-
 Download or retrieve artifacts defined for a part
 
 .. rubric:: Usage

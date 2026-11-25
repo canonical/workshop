@@ -11,10 +11,6 @@ How to share content between SDKs
 
 .. @tests in tests/docs-how-to/share-content-between-sdks/task.yaml
 
-.. @artefact mount interface
-.. @artefact interface plug
-.. @artefact interface slot
-
 Two SDKs in the same workshop can share a directory
 through the mount interface,
 without routing the content through the host.

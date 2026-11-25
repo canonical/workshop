@@ -7,8 +7,6 @@
 sdkcraft create-track
 ---------------------
 
-.. @artefact sdkcraft create-track
-
 Create one or more tracks for an SDK on the SDK Store
 
 .. rubric:: Usage

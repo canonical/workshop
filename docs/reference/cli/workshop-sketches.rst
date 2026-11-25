@@ -7,8 +7,6 @@
 workshop sketches
 -----------------
 
-.. @artefact workshop sketches
-
 List project sketch SDKs.
 
 .. rubric:: Usage

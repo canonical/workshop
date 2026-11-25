@@ -8,8 +8,6 @@
 Changes, tasks
 ==============
 
-.. @artefact workshop state management
-
 A *change* is a core concept of the workshop state management system.
 Any long-running or invasive operation
 (e.g., :ref:`launch <ref_workshop_launch>`)
@@ -17,8 +15,6 @@ that changes the state of a workshop
 is planned and applied as a change,
 which consists of specific tasks
 that run in a predefined order.
-
-.. @artefact project
 
 A *task* is a small, independent piece of logic;
 it could be mounting a project directory,

@@ -7,8 +7,6 @@
 workshop list
 -------------
 
-.. @artefact workshop list
-
 List project workshops.
 
 .. rubric:: Usage

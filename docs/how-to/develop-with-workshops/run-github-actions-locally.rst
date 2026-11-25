@@ -17,8 +17,6 @@ This approach offers faster feedback loops and greater control
 over the execution environment while maintaining compatibility
 with your existing GitHub Actions workflows.
 
-.. @artefact SDK
-
 The :samp:`github-runner` SDK lets a workshop act as a `just-in-time runner
 <https://docs.github.com/en/actions/reference/security/secure-use#using-just-in-time-runners>`_
 for `GitHub workflow jobs
@@ -60,9 +58,6 @@ to include the :samp:`github-runner` SDK:
 
 This installs the official `Runner <https://github.com/actions/runner>`_ client
 and an unofficial helper script named :samp:`github-runner`.
-
-.. @artefact workshop launch
-.. @artefact workshop refresh
 
 Don't forget to launch or refresh the workshop.
 

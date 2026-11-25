@@ -6,8 +6,6 @@
 GPU interface
 ~~~~~~~~~~~~~
 
-.. @artefact GPU interface
-
 The GPU interface exposes host GPU devices.
 
 - Plug attributes: none.

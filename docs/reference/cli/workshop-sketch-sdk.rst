@@ -7,8 +7,6 @@
 workshop sketch-sdk
 -------------------
 
-.. @artefact workshop sketch-sdk
-
 Customize a workshop.
 
 .. rubric:: Usage

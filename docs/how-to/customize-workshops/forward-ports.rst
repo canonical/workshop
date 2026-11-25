@@ -9,8 +9,6 @@ How to forward ports with tunneling
 
 .. @tests made redundant by tests/main/connect/task.yaml
 
-.. @artefact tunnel interface
-
 Port-forwarding in |ws_markup| is done with the *tunnel interface*.
 Tunnels pair a *plug* (the listening side) with a *slot* (the service side),
 forwarding every connection that reaches the plug address to the slot address.

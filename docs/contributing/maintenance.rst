@@ -129,11 +129,6 @@ At every release, remember to:
   in :file:`docs/release-notes/index.rst`;
   the recent version lists should contain versions from the last 6 months.
 
-- Refresh the
-  `coverage map <https://github.com/canonical/workshop/blob/main/docs/coverage.md>`_
-  by running the :file:`.github/workflows/doc-cover.yaml` workflow
-  and merging the resulting pull request.
-
 - Copy the auto-generated |sdk_markup| CLI reference
   from the `SDKcraft repository <https://github.com/canonical/sdkcraft>`__
   to :file:`docs/reference/cli/` as :file:`sdkcraft*.rst`,
@@ -200,9 +195,6 @@ Documentation workflows:
 
    * - :file:`automatic-doc-checks.yml` (SP)
      - Build the documentation and fail on Sphinx warnings.
-
-   * - :file:`doc-cover.yaml`
-     - Generate and update the documentation coverage map.
 
    * - :file:`doc-update-sdk-schema.yml`
      - Update SDK schema files from the |sdk_markup| repository.

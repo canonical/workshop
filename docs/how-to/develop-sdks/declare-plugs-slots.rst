@@ -10,10 +10,6 @@ How to declare plugs and slots
 
 .. @tests in tests/docs-how-to/declare-plugs-slots/task.yaml
 
-.. @artefact interface plug
-.. @artefact interface slot
-.. @artefact sdkcraft (CLI)
-
 This guide shows how to declare plugs and slots
 in an SDK definition,
 so that an SDK can consume capabilities from other SDKs

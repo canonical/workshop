@@ -10,11 +10,6 @@ How to publish an SDK
 
 .. @tests in tests/docs-how-to/publish-an-sdk/task.yaml
 
-.. @artefact SDK
-.. @artefact SDK Store
-.. @artefact sdkcraft (CLI)
-.. @artefact try SDK
-
 Publishing turns a packed SDK
 into something other |ws_markup| users can pull from the SDK Store.
 If the SDK isn't yet packed, tested, and tried locally,

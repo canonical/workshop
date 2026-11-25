@@ -7,8 +7,6 @@
 workshop okay
 -------------
 
-.. @artefact workshop okay
-
 Acknowledge listed warnings.
 
 .. rubric:: Usage

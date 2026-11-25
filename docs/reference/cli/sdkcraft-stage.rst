@@ -7,8 +7,6 @@
 sdkcraft stage
 --------------
 
-.. @artefact sdkcraft stage
-
 Stage built artifacts into a common staging area
 
 .. rubric:: Usage

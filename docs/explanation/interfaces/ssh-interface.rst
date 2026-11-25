@@ -9,8 +9,6 @@
 SSH interface
 =============
 
-.. @artefact SSH interface
-
 The SSH interface
 provides access to the host system's SSH agent
 from inside the workshop,
@@ -65,9 +63,6 @@ for security reasons.
 The :command:`workshop connect` and :command:`workshop disconnect` commands
 can be invoked manually after the workshop has started:
 
-.. @artefact workshop connect
-.. @artefact workshop disconnect
-
 .. code-block:: console
 
    $ workshop connect ws/ssh-sdk:ssh-agent
@@ -83,8 +78,6 @@ are available inside the workshop.
 
 To check if the interface is connected:
 
-.. @artefact workshop connections
-
 .. code-block:: console
 
    $ workshop connections --all
@@ -96,8 +89,6 @@ To check if the interface is connected:
 
 This means the host's SSH identities
 are available inside the workshop:
-
-.. @artefact workshop shell
 
 .. code-block:: console
 

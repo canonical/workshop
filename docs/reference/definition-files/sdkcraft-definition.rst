@@ -8,10 +8,6 @@
 SDKcraft project definition
 ===========================
 
-.. @artefact sdkcraft (CLI)
-.. @artefact SDK
-.. @artefact SDK definition
-
 The :file:`sdkcraft.yaml` file is the *build-time* SDK definition:
 |sdk_markup| reads it to pack an SDK. SDK publishers author this file;
 |sdk_markup| writes the runtime :file:`sdk.yaml` (see :ref:`ref_sdk_definition`)
@@ -26,8 +22,6 @@ for build orchestration. Many fields are inherited from :samp:`craft-application
 
 Filename and location
 ---------------------
-
-.. @artefact SDK definition
 
 - The definition file is :file:`sdkcraft.yaml` or :file:`.sdkcraft.yaml`
   at the project root.
@@ -154,8 +148,6 @@ Nested structures
 Platform entry
 ~~~~~~~~~~~~~~
 
-.. @artefact SDK platforms
-
 Each entry under :samp:`platforms` declares one build target.
 The key is the platform name; the value is an object:
 
@@ -235,8 +227,6 @@ and any interface-specific attributes.
 
 JSON Schema
 -----------
-
-.. @artefact SDK schema
 
 The following JSON Schema is exported from |sdk_markup|'s project model
 and describes the structure above:

@@ -31,9 +31,6 @@ Command-line tools
 Definition file formats
 -----------------------
 
-.. @artefact SDK
-.. @artefact workshop (container)
-
 Workshops and SDKs are defined in YAML and share a number of basic elements
 such as plugs, base images and so on.
 However, both definition types have different purposes and structure:
@@ -80,8 +77,6 @@ for coding agents:
 
 Reference implementations
 -------------------------
-
-.. @artefact SDK
 
 These real-life examples on GitHub,
 maintained by the |ws_markup| team,

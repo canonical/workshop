@@ -6,8 +6,6 @@
 Desktop interface
 ~~~~~~~~~~~~~~~~~
 
-.. @artefact desktop interface
-
 The desktop interface exposes the host display server.
 
 - Plug attributes: none.

@@ -8,10 +8,6 @@
 Workshop concepts
 =================
 
-.. @artefact project
-.. @artefact workshop (container)
-.. @artefact workshop definition
-
 A *workshop*
 (lowercase; not to be confused with |ws_markup| itself)
 is a container that enables consistent environment builds.
@@ -32,8 +28,6 @@ but it's not recommended to rely on this implementation detail.
 
 Workshop status
 ---------------
-
-.. @artefact workshop status
 
 A workshop's lifecycle can see it switch between several statuses:
 
@@ -80,8 +74,6 @@ provide more details of valid transitions.
 Workshop hostname
 -----------------
 
-.. @artefact workshop hostname
-
 Every running workshop has a friendly hostname,
 part of its identity alongside its name and status.
 Hostnames follow the pattern :samp:`<WORKSHOP>.<PROJECT>.wp`,
@@ -114,10 +106,6 @@ see :ref:`exp_arch_network`.
 
 Launch, refresh, and restore
 ----------------------------
-
-.. @artefact workshop launch
-.. @artefact workshop refresh
-.. @artefact workshop restore
 
 Three commands move a workshop between the statuses listed above:
 
@@ -231,9 +219,6 @@ and you want a clean slate without rebuilding from scratch.
 Workshop definition
 -------------------
 
-.. @artefact workshop base image
-.. @artefact workshop definition
-
 The workshop definition is a YAML file
 that lists the base image of the workshop
 and the specific components installed on top of it.
@@ -252,9 +237,6 @@ A simple workshop definition might look like this:
      - name: go
        channel: "1.27"
 
-
-.. @artefact SDK
-.. @artefact interface
 
 It specifies a *base* and an *SDK*.
 A more complete definition would usually list several SDKs
@@ -327,10 +309,6 @@ see :ref:`exp_arch_zfs_storage`.
 
 Plugs, slots, connections
 -------------------------
-
-.. @artefact interface plug
-.. @artefact interface slot
-.. @artefact interface connection
 
 Once all the SDKs are installed,
 they often need to communicate with each other or with the host system.
@@ -504,8 +482,6 @@ so auto-connect re-establishes the pairing at the next refresh.
 Actions
 -------
 
-.. @artefact workshop actions
-
 Another optional part of a workshop definition is the :samp:`actions` section;
 it contains named shell scripts to be copied and executed inside the workshop.
 This section provides a degree of convenience,
@@ -604,10 +580,6 @@ breaking changes to CLI arguments will be announced in the |ws_markup| release n
 
 Origins and locations
 ---------------------
-
-.. @artefact system SDK
-.. @artefact sketch SDK
-.. @artefact in-project SDK
 
 Workshop components, including the many SDK types,
 originate from different sources

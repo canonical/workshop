@@ -9,15 +9,6 @@
 Multi-workshop patterns
 =======================
 
-.. @artefact project
-.. @artefact project workshops
-.. @artefact workshop (container)
-.. @artefact workshop definition
-.. @artefact workshop name
-.. @artefact workshop .lock
-.. @artefact in-project SDK
-.. @artefact tunnel interface
-
 One workshop per project is the default,
 but real work often pulls in more than one.
 A monorepo holds a Go backend and a Node frontend,

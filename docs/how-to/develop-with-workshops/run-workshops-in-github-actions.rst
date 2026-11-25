@@ -8,9 +8,6 @@
 How to run workshops in GitHub Actions
 ======================================
 
-.. @artefact workshop launch
-.. @artefact workshop exec
-
 The `launch-workshop <https://github.com/canonical/launch-workshop>`_ action
 installs |ws_markup| on a GitHub-hosted runner
 and launches an ephemeral workshop for the duration of a job.

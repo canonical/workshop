@@ -8,11 +8,6 @@
 Projects
 ========
 
-.. @artefact project
-.. @artefact project workshops
-.. @artefact workshop definition
-.. @artefact workshop .lock
-
 Technically, a project is a directory
 containing one workshop definition or more.
 
@@ -29,8 +24,6 @@ which must remain in the project directory
 and must not be copied or stored externally, e.g., in a repository.
 
 You can store workshop definitions in two ways:
-
-.. @artefact workshop name
 
 - If you use a single workshop in the project,
   store its definition in the project directory as :file:`workshop.yaml`.
@@ -63,8 +56,6 @@ Such SDKs can be used by any workshop in the project.
 When a workshop is then started with :command:`workshop start`,
 the project directory is mounted to it as :file:`/project/`;
 conversely, the :command:`workshop stop` command unmounts it.
-
-.. @artefact workshop --project
 
 External changes to the project are tracked by the |ws_markup| daemon.
 Thus, if the project is moved or copied,

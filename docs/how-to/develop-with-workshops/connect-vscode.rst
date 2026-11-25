@@ -11,8 +11,6 @@ How to develop in a workshop with VS Code
 
 .. @tests in tests/docs-how-to/connect-vscode/task.yaml
 
-.. @artefact workshop (container)
-
 The `Workshop extension for VS Code <https://marketplace.visualstudio.com/items?itemName=canonical.workshop>`_
 opens your project inside a workshop
 while VS Code itself keeps running on the host.
@@ -130,8 +128,6 @@ so the Workshops view offers to create one:
          and an Add New Workshop button
 
    The Workshops view for a project without workshops
-
-.. @artefact workshop init
 
 Click :guilabel:`Add New Workshop`
 and follow the wizard:

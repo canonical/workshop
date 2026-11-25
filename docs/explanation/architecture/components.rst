@@ -42,10 +42,6 @@ with metadata persistence via the :ref:`state database <exp_arch_state_database>
 Main components
 ---------------
 
-.. @artefact workshop (CLI)
-.. @artefact workshopd
-.. @artefact workshopctl
-
 |ws_markup| installation on your host system includes three primary components:
 
 - The :program:`workshop` :ref:`CLI <exp_arch_cli>`
@@ -76,8 +72,6 @@ while :program:`workshopd` interfaces with LXD through the latter's native API.
 CLI: :program:`workshop`
 ------------------------
 
-.. @artefact workshop (CLI)
-
 The :program:`workshop` CLI provides a comprehensive command-line interface
 for managing workshops and interacting with :program:`workshopd`.
 It is organized into logical command groups
@@ -106,8 +100,6 @@ see :ref:`the workshop CLI <exp_workshop_cli>`.
 
 Control interface: :program:`workshopctl`
 -----------------------------------------
-
-.. @artefact workshopctl
 
 The :program:`workshopctl` tool serves as a secure bridge
 between workshop containers and the host system,
@@ -168,8 +160,6 @@ Privilege separation exists between trusted and untrusted API endpoints.
 REST API
 ~~~~~~~~
 
-.. @artefact API
-
 The :program:`workshopd` daemon exposes a versioned REST API (v1)
 over Unix domain sockets for secure local communication with the CLI,
 and over vsock for virtual machine workshops.
@@ -200,8 +190,6 @@ for workshop information, SDK details, and interface connections.
 
 LXD backend
 ~~~~~~~~~~~
-
-.. @artefact workshopd
 
 |ws_markup| uses LXD system containers rather than application containers.
 A system container runs a full operating system image

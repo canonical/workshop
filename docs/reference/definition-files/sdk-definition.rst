@@ -8,8 +8,6 @@
 SDK definition
 ==============
 
-.. @artefact SDK definition
-
 The :file:`sdk.yaml` file is the *runtime* SDK definition:
 |ws_markup| reads it when it installs an SDK in a workshop.
 For Store SDKs and SDKs from :command:`sdkcraft try`,
@@ -23,8 +21,6 @@ in-project SDKs by hand under :file:`.workshop/`.
 
 Filename and location
 ---------------------
-
-.. @artefact SDK definition
 
 - Store SDKs and SDKs from :command:`sdkcraft try` ship :file:`sdk.yaml`
   inside their packed contents at :file:`meta/sdk.yaml`.
@@ -191,8 +187,6 @@ and any interface-specific attributes.
 
 JSON Schema
 -----------
-
-.. @artefact SDK schema
 
 The following JSON Schema is exported from |sdk_markup|'s runtime metadata model
 and describes the structure above:

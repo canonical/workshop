@@ -98,8 +98,6 @@ use the :command:`workshop run` command.
 Specify the workshop and its action,
 with an optional separator (:samp:`--`):
 
-.. @artefact workshop run
-
 .. code-block:: console
 
    $ workshop run dev -- lint

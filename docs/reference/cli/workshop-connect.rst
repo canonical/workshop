@@ -7,8 +7,6 @@
 workshop connect
 ----------------
 
-.. @artefact workshop connect
-
 Connect a plug to a slot.
 
 .. rubric:: Usage

@@ -7,8 +7,6 @@
 sdkcraft logout
 ---------------
 
-.. @artefact sdkcraft logout
-
 Clear SDK Store credentials
 
 .. rubric:: Usage

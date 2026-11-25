@@ -6,8 +6,6 @@
 Camera interface
 ~~~~~~~~~~~~~~~~
 
-.. @artefact camera interface
-
 The camera interface exposes a host camera device.
 
 - Plug attributes: none.

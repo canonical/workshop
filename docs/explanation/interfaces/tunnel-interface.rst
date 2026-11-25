@@ -9,8 +9,6 @@
 Tunnel interface
 ================
 
-.. @artefact tunnel interface
-
 The tunnel interface
 enables workshops to share network services with the host system,
 and vice versa.
@@ -94,9 +92,6 @@ must be connected manually.
 The :command:`workshop connect` and :command:`workshop disconnect` commands
 can be invoked after the workshop has started:
 
-.. @artefact workshop connect
-.. @artefact workshop disconnect
-
 .. code-block:: console
 
    $ workshop connect ws/client-sdk:shared
@@ -168,8 +163,6 @@ without the need for a tunnel.
 
 To check if a plug or slot is connected:
 
-.. @artefact workshop connections
-
 .. code-block:: console
 
    $ workshop connections --all
@@ -184,8 +177,6 @@ This means that :samp:`client-sdk` can access
 the :samp:`shared` service running on the host,
 and the host can access the :samp:`app` service
 provided by :samp:`service-sdk`.
-
-.. @artefact workshop info
 
 .. code-block:: console
 

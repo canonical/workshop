@@ -7,8 +7,6 @@
 sdkcraft version
 ----------------
 
-.. @artefact sdkcraft version
-
 Show the application version and exit
 
 .. rubric:: Usage

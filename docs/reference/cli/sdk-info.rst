@@ -7,8 +7,6 @@
 sdk info
 --------
 
-.. @artefact sdk info
-
 Show SDK info.
 
 .. rubric:: Usage

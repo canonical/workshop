@@ -7,8 +7,6 @@
 sdkcraft clean
 --------------
 
-.. @artefact sdkcraft clean
-
 Remove a part's assets
 
 .. rubric:: Usage

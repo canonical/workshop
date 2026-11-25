@@ -7,8 +7,6 @@
 workshop stop
 -------------
 
-.. @artefact workshop stop
-
 Stop one or many workshops.
 
 .. rubric:: Usage

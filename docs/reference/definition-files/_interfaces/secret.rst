@@ -6,8 +6,6 @@
 Secret interface
 ~~~~~~~~~~~~~~~~
 
-.. @artefact secret interface
-
 The secret interface delivers a credential from the host keyring
 to processes in the workshop on request.
 

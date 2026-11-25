@@ -7,8 +7,6 @@
 sdkcraft init
 -------------
 
-.. @artefact sdkcraft init
-
 Initialize an SDKcraft project
 
 .. rubric:: Usage

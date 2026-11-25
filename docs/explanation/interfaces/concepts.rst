@@ -9,9 +9,6 @@
 Interface concepts
 ==================
 
-.. @artefact SDK
-.. @artefact interface
-
 Interfaces are a mechanism for communication and resource sharing.
 It is an integral part of workshop confinement,
 ensuring that each workshop operates in its own isolated environment,
@@ -77,8 +74,6 @@ such as allowing installation but not auto-connection for :samp:`ssh-agent`.
 Connections
 -----------
 
-.. @artefact interface connection
-
 From the user perspective,
 connections can be established through the interface system in several ways:
 
@@ -128,15 +123,11 @@ Related CLI operations
 A number of basic workshop operations
 affect plugs and slots in different ways.
 
-.. @artefact workshop launch
-
 When you :command:`workshop launch` a workshop,
 an auto-connect task handles each interface plug,
 finding a candidate slot,
 verifying the plug's eligibility for the slot based on their declarations
 and connecting the two.
-
-.. @artefact workshop refresh
 
 On :command:`workshop refresh`,
 existing connections are preserved in the refreshed workshop
@@ -144,8 +135,6 @@ if their plugs were connected before the operation.
 A newer version of an SDK may drop a plug that was previously connected;
 such connections are removed,
 but the host-based content remains.
-
-.. @artefact interface connection
 
 On :command:`workshop remove`,
 both the interface connections and the default host directories

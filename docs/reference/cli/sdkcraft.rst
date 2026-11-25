@@ -7,8 +7,6 @@
 sdkcraft (CLI)
 ==============
 
-.. @artefact sdkcraft (CLI)
-
 The :program:`sdkcraft` utility exposes the following commands,
 each with its own set of options,
 and also has a number of global flags:

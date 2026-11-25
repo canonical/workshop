@@ -18,9 +18,6 @@ list system-wide warnings, and acknowledge false positives.
 List tasks and changes
 ----------------------
 
-.. @artefact workshop changes
-.. @artefact workshop tasks
-
 Consider a workshop named :samp:`dev-volatile`,
 which uses an unstable SDK
 from the :samp:`latest/edge` channel:
@@ -126,9 +123,6 @@ The SDK-specific reason can be addressed individually.
 Wait on error
 -------------
 
-.. @artefact workshop launch
-.. @artefact workshop refresh
-
 The :option:`!--wait-on-error` option in :command:`workshop refresh` and
 :command:`workshop launch`
 pauses the refresh when an error occurs;
@@ -148,8 +142,6 @@ To help determine what went wrong, use the :command:`workshop changes` and
 :command:`workshop tasks` commands discussed above.
 
 Next, you can shell into the workshop to debug and possibly fix it:
-
-.. @artefact workshop shell
 
 .. code-block:: console
 
@@ -230,8 +222,6 @@ such as broken mount points.
 These are registered as *warnings* in a system-wide log,
 which can be accessed with :command:`workshop warnings`:
 
-.. @artefact workshop warnings
-
 .. code-block:: console
 
    $ workshop warnings
@@ -244,8 +234,6 @@ which can be accessed with :command:`workshop warnings`:
 Multiple warnings about the same problem aren't stacked;
 only their first and last occurrences are logged.
 You can suppress listed warnings with :command:`workshop okay` to ignore them:
-
-.. @artefact workshop okay
 
 .. code-block:: console
 

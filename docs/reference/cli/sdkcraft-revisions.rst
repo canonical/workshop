@@ -7,8 +7,6 @@
 sdkcraft revisions
 ------------------
 
-.. @artefact sdkcraft revisions
-
 List SDK revisions available on the store
 
 .. rubric:: Usage

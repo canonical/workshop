@@ -8,9 +8,6 @@ How to fix plug conflicts with binding
 
 .. @tests made redundant by tests/main/interface-mount/task.yaml, tests/main/remount/task.yaml
 
-.. @artefact mount interface
-.. @artefact interface plug
-
 The example below binds plugs for the :samp:`mount` interface,
 but the same process works for any other interface that supports bindings.
 
@@ -35,8 +32,6 @@ where the SDKs store their models.
    Launching this workshop would cause a conflict
    because both SDKs want to mount the same directory in the workshop,
    which is not allowed.
-
-.. @artefact plug binding
 
 #. To address this issue,
    bind the :samp:`torchvision:hub` plug to the :samp:`torchaudio:hub` plug

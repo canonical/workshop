@@ -7,8 +7,6 @@
 workshop launch
 ---------------
 
-.. @artefact workshop launch
-
 Construct one or many workshops using their definitions.
 
 .. rubric:: Usage

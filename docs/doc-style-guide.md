@@ -163,20 +163,6 @@ Examples:
 .. _ref_workshop_launch:
 ```
 
-**Artefact comments**
-
-Use `.. @artefact` comments to mark key concepts for coverage tracking:
-
-```restructuredtext
-.. @artefact workshop (container)
-.. @artefact SDK
-.. @artefact interface
-.. @artefact workshop launch
-```
-
-The current list of these concepts is maintained in `docs/coverage.yaml`;
-update it as needed.
-
 **Prerequisites sections**
 
 State a page's prerequisites in a dedicated `Prerequisites` section so readers
@@ -825,7 +811,7 @@ This section covers Markdown-specific conventions used in the Workshop documenta
 Markdown is used for:
 - Release notes (`release-notes/v0.*.md`)
 - Auto-generated CLI reference (`reference/cli/sdkcraft/*.md`)
-- Special files rendered on GitHub (`security.md`, `coverage.md`)
+- Special files rendered on GitHub (`security.md`)
 
 For all other documentation, prefer reStructuredText (`.rst` files).
 
@@ -1303,8 +1289,7 @@ When contributing documentation:
 1. Follow established patterns for file naming and structure
 2. Use semantic line breaks in reStructuredText files
 3. Include required metadata blocks
-4. Add artefact markers for new concepts
-5. Test examples before including them
-6. Run documentation builds locally to verify
+4. Test examples before including them
+5. Run documentation builds locally to verify
 
 For detailed contribution guidelines, see {ref}`contributing` in the documentation.

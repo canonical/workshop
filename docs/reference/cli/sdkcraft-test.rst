@@ -7,8 +7,6 @@
 sdkcraft test
 -------------
 
-.. @artefact sdkcraft test
-
 Run SDK tests
 
 .. rubric:: Usage

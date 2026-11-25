@@ -7,8 +7,6 @@
 workshop init
 -------------
 
-.. @artefact workshop init
-
 Create a new workshop definition in the project directory.
 
 .. rubric:: Usage

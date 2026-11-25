@@ -21,8 +21,6 @@ only to realize it still lacks some functionality you need.
 Naturally, you'd like to add that,
 but can you align it with the way |ws_markup| operates?
 
-.. @artefact SDK
-
 Fortunately, |ws_markup| allows you to quickly draft a local SDK
 and use it within your workshop. This process is called *sketching*.
 
@@ -80,13 +78,9 @@ Instead of manually installing tools using
 :command:`workshop shell` or :command:`workshop exec`,
 you can create a local SDK that automates these tasks with |ws_markup|.
 
-.. @artefact SDK definition
-
 Running :command:`workshop sketch-sdk`
 opens a simplified version of an :ref:`SDK definition <exp_sdk_definition>`.
 This defines all SDK components in a single file named :file:`sdk.yaml`:
-
-.. @artefact workshop sketch-sdk
 
 .. code-block:: console
 
@@ -160,8 +154,6 @@ by running :command:`workshop sketch-sdk` again.
 
 After the refresh,
 the output of :command:`workshop info` should include something like this:
-
-.. @artefact sketch SDK
 
 .. code-block:: console
 
@@ -310,8 +302,6 @@ there's no way to add :samp:`sketch-foo`, :samp:`sketch-draft`,
 However, a project may contain multiple workshops,
 each with its own sketch SDK.
 
-.. @artefact workshop sketches
-
 To explore the available sketches in your project and their respective states,
 use the :command:`workshop sketches` command:
 
@@ -323,9 +313,6 @@ use the :command:`workshop sketches` command:
 
 Convert to in-project SDK
 -------------------------
-
-.. @artefact in-project SDK
-.. @artefact SDK Store
 
 If you're happy with your sketch SDK,
 your first option is to convert it into an
@@ -429,8 +416,6 @@ the only thing left to cover for local workshops is the cleanup.
 
 If you no longer need your workshop,
 remove it:
-
-.. @artefact workshop remove
 
 .. code-block:: console
 

@@ -7,8 +7,6 @@
 sdkcraft release
 ----------------
 
-.. @artefact sdkcraft release
-
 Release an SDK revision to store channels
 
 .. rubric:: Usage
