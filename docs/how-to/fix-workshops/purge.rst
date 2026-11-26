@@ -237,8 +237,8 @@ You may need manual intervention if:
 
 
 For an orphaned workshop,
-first try :ref:`recreating its project directory <how_purge_orphaned>`,
-which restores the standard removal flow without touching LXD.
+first try :ref:`removing it by its former project path <how_purge_orphaned>`,
+which doesn't require touching LXD.
 In other cases, or if that fails,
 manually clean up the workshop's resources,
 interacting directly with LXD and the workshop's snap data;
@@ -264,49 +264,37 @@ with a :samp:`missing-project` note:
      ~/projects/nimble  nimble    Error   missing-project
 
 
-Commands that resolve the project by its pathname,
-including :command:`workshop remove` with the :option:`!--project` option,
-no longer work for orphaned workshops:
 
-.. code-block:: console
-
-   $ workshop remove --project ~/projects/nimble nimble
-
-     error: cannot create or load project at "/home/user/projects/nimble": lstat /home/user/projects/nimble: no such file or directory
-
-
-However, the daemon keeps tracking the project's original location,
-so you can restore the standard removal flow
-by recreating the directory:
-
-#. Recreate the directory at the same absolute path;
-   it can remain empty:
-
-   .. code-block:: console
-
-      $ mkdir -p ~/projects/nimble
-
+The daemon keeps tracking the project's original location
+until its last workshop is removed,
+so you can remove the workshop
+by passing that location to the :option:`!--project` option;
+the directory doesn't need to exist:
 
 #. Remove the workshop,
-   pointing at the recreated directory:
+   pointing at the project's former path
+   as shown in the :samp:`PROJECT` column:
 
    .. code-block:: console
 
       $ workshop remove --project ~/projects/nimble nimble
 
 
-#. Verify the removal and delete the recreated directory:
+   The path must be the project's root directory;
+   subdirectories of a deleted project aren't recognized.
+
+#. Verify the removal:
 
    .. code-block:: console
 
       $ workshop list --global
-      $ rm -r ~/projects/nimble
 
 
 .. note::
 
    Removal isn't the only option:
-   running any workshop command against the recreated directory
+   if you recreate the directory at the same absolute path,
+   running any workshop command against it
    re-associates it with the original project,
    restoring the hidden :file:`.workshop.lock` file.
    To recover the workshop instead,

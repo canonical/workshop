@@ -61,3 +61,12 @@ execute: |
   workshop_exec list | MATCH "^ws-remove[[:space:]]+Ready[[:space:]]+-$"
   rm -f .workshop/ws-remove.yaml
   workshop_exec remove ws-remove
+
+  echo "Check the workshop can be removed after its project directory is deleted"
+  prj=$(sudo -u ubuntu mktemp -d -p /home/ubuntu)
+  sudo -u ubuntu mkdir "$prj/.workshop"
+  envsubst '${RUNTIME}' < .workshop/ws-remove.yaml.in | sudo -u ubuntu tee "$prj/.workshop/ws-remove.yaml" >/dev/null
+  workshop_exec launch --project "$prj" ws-remove
+  rm -rf "$prj"
+  workshop_exec remove --project "$prj" ws-remove
+  workshop_exec list --global | NOMATCH "$(basename "$prj")"
