@@ -1,10 +1,11 @@
 project: workshop
-path: /workshop
+path: /home/ubuntu/workshop
 environment:
   LXD_CHANNEL: $(HOST:printf %s "${LXD_CHANNEL:-6/stable}")
   LXD_CUSTOM_SNAP: $(HOST:printf %s "${LXD_CUSTOM_SNAP-}")
+  WORKSHOP_CONFINEMENT: $(HOST:printf %s "${WORKSHOP_CONFINEMENT:-strict}")
   PATH: $PATH:~/go/bin
-  PROJECT_PATH: /workshop
+  PROJECT_PATH: /home/ubuntu/workshop
   TESTSLIB: $PROJECT_PATH/tests/lib
   IMAGE_SERVER: $(HOST:echo -n $WORKSHOP_IMAGE_SERVER)
 repack: |
@@ -14,7 +15,7 @@ backends:
   lxd:
     systems:
       - ubuntu-24.04:
-          workers: 2
+          workers: 1
 suites:
   tests/main/:
     summary: Core workshop scenarios
