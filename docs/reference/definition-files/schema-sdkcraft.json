@@ -743,6 +743,14 @@
       "default": null,
       "title": "Website"
     },
+    "assumes": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Assumes",
+      "type": "array"
+    },
     "plugs": {
       "$ref": "#/$defs/Plugs",
       "default": {}

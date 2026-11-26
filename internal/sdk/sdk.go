@@ -20,12 +20,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/canonical/x-go/strutil"
 	"gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
 
 	"github.com/canonical/workshop/internal/dirs"
 	"github.com/canonical/workshop/internal/metautil"
 	"github.com/canonical/workshop/internal/timeutil"
+	"github.com/canonical/workshop/internal/version"
 	"github.com/canonical/workshop/internal/yamlutil"
 )
 
@@ -130,6 +132,7 @@ type File struct {
 	Version     string
 	Summary     string
 	Description string
+	Assumes     []string
 
 	Base string
 	Arch string
@@ -182,6 +185,7 @@ func ReadSdkFile(yamlData []byte) (*File, error) {
 		Version:     sdkYaml.Version,
 		Summary:     sdkYaml.Summary,
 		Description: sdkYaml.Description,
+		Assumes:     sdkYaml.Assumes,
 		Base:        sdkYaml.Base,
 		Arch:        sdkYaml.Arch,
 		License:     sdkYaml.License,
@@ -194,11 +198,12 @@ func ReadSdkFile(yamlData []byte) (*File, error) {
 
 // Keep this in sync with sdkcraft.models.Metadata (+ Type & Hooks).
 type sdkYaml struct {
-	Name        string `yaml:"name"`
-	Title       string `yaml:"title,omitempty"`
-	Version     string `yaml:"version,omitempty"`
-	Summary     string `yaml:"summary,omitempty"`
-	Description string `yaml:"description,omitempty"`
+	Name        string   `yaml:"name"`
+	Title       string   `yaml:"title,omitempty"`
+	Version     string   `yaml:"version,omitempty"`
+	Summary     string   `yaml:"summary,omitempty"`
+	Description string   `yaml:"description,omitempty"`
+	Assumes     []string `yaml:"assumes,omitempty"`
 
 	Base string `yaml:"base,omitempty"`
 	Arch string `yaml:"architecture,omitempty"`
@@ -277,6 +282,7 @@ type Info struct {
 	Summary     string
 	Description string
 	License     string
+	Assumes     []string
 
 	Plugs map[string]*PlugInfo
 	Slots map[string]*SlotInfo
@@ -377,6 +383,9 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additi
 	if err != nil {
 		return nil, err
 	}
+	if err := validateAssumptions(file.Assumes); err != nil {
+		return nil, err
+	}
 
 	sdkInfo := &Info{
 		ProjectId:   projectId,
@@ -391,6 +400,7 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additi
 		Summary:     file.Summary,
 		Description: file.Description,
 		License:     file.License,
+		Assumes:     file.Assumes,
 		Plugs:       make(map[string]*PlugInfo),
 		Slots:       make(map[string]*SlotInfo),
 	}
@@ -425,6 +435,26 @@ func ReadSdkInfo(yamlData []byte, projectId, workshop string, additions []Additi
 	return sdkInfo, nil
 }
 
+func validateAssumptions(assumptions []string) error {
+	for _, assumption := range assumptions {
+		required, ok := strings.CutPrefix(assumption, "workshop")
+		if !ok {
+			return fmt.Errorf("unsupported SDK assumption %q", assumption)
+		}
+
+		currentVersion := strings.TrimPrefix(version.Version, "v")
+		comparison, err := strutil.VersionCompare(currentVersion, required)
+		if err != nil {
+			return fmt.Errorf("cannot compare SDK assumption %q with Workshop version %q: %w", assumption, version.Version, err)
+		}
+
+		if comparison < 0 {
+			return fmt.Errorf("SDK requires Workshop version >= %s; current version is %s", required, version.Version)
+		}
+	}
+
+	return nil
+}
 func setPlugsFromSdkFile(f *File, sdk *Info) error {
 	for name, data := range f.Plugs {
 		iface, label, attrs, err := convertToSlotOrPlugData("plug", name, data)

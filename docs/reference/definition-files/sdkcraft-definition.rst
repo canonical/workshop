@@ -75,6 +75,13 @@ Top-level fields
           Quote version strings in YAML when they look numeric
           (for example, :samp:`version: "1.0"`).
 
+   * - :samp:`assumes`
+     - array of strings
+     - |ws_markup| features the SDK requires.
+       Currently, only :samp:`workshop{VERSION}` is supported;
+       it specifies the minimum |ws_markup| version.
+       For example, :samp:`workshop1.0` requires |ws_markup| 1.0 or later.
+
    * - :samp:`title`
      - string
      - Human-readable title.
@@ -134,8 +141,9 @@ Top-level fields
 
 
 |sdk_markup| writes :samp:`name`, :samp:`base`, :samp:`version`, :samp:`title`,
-:samp:`summary`, :samp:`description`, :samp:`license`, :samp:`contact`,
-:samp:`issues`, :samp:`source-code`, :samp:`website`, :samp:`plugs`, and :samp:`slots`
+:samp:`summary`, :samp:`description`, :samp:`license`, :samp:`assumes`,
+:samp:`contact`, :samp:`issues`, :samp:`source-code`, :samp:`website`,
+:samp:`plugs`, and :samp:`slots`
 straight into the runtime :file:`sdk.yaml`.
 The other top-level fields control the build only.
 

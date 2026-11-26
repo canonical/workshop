@@ -435,6 +435,14 @@
       "title": "Architecture",
       "type": "string"
     },
+    "assumes": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Assumes",
+      "type": "array"
+    },
     "contact": {
       "anyOf": [
         {

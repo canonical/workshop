@@ -22,6 +22,7 @@ import (
 
 	"github.com/canonical/workshop/internal/sdk"
 	"github.com/canonical/workshop/internal/testutil"
+	"github.com/canonical/workshop/internal/version"
 )
 
 type SdkSuite struct {
@@ -68,6 +69,24 @@ base: ubuntu@24.04
 	c.Assert(info.Workshop, check.Equals, "ws")
 	c.Assert(info.Plugs, check.HasLen, 0)
 	c.Assert(info.Slots, check.HasLen, 0)
+}
+
+func (s *SdkSuite) TestAssumesMetadataPreserved(c *check.C) {
+	restore := version.MockVersion("1.0.0")
+	defer restore()
+
+	sdkYaml := []byte(`name: sdk
+assumes:
+  - workshop1.0
+`)
+
+	file, err := sdk.ReadSdkFile(sdkYaml)
+	c.Assert(err, check.IsNil)
+	c.Check(file.Assumes, check.DeepEquals, []string{"workshop1.0"})
+
+	info, err := sdk.ReadSdkInfo(sdkYaml, s.projectId, "ws", nil, sdk.Validate)
+	c.Assert(err, check.IsNil)
+	c.Check(info.Assumes, check.DeepEquals, []string{"workshop1.0"})
 }
 
 func (s *SdkSuite) TestUnmarshalInvalidType(c *check.C) {
