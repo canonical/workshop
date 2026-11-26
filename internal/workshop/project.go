@@ -193,21 +193,20 @@ func (t *ProjectTracker) Track(path string) (*Project, TrackResult, error) {
 	if err != nil {
 		return nil, ProjectError, err
 	}
-	path = resolved
 
-	id, err := readProjectId(path)
+	id, err := readProjectId(resolved)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return t.writeProjectId(path)
+			return t.writeProjectId(resolved)
 		}
 		return nil, ProjectError, err
 	}
 
-	project, result, err := t.maybeFindProject(path, id)
+	project, result, err := t.maybeFindProject(resolved, id)
 	if err == nil && project == nil {
 		// Ignore unrecognised project ID. Restore it from the path or
 		// generate a new one to avoid trusting user input.
-		return t.writeProjectId(path)
+		return t.writeProjectId(resolved)
 	}
 	return project, result, err
 }
