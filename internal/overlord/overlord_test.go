@@ -286,6 +286,52 @@ func (ovs *overlordSuite) TestEnsureLoopRunAndStop(c *C) {
 	c.Check(witness.startedUp, Equals, 1)
 }
 
+func (ovs *overlordSuite) TestEnsureLoopDeferEnsure(c *C) {
+	restoreIntv := overlord.FakeEnsureInterval(10 * time.Millisecond)
+	defer restoreIntv()
+	o := overlord.Fake()
+
+	witness := &witnessManager{
+		state:          o.State(),
+		expectedEnsure: 1,
+		ensureCalled:   make(chan struct{}),
+	}
+	o.AddManager(witness)
+	c.Assert(o.StartUp(), IsNil)
+
+	o.DeferEnsure()
+	o.Loop()
+	defer o.Stop()
+
+	// Neither the ensure timer nor EnsureBefore can bypass the gate.
+	o.State().EnsureBefore(0)
+	select {
+	case <-witness.ensureCalled:
+		c.Fatal("Ensure ran before AllowEnsure")
+	case <-time.After(100 * time.Millisecond):
+	}
+	c.Check(o.CanStandby(), Equals, false)
+
+	o.AllowEnsure()
+	select {
+	case <-witness.ensureCalled:
+	case <-time.After(2 * time.Second):
+		c.Fatal("Ensure calls not happening")
+	}
+
+	// Allowing again is harmless.
+	o.AllowEnsure()
+}
+
+func (ovs *overlordSuite) TestEnsureLoopDeferEnsureStop(c *C) {
+	o := overlord.Fake()
+	c.Assert(o.StartUp(), IsNil)
+
+	o.DeferEnsure()
+	o.Loop()
+	c.Assert(o.Stop(), IsNil)
+}
+
 func (ovs *overlordSuite) TestEnsureLoopMediatedEnsureBeforeImmediate(c *C) {
 	restoreIntv := overlord.FakeEnsureInterval(10 * time.Minute)
 	defer restoreIntv()
